@@ -45,7 +45,17 @@ export const ViewportPanel = memo(function ViewportPanel() {
 
     engine.start()
 
+    const resize = () => {
+      const width = canvas.clientWidth
+      const height = canvas.clientHeight
+      if (width > 0 && height > 0) engine.backend.resize(width, height)
+    }
+    const observer = new ResizeObserver(resize)
+    observer.observe(canvas)
+    resize()
+
     return () => {
+      observer.disconnect()
       gizmo.dispose()
       orbit.dispose()
       engine.dispose()

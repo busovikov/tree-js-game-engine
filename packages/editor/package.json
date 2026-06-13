@@ -22,6 +22,7 @@
     "@haku/engine": "file:../engine",
     "@haku/schema": "file:../schema",
     "@haku/serializer": "file:../serializer",
+    "react-resizable-panels": "^2.1.9",
     "three": "^0.171.0",
     "zustand": "^5.0.14"
   },
