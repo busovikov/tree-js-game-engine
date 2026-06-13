@@ -17,5 +17,5 @@ export default defineConfig({
     port: 5174,
     fs: { allow: ['../..'] },
   },
-  publicDir: 'public',
+  publicDir: resolve(__dirname, '../playground/public'),
 })

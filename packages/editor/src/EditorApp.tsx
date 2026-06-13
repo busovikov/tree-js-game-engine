@@ -32,7 +32,7 @@ export const EditorApp = memo(function EditorApp() {
   }, [])
 
   const onLoadPlayground = useCallback(async () => {
-    const sceneUrl = '/playground-assets/scenes/menu.scene.json'
+    const sceneUrl = '/assets/scenes/menu.scene.json'
     const res = await fetch(sceneUrl)
     const document = await res.json()
     const { loadSceneDocument } = await import('@haku/serializer')
