@@ -183,6 +183,15 @@ export class RenderSyncSystem implements ISystem {
     object3d.position.set(...transform.position)
     object3d.quaternion.set(...transform.rotation)
     object3d.scale.set(...transform.scale)
+    object3d.updateMatrixWorld(true)
+  }
+
+  syncEntityTransform(entityId: EntityId): void {
+    if (!this.world) return
+    const transform = this.world.getComponent(entityId, TransformComponent)
+    const state = this.entityStates.get(entityId.value)
+    if (!transform || !state) return
+    this.applyTransform(state.object3d, transform)
   }
 
   private syncLight(id: EntityId, object3d: THREE.Object3D): void {

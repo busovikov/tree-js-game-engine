@@ -32,6 +32,16 @@ export const InspectorPanel = memo(function InspectorPanel() {
 
   void worldRevision
 
+  const updateTransform = useCallback(
+    (after: Transform) => {
+      if (!selection || !world || mode === 'play') return
+      const before = world.getComponent(selection, TransformComponent)
+      if (!before) return
+      executeCommand(new SetTransformCommand(selection, before, after))
+    },
+    [selection, world, mode],
+  )
+
   const updateComponent = useCallback(
     (componentId: keyof typeof COMPONENT_MAP, before: Record<string, unknown>, after: Record<string, unknown>) => {
       if (!selection || !world || mode === 'play') return
@@ -78,9 +88,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
               <TransformFields
                 value={data as Transform}
                 disabled={mode === 'play'}
-                onChange={(next) =>
-                  updateComponent('Transform', data as Record<string, unknown>, next as Record<string, unknown>)
-                }
+                onChange={updateTransform}
               />
             ) : (
               <SchemaFields

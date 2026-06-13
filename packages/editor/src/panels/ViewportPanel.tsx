@@ -6,6 +6,18 @@ import { TransformComponent } from '@haku/core'
 import { useEditorStore } from '../store/editor-store.js'
 import { SetTransformCommand, executeCommand } from '../commands/world-commands.js'
 
+function refreshGizmo(
+  gizmo: TransformControls,
+  object: import('three').Object3D | undefined,
+): void {
+  if (!object) {
+    gizmo.detach()
+    return
+  }
+  gizmo.attach(object)
+  object.updateMatrixWorld(true)
+}
+
 export const ViewportPanel = memo(function ViewportPanel() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const engineRef = useRef<Engine | null>(null)
@@ -32,6 +44,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
     orbitRef.current = orbit
 
     const gizmo = new TransformControls(camera, canvas)
+    gizmo.setSpace('local')
     gizmo.addEventListener('dragging-changed', (event) => {
       orbit.enabled = !(event.value as boolean)
     })
@@ -71,7 +84,20 @@ export const ViewportPanel = memo(function ViewportPanel() {
     const camera = engine.backend.getActiveCamera()
     const gizmo = gizmoRef.current
     if (gizmo) gizmo.camera = camera
-  }, [world, worldRevision, sceneDocument])
+  }, [world, sceneDocument])
+
+  useEffect(() => {
+    const engine = engineRef.current
+    const gizmo = gizmoRef.current
+    if (!engine || !world || !gizmo) return
+
+    engine.backend.sync.update(world)
+
+    if (selection) {
+      engine.backend.sync.syncEntityTransform(selection)
+      refreshGizmo(gizmo, engine.backend.sync.getObject3D(selection))
+    }
+  }, [world, worldRevision, selection])
 
   useEffect(() => {
     const engine = engineRef.current
@@ -84,9 +110,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
     orbit.enabled = isEdit
 
     if (selection) {
-      const obj = engine.backend.sync.getObject3D(selection)
-      if (obj) gizmo.attach(obj)
-      else gizmo.detach()
+      refreshGizmo(gizmo, engine.backend.sync.getObject3D(selection))
     } else {
       gizmo.detach()
     }
@@ -117,10 +141,14 @@ export const ViewportPanel = memo(function ViewportPanel() {
     }
 
     const onObjectChange = () => {
+      // Ignore programmatic transform updates from inspector/sync — only live-drag the gizmo.
+      if (!gizmo.dragging) return
+
       const sel = useEditorStore.getState().selection
       const w = useEditorStore.getState().world
       const obj = sel ? engineRef.current?.backend.sync.getObject3D(sel) : null
       if (!sel || !w || !obj) return
+
       w.addComponent(sel, TransformComponent, {
         position: [obj.position.x, obj.position.y, obj.position.z],
         rotation: [obj.quaternion.x, obj.quaternion.y, obj.quaternion.z, obj.quaternion.w],
