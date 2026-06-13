@@ -7,6 +7,7 @@ import { TransformComponent } from '@haku/core'
 import { useEditorStore } from '../store/editor-store.js'
 import { SetTransformCommand, executeCommand } from '../commands/world-commands.js'
 import { focusSelection } from '../viewport/focus-selection.js'
+import { applyEditorTransformGizmoLayout } from '../viewport/transform-gizmo-config.js'
 
 function refreshGizmo(
   gizmo: TransformControls,
@@ -50,6 +51,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
     const gizmo = new TransformControls(camera, canvas)
     gizmo.setSpace('local')
     gizmo.setMode('translate')
+    applyEditorTransformGizmoLayout(gizmo)
     gizmo.addEventListener('dragging-changed', (event) => {
       orbit.enabled = !(event.value as boolean)
     })
