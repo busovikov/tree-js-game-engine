@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "metadata": { "name": "Menu" },
+  "prototypes": {},
+  "prefabs": {},
+  "entities": [
+    {
+      "id": "a0000000-0000-4000-8000-000000000001",
+      "name": "MainCamera",
+      "parent": null,
+      "components": [
+        { "type": "Transform", "data": { "position": [0, 2, 5], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] } },
+        { "type": "Camera", "data": { "fov": 60, "near": 0.1, "far": 1000 } }
+      ]
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000003",
+      "name": "Sun",
+      "parent": null,
+      "components": [
+        { "type": "Transform", "data": { "position": [5, 10, 5], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] } },
+        { "type": "Light", "data": { "type": "directional", "color": "#ffffff", "intensity": 1 } }
+      ]
+    }
+  ]
+}
