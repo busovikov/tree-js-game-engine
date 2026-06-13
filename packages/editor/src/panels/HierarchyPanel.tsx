@@ -1,7 +1,7 @@
 import { memo, useCallback } from 'react'
 import type { EntityId } from '@haku/core'
 import { useEditorStore } from '../store/editor-store.js'
-import { CreateEntityCommand, DeleteEntityCommand, executeCommand } from '../commands/world-commands.js'
+import { createEntity, deleteEntity } from '../commands/world-commands.js'
 
 function uniqueEntityName(world: NonNullable<ReturnType<typeof useEditorStore.getState>['world']>, base: string): string {
   const names = new Set(world.getAllEntities().map((id) => world.getEntityName(id)))
@@ -65,12 +65,12 @@ export const HierarchyPanel = memo(function HierarchyPanel() {
     const w = useEditorStore.getState().world
     if (!w) return
     const name = uniqueEntityName(w, 'New Entity')
-    executeCommand(new CreateEntityCommand(name))
+    createEntity(name)
   }, [])
 
   const onDelete = useCallback(() => {
     const sel = useEditorStore.getState().selection
-    if (sel) executeCommand(new DeleteEntityCommand(sel))
+    if (sel) deleteEntity(sel)
   }, [])
 
   const canEdit = !!world && mode === 'edit'

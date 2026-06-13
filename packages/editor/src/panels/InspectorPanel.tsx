@@ -9,6 +9,7 @@ import {
 } from '@haku/core'
 import { useEditorStore } from '../store/editor-store.js'
 import { SetTransformCommand, executeCommand } from '../commands/world-commands.js'
+import { commitSceneEdit } from '../commands/scene-history.js'
 import { SchemaFields } from '../components/SchemaFields.js'
 import { TransformFields } from '../components/TransformFields.js'
 import { MeshRendererFields } from '../components/MeshRendererFields.js'
@@ -54,8 +55,9 @@ export const InspectorPanel = memo(function InspectorPanel() {
         )
         return
       }
-      world.addComponent(selection, type, after)
-      useEditorStore.getState().setWorld(world)
+      commitSceneEdit((draft) => {
+        draft.world.addComponent(selection, type, after)
+      })
     },
     [selection, world, mode],
   )
@@ -63,8 +65,9 @@ export const InspectorPanel = memo(function InspectorPanel() {
   const updateMeshRenderer = useCallback(
     (after: MeshRenderer) => {
       if (!selection || !world || mode === 'play') return
-      world.addComponent(selection, MeshRendererComponent, after)
-      useEditorStore.getState().setWorld(world)
+      commitSceneEdit((draft) => {
+        draft.world.addComponent(selection, MeshRendererComponent, after)
+      })
     },
     [selection, world, mode],
   )

@@ -5,9 +5,8 @@ import { useEditorStore } from './store/editor-store.js'
 import { projectService } from './services/project-service.js'
 import { globalCommandBus } from './commands/command-bus.js'
 import {
-  CreatePrefabCommand,
-  PlacePrefabCommand,
-  executeCommand,
+  createPrefab,
+  placePrefab,
 } from './commands/world-commands.js'
 
 function pickProjectFolder(): Promise<FileList | null> {
@@ -106,7 +105,7 @@ export const EditorApp = memo(function EditorApp() {
     if (!selection) return
     const prefabId = prompt('Prefab id', `${useEditorStore.getState().world?.getEntityName(selection) ?? 'prefab'}`.toLowerCase())
     if (!prefabId) return
-    executeCommand(new CreatePrefabCommand(selection, prefabId))
+    createPrefab(selection, prefabId)
   }, [selection])
 
   const onPlacePrefab = useCallback(() => {
@@ -117,7 +116,7 @@ export const EditorApp = memo(function EditorApp() {
     }
     const prefabId = prompt(`Prefab id (${ids.join(', ')})`, ids[0])
     if (!prefabId || !sceneDocument?.prefabs[prefabId]) return
-    executeCommand(new PlacePrefabCommand(prefabId, [0, 0, 0]))
+    placePrefab(prefabId, [0, 0, 0])
   }, [sceneDocument])
 
   const onUndo = useCallback(() => {
