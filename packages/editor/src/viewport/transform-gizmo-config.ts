@@ -1,5 +1,16 @@
-import type { Object3D } from 'three'
+import type { Object3D, Vector3 } from 'three'
 import type { TransformControls } from 'three/examples/jsm/controls/TransformControls.js'
+
+/** Dampens uniform XYZ scale drag to feel closer to single-axis handles. */
+export const UNIFORM_SCALE_DRAG_FACTOR = 0.3
+
+export function applyUniformScaleDamping(object: Object3D, startScale: Vector3, factor = UNIFORM_SCALE_DRAG_FACTOR): void {
+  object.scale.set(
+    startScale.x + (object.scale.x - startScale.x) * factor,
+    startScale.y + (object.scale.y - startScale.y) * factor,
+    startScale.z + (object.scale.z - startScale.z) * factor,
+  )
+}
 
 type GizmoLayer = 'gizmo' | 'picker'
 

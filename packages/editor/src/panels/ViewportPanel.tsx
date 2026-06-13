@@ -7,7 +7,7 @@ import { TransformComponent } from '@haku/core'
 import { useEditorStore } from '../store/editor-store.js'
 import { SetTransformCommand, executeCommand } from '../commands/world-commands.js'
 import { focusSelection } from '../viewport/focus-selection.js'
-import { applyEditorTransformGizmoLayout } from '../viewport/transform-gizmo-config.js'
+import { applyEditorTransformGizmoLayout, applyUniformScaleDamping } from '../viewport/transform-gizmo-config.js'
 
 function refreshGizmo(
   gizmo: TransformControls,
@@ -27,6 +27,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
   const orbitRef = useRef<OrbitControls | null>(null)
   const gizmoRef = useRef<TransformControls | null>(null)
   const dragStartTransform = useRef<ReturnType<typeof TransformComponent.schema.parse> | null>(null)
+  const uniformScaleDragStart = useRef<THREE.Vector3 | null>(null)
 
   const world = useEditorStore((s) => s.world)
   const worldRevision = useEditorStore((s) => s.worldRevision)
@@ -148,8 +149,16 @@ export const ViewportPanel = memo(function ViewportPanel() {
     const onMouseDown = () => {
       const sel = useEditorStore.getState().selection
       const w = useEditorStore.getState().world
+      const obj = sel ? engineRef.current?.backend.sync.getObject3D(sel) : null
+
       if (sel && w) {
         dragStartTransform.current = w.getComponent(sel, TransformComponent) ?? null
+      }
+
+      if (gizmo.mode === 'scale' && gizmo.axis === 'XYZ' && obj) {
+        uniformScaleDragStart.current = obj.scale.clone()
+      } else {
+        uniformScaleDragStart.current = null
       }
     }
 
@@ -163,6 +172,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
         executeCommand(new SetTransformCommand(sel, before, after))
       }
       dragStartTransform.current = null
+      uniformScaleDragStart.current = null
     }
 
     const onObjectChange = () => {
@@ -173,6 +183,10 @@ export const ViewportPanel = memo(function ViewportPanel() {
       const w = useEditorStore.getState().world
       const obj = sel ? engineRef.current?.backend.sync.getObject3D(sel) : null
       if (!sel || !w || !obj) return
+
+      if (gizmo.mode === 'scale' && gizmo.axis === 'XYZ' && uniformScaleDragStart.current) {
+        applyUniformScaleDamping(obj, uniformScaleDragStart.current)
+      }
 
       w.addComponent(sel, TransformComponent, {
         position: [obj.position.x, obj.position.y, obj.position.z],
