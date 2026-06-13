@@ -1,0 +1,67 @@
+.menu-bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.menu-bar__menu {
+  position: relative;
+}
+
+.menu-bar__trigger {
+  background: transparent;
+  border: none;
+  color: #ddd;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.menu-bar__trigger:hover,
+.menu-bar__trigger--open {
+  background: #2a2a3a;
+}
+
+.menu-bar__dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 220px;
+  background: #1e1e28;
+  border: 1px solid #444;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  padding: 4px;
+  z-index: 20;
+}
+
+.menu-bar__item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: transparent;
+  border: none;
+  color: #eee;
+  padding: 7px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+}
+
+.menu-bar__item:hover:not(:disabled) {
+  background: #3d5afe33;
+}
+
+.menu-bar__item:disabled {
+  color: #666;
+  cursor: not-allowed;
+}
+
+.menu-bar__shortcut {
+  color: #888;
+  font-size: 11px;
+}

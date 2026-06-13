@@ -2,11 +2,12 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'node:path'
 import { playgroundAssetsManifestPlugin } from './playground-assets-manifest.js'
+import { hakuTemplatesPlugin } from './haku-templates-plugin.js'
 
 const playgroundAssetsRoot = resolve(__dirname, '../playground/public/assets')
 
 export default defineConfig({
-  plugins: [react(), playgroundAssetsManifestPlugin(playgroundAssetsRoot)],
+  plugins: [react(), playgroundAssetsManifestPlugin(playgroundAssetsRoot), hakuTemplatesPlugin()],
   resolve: {
     alias: {
       '@haku/editor': resolve(__dirname, '../../packages/editor/src'),

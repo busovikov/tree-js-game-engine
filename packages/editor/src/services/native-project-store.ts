@@ -26,9 +26,31 @@ class NativeProjectStore {
 
   async openDirectoryPicker(): Promise<string> {
     const handle = await window.showDirectoryPicker({ mode: 'readwrite' })
+    return this.useRootHandle(handle)
+  }
+
+  useRootHandle(handle: FileSystemDirectoryHandle): string {
     this.rootHandle = handle
     this.rootName = handle.name
     return this.rootName
+  }
+
+  async pickProjectDirectory(): Promise<FileSystemDirectoryHandle> {
+    const handle = await window.showDirectoryPicker({ mode: 'readwrite' })
+    for await (const _entry of handle.entries()) {
+      void _entry
+      throw new Error('Selected folder is not empty. Choose an empty directory for a new project.')
+    }
+    return handle
+  }
+
+  async scaffoldProject(rootHandle: FileSystemDirectoryHandle, files: Map<string, string>): Promise<void> {
+    this.rootHandle = rootHandle
+    this.rootName = rootHandle.name
+
+    for (const [path, content] of files) {
+      await this.writeText(path, content)
+    }
   }
 
   async ensureWritePermission(): Promise<void> {
@@ -62,6 +84,22 @@ class NativeProjectStore {
   }
 
   async listDirectory(dirPath: string): Promise<DirectoryEntry[]> {
+    try {
+      return await this.listDirectoryAt(dirPath)
+    } catch {
+      if (dirPath === 'assets' || dirPath.startsWith('assets/')) {
+        const publicPath = dirPath.replace(/^assets\b/, 'public/assets')
+        const entries = await this.listDirectoryAt(publicPath)
+        return entries.map((entry) => ({
+          ...entry,
+          path: entry.path.replace(/^public\/assets\b/, 'assets'),
+        }))
+      }
+      throw new Error(`Directory not found: ${dirPath}`)
+    }
+  }
+
+  private async listDirectoryAt(dirPath: string): Promise<DirectoryEntry[]> {
     const dirHandle = await this.getDirectoryHandle(dirPath)
     const folders: DirectoryEntry[] = []
     const files: DirectoryEntry[] = []
@@ -81,14 +119,14 @@ class NativeProjectStore {
     return [...folders, ...files]
   }
 
-  private async getDirectoryHandle(path: string): Promise<FileSystemDirectoryHandle> {
+  private async getDirectoryHandle(path: string, create = false): Promise<FileSystemDirectoryHandle> {
     if (!this.rootHandle) throw new Error('No project folder open')
 
     const parts = splitPath(path)
     let current = this.rootHandle
 
     for (const part of parts) {
-      current = await current.getDirectoryHandle(part)
+      current = await current.getDirectoryHandle(part, create ? { create: true } : undefined)
     }
 
     return current
@@ -115,7 +153,8 @@ class NativeProjectStore {
     if (parts.length === 0) throw new Error(`Invalid file path: ${path}`)
 
     const fileName = parts.pop()!
-    const dirHandle = parts.length > 0 ? await this.getDirectoryHandle(parts.join('/')) : this.rootHandle!
+    const dirHandle =
+      parts.length > 0 ? await this.getDirectoryHandle(parts.join('/'), create) : this.rootHandle!
     return dirHandle.getFileHandle(fileName, { create })
   }
 

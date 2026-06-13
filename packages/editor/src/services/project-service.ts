@@ -4,6 +4,7 @@ import type { EntityId, IWorld } from '@haku/core'
 import { MeshRendererComponent, World, getCoreComponent } from '@haku/core'
 import { browserProjectStore } from './browser-project-store.js'
 import { isFileSystemAccessSupported, nativeProjectStore } from './native-project-store.js'
+import { loadPersonalizedProjectTemplate } from './project-template.js'
 
 export interface ProjectFileEntry {
   path: string
@@ -33,6 +34,31 @@ export class ProjectService {
 
   canSyncAssetsToDisk(): boolean {
     return this.storage === 'playground' || this.storage === 'native'
+  }
+
+  /** Create a new project folder on disk and open it. */
+  async createNewProject(projectName: string): Promise<HakuProject> {
+    if (!isFileSystemAccessSupported()) {
+      throw new Error('File System Access API is not supported in this browser. Use Chrome or Edge.')
+    }
+
+    const projectHandle = await nativeProjectStore.pickProjectDirectory()
+    const templateFiles = await loadPersonalizedProjectTemplate(projectName)
+    await nativeProjectStore.scaffoldProject(projectHandle, templateFiles)
+
+    this.storage = 'native'
+    this.root = projectHandle.name
+    this.assetBaseUrl = ''
+
+    const manifestRaw = await nativeProjectStore.readText('haku.project.json')
+    this.manifest = HakuProjectSchema.parse(JSON.parse(manifestRaw))
+
+    const { world, document } = await this.loadScene(this.manifest.entryScene)
+    const { useEditorStore } = await import('../store/editor-store.js')
+    useEditorStore.getState().setProjectRoot(projectHandle.name)
+    useEditorStore.getState().setScene(this.manifest.entryScene, document, world as World)
+
+    return this.manifest
   }
 
   /** Open project via File System Access API (read/write on disk). */

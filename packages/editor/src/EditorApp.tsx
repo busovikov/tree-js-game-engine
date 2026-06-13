@@ -1,5 +1,6 @@
-import { memo, useCallback } from 'react'
+import { memo, useCallback, useMemo } from 'react'
 import { EditorLayout } from './EditorLayout.js'
+import { MenuBar } from './components/MenuBar.js'
 import { useEditorStore } from './store/editor-store.js'
 import { projectService } from './services/project-service.js'
 import { globalCommandBus } from './commands/command-bus.js'
@@ -17,6 +18,10 @@ function pickProjectFolder(): Promise<FileList | null> {
     input.onchange = () => resolve(input.files)
     input.click()
   })
+}
+
+function isAbortError(err: unknown): boolean {
+  return err instanceof DOMException && err.name === 'AbortError'
 }
 
 export const EditorApp = memo(function EditorApp() {
@@ -39,26 +44,43 @@ export const EditorApp = memo(function EditorApp() {
       if (!files?.length) return
       await projectService.openFromFileList(files)
     } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return
+      if (isAbortError(err)) return
       alert(err instanceof Error ? err.message : 'Failed to open project')
     }
   }, [])
 
+  const onCreateProject = useCallback(async () => {
+    const defaultName = 'my-game'
+    const projectName = prompt('Project name', defaultName)?.trim()
+    if (!projectName) return
+
+    try {
+      await projectService.createNewProject(projectName)
+    } catch (err) {
+      if (isAbortError(err)) return
+      alert(err instanceof Error ? err.message : 'Failed to create project')
+    }
+  }, [])
+
   const onLoadPlayground = useCallback(async () => {
-    projectService.openFromManifest(
-      'playground',
-      {
-        name: 'playground',
-        entryScene: 'assets/scenes/menu.scene.json',
-        assetsDir: 'assets',
-        scriptsDir: 'scripts',
-      },
-      '',
-    )
-    await projectService.seedVirtualAssetsFromManifest('/assets/manifest.json')
-    const { world, document } = await projectService.loadScene('assets/scenes/menu.scene.json')
-    useEditorStore.getState().setProjectRoot('playground')
-    useEditorStore.getState().setScene('assets/scenes/menu.scene.json', document, world as import('@haku/core').World)
+    try {
+      projectService.openFromManifest(
+        'playground',
+        {
+          name: 'playground',
+          entryScene: 'assets/scenes/menu.scene.json',
+          assetsDir: 'assets',
+          scriptsDir: 'scripts',
+        },
+        '',
+      )
+      await projectService.seedVirtualAssetsFromManifest('/assets/manifest.json')
+      const { world, document } = await projectService.loadScene('assets/scenes/menu.scene.json')
+      useEditorStore.getState().setProjectRoot('playground')
+      useEditorStore.getState().setScene('assets/scenes/menu.scene.json', document, world as import('@haku/core').World)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to load demo scene')
+    }
   }, [])
 
   const onSave = useCallback(async () => {
@@ -105,12 +127,33 @@ export const EditorApp = memo(function EditorApp() {
   const onUndo = useCallback(() => globalCommandBus.undo(), [commandRevision])
   const onRedo = useCallback(() => globalCommandBus.redo(), [commandRevision])
 
+  const menus = useMemo(
+    () => [
+      {
+        id: 'file',
+        label: 'File',
+        items: [
+          {
+            id: 'create-new',
+            label: 'Create New…',
+            disabled: !projectService.isFileSystemAccessSupported(),
+            onClick: onCreateProject,
+          },
+          { id: 'open', label: 'Open…', onClick: onOpenProject },
+          { id: 'save', label: 'Save', disabled: !scenePath || mode === 'play', onClick: onSave },
+          { id: 'demo', label: 'Demo Scene', onClick: onLoadPlayground },
+        ],
+      },
+    ],
+    [mode, onCreateProject, onLoadPlayground, onOpenProject, onSave, scenePath],
+  )
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       <header
         style={{
           display: 'flex',
-          gap: 8,
+          gap: 12,
           padding: '8px 12px',
           background: '#12121a',
           borderBottom: '1px solid #333',
@@ -118,10 +161,8 @@ export const EditorApp = memo(function EditorApp() {
           flexWrap: 'wrap',
         }}
       >
-        <strong style={{ color: '#eee', marginRight: 12 }}>@haku Editor</strong>
-        <button type="button" onClick={() => void onLoadPlayground()}>Demo Scene</button>
-        <button type="button" onClick={() => void onOpenProject()}>Open Project…</button>
-        <button type="button" onClick={() => void onSave()} disabled={!scenePath || mode === 'play'}>Save</button>
+        <strong style={{ color: '#eee', marginRight: 4 }}>@haku Editor</strong>
+        <MenuBar menus={menus} />
         <button type="button" onClick={onUndo} disabled={!globalCommandBus.canUndo() || mode === 'play'}>Undo</button>
         <button type="button" onClick={onRedo} disabled={!globalCommandBus.canRedo() || mode === 'play'}>Redo</button>
         <button type="button" onClick={onCreatePrefab} disabled={!selection || mode === 'play'}>Create Prefab</button>
