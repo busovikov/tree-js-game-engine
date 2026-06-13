@@ -84,19 +84,7 @@ class NativeProjectStore {
   }
 
   async listDirectory(dirPath: string): Promise<DirectoryEntry[]> {
-    try {
-      return await this.listDirectoryAt(dirPath)
-    } catch {
-      if (dirPath === 'assets' || dirPath.startsWith('assets/')) {
-        const publicPath = dirPath.replace(/^assets\b/, 'public/assets')
-        const entries = await this.listDirectoryAt(publicPath)
-        return entries.map((entry) => ({
-          ...entry,
-          path: entry.path.replace(/^public\/assets\b/, 'assets'),
-        }))
-      }
-      throw new Error(`Directory not found: ${dirPath}`)
-    }
+    return this.listDirectoryAt(dirPath)
   }
 
   private async listDirectoryAt(dirPath: string): Promise<DirectoryEntry[]> {
@@ -132,29 +120,12 @@ class NativeProjectStore {
     return current
   }
 
-  private resolveAssetPathCandidates(path: string): string[] {
-    const normalized = normalizePath(path)
-    const candidates = [normalized]
-
-    if (normalized.startsWith('assets/')) {
-      candidates.push(`public/${normalized}`)
-    } else if (normalized.startsWith('public/assets/')) {
-      candidates.push(normalized.replace('public/assets/', 'assets/'))
-    }
-
-    return [...new Set(candidates)]
-  }
-
   private async getFileHandle(path: string): Promise<FileSystemFileHandle> {
-    for (const candidate of this.resolveAssetPathCandidates(path)) {
-      try {
-        return await this.getFileHandleAtPath(candidate)
-      } catch {
-        // try next alias
-      }
+    try {
+      return await this.getFileHandleAtPath(normalizePath(path))
+    } catch {
+      throw new Error(`File not found: ${path}`)
     }
-
-    throw new Error(`File not found: ${path}`)
   }
 
   private async getOrCreateFileHandle(path: string, create: boolean): Promise<FileSystemFileHandle> {

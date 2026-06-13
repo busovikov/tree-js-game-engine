@@ -28,9 +28,6 @@ class BrowserProjectStore {
       if (!path || path.startsWith('.')) continue
       const entry = { file, isBinary: isBinaryPath(path) }
       this.registerFile(path, entry)
-      if (path.startsWith('public/assets/')) {
-        this.registerFile(path.replace('public/assets/', 'assets/'), entry)
-      }
     }
 
     return this.rootName

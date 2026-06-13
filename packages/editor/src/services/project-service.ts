@@ -1,4 +1,4 @@
-import { HakuProjectSchema, type HakuProject, type PrefabDefinition, type SceneDocument } from '@haku/schema'
+import { HakuProjectSchema, type HakuProject, type PrefabDefinition, type SceneDocument, DEFAULT_ASSETS_DIR } from '@haku/schema'
 import { loadSceneDocument, saveSceneDocument } from '@haku/serializer'
 import type { EntityId, IWorld } from '@haku/core'
 import { MeshRendererComponent, World, getCoreComponent } from '@haku/core'
@@ -57,7 +57,7 @@ export class ProjectService {
     this.assetBaseUrl = ''
 
     const manifestRaw = await nativeProjectStore.readText('haku.project.json')
-    this.manifest = HakuProjectSchema.parse(JSON.parse(manifestRaw))
+    this.manifest = await this.normalizeManifest(HakuProjectSchema.parse(JSON.parse(manifestRaw)))
 
     const { world, document } = await this.loadScene(this.manifest.entryScene)
     const { useEditorStore } = await import('../store/editor-store.js')
@@ -79,7 +79,7 @@ export class ProjectService {
     this.assetBaseUrl = ''
 
     const manifestRaw = await nativeProjectStore.readText('haku.project.json')
-    this.manifest = HakuProjectSchema.parse(JSON.parse(manifestRaw))
+    this.manifest = await this.normalizeManifest(HakuProjectSchema.parse(JSON.parse(manifestRaw)))
 
     const { world, document } = await this.loadScene(this.manifest.entryScene)
     const { useEditorStore } = await import('../store/editor-store.js')
@@ -97,7 +97,7 @@ export class ProjectService {
     this.assetBaseUrl = ''
 
     const manifestRaw = await browserProjectStore.readText('haku.project.json')
-    this.manifest = HakuProjectSchema.parse(JSON.parse(manifestRaw))
+    this.manifest = await this.normalizeManifest(HakuProjectSchema.parse(JSON.parse(manifestRaw)))
 
     const { world, document } = await this.loadScene(this.manifest.entryScene)
     const { useEditorStore } = await import('../store/editor-store.js')
@@ -196,7 +196,8 @@ export class ProjectService {
     }
   }
 
-  async seedVirtualAssetsFromManifest(manifestUrl: string, assetsDir = 'assets'): Promise<void> {
+  async seedVirtualAssetsFromManifest(manifestUrl: string, assetsDir?: string): Promise<void> {
+    const root = assetsDir ?? this.getAssetsRoot()
     this.storage = 'playground'
     const res = await fetch(manifestUrl)
     if (!res.ok) throw new Error(`Failed to load asset manifest: ${manifestUrl}`)
@@ -206,16 +207,17 @@ export class ProjectService {
     const baseUrl = manifestUrl.slice(0, manifestUrl.lastIndexOf('/'))
 
     for (const relativePath of files) {
-      const path = `${assetsDir}/${relativePath.replace(/^\/+/, '')}`
+      const path = `${root}/${relativePath.replace(/^\/+/, '')}`
       const url = `${baseUrl}/${relativePath.replace(/^\/+/, '')}`
       await browserProjectStore.registerFromUrl(path, url)
     }
   }
 
-  async resyncVirtualAssetsFromManifest(manifestUrl = '/assets/manifest.json', assetsDir = 'assets'): Promise<void> {
+  async resyncVirtualAssetsFromManifest(manifestUrl = '/assets/manifest.json', assetsDir?: string): Promise<void> {
     if (this.storage !== 'playground') return
-    browserProjectStore.removeUnderPrefix(assetsDir)
-    await this.seedVirtualAssetsFromManifest(manifestUrl, assetsDir)
+    const root = assetsDir ?? this.getAssetsRoot()
+    browserProjectStore.removeUnderPrefix(root)
+    await this.seedVirtualAssetsFromManifest(manifestUrl, root)
   }
 
   async importAsset(relativePath: string, file: File): Promise<void> {
@@ -250,7 +252,29 @@ export class ProjectService {
   }
 
   getAssetsRoot(): string {
-    return this.manifest?.assetsDir ?? 'assets'
+    return this.manifest?.assetsDir ?? DEFAULT_ASSETS_DIR
+  }
+
+  /** Upgrade legacy `assets/` manifest paths to on-disk `public/assets/`. */
+  private async normalizeManifest(manifest: HakuProject): Promise<HakuProject> {
+    if (manifest.assetsDir !== 'assets') return manifest
+
+    const upgraded: HakuProject = {
+      ...manifest,
+      assetsDir: DEFAULT_ASSETS_DIR,
+      entryScene: manifest.entryScene.startsWith('assets/')
+        ? manifest.entryScene.replace(/^assets\//, `${DEFAULT_ASSETS_DIR}/`)
+        : manifest.entryScene,
+    }
+
+    if (this.storage !== 'native') return upgraded
+
+    try {
+      await nativeProjectStore.readText(upgraded.entryScene)
+      return upgraded
+    } catch {
+      return manifest
+    }
   }
 }
 

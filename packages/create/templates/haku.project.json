@@ -1,6 +1,6 @@
 {
   "name": "my-game",
-  "entryScene": "assets/scenes/menu.scene.json",
-  "assetsDir": "assets",
+  "entryScene": "public/assets/scenes/menu.scene.json",
+  "assetsDir": "public/assets",
   "scriptsDir": "scripts"
 }

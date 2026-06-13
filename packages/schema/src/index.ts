@@ -113,10 +113,16 @@ export type SceneDocument = z.infer<typeof SceneDocumentSchema>
 export const HakuProjectSchema = z.object({
   name: z.string(),
   entryScene: z.string(),
-  assetsDir: z.string().default('assets'),
+  assetsDir: z.string().default('public/assets'),
   scriptsDir: z.string().default('scripts'),
 })
 export type HakuProject = z.infer<typeof HakuProjectSchema>
+
+export {
+  DEFAULT_ASSETS_DIR,
+  projectPathToUrl,
+  relativeToAssetsDir,
+} from './paths.js'
 
 export const CORE_COMPONENT_IDS = [
   'Transform',

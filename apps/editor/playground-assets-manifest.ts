@@ -3,15 +3,20 @@ import { dirname, join, normalize, relative } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Plugin } from 'vite'
 
+const ASSETS_DIR = 'public/assets'
 const IGNORED_NAMES = new Set(['.DS_Store', 'manifest.json'])
 const IMPORT_PATH_HEADER = 'x-haku-asset-path'
 
-function resolveAssetWritePath(assetsRoot: string, assetPath: string): string | null {
+function relativeToAssetsDir(assetPath: string): string | null {
   const normalized = assetPath.replace(/^\/+/, '').replace(/\\/g, '/')
-  if (!normalized.startsWith('assets/') || normalized.includes('..')) return null
+  const prefix = `${ASSETS_DIR}/`
+  if (!normalized.startsWith(prefix)) return null
+  return normalized.slice(prefix.length) || null
+}
 
-  const relativePath = normalized.slice('assets/'.length)
-  if (!relativePath) return null
+function resolveAssetWritePath(assetsRoot: string, assetPath: string): string | null {
+  const relativePath = relativeToAssetsDir(assetPath)
+  if (!relativePath || relativePath.includes('..')) return null
 
   const fullPath = normalize(join(assetsRoot, relativePath))
   if (!fullPath.startsWith(normalize(assetsRoot))) return null
