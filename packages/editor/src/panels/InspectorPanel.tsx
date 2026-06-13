@@ -10,7 +10,9 @@ import {
 import { useEditorStore } from '../store/editor-store.js'
 import { SetTransformCommand, executeCommand } from '../commands/world-commands.js'
 import { SchemaFields } from '../components/SchemaFields.js'
+import { TransformFields } from '../components/TransformFields.js'
 import { assignPrototype, assignMeshPrototype } from '../services/project-service.js'
+import type { Transform } from '@haku/schema'
 
 const COMPONENT_MAP = {
   Transform: TransformComponent,
@@ -72,12 +74,22 @@ export const InspectorPanel = memo(function InspectorPanel() {
         return (
           <section key={typeId} style={{ marginBottom: 16 }}>
             <h4 style={{ fontSize: 12, color: '#aaa', marginBottom: 8 }}>{typeId}</h4>
-            <SchemaFields
-              componentId={key}
-              data={data as Record<string, unknown>}
-              disabled={mode === 'play'}
-              onChange={(next) => updateComponent(key, data as Record<string, unknown>, next)}
-            />
+            {key === 'Transform' ? (
+              <TransformFields
+                value={data as Transform}
+                disabled={mode === 'play'}
+                onChange={(next) =>
+                  updateComponent('Transform', data as Record<string, unknown>, next as Record<string, unknown>)
+                }
+              />
+            ) : (
+              <SchemaFields
+                componentId={key}
+                data={data as Record<string, unknown>}
+                disabled={mode === 'play'}
+                onChange={(next) => updateComponent(key, data as Record<string, unknown>, next)}
+              />
+            )}
           </section>
         )
       })}

@@ -1,0 +1,99 @@
+.haku-transform-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.haku-transform-row {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 8px;
+  align-items: start;
+}
+
+.haku-transform-row-label {
+  color: #aaa;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding-top: 6px;
+}
+
+.haku-transform-axes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.haku-transform-axis {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.haku-transform-axis-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.haku-transform-axis:nth-child(1) .haku-transform-axis-label {
+  color: #ff6b6b;
+}
+
+.haku-transform-axis:nth-child(2) .haku-transform-axis-label {
+  color: #69db7c;
+}
+
+.haku-transform-axis:nth-child(3) .haku-transform-axis-label {
+  color: #74c0fc;
+}
+
+.haku-transform-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: #1a1a2e;
+  color: #eee;
+  border: 1px solid #444;
+  border-radius: 3px;
+  padding: 4px 6px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.haku-transform-input:focus {
+  outline: none;
+  border-color: #3d5afe;
+}
+
+.haku-transform-input:disabled {
+  opacity: 0.45;
+}
+
+.haku-transform-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 2px;
+}
+
+.haku-transform-reset {
+  background: #333;
+  color: #ccc;
+  border: 1px solid #555;
+  border-radius: 3px;
+  padding: 3px 10px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.haku-transform-reset:hover:not(:disabled) {
+  background: #444;
+  color: #fff;
+}
+
+.haku-transform-reset:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
