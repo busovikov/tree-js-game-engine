@@ -99,6 +99,22 @@ export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
     navigateTo(parent || assetsRoot)
   }, [currentDir, assetsRoot, navigateTo])
 
+  const onRefreshAssets = useCallback(async () => {
+    if (!projectService.isVirtualFs()) {
+      setRefreshKey((k) => k + 1)
+      return
+    }
+    setLoading(true)
+    try {
+      await projectService.resyncVirtualAssetsFromManifest()
+      setRefreshKey((k) => k + 1)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to refresh assets')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   const onEntryActivate = useCallback(
     (entry: ProjectFileEntry) => {
       if (entry.isDirectory) {
@@ -167,6 +183,9 @@ export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
           <div style={{ display: 'flex', gap: 4 }}>
             <button type="button" onClick={goUp} disabled={currentDir === assetsRoot} title="Up">
               ↑
+            </button>
+            <button type="button" onClick={() => void onRefreshAssets()} title="Refresh">
+              ↻
             </button>
             <button type="button" onClick={() => fileInputRef.current?.click()}>
               Import

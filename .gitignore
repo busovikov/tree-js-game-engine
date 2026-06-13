@@ -9,3 +9,4 @@ coverage
 package-lock.json
 apps/*/dist
 packages/*/dist
+apps/playground/public/assets/manifest.json

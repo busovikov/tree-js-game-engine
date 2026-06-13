@@ -124,6 +124,16 @@ class BrowserProjectStore {
     this.files.clear()
     this.rootName = ''
   }
+
+  removeUnderPrefix(prefix: string): void {
+    const normalized = normalizePath(prefix)
+    const withSlash = `${normalized}/`
+    for (const path of [...this.files.keys()]) {
+      if (path === normalized || path.startsWith(withSlash)) {
+        this.files.delete(path)
+      }
+    }
+  }
 }
 
 function normalizePath(path: string): string {

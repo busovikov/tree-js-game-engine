@@ -132,6 +132,13 @@ export class ProjectService {
     }
   }
 
+  /** Re-scan manifest and refresh virtual asset entries (demo / dev mode). */
+  async resyncVirtualAssetsFromManifest(manifestUrl = '/assets/manifest.json', assetsDir = 'assets'): Promise<void> {
+    if (!this.useVirtualFs) return
+    browserProjectStore.removeUnderPrefix(assetsDir)
+    await this.seedVirtualAssetsFromManifest(manifestUrl, assetsDir)
+  }
+
   importVirtualAsset(relativePath: string, file: File): void {
     browserProjectStore.registerFile(relativePath, { file, isBinary: isBinaryFile(file.name) })
   }
