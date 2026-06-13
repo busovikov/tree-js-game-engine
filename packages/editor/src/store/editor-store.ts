@@ -11,6 +11,7 @@ interface EditorState {
   scenePath: string | null
   sceneDocument: SceneDocument | null
   world: World | null
+  worldRevision: number
   selection: EntityId | null
   mode: EditorMode
   playSnapshot: World | null
@@ -31,6 +32,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   scenePath: null,
   sceneDocument: null,
   world: null,
+  worldRevision: 0,
   selection: null,
   mode: 'edit',
   playSnapshot: null,
@@ -38,9 +40,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   setProjectRoot: (root) => set({ projectRoot: root }),
   setScene: (path, document, world) =>
-    set({ scenePath: path, sceneDocument: document, world, selection: null }),
+    set((s) => ({
+      scenePath: path,
+      sceneDocument: document,
+      world,
+      worldRevision: s.worldRevision + 1,
+      selection: null,
+    })),
   setSelection: (id) => set({ selection: id }),
-  setWorld: (world) => set({ world }),
+  setWorld: (world) => set((s) => ({ world, worldRevision: s.worldRevision + 1 })),
   setMode: (mode) => set({ mode }),
 
   enterPlayMode: () => {
@@ -52,7 +60,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   exitPlayMode: () => {
     const { playSnapshot } = get()
     if (playSnapshot) {
-      set({ mode: 'edit', world: playSnapshot, playSnapshot: null, selection: null })
+      set((s) => ({
+        mode: 'edit',
+        world: playSnapshot,
+        worldRevision: s.worldRevision + 1,
+        playSnapshot: null,
+        selection: null,
+      }))
     } else {
       set({ mode: 'edit' })
     }

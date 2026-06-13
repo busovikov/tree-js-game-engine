@@ -23,9 +23,12 @@ const COMPONENT_MAP = {
 export const InspectorPanel = memo(function InspectorPanel() {
   const selection = useEditorStore((s) => s.selection)
   const world = useEditorStore((s) => s.world)
+  const worldRevision = useEditorStore((s) => s.worldRevision)
   const sceneDocument = useEditorStore((s) => s.sceneDocument)
   const scenePath = useEditorStore((s) => s.scenePath)
   const mode = useEditorStore((s) => s.mode)
+
+  void worldRevision
 
   const updateComponent = useCallback(
     (componentId: keyof typeof COMPONENT_MAP, before: Record<string, unknown>, after: Record<string, unknown>) => {

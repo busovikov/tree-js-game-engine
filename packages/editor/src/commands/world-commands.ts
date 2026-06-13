@@ -46,8 +46,23 @@ export class CreateEntityCommand implements Command {
   execute(): void {
     const world = useEditorStore.getState().world
     if (!world) return
+
+    const selection = useEditorStore.getState().selection
     const id = world.createEntity(this.name)
-    world.addComponent(id, TransformComponent, TransformComponent.defaults!())
+    const defaults = TransformComponent.defaults!()
+
+    if (selection && world.hasEntity(selection)) {
+      world.addComponent(id, TransformComponent, defaults)
+      world.setParent(id, selection)
+    } else {
+      const roots = world.getAllEntities().filter((e) => world.getParent(e) === null)
+      const index = Math.max(0, roots.length - 1)
+      world.addComponent(id, TransformComponent, {
+        ...defaults,
+        position: [index * 1.5, 0, 0],
+      })
+    }
+
     this.createdId = id
     useEditorStore.getState().setWorld(world)
     useEditorStore.getState().setSelection(id)

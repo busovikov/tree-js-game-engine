@@ -14,6 +14,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
   const dragStartTransform = useRef<ReturnType<typeof TransformComponent.schema.parse> | null>(null)
 
   const world = useEditorStore((s) => s.world)
+  const worldRevision = useEditorStore((s) => s.worldRevision)
   const sceneDocument = useEditorStore((s) => s.sceneDocument)
   const selection = useEditorStore((s) => s.selection)
   const mode = useEditorStore((s) => s.mode)
@@ -70,7 +71,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
     const camera = engine.backend.getActiveCamera()
     const gizmo = gizmoRef.current
     if (gizmo) gizmo.camera = camera
-  }, [world, sceneDocument])
+  }, [world, worldRevision, sceneDocument])
 
   useEffect(() => {
     const engine = engineRef.current
