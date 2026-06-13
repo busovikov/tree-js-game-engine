@@ -49,9 +49,6 @@ export const ViewportPanel = memo(function ViewportPanel() {
       orbit.enabled = !(event.value as boolean)
     })
     engine.backend.threeScene.add(gizmo.getHelper())
-    gizmo.getHelper().traverse((child) => {
-      child.raycast = () => undefined
-    })
     gizmoRef.current = gizmo
 
     const tick = () => {
@@ -188,7 +185,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
       if (mode !== 'edit') return
 
       const gizmo = gizmoRef.current
-      if (gizmo?.dragging) return
+      if (gizmo?.dragging || gizmo?.axis) return
 
       const dx = event.clientX - pointerDown.x
       const dy = event.clientY - pointerDown.y
