@@ -1,8 +1,64 @@
-import { readdir } from 'node:fs/promises'
-import { join, relative } from 'node:path'
+import { mkdir, readdir, writeFile } from 'node:fs/promises'
+import { dirname, join, normalize, relative } from 'node:path'
+import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Plugin } from 'vite'
 
 const IGNORED_NAMES = new Set(['.DS_Store', 'manifest.json'])
+const IMPORT_PATH_HEADER = 'x-haku-asset-path'
+
+function resolveAssetWritePath(assetsRoot: string, assetPath: string): string | null {
+  const normalized = assetPath.replace(/^\/+/, '').replace(/\\/g, '/')
+  if (!normalized.startsWith('assets/') || normalized.includes('..')) return null
+
+  const relativePath = normalized.slice('assets/'.length)
+  if (!relativePath) return null
+
+  const fullPath = normalize(join(assetsRoot, relativePath))
+  if (!fullPath.startsWith(normalize(assetsRoot))) return null
+  return fullPath
+}
+
+async function readRequestBody(req: IncomingMessage): Promise<Buffer> {
+  const chunks: Buffer[] = []
+  for await (const chunk of req) {
+    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk)
+  }
+  return Buffer.concat(chunks)
+}
+
+async function handleAssetImport(
+  assetsRoot: string,
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
+  if (req.method !== 'POST') {
+    res.statusCode = 405
+    res.end('Method Not Allowed')
+    return
+  }
+
+  const assetPath = req.headers[IMPORT_PATH_HEADER]
+  if (typeof assetPath !== 'string' || !assetPath) {
+    res.statusCode = 400
+    res.end('Missing X-Haku-Asset-Path header')
+    return
+  }
+
+  const fullPath = resolveAssetWritePath(assetsRoot, assetPath)
+  if (!fullPath) {
+    res.statusCode = 400
+    res.end('Invalid asset path')
+    return
+  }
+
+  const body = await readRequestBody(req)
+  await mkdir(dirname(fullPath), { recursive: true })
+  await writeFile(fullPath, body)
+
+  res.statusCode = 200
+  res.setHeader('Content-Type', 'application/json')
+  res.end(JSON.stringify({ path: assetPath, bytes: body.byteLength }))
+}
 
 export async function scanPlaygroundAssets(assetsRoot: string): Promise<string[]> {
   const files: string[] = []
@@ -41,7 +97,19 @@ export function playgroundAssetsManifestPlugin(assetsRoot: string): Plugin {
       server.watcher.add(assetsRoot)
 
       server.middlewares.use(async (req, res, next) => {
-        if (req.url?.split('?')[0] !== '/assets/manifest.json') {
+        const pathname = req.url?.split('?')[0]
+
+        if (pathname === '/__haku/assets/import') {
+          try {
+            await handleAssetImport(assetsRoot, req, res)
+          } catch (error) {
+            res.statusCode = 500
+            res.end(error instanceof Error ? error.message : 'Import failed')
+          }
+          return
+        }
+
+        if (pathname !== '/assets/manifest.json') {
           next()
           return
         }

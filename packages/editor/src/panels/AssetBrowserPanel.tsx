@@ -149,12 +149,15 @@ export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
   const onImport = async (files: FileList | null) => {
     if (!files?.length) return
 
-    for (const file of files) {
-      const dest = `${currentDir}/${file.name}`
-      projectService.importVirtualAsset(dest, file)
+    try {
+      for (const file of files) {
+        const dest = `${currentDir}/${file.name}`
+        await projectService.importAsset(dest, file)
+      }
+      setRefreshKey((k) => k + 1)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to import asset')
     }
-
-    setRefreshKey((k) => k + 1)
   }
 
   if (!projectRoot) {

@@ -15,11 +15,13 @@ export class ProjectService {
   private manifest: HakuProject | null = null
   private assetBaseUrl = ''
   private useVirtualFs = false
+  private syncAssetsToDisk = false
 
   /** Open project from folder picker (webkitdirectory). */
   async openFromFileList(fileList: FileList): Promise<HakuProject> {
     const rootName = browserProjectStore.loadFromFileList(fileList)
     this.useVirtualFs = true
+    this.syncAssetsToDisk = false
     this.root = rootName
     this.assetBaseUrl = ''
 
@@ -39,6 +41,7 @@ export class ProjectService {
     this.manifest = manifest
     this.assetBaseUrl = assetBaseUrl
     this.useVirtualFs = false
+    this.syncAssetsToDisk = rootPath === 'playground'
     return manifest
   }
 
@@ -139,8 +142,30 @@ export class ProjectService {
     await this.seedVirtualAssetsFromManifest(manifestUrl, assetsDir)
   }
 
-  importVirtualAsset(relativePath: string, file: File): void {
+  async importAsset(relativePath: string, file: File): Promise<void> {
     browserProjectStore.registerFile(relativePath, { file, isBinary: isBinaryFile(file.name) })
+
+    if (!this.syncAssetsToDisk) return
+
+    const res = await fetch('/__haku/assets/import', {
+      method: 'POST',
+      headers: { 'X-Haku-Asset-Path': relativePath },
+      body: file,
+    })
+
+    if (!res.ok) {
+      const message = await res.text()
+      throw new Error(message || `Failed to write asset to disk: ${relativePath}`)
+    }
+  }
+
+  /** @deprecated Use importAsset */
+  importVirtualAsset(relativePath: string, file: File): void {
+    void this.importAsset(relativePath, file)
+  }
+
+  canSyncAssetsToDisk(): boolean {
+    return this.syncAssetsToDisk
   }
 
   isVirtualFs(): boolean {
