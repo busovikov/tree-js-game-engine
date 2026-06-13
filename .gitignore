@@ -6,5 +6,6 @@ coverage
 .turbo
 .pnpm-store
 .agents
+package-lock.json
 apps/*/dist
 packages/*/dist
