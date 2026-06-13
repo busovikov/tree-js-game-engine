@@ -1,4 +1,5 @@
 import type { EntityId, IRenderBackend, IWorld, ISystem } from '@haku/core'
+import { entityId } from '@haku/core'
 import {
   CameraComponent,
   LightComponent,
@@ -78,9 +79,12 @@ export class RenderSyncSystem implements ISystem {
       let state = this.entityStates.get(id.value)
       if (!state) {
         const object3d = this.createObjectForEntity(id)
+        object3d.userData.hakuEntityId = id.value
         state = { object3d }
         this.entityStates.set(id.value, state)
         this.scene.add(object3d)
+      } else {
+        state.object3d.userData.hakuEntityId = id.value
       }
 
       this.applyTransform(state.object3d, transform)
@@ -194,6 +198,41 @@ export class RenderSyncSystem implements ISystem {
     this.applyTransform(state.object3d, transform)
   }
 
+  pickEntityAt(
+    clientX: number,
+    clientY: number,
+    canvas: HTMLCanvasElement,
+    camera: THREE.Camera,
+  ): { entityId: EntityId | null; hitEditorOverlay: boolean } {
+    const rect = canvas.getBoundingClientRect()
+    if (rect.width <= 0 || rect.height <= 0) {
+      return { entityId: null, hitEditorOverlay: false }
+    }
+
+    const ndc = new THREE.Vector2(
+      ((clientX - rect.left) / rect.width) * 2 - 1,
+      -((clientY - rect.top) / rect.height) * 2 + 1,
+    )
+
+    const raycaster = new THREE.Raycaster()
+    raycaster.setFromCamera(ndc, camera)
+
+    const hits = raycaster.intersectObjects(this.scene.children, true)
+    for (const hit of hits) {
+      let current: THREE.Object3D | null = hit.object
+      while (current) {
+        if (current.userData.hakuEditorOverlay) {
+          return { entityId: null, hitEditorOverlay: true }
+        }
+        const idValue = current.userData.hakuEntityId as string | undefined
+        if (idValue) return { entityId: entityId(idValue), hitEditorOverlay: false }
+        current = current.parent
+      }
+    }
+
+    return { entityId: null, hitEditorOverlay: false }
+  }
+
   private syncLight(id: EntityId, object3d: THREE.Object3D): void {
     if (!this.world?.hasComponent(id, LightComponent)) return
     const lightData = this.world.getComponent(id, LightComponent)!
@@ -292,6 +331,14 @@ export class ThreeRenderBackend implements IRenderBackend {
       this.activeCamera.aspect = width / height
       this.activeCamera.updateProjectionMatrix()
     }
+  }
+
+  pickEntityAt(
+    clientX: number,
+    clientY: number,
+    canvas: HTMLCanvasElement,
+  ): { entityId: EntityId | null; hitEditorOverlay: boolean } {
+    return this.syncSystem.pickEntityAt(clientX, clientY, canvas, this.activeCamera)
   }
 
   private pickActiveCamera(world: IWorld): void {

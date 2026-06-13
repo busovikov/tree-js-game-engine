@@ -49,6 +49,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
       orbit.enabled = !(event.value as boolean)
     })
     engine.backend.threeScene.add(gizmo.getHelper())
+    gizmo.getHelper().userData.hakuEditorOverlay = true
     gizmoRef.current = gizmo
 
     const tick = () => {
@@ -165,6 +166,44 @@ export const ViewportPanel = memo(function ViewportPanel() {
       gizmo.removeEventListener('mouseDown', onMouseDown)
       gizmo.removeEventListener('mouseUp', onMouseUp)
       gizmo.removeEventListener('objectChange', onObjectChange)
+    }
+  }, [])
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    let pointerDown = { x: 0, y: 0 }
+
+    const onPointerDown = (event: PointerEvent) => {
+      pointerDown = { x: event.clientX, y: event.clientY }
+    }
+
+    const onPointerUp = (event: PointerEvent) => {
+      const { mode } = useEditorStore.getState()
+      if (mode !== 'edit') return
+
+      const gizmo = gizmoRef.current
+      if (gizmo?.dragging) return
+
+      const dx = event.clientX - pointerDown.x
+      const dy = event.clientY - pointerDown.y
+      if (dx * dx + dy * dy > 36) return
+
+      const engine = engineRef.current
+      if (!engine) return
+
+      const pick = engine.backend.pickEntityAt(event.clientX, event.clientY, canvas)
+      if (pick.hitEditorOverlay) return
+      useEditorStore.getState().setSelection(pick.entityId)
+    }
+
+    canvas.addEventListener('pointerdown', onPointerDown)
+    canvas.addEventListener('pointerup', onPointerUp)
+
+    return () => {
+      canvas.removeEventListener('pointerdown', onPointerDown)
+      canvas.removeEventListener('pointerup', onPointerUp)
     }
   }, [])
 
