@@ -22,6 +22,7 @@ interface EditorState {
 
   setProjectRoot: (root: string | null) => void
   setScene: (path: string, document: SceneDocument, world: World) => void
+  setSceneDocument: (document: SceneDocument) => void
   setSelection: (id: EntityId | null) => void
   setWorld: (world: World) => void
   setMode: (mode: EditorMode) => void
@@ -46,13 +47,20 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   commandRevision: 0,
 
   setProjectRoot: (root) => set({ projectRoot: root }),
-  setScene: (path, document, world) =>
+  setScene: (path, document, world) => {
+    globalCommandBus.clear()
     set((s) => ({
       scenePath: path,
       sceneDocument: document,
       world,
       worldRevision: s.worldRevision + 1,
       selection: null,
+    }))
+  },
+  setSceneDocument: (document) =>
+    set((s) => ({
+      sceneDocument: document,
+      worldRevision: s.worldRevision + 1,
     })),
   setSelection: (id) => set({ selection: id }),
   setWorld: (world) => set((s) => ({ world, worldRevision: s.worldRevision + 1 })),

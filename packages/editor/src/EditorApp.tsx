@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo } from 'react'
+import { memo, useCallback, useEffect, useMemo } from 'react'
 import { EditorLayout } from './EditorLayout.js'
 import { MenuBar } from './components/MenuBar.js'
 import { useEditorStore } from './store/editor-store.js'
@@ -120,8 +120,33 @@ export const EditorApp = memo(function EditorApp() {
     executeCommand(new PlacePrefabCommand(prefabId, [0, 0, 0]))
   }, [sceneDocument])
 
-  const onUndo = useCallback(() => globalCommandBus.undo(), [commandRevision])
-  const onRedo = useCallback(() => globalCommandBus.redo(), [commandRevision])
+  const onUndo = useCallback(() => {
+    if (useEditorStore.getState().mode === 'play') return
+    globalCommandBus.undo()
+  }, [commandRevision])
+
+  const onRedo = useCallback(() => {
+    if (useEditorStore.getState().mode === 'play') return
+    globalCommandBus.redo()
+  }, [commandRevision])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (useEditorStore.getState().mode === 'play') return
+      if (!(event.metaKey || event.ctrlKey) || event.altKey) return
+      if (event.key.toLowerCase() !== 'z') return
+
+      event.preventDefault()
+      if (event.shiftKey) {
+        if (globalCommandBus.canRedo()) globalCommandBus.redo()
+      } else if (globalCommandBus.canUndo()) {
+        globalCommandBus.undo()
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
 
   const menus = useMemo(
     () => [

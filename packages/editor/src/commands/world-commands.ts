@@ -7,6 +7,7 @@ import {
 import type { SceneDocument } from '@haku/schema'
 import type { Command } from './command-bus.js'
 import { globalCommandBus } from './command-bus.js'
+import { mutateWorld } from './world-mutations.js'
 import { useEditorStore } from '../store/editor-store.js'
 import { extractPrefabSubtree } from '../services/project-service.js'
 
@@ -18,17 +19,15 @@ export class SetTransformCommand implements Command {
   ) {}
 
   execute(): void {
-    const world = useEditorStore.getState().world
-    if (!world) return
-    world.addComponent(this.entityId, TransformComponent, this.after)
-    useEditorStore.getState().setWorld(world)
+    mutateWorld((world) => {
+      world.addComponent(this.entityId, TransformComponent, this.after)
+    })
   }
 
   undo(): void {
-    const world = useEditorStore.getState().world
-    if (!world) return
-    world.addComponent(this.entityId, TransformComponent, this.before)
-    useEditorStore.getState().setWorld(world)
+    mutateWorld((world) => {
+      world.addComponent(this.entityId, TransformComponent, this.before)
+    })
   }
 
   merge(other: Command): Command | null {
@@ -44,35 +43,38 @@ export class CreateEntityCommand implements Command {
   constructor(private readonly name: string) {}
 
   execute(): void {
-    const world = useEditorStore.getState().world
-    if (!world) return
-
     const selection = useEditorStore.getState().selection
-    const id = world.createEntity(this.name)
-    const defaults = TransformComponent.defaults!()
+    let createdId: EntityId | null = null
 
-    if (selection && world.hasEntity(selection)) {
-      world.addComponent(id, TransformComponent, defaults)
-      world.setParent(id, selection)
-    } else {
-      const roots = world.getAllEntities().filter((e) => world.getParent(e) === null)
-      const index = Math.max(0, roots.length - 1)
-      world.addComponent(id, TransformComponent, {
-        ...defaults,
-        position: [index * 1.5, 0, 0],
-      })
-    }
+    mutateWorld((world) => {
+      const id = world.createEntity(this.name)
+      const defaults = TransformComponent.defaults!()
 
-    this.createdId = id
-    useEditorStore.getState().setWorld(world)
-    useEditorStore.getState().setSelection(id)
+      if (selection && world.hasEntity(selection)) {
+        world.addComponent(id, TransformComponent, defaults)
+        world.setParent(id, selection)
+      } else {
+        const roots = world.getAllEntities().filter((e) => world.getParent(e) === null)
+        const index = Math.max(0, roots.length - 1)
+        world.addComponent(id, TransformComponent, {
+          ...defaults,
+          position: [index * 1.5, 0, 0],
+        })
+      }
+
+      createdId = id
+    })
+
+    this.createdId = createdId
+    if (createdId) useEditorStore.getState().setSelection(createdId)
   }
 
   undo(): void {
-    const world = useEditorStore.getState().world
-    if (!world || !this.createdId) return
-    world.destroyEntity(this.createdId)
-    useEditorStore.getState().setWorld(world)
+    if (!this.createdId) return
+    const removedId = this.createdId
+    mutateWorld((world) => {
+      world.destroyEntity(removedId)
+    })
     useEditorStore.getState().setSelection(null)
   }
 }
@@ -90,6 +92,7 @@ export class DeleteEntityCommand implements Command {
   execute(): void {
     const world = useEditorStore.getState().world
     if (!world) return
+
     this.snapshot = {
       id: this.entityId,
       name: world.getEntityName(this.entityId) ?? 'Entity',
@@ -99,24 +102,28 @@ export class DeleteEntityCommand implements Command {
         return { typeId, data: type ? world.getComponent(this.entityId, type) : undefined }
       }),
     }
-    world.destroyEntity(this.entityId)
-    useEditorStore.getState().setWorld(world)
+
+    mutateWorld((world) => {
+      world.destroyEntity(this.entityId)
+    })
     useEditorStore.getState().setSelection(null)
   }
 
   undo(): void {
-    const world = useEditorStore.getState().world
-    if (!world || !this.snapshot) return
-    world.createEntity(this.snapshot.name, this.snapshot.id)
-    for (const comp of this.snapshot.components) {
-      const type = getCoreComponent(comp.typeId)
-      if (type && comp.data !== undefined) {
-        world.addComponent(this.snapshot.id, type, comp.data)
+    if (!this.snapshot) return
+    const snapshot = this.snapshot
+
+    mutateWorld((world) => {
+      world.createEntity(snapshot.name, snapshot.id)
+      for (const comp of snapshot.components) {
+        const type = getCoreComponent(comp.typeId)
+        if (type && comp.data !== undefined) {
+          world.addComponent(snapshot.id, type, comp.data)
+        }
       }
-    }
-    world.setParent(this.snapshot.id, this.snapshot.parent)
-    useEditorStore.getState().setWorld(world)
-    useEditorStore.getState().setSelection(this.snapshot.id)
+      world.setParent(snapshot.id, snapshot.parent)
+    })
+    useEditorStore.getState().setSelection(snapshot.id)
   }
 }
 
@@ -130,48 +137,49 @@ export class CreatePrefabCommand implements Command {
   ) {}
 
   execute(): void {
-    const { world, sceneDocument, scenePath } = useEditorStore.getState()
-    if (!world || !sceneDocument || !scenePath) return
+    const { world, sceneDocument } = useEditorStore.getState()
+    if (!world || !sceneDocument) return
 
     this.beforeDoc = structuredClone(sceneDocument)
-    this.childSnapshots = []
-
+    this.childSnapshots = world.getChildren(this.rootId).map((child) => snapshotEntity(world, child))
     const prefab = extractPrefabSubtree(world, this.rootId, this.prefabId)
 
-    for (const child of [...world.getChildren(this.rootId)]) {
-      this.childSnapshots.push(snapshotEntity(world, child))
-      world.destroyEntity(child)
-    }
+    mutateWorld((nextWorld) => {
+      for (const snap of this.childSnapshots) {
+        nextWorld.destroyEntity(snap.id)
+      }
 
-    for (const typeId of [...world.getComponentTypes(this.rootId)]) {
-      if (typeId === 'Transform') continue
-      const type = getCoreComponent(typeId)
-      if (type) world.removeComponent(this.rootId, type)
-    }
+      for (const typeId of [...nextWorld.getComponentTypes(this.rootId)]) {
+        if (typeId === 'Transform') continue
+        const type = getCoreComponent(typeId)
+        if (type) nextWorld.removeComponent(this.rootId, type)
+      }
 
-    world.addComponent(this.rootId, PrefabInstanceComponent, { prefabId: this.prefabId })
+      nextWorld.addComponent(this.rootId, PrefabInstanceComponent, { prefabId: this.prefabId })
+    })
 
-    const nextDoc: SceneDocument = {
+    useEditorStore.getState().setSceneDocument({
       ...sceneDocument,
       prefabs: { ...sceneDocument.prefabs, [this.prefabId]: prefab },
-    }
-
-    useEditorStore.getState().setScene(scenePath, nextDoc, world)
+    })
+    useEditorStore.getState().setSelection(this.rootId)
   }
 
   undo(): void {
-    const { world, scenePath } = useEditorStore.getState()
-    if (!world || !this.beforeDoc || !scenePath) return
+    if (!this.beforeDoc) return
 
-    const pi = getCoreComponent('PrefabInstance')
-    if (pi) world.removeComponent(this.rootId, pi)
+    mutateWorld((world) => {
+      const pi = getCoreComponent('PrefabInstance')
+      if (pi) world.removeComponent(this.rootId, pi)
 
-    for (const snap of this.childSnapshots) {
-      restoreSnapshot(world, snap)
-      world.setParent(snap.id, this.rootId)
-    }
+      for (const snap of this.childSnapshots) {
+        restoreSnapshot(world, snap)
+        world.setParent(snap.id, this.rootId)
+      }
+    })
 
-    useEditorStore.getState().setScene(scenePath, this.beforeDoc, world)
+    useEditorStore.getState().setSceneDocument(this.beforeDoc)
+    useEditorStore.getState().setSelection(this.rootId)
   }
 }
 
@@ -184,30 +192,36 @@ export class PlacePrefabCommand implements Command {
   ) {}
 
   execute(): void {
-    const { world, sceneDocument } = useEditorStore.getState()
-    if (!world || !sceneDocument) return
-    if (!sceneDocument.prefabs[this.prefabId]) throw new Error(`Prefab not found: ${this.prefabId}`)
+    const { sceneDocument } = useEditorStore.getState()
+    if (!sceneDocument?.prefabs[this.prefabId]) throw new Error(`Prefab not found: ${this.prefabId}`)
 
-    const id = world.createEntity(this.prefabId)
-    world.addComponent(id, TransformComponent, {
-      position: this.position,
-      rotation: [0, 0, 0, 1],
-      scale: [1, 1, 1],
+    let createdId: EntityId | null = null
+
+    mutateWorld((world) => {
+      const id = world.createEntity(this.prefabId)
+      world.addComponent(id, TransformComponent, {
+        position: this.position,
+        rotation: [0, 0, 0, 1],
+        scale: [1, 1, 1],
+      })
+      world.addComponent(id, PrefabInstanceComponent, {
+        prefabId: this.prefabId,
+        overrides: { Transform: { position: this.position } },
+      })
+      createdId = id
     })
-    world.addComponent(id, PrefabInstanceComponent, {
-      prefabId: this.prefabId,
-      overrides: { Transform: { position: this.position } },
-    })
-    this.createdId = id
-    useEditorStore.getState().setWorld(world)
-    useEditorStore.getState().setSelection(id)
+
+    this.createdId = createdId
+    if (createdId) useEditorStore.getState().setSelection(createdId)
   }
 
   undo(): void {
-    const world = useEditorStore.getState().world
-    if (!world || !this.createdId) return
-    world.destroyEntity(this.createdId)
-    useEditorStore.getState().setWorld(world)
+    if (!this.createdId) return
+    const removedId = this.createdId
+
+    mutateWorld((world) => {
+      world.destroyEntity(removedId)
+    })
     useEditorStore.getState().setSelection(null)
   }
 }
