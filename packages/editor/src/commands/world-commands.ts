@@ -6,36 +6,9 @@ import {
 } from '@haku/core'
 import type { Command } from './command-bus.js'
 import { globalCommandBus } from './command-bus.js'
-import { mutateWorld } from './world-mutations.js'
 import { commitSceneEdit } from './scene-history.js'
 import { useEditorStore } from '../store/editor-store.js'
 import { extractPrefabSubtree } from '../services/project-service.js'
-
-export class SetTransformCommand implements Command {
-  constructor(
-    private readonly entityId: EntityId,
-    private readonly before: ReturnType<typeof TransformComponent.schema.parse>,
-    private readonly after: ReturnType<typeof TransformComponent.schema.parse>,
-  ) {}
-
-  execute(): void {
-    mutateWorld((world) => {
-      world.addComponent(this.entityId, TransformComponent, this.after)
-    })
-  }
-
-  undo(): void {
-    mutateWorld((world) => {
-      world.addComponent(this.entityId, TransformComponent, this.before)
-    })
-  }
-
-  merge(other: Command): Command | null {
-    if (!(other instanceof SetTransformCommand)) return null
-    if (other.entityId.value !== this.entityId.value) return null
-    return new SetTransformCommand(this.entityId, this.before, other.after)
-  }
-}
 
 export function createEntity(name: string): void {
   const selection = useEditorStore.getState().selection
@@ -118,10 +91,6 @@ export function placePrefab(prefabId: string, position: [number, number, number]
 
 export function executeCommand(command: Command): void {
   globalCommandBus.execute(command)
-}
-
-export function recordCommand(command: Command): void {
-  globalCommandBus.record(command)
 }
 
 export { globalCommandBus }

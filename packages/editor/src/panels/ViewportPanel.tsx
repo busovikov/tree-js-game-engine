@@ -5,9 +5,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js'
 import { TransformComponent } from '@haku/core'
 import { useEditorStore } from '../store/editor-store.js'
-import { SetTransformCommand, recordCommand } from '../commands/world-commands.js'
-import { transformsEqual } from '../commands/scene-history.js'
-import { mutateWorld } from '../commands/world-mutations.js'
+import { commitTransformChange, transformsEqual } from '../commands/scene-history.js'
 import { focusSelection } from '../viewport/focus-selection.js'
 import { applyEditorTransformGizmoLayout, applyUniformScaleDamping } from '../viewport/transform-gizmo-config.js'
 
@@ -176,8 +174,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
         return
       }
 
-      mutateWorld(() => {})
-      recordCommand(new SetTransformCommand(sel, before, after))
+      commitTransformChange(sel, before, after)
       dragStartTransform.current = null
       uniformScaleDragStart.current = null
     }

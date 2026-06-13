@@ -11,16 +11,16 @@ export class CommandBus {
 
   execute(command: Command): void {
     command.execute()
-    this.push(command)
+    this.push(command, true)
   }
 
   /** Record a command whose execute() side effects are already applied. */
   record(command: Command): void {
-    this.push(command)
+    this.push(command, false)
   }
 
-  private push(command: Command): void {
-    const last = this.undoStack[this.undoStack.length - 1]
+  private push(command: Command, allowMerge: boolean): void {
+    const last = allowMerge ? this.undoStack[this.undoStack.length - 1] : undefined
     if (last?.merge) {
       const merged = last.merge(command)
       if (merged) {

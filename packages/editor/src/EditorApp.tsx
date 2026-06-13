@@ -132,6 +132,7 @@ export const EditorApp = memo(function EditorApp() {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (useEditorStore.getState().mode === 'play') return
+      if (event.repeat) return
       if (!(event.metaKey || event.ctrlKey) || event.altKey) return
       if (event.key.toLowerCase() !== 'z') return
 

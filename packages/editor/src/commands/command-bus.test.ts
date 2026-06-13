@@ -1,9 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest'
 import { MeshRendererComponent, TransformComponent, World } from '@haku/core'
-import { CommandBus } from './command-bus.js'
-import { SetTransformCommand, globalCommandBus, recordCommand } from './world-commands.js'
-import { commitSceneEdit } from './scene-history.js'
-import { mutateWorld } from './world-mutations.js'
+import { commitSceneEdit, commitTransformChange } from './scene-history.js'
+import { globalCommandBus } from './world-commands.js'
 import { useEditorStore } from '../store/editor-store.js'
 
 describe('scene history', () => {
@@ -27,44 +25,32 @@ describe('scene history', () => {
     })
   })
 
-  it('restores only the last transform change', () => {
+  it('undoes transform edits one step at a time', () => {
     const id = useEditorStore.getState().selection!
-    const world = useEditorStore.getState().world!
-    const before = world.getComponent(id, TransformComponent)!
-    const after = {
-      position: [3, 0, 0] as [number, number, number],
+    const initial = useEditorStore.getState().world!.getComponent(id, TransformComponent)!
+    const stepOne = {
+      position: [1, 0, 0] as [number, number, number],
+      rotation: [0, 0, 0, 1] as [number, number, number, number],
+      scale: [1, 1, 1] as [number, number, number],
+    }
+    const stepTwo = {
+      position: [2, 0, 0] as [number, number, number],
       rotation: [0, 0, 0, 1] as [number, number, number, number],
       scale: [1, 1, 1] as [number, number, number],
     }
 
-    const bus = new CommandBus()
-    bus.execute(new SetTransformCommand(id, before, after))
+    useEditorStore.getState().world!.addComponent(id, TransformComponent, stepOne)
+    commitTransformChange(id, initial, stepOne)
 
-    expect(useEditorStore.getState().world!.getComponent(id, TransformComponent)!.position).toEqual([3, 0, 0])
+    useEditorStore.getState().world!.addComponent(id, TransformComponent, stepTwo)
+    commitTransformChange(id, stepOne, stepTwo)
 
-    bus.undo()
-
-    expect(useEditorStore.getState().world!.getComponent(id, TransformComponent)!.position).toEqual([0, 0, 0])
-    expect(useEditorStore.getState().world).not.toBe(world)
-  })
-
-  it('records gizmo drags without re-applying the edit', () => {
-    const id = useEditorStore.getState().selection!
-    const before = useEditorStore.getState().world!.getComponent(id, TransformComponent)!
-    const after = {
-      position: [0, 2, 0] as [number, number, number],
-      rotation: [0, 0, 0, 1] as [number, number, number, number],
-      scale: [1, 1, 1] as [number, number, number],
-    }
-
-    useEditorStore.getState().world!.addComponent(id, TransformComponent, after)
-    mutateWorld(() => {})
-    recordCommand(new SetTransformCommand(id, before, after))
-
-    expect(globalCommandBus.canUndo()).toBe(true)
+    expect(useEditorStore.getState().world!.getComponent(id, TransformComponent)!.position).toEqual([2, 0, 0])
 
     globalCommandBus.undo()
+    expect(useEditorStore.getState().world!.getComponent(id, TransformComponent)!.position).toEqual([1, 0, 0])
 
+    globalCommandBus.undo()
     expect(useEditorStore.getState().world!.getComponent(id, TransformComponent)!.position).toEqual([0, 0, 0])
   })
 

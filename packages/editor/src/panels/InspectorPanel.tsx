@@ -8,7 +8,6 @@ import {
   getCoreComponent,
 } from '@haku/core'
 import { useEditorStore } from '../store/editor-store.js'
-import { SetTransformCommand, executeCommand } from '../commands/world-commands.js'
 import { commitSceneEdit } from '../commands/scene-history.js'
 import { SchemaFields } from '../components/SchemaFields.js'
 import { TransformFields } from '../components/TransformFields.js'
@@ -34,25 +33,25 @@ export const InspectorPanel = memo(function InspectorPanel() {
   const updateTransform = useCallback(
     (after: Transform) => {
       if (!selection || !world || mode === 'play') return
-      const before = world.getComponent(selection, TransformComponent)
-      if (!before) return
-      executeCommand(new SetTransformCommand(selection, before, after))
+      commitSceneEdit((draft) => {
+        draft.world.addComponent(selection, TransformComponent, after)
+      })
     },
     [selection, world, mode],
   )
 
   const updateComponent = useCallback(
-    (componentId: keyof typeof COMPONENT_MAP, before: Record<string, unknown>, after: Record<string, unknown>) => {
+    (componentId: keyof typeof COMPONENT_MAP, _before: Record<string, unknown>, after: Record<string, unknown>) => {
       if (!selection || !world || mode === 'play') return
       const type = COMPONENT_MAP[componentId]
       if (componentId === 'Transform') {
-        executeCommand(
-          new SetTransformCommand(
+        commitSceneEdit((draft) => {
+          draft.world.addComponent(
             selection,
-            before as ReturnType<typeof TransformComponent.schema.parse>,
+            TransformComponent,
             after as ReturnType<typeof TransformComponent.schema.parse>,
-          ),
-        )
+          )
+        })
         return
       }
       commitSceneEdit((draft) => {

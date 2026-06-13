@@ -1,5 +1,6 @@
 import type { EntityId, World } from '@haku/core'
 import { cloneWorld } from '@haku/core'
+import { TransformComponent } from '@haku/core'
 import type { SceneDocument, Transform } from '@haku/schema'
 import type { Command } from './command-bus.js'
 import { globalCommandBus } from './command-bus.js'
@@ -81,6 +82,23 @@ export function commitSceneEdit(
 
   applySceneSnapshot(after)
   globalCommandBus.record(new SceneEditCommand(before, after))
+}
+
+/** Record a transform edit that is already applied to the live scene (e.g. gizmo drag). */
+export function commitTransformChange(entityId: EntityId, before: Transform, after: Transform): void {
+  if (transformsEqual(before, after)) return
+
+  const afterSnapshot = captureSceneSnapshot()
+  const beforeWorld = cloneWorld(afterSnapshot.world)
+  beforeWorld.addComponent(entityId, TransformComponent, before)
+
+  const beforeSnapshot: SceneSnapshot = {
+    world: beforeWorld,
+    sceneDocument: cloneSceneDocument(afterSnapshot.sceneDocument),
+    selection: afterSnapshot.selection,
+  }
+
+  globalCommandBus.record(new SceneEditCommand(beforeSnapshot, cloneSceneSnapshot(afterSnapshot)))
 }
 
 function nearlyEqual(a: number, b: number): boolean {
