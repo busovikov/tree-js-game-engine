@@ -3,6 +3,7 @@ import { loadSceneDocument, saveSceneDocument } from '@haku/serializer'
 import type { EntityId, IWorld } from '@haku/core'
 import { MeshRendererComponent, World, getCoreComponent } from '@haku/core'
 import { browserProjectStore } from './browser-project-store.js'
+import { isFileSystemAccessSupported, nativeProjectStore } from './native-project-store.js'
 
 export interface ProjectFileEntry {
   path: string
@@ -10,18 +11,56 @@ export interface ProjectFileEntry {
   isDirectory: boolean
 }
 
+type ProjectStorage = 'memory' | 'native' | 'playground'
+
 export class ProjectService {
   private root: string | null = null
   private manifest: HakuProject | null = null
   private assetBaseUrl = ''
-  private useVirtualFs = false
-  private syncAssetsToDisk = false
+  private storage: ProjectStorage = 'memory'
 
-  /** Open project from folder picker (webkitdirectory). */
+  isFileSystemAccessSupported(): boolean {
+    return isFileSystemAccessSupported()
+  }
+
+  usesNativeFileSystem(): boolean {
+    return this.storage === 'native'
+  }
+
+  isVirtualFs(): boolean {
+    return this.storage === 'memory' || this.storage === 'playground'
+  }
+
+  canSyncAssetsToDisk(): boolean {
+    return this.storage === 'playground' || this.storage === 'native'
+  }
+
+  /** Open project via File System Access API (read/write on disk). */
+  async openFromDirectoryPicker(): Promise<HakuProject> {
+    if (!isFileSystemAccessSupported()) {
+      throw new Error('File System Access API is not supported in this browser. Use Chrome or Edge.')
+    }
+
+    const rootName = await nativeProjectStore.openDirectoryPicker()
+    this.storage = 'native'
+    this.root = rootName
+    this.assetBaseUrl = ''
+
+    const manifestRaw = await nativeProjectStore.readText('haku.project.json')
+    this.manifest = HakuProjectSchema.parse(JSON.parse(manifestRaw))
+
+    const { world, document } = await this.loadScene(this.manifest.entryScene)
+    const { useEditorStore } = await import('../store/editor-store.js')
+    useEditorStore.getState().setProjectRoot(rootName)
+    useEditorStore.getState().setScene(this.manifest.entryScene, document, world as World)
+
+    return this.manifest
+  }
+
+  /** Fallback: open project from folder picker (read-only snapshot in memory). */
   async openFromFileList(fileList: FileList): Promise<HakuProject> {
     const rootName = browserProjectStore.loadFromFileList(fileList)
-    this.useVirtualFs = true
-    this.syncAssetsToDisk = false
+    this.storage = 'memory'
     this.root = rootName
     this.assetBaseUrl = ''
 
@@ -40,8 +79,7 @@ export class ProjectService {
     this.root = rootPath
     this.manifest = manifest
     this.assetBaseUrl = assetBaseUrl
-    this.useVirtualFs = false
-    this.syncAssetsToDisk = rootPath === 'playground'
+    this.storage = rootPath === 'playground' ? 'playground' : 'memory'
     return manifest
   }
 
@@ -56,7 +94,10 @@ export class ProjectService {
   async loadScene(relativePath: string): Promise<{ world: IWorld; document: SceneDocument }> {
     let document: SceneDocument
 
-    if (this.useVirtualFs) {
+    if (this.storage === 'native') {
+      const raw = await nativeProjectStore.readText(relativePath)
+      document = JSON.parse(raw) as SceneDocument
+    } else if (this.storage === 'memory' || this.storage === 'playground') {
       const raw = await browserProjectStore.readText(relativePath)
       document = JSON.parse(raw) as SceneDocument
     } else {
@@ -74,7 +115,9 @@ export class ProjectService {
     const saved = saveSceneDocument(world, document.metadata, document.prototypes, document.prefabs)
     const json = JSON.stringify(saved, null, 2) + '\n'
 
-    if (this.useVirtualFs) {
+    if (this.storage === 'native') {
+      await nativeProjectStore.writeText(relativePath, json)
+    } else if (this.storage === 'memory' || this.storage === 'playground') {
       browserProjectStore.writeText(relativePath, json)
     }
 
@@ -94,7 +137,7 @@ export class ProjectService {
   }
 
   getSceneDocument(): SceneDocument | null {
-    return null // use store instead
+    return null
   }
 
   async listDirectory(relativeDir: string): Promise<ProjectFileEntry[]> {
@@ -107,20 +150,22 @@ export class ProjectService {
       return []
     }
 
+    if (this.storage === 'native') {
+      return nativeProjectStore.listDirectory(dir)
+    }
+
     return browserProjectStore.listDirectory(dir)
   }
 
-  /** Seed virtual files from URLs (demo / dev mode). */
   async seedVirtualAssets(entries: Array<{ path: string; url: string }>): Promise<void> {
-    this.useVirtualFs = true
+    this.storage = 'playground'
     for (const entry of entries) {
       await browserProjectStore.registerFromUrl(entry.path, entry.url)
     }
   }
 
-  /** Load all playground/project assets listed in assets/manifest.json. */
   async seedVirtualAssetsFromManifest(manifestUrl: string, assetsDir = 'assets'): Promise<void> {
-    this.useVirtualFs = true
+    this.storage = 'playground'
     const res = await fetch(manifestUrl)
     if (!res.ok) throw new Error(`Failed to load asset manifest: ${manifestUrl}`)
 
@@ -135,17 +180,21 @@ export class ProjectService {
     }
   }
 
-  /** Re-scan manifest and refresh virtual asset entries (demo / dev mode). */
   async resyncVirtualAssetsFromManifest(manifestUrl = '/assets/manifest.json', assetsDir = 'assets'): Promise<void> {
-    if (!this.useVirtualFs) return
+    if (this.storage !== 'playground') return
     browserProjectStore.removeUnderPrefix(assetsDir)
     await this.seedVirtualAssetsFromManifest(manifestUrl, assetsDir)
   }
 
   async importAsset(relativePath: string, file: File): Promise<void> {
+    if (this.storage === 'native') {
+      await nativeProjectStore.writeFile(relativePath, file)
+      return
+    }
+
     browserProjectStore.registerFile(relativePath, { file, isBinary: isBinaryFile(file.name) })
 
-    if (!this.syncAssetsToDisk) return
+    if (this.storage !== 'playground') return
 
     const res = await fetch('/__haku/assets/import', {
       method: 'POST',
@@ -164,14 +213,6 @@ export class ProjectService {
     void this.importAsset(relativePath, file)
   }
 
-  canSyncAssetsToDisk(): boolean {
-    return this.syncAssetsToDisk
-  }
-
-  isVirtualFs(): boolean {
-    return this.useVirtualFs
-  }
-
   getEntryScene(): string | null {
     return this.manifest?.entryScene ?? null
   }
@@ -188,7 +229,6 @@ function isBinaryFile(name: string): boolean {
 
 export const projectService = new ProjectService()
 
-/** Collect entity subtree as prefab definition (relative entity ids). */
 export function extractPrefabSubtree(
   world: IWorld,
   rootId: EntityId,

@@ -100,6 +100,11 @@ export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
   }, [currentDir, assetsRoot, navigateTo])
 
   const onRefreshAssets = useCallback(async () => {
+    if (projectService.usesNativeFileSystem()) {
+      setRefreshKey((k) => k + 1)
+      return
+    }
+
     if (!projectService.isVirtualFs()) {
       setRefreshKey((k) => k + 1)
       return

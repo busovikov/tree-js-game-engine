@@ -9,6 +9,16 @@ import {
   executeCommand,
 } from './commands/world-commands.js'
 
+function pickProjectFolder(): Promise<FileList | null> {
+  return new Promise((resolve) => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    ;(input as HTMLInputElement & { webkitdirectory: boolean }).webkitdirectory = true
+    input.onchange = () => resolve(input.files)
+    input.click()
+  })
+}
+
 export const EditorApp = memo(function EditorApp() {
   const mode = useEditorStore((s) => s.mode)
   const scenePath = useEditorStore((s) => s.scenePath)
@@ -18,17 +28,20 @@ export const EditorApp = memo(function EditorApp() {
   const enterPlayMode = useEditorStore((s) => s.enterPlayMode)
   const exitPlayMode = useEditorStore((s) => s.exitPlayMode)
 
-  const onOpenProject = useCallback(() => {
-    const input = document.createElement('input')
-    input.type = 'file'
-    ;(input as HTMLInputElement & { webkitdirectory: boolean }).webkitdirectory = true
-    input.onchange = () => {
-      if (!input.files?.length) return
-      void projectService.openFromFileList(input.files).catch((err: Error) => {
-        alert(err.message)
-      })
+  const onOpenProject = useCallback(async () => {
+    try {
+      if (projectService.isFileSystemAccessSupported()) {
+        await projectService.openFromDirectoryPicker()
+        return
+      }
+
+      const files = await pickProjectFolder()
+      if (!files?.length) return
+      await projectService.openFromFileList(files)
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return
+      alert(err instanceof Error ? err.message : 'Failed to open project')
     }
-    input.click()
   }, [])
 
   const onLoadPlayground = useCallback(async () => {
@@ -52,14 +65,23 @@ export const EditorApp = memo(function EditorApp() {
     const { world, sceneDocument, scenePath } = useEditorStore.getState()
     if (!world || !sceneDocument || !scenePath) return
 
-    const saved = await projectService.saveScene(scenePath, world, sceneDocument)
-    const blob = new Blob([JSON.stringify(saved, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = scenePath.split('/').pop() ?? 'scene.scene.json'
-    a.click()
-    URL.revokeObjectURL(url)
+    try {
+      await projectService.saveScene(scenePath, world, sceneDocument)
+
+      if (projectService.usesNativeFileSystem()) return
+
+      const saved = useEditorStore.getState().sceneDocument
+      if (!saved) return
+      const blob = new Blob([JSON.stringify(saved, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = scenePath.split('/').pop() ?? 'scene.scene.json'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to save scene')
+    }
   }, [])
 
   const onCreatePrefab = useCallback(() => {
@@ -97,9 +119,9 @@ export const EditorApp = memo(function EditorApp() {
         }}
       >
         <strong style={{ color: '#eee', marginRight: 12 }}>@haku Editor</strong>
-        <button type="button" onClick={onLoadPlayground}>Demo Scene</button>
-        <button type="button" onClick={onOpenProject}>Open Project…</button>
-        <button type="button" onClick={onSave} disabled={!scenePath || mode === 'play'}>Save</button>
+        <button type="button" onClick={() => void onLoadPlayground()}>Demo Scene</button>
+        <button type="button" onClick={() => void onOpenProject()}>Open Project…</button>
+        <button type="button" onClick={() => void onSave()} disabled={!scenePath || mode === 'play'}>Save</button>
         <button type="button" onClick={onUndo} disabled={!globalCommandBus.canUndo() || mode === 'play'}>Undo</button>
         <button type="button" onClick={onRedo} disabled={!globalCommandBus.canRedo() || mode === 'play'}>Redo</button>
         <button type="button" onClick={onCreatePrefab} disabled={!selection || mode === 'play'}>Create Prefab</button>
