@@ -7,33 +7,29 @@ import {
   PrefabInstanceComponent,
   TransformComponent,
 } from '@haku/core'
-import type { Light, PrefabDefinition, RenderPrototype, Transform } from '@haku/schema'
+import type { Light, MeshRenderer, PrefabDefinition, Transform } from '@haku/schema'
+import { meshRendererKey } from '@haku/schema'
 import * as THREE from 'three'
+import {
+  createMeshFromRenderer,
+  rebuildMesh,
+  updateMeshMaterial,
+} from './mesh-factory.js'
 
 interface EntityRenderState {
   object3d: THREE.Object3D
+  meshKey?: string
 }
-
-type BucketMode = 'mesh' | 'instanced' | 'batched' | 'sprite-atlas'
 
 export class RenderSyncSystem implements ISystem {
   readonly order = 100
   private readonly entityStates = new Map<string, EntityRenderState>()
   private readonly scene: THREE.Scene
-  private readonly prototypes: Map<string, RenderPrototype>
   private prefabs: Map<string, PrefabDefinition> = new Map()
   private world: IWorld | null = null
 
-  constructor(scene: THREE.Scene, prototypes: Map<string, RenderPrototype> = new Map()) {
+  constructor(scene: THREE.Scene) {
     this.scene = scene
-    this.prototypes = prototypes
-  }
-
-  setPrototypes(prototypes: Record<string, RenderPrototype>): void {
-    this.prototypes.clear()
-    for (const [id, proto] of Object.entries(prototypes)) {
-      this.prototypes.set(id, proto)
-    }
   }
 
   setPrefabs(prefabs: Record<string, PrefabDefinition>): void {
@@ -79,9 +75,11 @@ export class RenderSyncSystem implements ISystem {
       let state = this.entityStates.get(id.value)
       if (!state) {
         const object3d = this.createObjectForEntity(id)
-        state = { object3d }
+        state = { object3d, meshKey: this.getMeshKey(id) }
         this.entityStates.set(id.value, state)
         this.scene.add(object3d)
+      } else {
+        this.syncMeshVisual(id, state)
       }
 
       this.tagPickable(state.object3d, id.value)
@@ -112,7 +110,7 @@ export class RenderSyncSystem implements ISystem {
 
     if (this.world.hasComponent(id, MeshRendererComponent)) {
       const meshRenderer = this.world.getComponent(id, MeshRendererComponent)!
-      return this.createMesh(meshRenderer.prototypeId)
+      return createMeshFromRenderer(meshRenderer)
     }
 
     if (this.world.hasComponent(id, PrefabInstanceComponent)) {
@@ -135,9 +133,9 @@ export class RenderSyncSystem implements ISystem {
       const transformComp = record.components.find((c) => c.type === 'Transform')
       if (!meshComp || !transformComp) continue
 
-      const data = meshComp.data as { prototypeId: string }
+      const data = meshComp.data as MeshRenderer
       const t = transformComp.data as Transform
-      const mesh = this.createMesh(data.prototypeId)
+      const mesh = createMeshFromRenderer(data)
       mesh.position.set(...t.position)
       mesh.quaternion.set(...t.rotation)
       mesh.scale.set(...t.scale)
@@ -147,26 +145,26 @@ export class RenderSyncSystem implements ISystem {
     return group
   }
 
-  private createMesh(prototypeId: string): THREE.Object3D {
-    const proto = this.prototypes.get(prototypeId)
-    const mode: BucketMode = proto?.mode ?? 'mesh'
+  private getMeshKey(id: EntityId): string | undefined {
+    if (!this.world?.hasComponent(id, MeshRendererComponent)) return undefined
+    const meshRenderer = this.world.getComponent(id, MeshRendererComponent)
+    return meshRenderer ? meshRendererKey(meshRenderer) : undefined
+  }
 
-    switch (mode) {
-      case 'instanced':
-      case 'batched':
-      case 'sprite-atlas':
-        // Stub hooks — fall back to single mesh for v1
-        return new THREE.Mesh(
-          new THREE.BoxGeometry(1, 1, 1),
-          new THREE.MeshStandardMaterial({ color: 0x6699ff }),
-        )
-      case 'mesh':
-      default:
-        return new THREE.Mesh(
-          new THREE.BoxGeometry(1, 1, 1),
-          new THREE.MeshStandardMaterial({ color: 0x6699ff }),
-        )
+  private syncMeshVisual(id: EntityId, state: EntityRenderState): void {
+    if (!this.world?.hasComponent(id, MeshRendererComponent)) return
+    const meshRenderer = this.world.getComponent(id, MeshRendererComponent)!
+    const nextKey = meshRendererKey(meshRenderer)
+
+    if (!(state.object3d instanceof THREE.Mesh)) return
+
+    if (state.meshKey === nextKey) {
+      updateMeshMaterial(state.object3d, meshRenderer)
+      return
     }
+
+    rebuildMesh(state.object3d, meshRenderer)
+    state.meshKey = nextKey
   }
 
   private createLight(light: Light): THREE.Light {
@@ -356,8 +354,8 @@ export class ThreeRenderBackend implements IRenderBackend {
     }
   }
 
-  setPrototypes(prototypes: Record<string, RenderPrototype>): void {
-    this.syncSystem.setPrototypes(prototypes)
+  setPrototypes(_prototypes: Record<string, import('@haku/schema').RenderPrototype>): void {
+    // Prototypes reserved for future asset-backed meshes; primitives use MeshRenderer data.
   }
 
   setPrefabs(prefabs: Record<string, PrefabDefinition>): void {

@@ -38,11 +38,22 @@ export const LightSchema = z.object({
 })
 export type Light = z.infer<typeof LightSchema>
 
-export const MeshRendererSchema = z.object({
-  prototypeId: z.string(),
-  materialOverrides: z.record(z.unknown()).optional(),
-})
-export type MeshRenderer = z.infer<typeof MeshRendererSchema>
+import { MeshRendererSchema } from './mesh.js'
+
+export {
+  GEOMETRY_PARAM_SPECS,
+  MESH_GEOMETRY_TYPES,
+  MeshGeometryTypeSchema,
+  MeshMaterialSchema,
+  MeshRendererSchema,
+  defaultGeometryParams,
+  meshRendererKey,
+  normalizeMeshRenderer,
+  type GeometryParamSpec,
+  type MeshGeometryType,
+  type MeshMaterial,
+  type MeshRenderer,
+} from './mesh.js'
 
 export const ScriptRefSchema = z.object({
   path: z.string(),

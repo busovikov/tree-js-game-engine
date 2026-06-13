@@ -1,4 +1,4 @@
-import { memo, useCallback, useState } from 'react'
+import { memo, useCallback } from 'react'
 import {
   CameraComponent,
   LightComponent,
@@ -11,8 +11,8 @@ import { useEditorStore } from '../store/editor-store.js'
 import { SetTransformCommand, executeCommand } from '../commands/world-commands.js'
 import { SchemaFields } from '../components/SchemaFields.js'
 import { TransformFields } from '../components/TransformFields.js'
-import { assignPrototype, assignMeshPrototype } from '../services/project-service.js'
-import type { Transform } from '@haku/schema'
+import { MeshRendererFields } from '../components/MeshRendererFields.js'
+import { normalizeMeshRenderer, type MeshRenderer, type Transform } from '@haku/schema'
 
 const COMPONENT_MAP = {
   Transform: TransformComponent,
@@ -26,8 +26,6 @@ export const InspectorPanel = memo(function InspectorPanel() {
   const selection = useEditorStore((s) => s.selection)
   const world = useEditorStore((s) => s.world)
   const worldRevision = useEditorStore((s) => s.worldRevision)
-  const sceneDocument = useEditorStore((s) => s.sceneDocument)
-  const scenePath = useEditorStore((s) => s.scenePath)
   const mode = useEditorStore((s) => s.mode)
 
   void worldRevision
@@ -62,6 +60,15 @@ export const InspectorPanel = memo(function InspectorPanel() {
     [selection, world, mode],
   )
 
+  const updateMeshRenderer = useCallback(
+    (after: MeshRenderer) => {
+      if (!selection || !world || mode === 'play') return
+      world.addComponent(selection, MeshRendererComponent, after)
+      useEditorStore.getState().setWorld(world)
+    },
+    [selection, world, mode],
+  )
+
   if (!selection || !world) {
     return (
       <div style={{ padding: 12, color: '#888', background: '#252530', height: '100%' }}>
@@ -90,6 +97,12 @@ export const InspectorPanel = memo(function InspectorPanel() {
                 disabled={mode === 'play'}
                 onChange={updateTransform}
               />
+            ) : key === 'MeshRenderer' ? (
+              <MeshRendererFields
+                value={normalizeMeshRenderer(data)}
+                disabled={mode === 'play'}
+                onChange={updateMeshRenderer}
+              />
             ) : (
               <SchemaFields
                 componentId={key}
@@ -101,62 +114,8 @@ export const InspectorPanel = memo(function InspectorPanel() {
           </section>
         )
       })}
-
-      {sceneDocument && (
-        <section>
-          <h4 style={{ fontSize: 12, color: '#aaa' }}>Assign Prototype</h4>
-          <PrototypeAssigner
-            disabled={mode === 'play'}
-            prototypes={Object.keys(sceneDocument.prototypes)}
-            onAssign={(prototypeId, assetPath) => {
-              if (!scenePath) return
-              const next = assignPrototype(sceneDocument, prototypeId, assetPath)
-              assignMeshPrototype(world, selection, prototypeId)
-              useEditorStore.getState().setScene(scenePath, next, world)
-            }}
-          />
-        </section>
-      )}
     </div>
   )
 })
-
-function PrototypeAssigner({
-  prototypes,
-  onAssign,
-  disabled,
-}: {
-  prototypes: string[]
-  onAssign: (prototypeId: string, assetPath: string) => void
-  disabled?: boolean
-}) {
-  const [prototypeId, setPrototypeId] = useState(prototypes[0] ?? 'mesh')
-  const [assetPath, setAssetPath] = useState('assets/models/model.glb')
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <input
-        value={prototypeId}
-        disabled={disabled}
-        onChange={(e) => setPrototypeId(e.target.value)}
-        placeholder="prototype id"
-        style={{ background: '#1a1a2e', color: '#eee', border: '1px solid #444', padding: 4 }}
-      />
-      <input
-        value={assetPath}
-        disabled={disabled}
-        onChange={(e) => setAssetPath(e.target.value)}
-        placeholder="asset path"
-        style={{ background: '#1a1a2e', color: '#eee', border: '1px solid #444', padding: 4 }}
-      />
-      <button type="button" disabled={disabled} onClick={() => onAssign(prototypeId, assetPath)}>
-        Assign to entity
-      </button>
-      {prototypes.length > 0 && (
-        <div style={{ fontSize: 11, color: '#666' }}>Existing: {prototypes.join(', ')}</div>
-      )}
-    </div>
-  )
-}
 
 export { getCoreComponent }

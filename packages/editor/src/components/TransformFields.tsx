@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react'
+import { memo } from 'react'
 import * as THREE from 'three'
 import type { Transform } from '@haku/schema'
 import './transform-fields.css'
@@ -79,7 +79,7 @@ export const TransformFields = memo(function TransformFields({
   onChange: (next: Transform) => void
   disabled?: boolean
 }) {
-  const rotationEuler = useMemo(() => quatToEulerDegrees(value.rotation as Quat), [value.rotation])
+  const rotationEuler = quatToEulerDegrees(value.rotation as Quat)
 
   const patch = (partial: Partial<Transform>) => onChange({ ...value, ...partial })
 

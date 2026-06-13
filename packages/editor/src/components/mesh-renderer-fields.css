@@ -1,0 +1,61 @@
+.mesh-renderer-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mesh-renderer-fields__section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mesh-renderer-fields__heading {
+  font-size: 11px;
+  color: #888;
+  margin-bottom: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.mesh-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.mesh-field--checkbox {
+  font-size: 12px;
+  color: #ccc;
+}
+
+.mesh-field__label {
+  width: 88px;
+  flex-shrink: 0;
+  color: #aaa;
+  font-size: 12px;
+}
+
+.mesh-field__input {
+  flex: 1;
+  min-width: 0;
+  background: #1a1a2e;
+  color: #eee;
+  border: 1px solid #444;
+  padding: 4px;
+  font-size: 12px;
+}
+
+.mesh-field__input--hex {
+  max-width: 88px;
+}
+
+.mesh-field__color {
+  width: 36px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid #444;
+  background: #1a1a2e;
+  cursor: pointer;
+}

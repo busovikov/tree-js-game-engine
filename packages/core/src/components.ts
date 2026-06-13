@@ -36,6 +36,7 @@ export const LightComponent = {
 export const MeshRendererComponent = {
   id: 'MeshRenderer',
   schema: MeshRendererSchema,
+  defaults: () => MeshRendererSchema.parse({}),
 } satisfies ComponentType<MeshRenderer>
 
 export const ScriptRefComponent = {

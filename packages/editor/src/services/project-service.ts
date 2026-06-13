@@ -189,6 +189,6 @@ export function assignPrototype(
   }
 }
 
-export function assignMeshPrototype(world: IWorld, targetId: EntityId, prototypeId: string): void {
-  world.addComponent(targetId, MeshRendererComponent, { prototypeId })
+export function assignMeshPrototype(world: IWorld, targetId: EntityId, meshRenderer: import('@haku/schema').MeshRenderer): void {
+  world.addComponent(targetId, MeshRendererComponent, meshRenderer)
 }

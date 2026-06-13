@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useEditorStore } from '../store/editor-store.js'
-import { projectService, assignPrototype, assignMeshPrototype } from '../services/project-service.js'
+import { projectService } from '../services/project-service.js'
 import type { ProjectFileEntry } from '../services/project-service.js'
 
 function fileIcon(name: string, isDirectory: boolean): string {
@@ -57,7 +57,6 @@ function Breadcrumbs({
 export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
   const projectRoot = useEditorStore((s) => s.projectRoot)
   const sceneDocument = useEditorStore((s) => s.sceneDocument)
-  const scenePath = useEditorStore((s) => s.scenePath)
   const selection = useEditorStore((s) => s.selection)
   const world = useEditorStore((s) => s.world)
   const setScene = useEditorStore((s) => s.setScene)
@@ -122,17 +121,14 @@ export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
   }, [selectedPath, setScene])
 
   const onAssignAsset = useCallback(() => {
-    if (!selectedPath || !selection || !world || !sceneDocument || !scenePath) return
+    if (!selectedPath || !selection || !world) return
     const ext = selectedPath.split('.').pop()?.toLowerCase()
     if (ext !== 'glb' && ext !== 'gltf') {
       alert('Select a GLTF/GLB model to assign as mesh prototype.')
       return
     }
-    const prototypeId = selectedPath.split('/').pop()?.replace(/\.(glb|gltf)$/i, '') ?? 'model'
-    const nextDoc = assignPrototype(sceneDocument, prototypeId, selectedPath)
-    assignMeshPrototype(world, selection, prototypeId)
-    setScene(scenePath, nextDoc, world)
-  }, [selectedPath, selection, world, sceneDocument, scenePath, setScene])
+    alert('Imported models are stored in assets. Use Inspector → MeshRenderer to pick a primitive geometry for now.')
+  }, [selectedPath, selection, world])
 
   const onImport = async (files: FileList | null) => {
     if (!files?.length) return

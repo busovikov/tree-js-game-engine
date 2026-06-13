@@ -1,9 +1,7 @@
 {
   "schemaVersion": 1,
   "metadata": { "name": "Menu" },
-  "prototypes": {
-    "box": { "id": "box", "mode": "mesh", "sourceAsset": "assets/models/box.glb" }
-  },
+  "prototypes": {},
   "prefabs": {},
   "entities": [
     {
@@ -21,7 +19,21 @@
       "parent": null,
       "components": [
         { "type": "Transform", "data": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] } },
-        { "type": "MeshRenderer", "data": { "prototypeId": "box" } }
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": { "width": 1, "height": 1, "depth": 1 },
+            "material": {
+              "color": "#6699ff",
+              "metalness": 0,
+              "roughness": 0.5,
+              "wireframe": false,
+              "opacity": 1,
+              "transparent": false
+            }
+          }
+        }
       ]
     },
     {
