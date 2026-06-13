@@ -32,11 +32,6 @@ export const EditorApp = memo(function EditorApp() {
   }, [])
 
   const onLoadPlayground = useCallback(async () => {
-    const sceneUrl = '/assets/scenes/menu.scene.json'
-    const res = await fetch(sceneUrl)
-    const document = await res.json()
-    const { loadSceneDocument } = await import('@haku/serializer')
-    const world = loadSceneDocument(document, { expandPrefabs: false })
     projectService.openFromManifest(
       'playground',
       {
@@ -47,11 +42,10 @@ export const EditorApp = memo(function EditorApp() {
       },
       '',
     )
-    await projectService.seedVirtualAssets([
-      { path: 'assets/scenes/menu.scene.json', url: sceneUrl },
-    ])
+    await projectService.seedVirtualAssetsFromManifest('/assets/manifest.json')
+    const { world, document } = await projectService.loadScene('assets/scenes/menu.scene.json')
     useEditorStore.getState().setProjectRoot('playground')
-    useEditorStore.getState().setScene('assets/scenes/menu.scene.json', document, world)
+    useEditorStore.getState().setScene('assets/scenes/menu.scene.json', document, world as import('@haku/core').World)
   }, [])
 
   const onSave = useCallback(async () => {

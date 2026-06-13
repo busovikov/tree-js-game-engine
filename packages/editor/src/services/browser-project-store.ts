@@ -132,7 +132,7 @@ function normalizePath(path: string): string {
 
 function isBinaryPath(path: string): boolean {
   const ext = path.split('.').pop()?.toLowerCase()
-  return ext === 'glb' || ext === 'gltf' || ext === 'png' || ext === 'jpg' || ext === 'jpeg' || ext === 'webp'
+  return ext === 'glb' || ext === 'gltf' || ext === 'bin' || ext === 'png' || ext === 'jpg' || ext === 'jpeg' || ext === 'webp'
 }
 
 export const browserProjectStore = new BrowserProjectStore()

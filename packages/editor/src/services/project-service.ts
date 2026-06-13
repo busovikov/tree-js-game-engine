@@ -115,6 +115,23 @@ export class ProjectService {
     }
   }
 
+  /** Load all playground/project assets listed in assets/manifest.json. */
+  async seedVirtualAssetsFromManifest(manifestUrl: string, assetsDir = 'assets'): Promise<void> {
+    this.useVirtualFs = true
+    const res = await fetch(manifestUrl)
+    if (!res.ok) throw new Error(`Failed to load asset manifest: ${manifestUrl}`)
+
+    const manifest = (await res.json()) as { files?: string[] }
+    const files = manifest.files ?? []
+    const baseUrl = manifestUrl.slice(0, manifestUrl.lastIndexOf('/'))
+
+    for (const relativePath of files) {
+      const path = `${assetsDir}/${relativePath.replace(/^\/+/, '')}`
+      const url = `${baseUrl}/${relativePath.replace(/^\/+/, '')}`
+      await browserProjectStore.registerFromUrl(path, url)
+    }
+  }
+
   importVirtualAsset(relativePath: string, file: File): void {
     browserProjectStore.registerFile(relativePath, { file, isBinary: isBinaryFile(file.name) })
   }
@@ -134,7 +151,7 @@ export class ProjectService {
 
 function isBinaryFile(name: string): boolean {
   const ext = name.split('.').pop()?.toLowerCase()
-  return ext === 'glb' || ext === 'gltf' || ext === 'png' || ext === 'jpg' || ext === 'jpeg' || ext === 'webp'
+  return ext === 'glb' || ext === 'gltf' || ext === 'bin' || ext === 'png' || ext === 'jpg' || ext === 'jpeg' || ext === 'webp'
 }
 
 export const projectService = new ProjectService()
