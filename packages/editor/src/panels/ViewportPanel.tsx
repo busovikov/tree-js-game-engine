@@ -49,7 +49,9 @@ export const ViewportPanel = memo(function ViewportPanel() {
       orbit.enabled = !(event.value as boolean)
     })
     engine.backend.threeScene.add(gizmo.getHelper())
-    gizmo.getHelper().userData.hakuEditorOverlay = true
+    gizmo.getHelper().traverse((child) => {
+      child.raycast = () => undefined
+    })
     gizmoRef.current = gizmo
 
     const tick = () => {
@@ -84,7 +86,9 @@ export const ViewportPanel = memo(function ViewportPanel() {
     engine.loadWorld(world, sceneDocument?.prototypes ?? {}, sceneDocument?.prefabs ?? {})
     const camera = engine.backend.getActiveCamera()
     const gizmo = gizmoRef.current
+    const orbit = orbitRef.current
     if (gizmo) gizmo.camera = camera
+    if (orbit) orbit.object = camera
   }, [world, sceneDocument])
 
   useEffect(() => {
@@ -188,13 +192,12 @@ export const ViewportPanel = memo(function ViewportPanel() {
 
       const dx = event.clientX - pointerDown.x
       const dy = event.clientY - pointerDown.y
-      if (dx * dx + dy * dy > 36) return
+      if (dx * dx + dy * dy > 100) return
 
       const engine = engineRef.current
       if (!engine) return
 
       const pick = engine.backend.pickEntityAt(event.clientX, event.clientY, canvas)
-      if (pick.hitEditorOverlay) return
       useEditorStore.getState().setSelection(pick.entityId)
     }
 

@@ -79,14 +79,12 @@ export class RenderSyncSystem implements ISystem {
       let state = this.entityStates.get(id.value)
       if (!state) {
         const object3d = this.createObjectForEntity(id)
-        object3d.userData.hakuEntityId = id.value
         state = { object3d }
         this.entityStates.set(id.value, state)
         this.scene.add(object3d)
-      } else {
-        state.object3d.userData.hakuEntityId = id.value
       }
 
+      this.tagPickable(state.object3d, id.value)
       this.applyTransform(state.object3d, transform)
       this.syncLight(id, state.object3d)
     }
@@ -209,28 +207,73 @@ export class RenderSyncSystem implements ISystem {
       return { entityId: null, hitEditorOverlay: false }
     }
 
-    const ndc = new THREE.Vector2(
-      ((clientX - rect.left) / rect.width) * 2 - 1,
-      -((clientY - rect.top) / rect.height) * 2 + 1,
-    )
+    const pickRoots = this.getPickRoots()
+    if (pickRoots.length === 0) {
+      return { entityId: null, hitEditorOverlay: false }
+    }
 
+    camera.updateMatrixWorld(true)
+
+    // Sample around the cursor so clicks near edges/silhouettes still register.
+    const sampleOffsetsPx = [
+      [0, 0],
+      [-5, 0],
+      [5, 0],
+      [0, -5],
+      [0, 5],
+      [-4, -4],
+      [4, -4],
+      [-4, 4],
+      [4, 4],
+    ]
+
+    let closest: { entityId: EntityId; distance: number } | null = null
+    const ndc = new THREE.Vector2()
     const raycaster = new THREE.Raycaster()
-    raycaster.setFromCamera(ndc, camera)
 
-    const hits = raycaster.intersectObjects(this.scene.children, true)
-    for (const hit of hits) {
-      let current: THREE.Object3D | null = hit.object
-      while (current) {
-        if (current.userData.hakuEditorOverlay) {
-          return { entityId: null, hitEditorOverlay: true }
+    for (const [offsetX, offsetY] of sampleOffsetsPx) {
+      ndc.set(
+        ((clientX + offsetX - rect.left) / rect.width) * 2 - 1,
+        -((clientY + offsetY - rect.top) / rect.height) * 2 + 1,
+      )
+      raycaster.setFromCamera(ndc, camera)
+
+      const hits = raycaster.intersectObjects(pickRoots, true)
+      for (const hit of hits) {
+        const picked = this.resolveEntityId(hit.object)
+        if (!picked) continue
+        if (!closest || hit.distance < closest.distance) {
+          closest = { entityId: picked, distance: hit.distance }
         }
-        const idValue = current.userData.hakuEntityId as string | undefined
-        if (idValue) return { entityId: entityId(idValue), hitEditorOverlay: false }
-        current = current.parent
       }
     }
 
-    return { entityId: null, hitEditorOverlay: false }
+    return { entityId: closest?.entityId ?? null, hitEditorOverlay: false }
+  }
+
+  private getPickRoots(): THREE.Object3D[] {
+    const roots: THREE.Object3D[] = []
+    for (const state of this.entityStates.values()) {
+      roots.push(state.object3d)
+    }
+    return roots
+  }
+
+  private tagPickable(object3d: THREE.Object3D, id: string): void {
+    object3d.userData.hakuEntityId = id
+    object3d.traverse((child) => {
+      child.userData.hakuEntityId = id
+    })
+  }
+
+  private resolveEntityId(object: THREE.Object3D): EntityId | null {
+    let current: THREE.Object3D | null = object
+    while (current) {
+      const idValue = current.userData.hakuEntityId as string | undefined
+      if (idValue) return entityId(idValue)
+      current = current.parent
+    }
+    return null
   }
 
   private syncLight(id: EntityId, object3d: THREE.Object3D): void {
