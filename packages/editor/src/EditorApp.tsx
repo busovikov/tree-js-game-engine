@@ -50,12 +50,8 @@ export const EditorApp = memo(function EditorApp() {
   }, [])
 
   const onCreateProject = useCallback(async () => {
-    const defaultName = 'my-game'
-    const projectName = prompt('Project name', defaultName)?.trim()
-    if (!projectName) return
-
     try {
-      await projectService.createNewProject(projectName)
+      await projectService.createNewProject()
     } catch (err) {
       if (isAbortError(err)) return
       alert(err instanceof Error ? err.message : 'Failed to create project')

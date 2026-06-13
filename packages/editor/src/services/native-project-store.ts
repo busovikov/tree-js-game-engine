@@ -132,20 +132,29 @@ class NativeProjectStore {
     return current
   }
 
-  private async getFileHandle(path: string): Promise<FileSystemFileHandle> {
+  private resolveAssetPathCandidates(path: string): string[] {
     const normalized = normalizePath(path)
-    const alias = normalized.startsWith('public/assets/')
-      ? normalized.replace('public/assets/', 'assets/')
-      : normalized
+    const candidates = [normalized]
 
-    try {
-      return await this.getFileHandleAtPath(alias)
-    } catch {
-      if (alias !== normalized) {
-        return this.getFileHandleAtPath(normalized)
-      }
-      throw new Error(`File not found: ${path}`)
+    if (normalized.startsWith('assets/')) {
+      candidates.push(`public/${normalized}`)
+    } else if (normalized.startsWith('public/assets/')) {
+      candidates.push(normalized.replace('public/assets/', 'assets/'))
     }
+
+    return [...new Set(candidates)]
+  }
+
+  private async getFileHandle(path: string): Promise<FileSystemFileHandle> {
+    for (const candidate of this.resolveAssetPathCandidates(path)) {
+      try {
+        return await this.getFileHandleAtPath(candidate)
+      } catch {
+        // try next alias
+      }
+    }
+
+    throw new Error(`File not found: ${path}`)
   }
 
   private async getOrCreateFileHandle(path: string, create: boolean): Promise<FileSystemFileHandle> {

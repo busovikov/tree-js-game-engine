@@ -34,9 +34,9 @@ export const MenuBar = memo(function MenuBar({
     return () => window.removeEventListener('mousedown', onPointerDown)
   }, [])
 
-  const runItem = useCallback(async (item: MenuItem) => {
+  const runItem = useCallback((item: MenuItem) => {
     setOpenMenuId(null)
-    await item.onClick()
+    void item.onClick()
   }, [])
 
   return (

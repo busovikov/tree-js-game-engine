@@ -37,12 +37,18 @@ export class ProjectService {
   }
 
   /** Create a new project folder on disk and open it. */
-  async createNewProject(projectName: string): Promise<HakuProject> {
+  async createNewProject(): Promise<HakuProject> {
     if (!isFileSystemAccessSupported()) {
       throw new Error('File System Access API is not supported in this browser. Use Chrome or Edge.')
     }
 
+    // Directory picker must run before prompt() to keep the browser user gesture.
     const projectHandle = await nativeProjectStore.pickProjectDirectory()
+    const projectName = prompt('Project name', projectHandle.name || 'my-game')?.trim()
+    if (!projectName) {
+      throw new DOMException('Project creation cancelled', 'AbortError')
+    }
+
     const templateFiles = await loadPersonalizedProjectTemplate(projectName)
     await nativeProjectStore.scaffoldProject(projectHandle, templateFiles)
 
