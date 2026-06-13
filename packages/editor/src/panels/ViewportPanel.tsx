@@ -1,10 +1,12 @@
 import { memo, useEffect, useRef } from 'react'
+import * as THREE from 'three'
 import { Engine } from '@haku/engine'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js'
 import { TransformComponent } from '@haku/core'
 import { useEditorStore } from '../store/editor-store.js'
 import { SetTransformCommand, executeCommand } from '../commands/world-commands.js'
+import { focusSelection } from '../viewport/focus-selection.js'
 
 function refreshGizmo(
   gizmo: TransformControls,
@@ -30,6 +32,8 @@ export const ViewportPanel = memo(function ViewportPanel() {
   const sceneDocument = useEditorStore((s) => s.sceneDocument)
   const selection = useEditorStore((s) => s.selection)
   const mode = useEditorStore((s) => s.mode)
+  const transformTool = useEditorStore((s) => s.transformTool)
+  const focusSelectionRequest = useEditorStore((s) => s.focusSelectionRequest)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -45,6 +49,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
 
     const gizmo = new TransformControls(camera, canvas)
     gizmo.setSpace('local')
+    gizmo.setMode('translate')
     gizmo.addEventListener('dragging-changed', (event) => {
       orbit.enabled = !(event.value as boolean)
     })
@@ -117,6 +122,22 @@ export const ViewportPanel = memo(function ViewportPanel() {
       gizmo.detach()
     }
   }, [selection, mode, world])
+
+  useEffect(() => {
+    gizmoRef.current?.setMode(transformTool)
+  }, [transformTool])
+
+  useEffect(() => {
+    const engine = engineRef.current
+    const orbit = orbitRef.current
+    if (!engine || !orbit || !selection || focusSelectionRequest === 0) return
+
+    const object = engine.backend.sync.getObject3D(selection)
+    const camera = engine.backend.getActiveCamera()
+    if (!object || !(camera instanceof THREE.PerspectiveCamera)) return
+
+    focusSelection(object, camera, orbit)
+  }, [focusSelectionRequest, selection])
 
   useEffect(() => {
     const gizmo = gizmoRef.current

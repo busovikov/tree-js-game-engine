@@ -5,6 +5,7 @@ import type { SceneDocument } from '@haku/schema'
 import { globalCommandBus } from '../commands/command-bus.js'
 
 export type EditorMode = 'edit' | 'play'
+export type TransformTool = 'translate' | 'rotate' | 'scale'
 
 interface EditorState {
   projectRoot: string | null
@@ -14,6 +15,8 @@ interface EditorState {
   worldRevision: number
   selection: EntityId | null
   mode: EditorMode
+  transformTool: TransformTool
+  focusSelectionRequest: number
   playSnapshot: World | null
   commandRevision: number
 
@@ -22,6 +25,8 @@ interface EditorState {
   setSelection: (id: EntityId | null) => void
   setWorld: (world: World) => void
   setMode: (mode: EditorMode) => void
+  setTransformTool: (tool: TransformTool) => void
+  requestFocusSelection: () => void
   enterPlayMode: () => void
   exitPlayMode: () => void
   bumpCommands: () => void
@@ -35,6 +40,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   worldRevision: 0,
   selection: null,
   mode: 'edit',
+  transformTool: 'translate',
+  focusSelectionRequest: 0,
   playSnapshot: null,
   commandRevision: 0,
 
@@ -50,6 +57,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setSelection: (id) => set({ selection: id }),
   setWorld: (world) => set((s) => ({ world, worldRevision: s.worldRevision + 1 })),
   setMode: (mode) => set({ mode }),
+  setTransformTool: (tool) => set({ transformTool: tool }),
+  requestFocusSelection: () => set((s) => ({ focusSelectionRequest: s.focusSelectionRequest + 1 })),
 
   enterPlayMode: () => {
     const { world } = get()

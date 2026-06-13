@@ -34,3 +34,57 @@
   height: 5px;
   cursor: row-resize;
 }
+
+.haku-hierarchy-column {
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.haku-hierarchy-column > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.haku-hierarchy-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 36px;
+  flex-shrink: 0;
+  padding: 8px 4px;
+  border-left: 1px solid #333;
+  background: #22222c;
+}
+
+.haku-hierarchy-tool {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: #c8c8d0;
+  cursor: pointer;
+}
+
+.haku-hierarchy-tool:hover:not(:disabled) {
+  background: #323240;
+  color: #fff;
+}
+
+.haku-hierarchy-tool--active {
+  background: #3d5afe33;
+  border-color: #3d5afe;
+  color: #fff;
+}
+
+.haku-hierarchy-tool:disabled {
+  opacity: 0.35;
+  cursor: default;
+}

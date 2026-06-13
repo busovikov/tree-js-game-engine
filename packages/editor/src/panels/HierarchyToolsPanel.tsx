@@ -1,0 +1,110 @@
+import { memo, type ReactNode } from 'react'
+import { useEditorStore, type TransformTool } from '../store/editor-store.js'
+
+function ToolIcon({ children }: { children: ReactNode }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      {children}
+    </svg>
+  )
+}
+
+function FocusIcon() {
+  return (
+    <ToolIcon>
+      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.75" />
+      <path d="M12 3v3M12 18v3M3 12h3M18 12h3" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+    </ToolIcon>
+  )
+}
+
+function MoveIcon() {
+  return (
+    <ToolIcon>
+      <path d="M12 3v18M3 12h18" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+      <path d="M12 3l-2.5 2.5M12 3l2.5 2.5M12 21l-2.5-2.5M12 21l2.5-2.5M3 12l2.5-2.5M3 12l2.5 2.5M21 12l-2.5-2.5M21 12l-2.5 2.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+    </ToolIcon>
+  )
+}
+
+function RotateIcon() {
+  return (
+    <ToolIcon>
+      <path d="M18 6A8 8 0 1 0 20 12" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+      <path d="M20 4v4h-4" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+    </ToolIcon>
+  )
+}
+
+function ScaleIcon() {
+  return (
+    <ToolIcon>
+      <path d="M4 20L20 4" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+      <path d="M14 4h6v6M4 14v6h6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+    </ToolIcon>
+  )
+}
+
+function ToolButton({
+  title,
+  active,
+  disabled,
+  onClick,
+  children,
+}: {
+  title: string
+  active?: boolean
+  disabled?: boolean
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      className={`haku-hierarchy-tool${active ? ' haku-hierarchy-tool--active' : ''}`}
+      title={title}
+      aria-label={title}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  )
+}
+
+export const HierarchyToolsPanel = memo(function HierarchyToolsPanel() {
+  const mode = useEditorStore((s) => s.mode)
+  const selection = useEditorStore((s) => s.selection)
+  const world = useEditorStore((s) => s.world)
+  const transformTool = useEditorStore((s) => s.transformTool)
+  const setTransformTool = useEditorStore((s) => s.setTransformTool)
+  const requestFocusSelection = useEditorStore((s) => s.requestFocusSelection)
+
+  const canUse = !!world && mode === 'edit' && !!selection
+
+  const tools: Array<{ tool: TransformTool; title: string; icon: ReactNode }> = [
+    { tool: 'translate', title: 'Move', icon: <MoveIcon /> },
+    { tool: 'rotate', title: 'Rotate', icon: <RotateIcon /> },
+    { tool: 'scale', title: 'Scale', icon: <ScaleIcon /> },
+  ]
+
+  return (
+    <div className="haku-hierarchy-tools" aria-label="Object tools">
+      <ToolButton title="Focus selection" disabled={!canUse} onClick={requestFocusSelection}>
+        <FocusIcon />
+      </ToolButton>
+
+      {tools.map(({ tool, title, icon }) => (
+        <ToolButton
+          key={tool}
+          title={title}
+          active={transformTool === tool}
+          disabled={!canUse}
+          onClick={() => setTransformTool(tool)}
+        >
+          {icon}
+        </ToolButton>
+      ))}
+    </div>
+  )
+})

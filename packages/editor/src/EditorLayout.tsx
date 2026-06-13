@@ -1,6 +1,7 @@
 import { memo } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { HierarchyPanel } from './panels/HierarchyPanel.js'
+import { HierarchyToolsPanel } from './panels/HierarchyToolsPanel.js'
 import { InspectorPanel } from './panels/InspectorPanel.js'
 import { ViewportPanel } from './panels/ViewportPanel.js'
 import { AssetBrowserPanel } from './panels/AssetBrowserPanel.js'
@@ -21,7 +22,10 @@ export const EditorLayout = memo(function EditorLayout() {
     <div className="haku-editor-layout">
       <PanelGroup direction="horizontal" autoSaveId="haku-editor-panels-h">
         <Panel defaultSize={18} minSize={12} maxSize={35} className={panelShell}>
-          <HierarchyPanel />
+          <div className="haku-hierarchy-column">
+            <HierarchyPanel />
+            <HierarchyToolsPanel />
+          </div>
         </Panel>
 
         <ResizeHandle direction="horizontal" />
