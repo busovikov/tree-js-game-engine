@@ -4,12 +4,16 @@ import {
   MeshRendererSchema,
   PrefabInstanceSchema,
   ScriptRefSchema,
+  StaticSchema,
+  TagSchema,
   TransformSchema,
   type Camera,
   type Light,
   type MeshRenderer,
   type PrefabInstance,
   type ScriptRef,
+  type Static,
+  type Tag,
   type Transform,
 } from '@haku/schema'
 import type { ComponentType } from './types.js'
@@ -49,6 +53,18 @@ export const PrefabInstanceComponent = {
   schema: PrefabInstanceSchema,
 } satisfies ComponentType<PrefabInstance>
 
+export const TagComponent = {
+  id: 'Tag',
+  schema: TagSchema,
+  defaults: () => TagSchema.parse({}),
+} satisfies ComponentType<Tag>
+
+export const StaticComponent = {
+  id: 'Static',
+  schema: StaticSchema,
+  defaults: () => StaticSchema.parse({}),
+} satisfies ComponentType<Static>
+
 export const coreComponents = [
   TransformComponent,
   CameraComponent,
@@ -56,6 +72,8 @@ export const coreComponents = [
   MeshRendererComponent,
   ScriptRefComponent,
   PrefabInstanceComponent,
+  TagComponent,
+  StaticComponent,
 ] as const
 
 export function registerCoreComponents(): void {

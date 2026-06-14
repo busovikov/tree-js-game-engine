@@ -112,6 +112,11 @@ export {
 } from './light-color.js'
 
 import { MeshRendererSchema } from './mesh.js'
+import { StaticSchema } from './static.js'
+import { TagSchema } from './tag.js'
+
+export { TagSchema, type Tag } from './tag.js'
+export { StaticSchema, type Static } from './static.js'
 
 export {
   GEOMETRY_PARAM_SPECS,
@@ -204,6 +209,8 @@ export const CORE_COMPONENT_IDS = [
   'MeshRenderer',
   'ScriptRef',
   'PrefabInstance',
+  'Tag',
+  'Static',
 ] as const
 
 export type CoreComponentId = (typeof CORE_COMPONENT_IDS)[number]
@@ -215,6 +222,8 @@ export const coreComponentSchemas = {
   MeshRenderer: MeshRendererSchema,
   ScriptRef: ScriptRefSchema,
   PrefabInstance: PrefabInstanceSchema,
+  Tag: TagSchema,
+  Static: StaticSchema,
 } as const
 
 export function validateSceneDocument(data: unknown): SceneDocument {
