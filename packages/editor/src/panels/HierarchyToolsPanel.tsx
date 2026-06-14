@@ -1,5 +1,10 @@
 import { memo, type ReactNode } from 'react'
 import { useEditorStore, type TransformTool } from '../store/editor-store.js'
+import {
+  FOCUS_SELECTION_SHORTCUT,
+  TRANSFORM_TOOL_SHORTCUT,
+  formatToolTitle,
+} from '../viewport/transform-tool-shortcuts.js'
 
 function ToolIcon({ children }: { children: ReactNode }) {
   return (
@@ -99,19 +104,23 @@ export const HierarchyToolsPanel = memo(function HierarchyToolsPanel() {
   const canPan = !!world && mode === 'edit' && !viewportCameraEntityId
 
   const tools: Array<{ tool: TransformTool; title: string; icon: ReactNode }> = [
-    { tool: 'translate', title: 'Move', icon: <MoveIcon /> },
-    { tool: 'rotate', title: 'Rotate', icon: <RotateIcon /> },
-    { tool: 'scale', title: 'Scale', icon: <ScaleIcon /> },
+    { tool: 'translate', title: formatToolTitle('Move', TRANSFORM_TOOL_SHORTCUT.translate), icon: <MoveIcon /> },
+    { tool: 'rotate', title: formatToolTitle('Rotate', TRANSFORM_TOOL_SHORTCUT.rotate), icon: <RotateIcon /> },
+    { tool: 'scale', title: formatToolTitle('Scale', TRANSFORM_TOOL_SHORTCUT.scale), icon: <ScaleIcon /> },
   ]
 
   return (
     <div className="haku-hierarchy-tools" aria-label="Object tools">
-      <ToolButton title="Focus selection" disabled={!canUse} onClick={requestFocusSelection}>
+      <ToolButton
+        title={formatToolTitle('Focus selection', FOCUS_SELECTION_SHORTCUT)}
+        disabled={!canUse}
+        onClick={requestFocusSelection}
+      >
         <FocusIcon />
       </ToolButton>
 
       <ToolButton
-        title="Hand (pan camera)"
+        title={formatToolTitle('Hand (pan camera)', TRANSFORM_TOOL_SHORTCUT.hand)}
         active={transformTool === 'hand'}
         disabled={!canPan}
         onClick={() => setTransformTool('hand')}

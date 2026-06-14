@@ -8,6 +8,7 @@ import {
   createPrefab,
   placePrefab,
 } from './commands/world-commands.js'
+import { handleTransformToolShortcut } from './viewport/transform-tool-shortcuts.js'
 
 function pickProjectFolder(): Promise<FileList | null> {
   return new Promise((resolve) => {
@@ -131,6 +132,8 @@ export const EditorApp = memo(function EditorApp() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (handleTransformToolShortcut(event)) return
+
       if (useEditorStore.getState().mode === 'play') return
       if (event.repeat) return
       if (!(event.metaKey || event.ctrlKey) || event.altKey) return
