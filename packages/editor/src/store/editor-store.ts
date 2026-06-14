@@ -3,6 +3,7 @@ import type { EntityId } from '@haku/core'
 import { World, cloneWorld } from '@haku/core'
 import type { SceneDocument } from '@haku/schema'
 import { globalCommandBus } from '../commands/command-bus.js'
+import type { HierarchyFilterMode } from '../hierarchy/entity-filter.js'
 
 export type EditorMode = 'edit' | 'play'
 export type TransformTool = 'translate' | 'rotate' | 'scale' | 'hand'
@@ -30,6 +31,8 @@ interface EditorState {
   focusSelectionRequest: number
   playSnapshot: World | null
   commandRevision: number
+  hierarchyFilterQuery: string
+  hierarchyFilterMode: HierarchyFilterMode
 
   setProjectRoot: (root: string | null) => void
   setScene: (path: string, document: SceneDocument, world: World) => void
@@ -43,6 +46,8 @@ interface EditorState {
   enterPlayMode: () => void
   exitPlayMode: () => void
   bumpCommands: () => void
+  setHierarchyFilterQuery: (query: string) => void
+  setHierarchyFilterMode: (mode: HierarchyFilterMode) => void
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
@@ -58,6 +63,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   focusSelectionRequest: 0,
   playSnapshot: null,
   commandRevision: 0,
+  hierarchyFilterQuery: '',
+  hierarchyFilterMode: 'all',
 
   setProjectRoot: (root) => set({ projectRoot: root }),
   setScene: (path, document, world) => {
@@ -109,6 +116,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   bumpCommands: () => set((s) => ({ commandRevision: s.commandRevision + 1 })),
+  setHierarchyFilterQuery: (query) => set({ hierarchyFilterQuery: query }),
+  setHierarchyFilterMode: (mode) => set({ hierarchyFilterMode: mode }),
 }))
 
 globalCommandBus.subscribe(() => {

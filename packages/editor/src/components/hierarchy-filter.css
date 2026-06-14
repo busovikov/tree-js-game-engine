@@ -1,0 +1,90 @@
+.haku-hierarchy-filter {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: stretch;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: #1e1e28;
+  overflow: visible;
+}
+
+.haku-hierarchy-filter__mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  border: none;
+  border-right: 1px solid #444;
+  border-radius: 4px 0 0 4px;
+  background: #2a2a36;
+  color: #ccc;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.haku-hierarchy-filter__mode:hover {
+  background: #333340;
+  color: #fff;
+}
+
+.haku-hierarchy-filter__caret {
+  font-size: 10px;
+  opacity: 0.8;
+}
+
+.haku-hierarchy-filter__input {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 0 4px 4px 0;
+  background: transparent;
+  color: #eee;
+  font-size: 12px;
+  outline: none;
+}
+
+.haku-hierarchy-filter__input::placeholder {
+  color: #777;
+}
+
+.haku-hierarchy-filter__input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+
+.haku-hierarchy-filter__menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 20;
+  min-width: 100px;
+  padding: 4px 0;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: #2a2a36;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.haku-hierarchy-filter__menu-item {
+  display: block;
+  width: 100%;
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  color: #ccc;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.haku-hierarchy-filter__menu-item:hover {
+  background: #383848;
+  color: #fff;
+}
+
+.haku-hierarchy-filter__menu-item--active {
+  color: #8ab4ff;
+}

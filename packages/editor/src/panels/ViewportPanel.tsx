@@ -6,6 +6,7 @@ import { TransformControls } from 'three/examples/jsm/controls/TransformControls
 import { TransformComponent } from '@haku/core'
 import { useEditorStore } from '../store/editor-store.js'
 import { commitTransformChange, transformsEqual } from '../commands/scene-history.js'
+import { computeHierarchyFilterSets } from '../hierarchy/entity-filter.js'
 import { focusSelection } from '../viewport/focus-selection.js'
 import { applyEditorTransformGizmoLayout, applyUniformScaleDamping } from '../viewport/transform-gizmo-config.js'
 import { applyOrbitToolMode } from '../viewport/viewport-orbit.js'
@@ -54,6 +55,8 @@ export const ViewportPanel = memo(function ViewportPanel() {
   const transformTool = useEditorStore((s) => s.transformTool)
   const viewportCameraEntityId = useEditorStore((s) => s.viewportCameraEntityId)
   const focusSelectionRequest = useEditorStore((s) => s.focusSelectionRequest)
+  const hierarchyFilterQuery = useEditorStore((s) => s.hierarchyFilterQuery)
+  const hierarchyFilterMode = useEditorStore((s) => s.hierarchyFilterMode)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -183,6 +186,20 @@ export const ViewportPanel = memo(function ViewportPanel() {
       })
     }
   }, [world, worldRevision, selection, mode, viewportCameraEntityId])
+
+  useEffect(() => {
+    const engine = engineRef.current
+    if (!engine || !world) return
+
+    const { highlightedIds } = computeHierarchyFilterSets(
+      world,
+      hierarchyFilterQuery,
+      hierarchyFilterMode,
+    )
+    engine.backend.setHierarchyFilterHighlight(
+      hierarchyFilterQuery.trim() ? highlightedIds : null,
+    )
+  }, [world, worldRevision, hierarchyFilterQuery, hierarchyFilterMode])
 
   useEffect(() => {
     const engine = engineRef.current
