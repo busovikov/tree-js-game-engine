@@ -8,7 +8,7 @@ import {
   TransformComponent,
 } from '@haku/core'
 import type { Light, MeshRenderer, PrefabDefinition, Transform } from '@haku/schema'
-import { meshRendererKey } from '@haku/schema'
+import { LightSchema, meshRendererKey, spotToThreeCone } from '@haku/schema'
 import * as THREE from 'three'
 import {
   createMeshFromRenderer,
@@ -19,6 +19,7 @@ import {
 interface EntityRenderState {
   object3d: THREE.Object3D
   meshKey?: string
+  visualKey: string
 }
 
 export class RenderSyncSystem implements ISystem {
@@ -62,6 +63,22 @@ export class RenderSyncSystem implements ISystem {
     return this.entityStates.get(entityId.value)?.object3d
   }
 
+  getEntityCamera(entityId: EntityId): THREE.PerspectiveCamera | THREE.OrthographicCamera | undefined {
+    const object3d = this.getObject3D(entityId)
+    if (!object3d) return undefined
+    return this.findCamera(object3d) ?? undefined
+  }
+
+  updateCameraAspects(aspect: number): void {
+    for (const state of this.entityStates.values()) {
+      const camera = this.findCamera(state.object3d)
+      if (camera instanceof THREE.PerspectiveCamera) {
+        camera.aspect = aspect
+        camera.updateProjectionMatrix()
+      }
+    }
+  }
+
   private syncAll(): void {
     if (!this.world) return
 
@@ -73,11 +90,20 @@ export class RenderSyncSystem implements ISystem {
       if (!transform) continue
 
       let state = this.entityStates.get(id.value)
+      const visualKey = this.getVisualKey(id)
+
       if (!state) {
         const object3d = this.createObjectForEntity(id)
-        state = { object3d, meshKey: this.getMeshKey(id) }
+        state = { object3d, meshKey: this.getMeshKey(id), visualKey }
         this.entityStates.set(id.value, state)
         this.scene.add(object3d)
+      } else if (state.visualKey !== visualKey) {
+        this.scene.remove(state.object3d)
+        this.disposeObject(state.object3d)
+        state.object3d = this.createObjectForEntity(id)
+        state.visualKey = visualKey
+        state.meshKey = this.getMeshKey(id)
+        this.scene.add(state.object3d)
       } else {
         this.syncMeshVisual(id, state)
       }
@@ -85,6 +111,7 @@ export class RenderSyncSystem implements ISystem {
       this.tagPickable(state.object3d, id.value)
       this.applyTransform(state.object3d, transform)
       this.syncLight(id, state.object3d)
+      this.syncCamera(id, state.object3d)
     }
 
     for (const [id, state] of this.entityStates) {
@@ -100,12 +127,16 @@ export class RenderSyncSystem implements ISystem {
     if (!this.world) return new THREE.Group()
 
     if (this.world.hasComponent(id, CameraComponent)) {
-      return new THREE.PerspectiveCamera(60, 1, 0.1, 1000)
+      const camData = this.world.getComponent(id, CameraComponent)!
+      const group = new THREE.Group()
+      const camera = new THREE.PerspectiveCamera(camData.fov, 1, camData.near, camData.far)
+      group.add(camera)
+      return group
     }
 
     if (this.world.hasComponent(id, LightComponent)) {
-      const light = this.world.getComponent(id, LightComponent)!
-      return this.createLight(light)
+      const light = this.getLightData(id)
+      if (light) return this.createLightEntity(light)
     }
 
     if (this.world.hasComponent(id, MeshRendererComponent)) {
@@ -151,6 +182,28 @@ export class RenderSyncSystem implements ISystem {
     return meshRenderer ? meshRendererKey(meshRenderer) : undefined
   }
 
+  private getVisualKey(id: EntityId): string {
+    if (!this.world) return 'group'
+
+    if (this.world.hasComponent(id, CameraComponent)) return 'camera'
+
+    if (this.world.hasComponent(id, LightComponent)) {
+      const light = this.world.getComponent(id, LightComponent)!
+      return `light:${light.type}`
+    }
+
+    if (this.world.hasComponent(id, MeshRendererComponent)) {
+      return `mesh:${meshRendererKey(this.world.getComponent(id, MeshRendererComponent)!)}`
+    }
+
+    if (this.world.hasComponent(id, PrefabInstanceComponent)) {
+      const instance = this.world.getComponent(id, PrefabInstanceComponent)!
+      return `prefab:${instance.prefabId}`
+    }
+
+    return 'group'
+  }
+
   private syncMeshVisual(id: EntityId, state: EntityRenderState): void {
     if (!this.world?.hasComponent(id, MeshRendererComponent)) return
     const meshRenderer = this.world.getComponent(id, MeshRendererComponent)!
@@ -167,14 +220,46 @@ export class RenderSyncSystem implements ISystem {
     state.meshKey = nextKey
   }
 
-  private createLight(light: Light): THREE.Light {
+  private getLightData(id: EntityId): Light | null {
+    if (!this.world?.hasComponent(id, LightComponent)) return null
+    const raw = this.world.getComponent(id, LightComponent)
+    if (!raw) return null
+    return LightSchema.parse(raw)
+  }
+
+  private createLightEntity(light: Light): THREE.Group {
+    const group = new THREE.Group()
+    const threeLight = this.createThreeLight(light)
+    group.add(threeLight)
+
+    if (threeLight instanceof THREE.DirectionalLight || threeLight instanceof THREE.SpotLight) {
+      const target = new THREE.Object3D()
+      target.position.set(0, 0, -1)
+      group.add(target)
+      threeLight.target = target
+    }
+
+    return group
+  }
+
+  private createThreeLight(light: Light): THREE.Light {
     switch (light.type) {
-      case 'point':
-        return new THREE.PointLight(light.color, light.intensity)
-      case 'spot':
-        return new THREE.SpotLight(light.color, light.intensity)
+      case 'point': {
+        const point = new THREE.PointLight(light.color, light.intensity, light.distance, light.decay)
+        return point
+      }
+      case 'spot': {
+        const { angleRad, penumbra } = spotToThreeCone(light)
+        return new THREE.SpotLight(
+          light.color,
+          light.intensity,
+          light.distance,
+          angleRad,
+          penumbra,
+          light.decay,
+        )
+      }
       case 'directional':
-      default:
         return new THREE.DirectionalLight(light.color, light.intensity)
     }
   }
@@ -212,6 +297,9 @@ export class RenderSyncSystem implements ISystem {
 
     camera.updateMatrixWorld(true)
 
+    const ndc = new THREE.Vector2()
+    const raycaster = new THREE.Raycaster()
+
     // Sample around the cursor so clicks near edges/silhouettes still register.
     const sampleOffsetsPx = [
       [0, 0],
@@ -226,8 +314,6 @@ export class RenderSyncSystem implements ISystem {
     ]
 
     let closest: { entityId: EntityId; distance: number } | null = null
-    const ndc = new THREE.Vector2()
-    const raycaster = new THREE.Raycaster()
 
     for (const [offsetX, offsetY] of sampleOffsetsPx) {
       ndc.set(
@@ -238,6 +324,7 @@ export class RenderSyncSystem implements ISystem {
 
       const hits = raycaster.intersectObjects(pickRoots, true)
       for (const hit of hits) {
+        if (!this.isViewportPickable(hit.object)) continue
         const picked = this.resolveEntityId(hit.object)
         if (!picked) continue
         if (!closest || hit.distance < closest.distance) {
@@ -246,7 +333,47 @@ export class RenderSyncSystem implements ISystem {
       }
     }
 
+    if (
+      closest &&
+      this.shouldBlockCameraPickFromOverlay(clientX, clientY, rect, pickRoots, camera, closest.entityId)
+    ) {
+      return { entityId: null, hitEditorOverlay: true }
+    }
+
     return { entityId: closest?.entityId ?? null, hitEditorOverlay: false }
+  }
+
+  /** Block camera selection when the click is on its frustum overlay, not the pick handle. */
+  private shouldBlockCameraPickFromOverlay(
+    clientX: number,
+    clientY: number,
+    rect: DOMRect,
+    pickRoots: THREE.Object3D[],
+    viewportCamera: THREE.Camera,
+    picked: EntityId,
+  ): boolean {
+    if (!this.world?.hasComponent(picked, CameraComponent)) return false
+
+    const ndc = new THREE.Vector2(
+      ((clientX - rect.left) / rect.width) * 2 - 1,
+      -((clientY - rect.top) / rect.height) * 2 + 1,
+    )
+    const raycaster = new THREE.Raycaster()
+    raycaster.setFromCamera(ndc, viewportCamera)
+
+    for (const hit of raycaster.intersectObjects(pickRoots, true)) {
+      if (this.isViewportPickable(hit.object)) return false
+      const overlayEntity = this.resolveEntityId(hit.object)
+      if (overlayEntity?.value === picked.value) return true
+    }
+
+    return false
+  }
+
+  private isViewportPickable(object: THREE.Object3D): boolean {
+    if (object.userData.hakuEditorPickTarget) return true
+    if (object.userData.hakuEditorOverlay) return false
+    return true
   }
 
   private getPickRoots(): THREE.Object3D[] {
@@ -260,6 +387,7 @@ export class RenderSyncSystem implements ISystem {
   private tagPickable(object3d: THREE.Object3D, id: string): void {
     object3d.userData.hakuEntityId = id
     object3d.traverse((child) => {
+      if (child.userData.hakuEditorOverlay && !child.userData.hakuEditorPickTarget) return
       child.userData.hakuEntityId = id
     })
   }
@@ -275,12 +403,67 @@ export class RenderSyncSystem implements ISystem {
   }
 
   private syncLight(id: EntityId, object3d: THREE.Object3D): void {
-    if (!this.world?.hasComponent(id, LightComponent)) return
-    const lightData = this.world.getComponent(id, LightComponent)!
-    if (object3d instanceof THREE.Light) {
-      object3d.color.set(lightData.color)
-      object3d.intensity = lightData.intensity
+    const lightData = this.getLightData(id)
+    if (!lightData) return
+    const light = this.findLight(object3d)
+    if (!light) return
+
+    light.color.set(lightData.color)
+    light.intensity = lightData.intensity
+
+    if (light instanceof THREE.PointLight && lightData.type === 'point') {
+      light.distance = lightData.distance
+      light.decay = lightData.decay
     }
+
+    if (light instanceof THREE.SpotLight && lightData.type === 'spot') {
+      const { angleRad, penumbra } = spotToThreeCone(lightData)
+      light.distance = lightData.distance
+      light.decay = lightData.decay
+      light.angle = angleRad
+      light.penumbra = penumbra
+    }
+  }
+
+  private findLight(object3d: THREE.Object3D): THREE.Light | null {
+    if (object3d instanceof THREE.Light) return object3d
+
+    let found: THREE.Light | null = null
+    object3d.traverse((child) => {
+      if (!found && child instanceof THREE.Light) {
+        found = child
+      }
+    })
+    return found
+  }
+
+  private syncCamera(id: EntityId, object3d: THREE.Object3D): void {
+    if (!this.world?.hasComponent(id, CameraComponent)) return
+    const camData = this.world.getComponent(id, CameraComponent)!
+    const camera = this.findCamera(object3d)
+    if (camera instanceof THREE.PerspectiveCamera) {
+      camera.fov = camData.fov
+      camera.near = camData.near
+      camera.far = camData.far
+      camera.updateProjectionMatrix()
+    }
+  }
+
+  private findCamera(object3d: THREE.Object3D): THREE.PerspectiveCamera | THREE.OrthographicCamera | null {
+    if (object3d instanceof THREE.PerspectiveCamera || object3d instanceof THREE.OrthographicCamera) {
+      return object3d
+    }
+
+    let found: THREE.PerspectiveCamera | THREE.OrthographicCamera | null = null
+    object3d.traverse((child) => {
+      if (
+        !found &&
+        (child instanceof THREE.PerspectiveCamera || child instanceof THREE.OrthographicCamera)
+      ) {
+        found = child
+      }
+    })
+    return found
   }
 
   private disposeObject(object3d: THREE.Object3D): void {
@@ -301,15 +484,19 @@ export class ThreeRenderBackend implements IRenderBackend {
   private readonly renderer: THREE.WebGLRenderer
   private readonly scene = new THREE.Scene()
   private readonly syncSystem: RenderSyncSystem
+  private readonly editorCamera: THREE.PerspectiveCamera
   private world: IWorld | null = null
   private activeCamera: THREE.Camera
+  private viewportUsesEditorCamera = true
 
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     this.scene.background = new THREE.Color(0x1a1a2e)
     this.syncSystem = new RenderSyncSystem(this.scene)
-    this.activeCamera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000)
+    this.editorCamera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000)
+    this.editorCamera.position.set(0, 2, 5)
+    this.activeCamera = this.editorCamera
     this.scene.add(new THREE.AmbientLight(0xffffff, 0.3))
   }
 
@@ -329,10 +516,43 @@ export class ThreeRenderBackend implements IRenderBackend {
     return this.activeCamera
   }
 
+  getEditorCamera(): THREE.PerspectiveCamera {
+    return this.editorCamera
+  }
+
+  usesEditorViewportCamera(): boolean {
+    return this.viewportUsesEditorCamera
+  }
+
+  useEditorViewportCamera(): void {
+    this.viewportUsesEditorCamera = true
+    this.activeCamera = this.editorCamera
+  }
+
+  useSceneEntityCamera(entityId: EntityId): boolean {
+    const camera = this.syncSystem.getEntityCamera(entityId)
+    if (!camera) {
+      return false
+    }
+
+    this.viewportUsesEditorCamera = false
+    this.activeCamera = camera
+    const camData = this.world?.getComponent(entityId, CameraComponent)
+    if (camera instanceof THREE.PerspectiveCamera && camData) {
+      camera.fov = camData.fov
+      camera.near = camData.near
+      camera.far = camData.far
+      camera.updateProjectionMatrix()
+    }
+    return true
+  }
+
   attach(world: IWorld): void {
     this.world = world
     this.syncSystem.attach(world)
-    this.pickActiveCamera(world)
+    if (this.viewportUsesEditorCamera) {
+      this.useEditorViewportCamera()
+    }
   }
 
   detach(): void {
@@ -341,17 +561,7 @@ export class ThreeRenderBackend implements IRenderBackend {
   }
 
   setActiveCamera(entityId: EntityId): void {
-    const obj = this.syncSystem.getObject3D(entityId)
-    if (obj instanceof THREE.PerspectiveCamera || obj instanceof THREE.OrthographicCamera) {
-      this.activeCamera = obj
-      const camData = this.world?.getComponent(entityId, CameraComponent)
-      if (obj instanceof THREE.PerspectiveCamera && camData) {
-        obj.fov = camData.fov
-        obj.near = camData.near
-        obj.far = camData.far
-        obj.updateProjectionMatrix()
-      }
-    }
+    this.useSceneEntityCamera(entityId)
   }
 
   setPrototypes(_prototypes: Record<string, import('@haku/schema').RenderPrototype>): void {
@@ -368,8 +578,20 @@ export class ThreeRenderBackend implements IRenderBackend {
 
   resize(width: number, height: number): void {
     this.renderer.setSize(width, height, false)
-    if (this.activeCamera instanceof THREE.PerspectiveCamera) {
-      this.activeCamera.aspect = width / height
+    const aspect = width / Math.max(height, 1)
+
+    if (this.editorCamera instanceof THREE.PerspectiveCamera) {
+      this.editorCamera.aspect = aspect
+      this.editorCamera.updateProjectionMatrix()
+    }
+
+    this.syncSystem.updateCameraAspects(aspect)
+
+    if (
+      this.activeCamera !== this.editorCamera &&
+      this.activeCamera instanceof THREE.PerspectiveCamera
+    ) {
+      this.activeCamera.aspect = aspect
       this.activeCamera.updateProjectionMatrix()
     }
   }
@@ -379,13 +601,7 @@ export class ThreeRenderBackend implements IRenderBackend {
     clientY: number,
     canvas: HTMLCanvasElement,
   ): { entityId: EntityId | null; hitEditorOverlay: boolean } {
-    return this.syncSystem.pickEntityAt(clientX, clientY, canvas, this.activeCamera)
-  }
-
-  private pickActiveCamera(world: IWorld): void {
-    for (const id of world.query(CameraComponent, TransformComponent)) {
-      this.setActiveCamera(id)
-      return
-    }
+    const camera = this.viewportUsesEditorCamera ? this.editorCamera : this.activeCamera
+    return this.syncSystem.pickEntityAt(clientX, clientY, canvas, camera)
   }
 }
