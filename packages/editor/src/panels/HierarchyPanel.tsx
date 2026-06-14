@@ -2,15 +2,8 @@ import { memo, useCallback } from 'react'
 import type { EntityId } from '@haku/core'
 import { CameraComponent } from '@haku/core'
 import { useEditorStore } from '../store/editor-store.js'
-import { createEntity, deleteEntity } from '../commands/world-commands.js'
-
-function uniqueEntityName(world: NonNullable<ReturnType<typeof useEditorStore.getState>['world']>, base: string): string {
-  const names = new Set(world.getAllEntities().map((id) => world.getEntityName(id)))
-  if (!names.has(base)) return base
-  let i = 2
-  while (names.has(`${base} ${i}`)) i++
-  return `${base} ${i}`
-}
+import { deleteEntity } from '../commands/world-commands.js'
+import { EntityCreateMenu } from '../components/EntityCreateMenu.js'
 
 function EntityNode({ id, depth }: { id: EntityId; depth: number }) {
   const worldRevision = useEditorStore((s) => s.worldRevision)
@@ -75,13 +68,6 @@ export const HierarchyPanel = memo(function HierarchyPanel() {
     ? world.getAllEntities().filter((id) => world.getParent(id) === null)
     : []
 
-  const onCreate = useCallback(() => {
-    const w = useEditorStore.getState().world
-    if (!w) return
-    const name = uniqueEntityName(w, 'New Entity')
-    createEntity(name)
-  }, [])
-
   const onDelete = useCallback(() => {
     const sel = useEditorStore.getState().selection
     if (sel) deleteEntity(sel)
@@ -92,9 +78,7 @@ export const HierarchyPanel = memo(function HierarchyPanel() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#252530' }}>
       <div style={{ padding: 8, borderBottom: '1px solid #333', display: 'flex', gap: 4 }}>
-        <button type="button" onClick={onCreate} disabled={!canEdit} title={canEdit ? 'Add entity' : 'Load a scene first'}>
-          + Entity
-        </button>
+        <EntityCreateMenu disabled={!canEdit} hasSelection={!!selection} />
         <button type="button" onClick={onDelete} disabled={!canEdit || !selection}>
           Delete
         </button>

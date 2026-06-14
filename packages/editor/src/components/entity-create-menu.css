@@ -1,0 +1,96 @@
+.haku-entity-menu {
+  position: relative;
+}
+
+.haku-entity-menu__trigger {
+  background: #323240;
+  border: 1px solid #444;
+  color: #eee;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.haku-entity-menu__trigger:hover:not(:disabled),
+.haku-entity-menu__trigger--open {
+  background: #3a3a4a;
+}
+
+.haku-entity-menu__trigger:disabled {
+  color: #666;
+  cursor: not-allowed;
+}
+
+.haku-entity-menu__dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 180px;
+  background: #1e1e28;
+  border: 1px solid #444;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  padding: 4px;
+  z-index: 30;
+}
+
+.haku-entity-menu__item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: transparent;
+  border: none;
+  color: #eee;
+  padding: 7px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  text-align: left;
+}
+
+.haku-entity-menu__item:hover:not(:disabled) {
+  background: #3d5afe33;
+}
+
+.haku-entity-menu__item:disabled {
+  color: #666;
+  cursor: not-allowed;
+}
+
+.haku-entity-menu__separator {
+  height: 1px;
+  margin: 4px 6px;
+  background: #333;
+}
+
+.haku-entity-menu__submenu {
+  position: relative;
+}
+
+.haku-entity-menu__arrow {
+  color: #888;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.haku-entity-menu__flyout {
+  display: none;
+  position: absolute;
+  top: -4px;
+  left: calc(100% + 4px);
+  min-width: 140px;
+  background: #1e1e28;
+  border: 1px solid #444;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  padding: 4px;
+  z-index: 31;
+}
+
+.haku-entity-menu__submenu:hover .haku-entity-menu__flyout,
+.haku-entity-menu__submenu:focus-within .haku-entity-menu__flyout {
+  display: block;
+}
