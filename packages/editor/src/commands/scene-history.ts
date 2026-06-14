@@ -43,6 +43,7 @@ export function applySceneSnapshot(snapshot: SceneSnapshot): void {
     world: next.world,
     sceneDocument: next.sceneDocument,
     selection: next.selection,
+    transformTool: next.selection ? state.transformTool : 'hand',
     worldRevision: state.worldRevision + 1,
   }))
 }

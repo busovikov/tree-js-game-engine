@@ -7,6 +7,15 @@ import { globalCommandBus } from '../commands/command-bus.js'
 export type EditorMode = 'edit' | 'play'
 export type TransformTool = 'translate' | 'rotate' | 'scale' | 'hand'
 
+export function canActivateTransformTool(
+  tool: TransformTool,
+  state: Pick<EditorState, 'world' | 'mode' | 'selection' | 'viewportCameraEntityId'>,
+): boolean {
+  if (!state.world || state.mode !== 'edit') return false
+  if (tool === 'hand') return !state.viewportCameraEntityId
+  return !!state.selection
+}
+
 interface EditorState {
   projectRoot: string | null
   scenePath: string | null
@@ -44,7 +53,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   worldRevision: 0,
   selection: null,
   mode: 'edit',
-  transformTool: 'translate',
+  transformTool: 'hand',
   viewportCameraEntityId: null,
   focusSelectionRequest: 0,
   playSnapshot: null,
@@ -59,6 +68,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       world,
       worldRevision: s.worldRevision + 1,
       selection: null,
+      transformTool: 'hand',
       viewportCameraEntityId: null,
     }))
   },
@@ -67,10 +77,20 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       sceneDocument: document,
       worldRevision: s.worldRevision + 1,
     })),
-  setSelection: (id) => set({ selection: id }),
+  setSelection: (id) =>
+    set((state) => {
+      if (id || state.transformTool === 'hand') {
+        return { selection: id }
+      }
+      return { selection: id, transformTool: 'hand' }
+    }),
   setWorld: (world) => set((s) => ({ world, worldRevision: s.worldRevision + 1 })),
   setMode: (mode) => set({ mode }),
-  setTransformTool: (tool) => set({ transformTool: tool }),
+  setTransformTool: (tool) => {
+    const state = get()
+    if (!canActivateTransformTool(tool, state)) return
+    set({ transformTool: tool })
+  },
   setViewportCameraEntityId: (id) => set({ viewportCameraEntityId: id }),
   requestFocusSelection: () => set((s) => ({ focusSelectionRequest: s.focusSelectionRequest + 1 })),
 
@@ -89,6 +109,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         worldRevision: s.worldRevision + 1,
         playSnapshot: null,
         selection: null,
+        transformTool: 'hand',
       }))
     } else {
       set({ mode: 'edit' })

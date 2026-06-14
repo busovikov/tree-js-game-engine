@@ -1,5 +1,5 @@
 import type { TransformTool } from '../store/editor-store.js'
-import { useEditorStore } from '../store/editor-store.js'
+import { canActivateTransformTool, useEditorStore } from '../store/editor-store.js'
 
 export const FOCUS_SELECTION_SHORTCUT = 'F'
 
@@ -48,14 +48,8 @@ export function handleTransformToolShortcut(event: KeyboardEvent): boolean {
   const tool = TRANSFORM_TOOL_BY_KEY[key]
   if (!tool) return false
 
-  const { world, mode, selection, viewportCameraEntityId } = useEditorStore.getState()
-  if (!world || mode !== 'edit') return false
-
-  if (tool === 'hand') {
-    if (viewportCameraEntityId) return false
-  } else if (!selection) {
-    return false
-  }
+  const state = useEditorStore.getState()
+  if (!canActivateTransformTool(tool, state)) return false
 
   useEditorStore.getState().setTransformTool(tool)
   event.preventDefault()
