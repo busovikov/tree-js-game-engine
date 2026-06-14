@@ -1,0 +1,168 @@
+.haku-inspector {
+  padding: 12px;
+  background: #252530;
+  height: 100%;
+  overflow: auto;
+  color: #eee;
+}
+
+.haku-inspector--empty {
+  color: #888;
+}
+
+.haku-inspector__entity-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.haku-inspector__name-input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: #1a1a2e;
+  color: #eee;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.haku-inspector__name-input:focus {
+  outline: none;
+  border-color: #3d5afe;
+}
+
+.haku-inspector__name-input:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.haku-inspector__static {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  color: #aaa;
+  font-size: 11px;
+  user-select: none;
+  cursor: pointer;
+}
+
+.haku-inspector__static input {
+  margin: 0;
+  cursor: pointer;
+}
+
+.haku-inspector__static:has(input:disabled) {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.haku-inspector__tags {
+  margin-bottom: 12px;
+}
+
+.haku-inspector__separator {
+  height: 1px;
+  margin: 12px 0;
+  background: #333;
+  border: none;
+}
+
+.haku-inspector__section {
+  margin-bottom: 16px;
+}
+
+.haku-inspector__section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.haku-inspector__section-title {
+  flex: 1;
+  margin: 0;
+  color: #aaa;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.haku-inspector__section-action {
+  font-size: 10px;
+  padding: 2px 8px;
+  background: #333;
+  color: #ccc;
+  border: 1px solid #555;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.haku-inspector__section-action:hover:not(:disabled) {
+  background: #444;
+  color: #fff;
+}
+
+.haku-inspector__section-action:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.haku-inspector__remove-btn {
+  font-size: 10px;
+  padding: 2px 6px;
+  background: #333;
+  color: #aaa;
+  border: 1px solid #555;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.haku-inspector__remove-btn:hover:not(:disabled) {
+  background: #444;
+  color: #fff;
+}
+
+.haku-inspector__remove-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.haku-inspector__add-section {
+  margin-top: 4px;
+}
+
+.haku-inspector__add-title {
+  font-size: 12px;
+  color: #aaa;
+  margin: 0 0 8px;
+}
+
+.haku-inspector__add-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.haku-inspector__add-btn {
+  font-size: 11px;
+  padding: 4px 8px;
+  background: #333;
+  color: #ddd;
+  border: 1px solid #444;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.haku-inspector__add-btn:hover:not(:disabled) {
+  background: #3d3d4a;
+  color: #fff;
+}
+
+.haku-inspector__add-btn--present {
+  background: #2a2a35;
+  color: #666;
+  cursor: default;
+}

@@ -1,0 +1,83 @@
+.haku-tag-fields {
+  width: 100%;
+}
+
+.haku-tag-fields__editor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-height: 28px;
+  padding: 4px 6px;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: #1a1a2e;
+  box-sizing: border-box;
+  cursor: text;
+}
+
+.haku-tag-fields__editor:focus-within {
+  border-color: #5a7ab8;
+}
+
+.haku-tag-fields__editor--disabled {
+  cursor: default;
+}
+
+.haku-tag-fields__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 1px 4px 1px 8px;
+  border: 1px solid #4a5568;
+  border-radius: 12px;
+  background: #2a3040;
+  color: #d6deeb;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.haku-tag-fields__chip-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.haku-tag-fields__chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #9aa5b8;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.haku-tag-fields__chip-remove:hover {
+  background: #3d4658;
+  color: #fff;
+}
+
+.haku-tag-fields__input {
+  flex: 1 1 48px;
+  min-width: 48px;
+  width: auto;
+  padding: 2px 0;
+  border: none;
+  background: transparent;
+  color: #eee;
+  font-size: 12px;
+  outline: none;
+}
+
+.haku-tag-fields__input::placeholder {
+  color: #666;
+}

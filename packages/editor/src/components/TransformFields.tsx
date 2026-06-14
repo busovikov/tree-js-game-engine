@@ -108,23 +108,6 @@ export const TransformFields = memo(function TransformFields({
         step={0.01}
         onChange={(scale) => patch({ scale })}
       />
-
-      <div className="haku-transform-actions">
-        <button
-          type="button"
-          className="haku-transform-reset"
-          disabled={disabled}
-          onClick={() =>
-            patch({
-              position: [0, 0, 0],
-              rotation: [0, 0, 0, 1],
-              scale: [1, 1, 1],
-            })
-          }
-        >
-          Reset
-        </button>
-      </div>
     </div>
   )
 })
