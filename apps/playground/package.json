@@ -10,10 +10,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@haku/engine": "file:../../packages/engine"
+    "@haku/engine": "workspace:*"
   },
   "devDependencies": {
-    "typescript": "^5.9.3",
-    "vite": "^6.4.3"
+    "typescript": "^5.7.2",
+    "vite": "^6.0.3"
   }
 }
