@@ -16,6 +16,8 @@ export function createGeometry(type: MeshGeometryType, params: Record<string, nu
   const p = resolveParams(type, params)
 
   switch (type) {
+    case 'ModelGeometry':
+      return new THREE.BoxGeometry(0.001, 0.001, 0.001)
     case 'BoxGeometry':
       return new THREE.BoxGeometry(p.width, p.height, p.depth)
     case 'SphereGeometry':
@@ -57,9 +59,15 @@ export function applyMaterial(material: THREE.MeshStandardMaterial, data: MeshMa
   material.transparent = data.transparent || data.opacity < 1
 }
 
-export function createMeshFromRenderer(data: MeshRenderer | unknown): THREE.Mesh {
+export function createMeshFromRenderer(data: MeshRenderer | unknown): THREE.Object3D {
   const meshRenderer = normalizeMeshRenderer(data)
-  return new THREE.Mesh(createGeometry(meshRenderer.geometryType, meshRenderer.geometryParams), createMaterial(meshRenderer.material))
+  if (meshRenderer.geometryType === 'ModelGeometry') {
+    return new THREE.Group()
+  }
+  return new THREE.Mesh(
+    createGeometry(meshRenderer.geometryType, meshRenderer.geometryParams),
+    createMaterial(meshRenderer.material),
+  )
 }
 
 export function rebuildMesh(mesh: THREE.Mesh, data: MeshRenderer | unknown): void {

@@ -35,6 +35,11 @@ export class Engine {
     this.backend.attach(world)
   }
 
+  setWorld(world: IWorld): void {
+    this.world = world
+    this.backend.sync.update(world)
+  }
+
   addSystem(system: ISystem): void {
     this.systems.push(system)
     this.systems.sort((a, b) => (a.order ?? 0) - (b.order ?? 0))

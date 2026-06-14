@@ -15,13 +15,30 @@ import {
   createMeshFromRenderer,
   rebuildMesh,
   updateMeshMaterial,
+  applyMaterial,
 } from './mesh-factory.js'
 import { setObjectEditorDimmed } from './editor-visual-dim.js'
+import { countObject3DMeshes, modelLog, modelLogError, modelLogWarn } from './model-log.js'
+import {
+  applyMaterialToObject,
+  loadModelTemplate,
+  setModelAssetResolver,
+  setModelLoadPreparer,
+  setModelResourceResolver,
+  type ModelAssetResolver,
+  type ModelLoadPreparer,
+  type ModelResourceResolver,
+} from './model-loader.js'
+
+const MODEL_ROOT_NAME = 'haku-model-root'
 
 interface EntityRenderState {
   object3d: THREE.Object3D
   meshKey?: string
   visualKey: string
+  modelLoadId?: number
+  loadedModelAsset?: string
+  pendingModelAsset?: string
 }
 
 export class RenderSyncSystem implements ISystem {
@@ -119,7 +136,12 @@ export class RenderSyncSystem implements ISystem {
         state.object3d = this.createObjectForEntity(id)
         state.visualKey = visualKey
         state.meshKey = this.getMeshKey(id)
-      } else {
+        state.loadedModelAsset = undefined
+        state.pendingModelAsset = undefined
+        state.modelLoadId = 0
+      }
+
+      if (this.world.hasComponent(id, MeshRendererComponent)) {
         this.syncMeshVisual(id, state)
       }
 
@@ -253,6 +275,11 @@ export class RenderSyncSystem implements ISystem {
     const meshRenderer = this.world.getComponent(id, MeshRendererComponent)!
     const nextKey = meshRendererKey(meshRenderer)
 
+    if (meshRenderer.geometryType === 'ModelGeometry') {
+      this.syncModelVisual(id, state, meshRenderer, nextKey)
+      return
+    }
+
     if (!(state.object3d instanceof THREE.Mesh)) return
 
     if (state.meshKey === nextKey) {
@@ -262,6 +289,97 @@ export class RenderSyncSystem implements ISystem {
 
     rebuildMesh(state.object3d, meshRenderer)
     state.meshKey = nextKey
+    state.loadedModelAsset = undefined
+  }
+
+  private syncModelVisual(
+    id: EntityId,
+    state: EntityRenderState,
+    meshRenderer: MeshRenderer,
+    meshKey: string,
+  ): void {
+    const modelAsset = meshRenderer.modelAsset.trim()
+    state.meshKey = meshKey
+
+    const existingRoot = state.object3d.getObjectByName(MODEL_ROOT_NAME)
+    if (!modelAsset) {
+      modelLog('sync.clear', { entityId: id.value })
+      existingRoot?.removeFromParent()
+      state.loadedModelAsset = undefined
+      state.pendingModelAsset = undefined
+      return
+    }
+
+    if (state.loadedModelAsset === modelAsset && existingRoot) {
+      modelLog('sync.already-loaded', { entityId: id.value, modelAsset })
+      this.applyRendererMaterial(state.object3d, meshRenderer.material)
+      return
+    }
+
+    if (state.pendingModelAsset === modelAsset) {
+      modelLog('sync.pending', { entityId: id.value, modelAsset, loadId: state.modelLoadId })
+      return
+    }
+
+    state.pendingModelAsset = modelAsset
+    const loadId = (state.modelLoadId ?? 0) + 1
+    state.modelLoadId = loadId
+
+    modelLog('sync.load.start', {
+      entityId: id.value,
+      modelAsset,
+      loadId,
+      previousAsset: state.loadedModelAsset,
+      hadExistingRoot: !!existingRoot,
+    })
+
+    void loadModelTemplate(modelAsset)
+      .then((model) => {
+        if (state.modelLoadId !== loadId || !this.world) {
+          modelLogWarn('sync.load.stale', {
+            entityId: id.value,
+            modelAsset,
+            loadId,
+            currentLoadId: state.modelLoadId,
+            hasWorld: !!this.world,
+          })
+          return
+        }
+
+        state.object3d.getObjectByName(MODEL_ROOT_NAME)?.removeFromParent()
+
+        const wrapper = new THREE.Group()
+        wrapper.name = MODEL_ROOT_NAME
+        wrapper.add(model)
+        state.object3d.add(wrapper)
+        state.loadedModelAsset = modelAsset
+        state.pendingModelAsset = undefined
+
+        const currentRenderer = this.world.getComponent(id, MeshRendererComponent)
+        if (currentRenderer) {
+          this.applyRendererMaterial(state.object3d, currentRenderer.material)
+        }
+        this.tagPickable(state.object3d, id.value)
+        this.applyHierarchyVisualWeight()
+        this.scene.updateMatrixWorld(true)
+
+        modelLog('sync.load.attached', {
+          entityId: id.value,
+          modelAsset,
+          loadId,
+          meshCount: countObject3DMeshes(model),
+        })
+      })
+      .catch((error) => {
+        modelLogError('sync.load.failed', { entityId: id.value, modelAsset, loadId }, error)
+        if (state.modelLoadId === loadId) {
+          state.pendingModelAsset = undefined
+        }
+      })
+  }
+
+  private applyRendererMaterial(object3d: THREE.Object3D, material: MeshRenderer['material']): void {
+    applyMaterialToObject(object3d, (meshMaterial) => applyMaterial(meshMaterial, material))
   }
 
   private getLightData(id: EntityId): Light | null {
@@ -631,6 +749,18 @@ export class ThreeRenderBackend implements IRenderBackend {
 
   setHierarchyFilterHighlight(ids: Set<string> | null): void {
     this.syncSystem.setHierarchyFilterHighlight(ids)
+  }
+
+  setModelAssetResolver(resolver: ModelAssetResolver): void {
+    setModelAssetResolver(resolver)
+  }
+
+  setModelResourceResolver(resolver: ModelResourceResolver | null): void {
+    setModelResourceResolver(resolver)
+  }
+
+  setModelLoadPreparer(preparer: ModelLoadPreparer | null): void {
+    setModelLoadPreparer(preparer)
   }
 
   render(): void {
