@@ -8,6 +8,10 @@ import { useEditorStore } from '../store/editor-store.js'
 import { commitTransformChange, transformsEqual } from '../commands/scene-history.js'
 import { focusSelection } from '../viewport/focus-selection.js'
 import { applyEditorTransformGizmoLayout, applyUniformScaleDamping } from '../viewport/transform-gizmo-config.js'
+import { applyOrbitToolMode } from '../viewport/viewport-orbit.js'
+import { attachCameraLookControls } from '../viewport/viewport-camera-look.js'
+import { SceneCameraGizmos } from '../viewport/scene-camera-gizmos.js'
+import { SceneLightGizmos } from '../viewport/scene-light-gizmos.js'
 
 function refreshGizmo(
   gizmo: TransformControls,
@@ -17,15 +21,28 @@ function refreshGizmo(
     gizmo.detach()
     return
   }
-  gizmo.attach(object)
   object.updateMatrixWorld(true)
+  gizmo.attach(object)
+}
+
+function syncViewportCamera(engine: Engine): void {
+  const { viewportCameraEntityId } = useEditorStore.getState()
+  if (viewportCameraEntityId) {
+    engine.backend.useSceneEntityCamera(viewportCameraEntityId)
+  } else {
+    engine.backend.useEditorViewportCamera()
+  }
 }
 
 export const ViewportPanel = memo(function ViewportPanel() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const engineRef = useRef<Engine | null>(null)
   const orbitRef = useRef<OrbitControls | null>(null)
+  const cameraLookRef = useRef<ReturnType<typeof attachCameraLookControls> | null>(null)
   const gizmoRef = useRef<TransformControls | null>(null)
+  const cameraGizmosRef = useRef<SceneCameraGizmos | null>(null)
+  const lightGizmosRef = useRef<SceneLightGizmos | null>(null)
+  const lastHandledFocusRequest = useRef(0)
   const dragStartTransform = useRef<ReturnType<typeof TransformComponent.schema.parse> | null>(null)
   const uniformScaleDragStart = useRef<THREE.Vector3 | null>(null)
 
@@ -35,6 +52,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
   const selection = useEditorStore((s) => s.selection)
   const mode = useEditorStore((s) => s.mode)
   const transformTool = useEditorStore((s) => s.transformTool)
+  const viewportCameraEntityId = useEditorStore((s) => s.viewportCameraEntityId)
   const focusSelectionRequest = useEditorStore((s) => s.focusSelectionRequest)
 
   useEffect(() => {
@@ -44,20 +62,37 @@ export const ViewportPanel = memo(function ViewportPanel() {
     const engine = new Engine({ canvas })
     engineRef.current = engine
 
-    const camera = engine.backend.getActiveCamera()
-    const orbit = new OrbitControls(camera, canvas)
+    const editorCamera = engine.backend.getEditorCamera()
+    const orbit = new OrbitControls(editorCamera, canvas)
     orbit.enableDamping = true
+    applyOrbitToolMode(orbit, useEditorStore.getState().transformTool)
     orbitRef.current = orbit
 
-    const gizmo = new TransformControls(camera, canvas)
+    cameraLookRef.current = attachCameraLookControls(canvas, editorCamera, orbit, {
+      isEnabled: () => {
+        const { mode, viewportCameraEntityId } = useEditorStore.getState()
+        const activeOrbit = orbitRef.current
+        return mode === 'edit' && !viewportCameraEntityId && !!activeOrbit?.enabled
+      },
+    })
+
+    const gizmo = new TransformControls(editorCamera, canvas)
     gizmo.setSpace('local')
     gizmo.setMode('translate')
     applyEditorTransformGizmoLayout(gizmo)
     gizmo.addEventListener('dragging-changed', (event) => {
-      orbit.enabled = !(event.value as boolean)
+      const { mode, viewportCameraEntityId: viewportId } = useEditorStore.getState()
+      const canOrbit =
+        mode === 'edit' &&
+        !viewportId &&
+        (useEditorStore.getState().transformTool === 'hand' || !(event.value as boolean))
+      orbit.enabled = canOrbit
     })
     engine.backend.threeScene.add(gizmo.getHelper())
     gizmoRef.current = gizmo
+
+    cameraGizmosRef.current = new SceneCameraGizmos()
+    lightGizmosRef.current = new SceneLightGizmos()
 
     const tick = () => {
       orbit.update()
@@ -70,7 +105,10 @@ export const ViewportPanel = memo(function ViewportPanel() {
     const resize = () => {
       const width = canvas.clientWidth
       const height = canvas.clientHeight
-      if (width > 0 && height > 0) engine.backend.resize(width, height)
+      if (width > 0 && height > 0) {
+        engine.backend.resize(width, height)
+        cameraGizmosRef.current?.refreshProjections()
+      }
     }
     const observer = new ResizeObserver(resize)
     observer.observe(canvas)
@@ -78,6 +116,12 @@ export const ViewportPanel = memo(function ViewportPanel() {
 
     return () => {
       observer.disconnect()
+      cameraLookRef.current?.dispose()
+      cameraLookRef.current = null
+      cameraGizmosRef.current?.dispose()
+      cameraGizmosRef.current = null
+      lightGizmosRef.current?.dispose()
+      lightGizmosRef.current = null
       gizmo.dispose()
       orbit.dispose()
       engine.dispose()
@@ -89,16 +133,31 @@ export const ViewportPanel = memo(function ViewportPanel() {
     const engine = engineRef.current
     if (!engine || !world) return
     engine.loadWorld(world, sceneDocument?.prototypes ?? {}, sceneDocument?.prefabs ?? {})
-    const camera = engine.backend.getActiveCamera()
+    syncViewportCamera(engine)
+
     const gizmo = gizmoRef.current
     const orbit = orbitRef.current
-    if (gizmo) gizmo.camera = camera
-    if (orbit) orbit.object = camera
+    if (gizmo) gizmo.camera = engine.backend.getActiveCamera()
+    if (orbit) orbit.object = engine.backend.getEditorCamera()
   }, [world, sceneDocument])
 
   useEffect(() => {
     const engine = engineRef.current
+    if (!engine || !world) return
+
+    syncViewportCamera(engine)
+
     const gizmo = gizmoRef.current
+    const orbit = orbitRef.current
+    if (gizmo) gizmo.camera = engine.backend.getActiveCamera()
+    if (orbit) orbit.object = engine.backend.getEditorCamera()
+  }, [viewportCameraEntityId, world])
+
+  useEffect(() => {
+    const engine = engineRef.current
+    const gizmo = gizmoRef.current
+    const cameraGizmos = cameraGizmosRef.current
+    const lightGizmos = lightGizmosRef.current
     if (!engine || !world || !gizmo) return
 
     engine.backend.sync.update(world)
@@ -107,7 +166,23 @@ export const ViewportPanel = memo(function ViewportPanel() {
       engine.backend.sync.syncEntityTransform(selection)
       refreshGizmo(gizmo, engine.backend.sync.getObject3D(selection))
     }
-  }, [world, worldRevision, selection])
+
+    if (cameraGizmos) {
+      cameraGizmos.sync(world, engine.backend.sync, {
+        visible: mode === 'edit',
+        selectedId: selection?.value ?? null,
+        viewportCameraId: viewportCameraEntityId?.value ?? null,
+        hideActiveViewportFrustum: !!viewportCameraEntityId,
+      })
+    }
+
+    if (lightGizmos) {
+      lightGizmos.sync(world, engine.backend.sync, {
+        visible: mode === 'edit',
+        selectedId: selection?.value ?? null,
+      })
+    }
+  }, [world, worldRevision, selection, mode, viewportCameraEntityId])
 
   useEffect(() => {
     const engine = engineRef.current
@@ -116,31 +191,56 @@ export const ViewportPanel = memo(function ViewportPanel() {
     if (!engine || !gizmo || !orbit) return
 
     const isEdit = mode === 'edit'
-    gizmo.getHelper().visible = isEdit && !!selection
-    orbit.enabled = isEdit
+    const usesEditorCamera = !viewportCameraEntityId
+    const isHandTool = transformTool === 'hand'
 
-    if (selection) {
+    gizmo.getHelper().visible = isEdit && !!selection && !isHandTool
+    orbit.enabled = isEdit && usesEditorCamera
+
+    if (selection && !isHandTool) {
       refreshGizmo(gizmo, engine.backend.sync.getObject3D(selection))
     } else {
       gizmo.detach()
     }
-  }, [selection, mode, world])
+  }, [selection, mode, world, transformTool, viewportCameraEntityId])
 
   useEffect(() => {
-    gizmoRef.current?.setMode(transformTool)
+    const gizmo = gizmoRef.current
+    const orbit = orbitRef.current
+    if (!gizmo || !orbit) return
+
+    applyOrbitToolMode(orbit, transformTool)
+
+    if (transformTool === 'hand') {
+      gizmo.detach()
+      return
+    }
+
+    gizmo.setMode(transformTool)
   }, [transformTool])
 
   useEffect(() => {
     const engine = engineRef.current
     const orbit = orbitRef.current
-    if (!engine || !orbit || !selection || focusSelectionRequest === 0) return
+    if (!engine || !orbit) return
+    if (
+      focusSelectionRequest === 0 ||
+      focusSelectionRequest === lastHandledFocusRequest.current
+    ) {
+      return
+    }
 
-    const object = engine.backend.sync.getObject3D(selection)
-    const camera = engine.backend.getActiveCamera()
-    if (!object || !(camera instanceof THREE.PerspectiveCamera)) return
+    lastHandledFocusRequest.current = focusSelectionRequest
+
+    const selected = useEditorStore.getState().selection
+    if (!selected) return
+
+    const object = engine.backend.sync.getObject3D(selected)
+    const camera = engine.backend.getEditorCamera()
+    if (!object) return
 
     focusSelection(object, camera, orbit)
-  }, [focusSelectionRequest, selection])
+  }, [focusSelectionRequest])
 
   useEffect(() => {
     const gizmo = gizmoRef.current
@@ -180,7 +280,6 @@ export const ViewportPanel = memo(function ViewportPanel() {
     }
 
     const onObjectChange = () => {
-      // Ignore programmatic transform updates from inspector/sync — only live-drag the gizmo.
       if (!gizmo.dragging) return
 
       const sel = useEditorStore.getState().selection
@@ -222,8 +321,8 @@ export const ViewportPanel = memo(function ViewportPanel() {
     }
 
     const onPointerUp = (event: PointerEvent) => {
-      const { mode } = useEditorStore.getState()
-      if (mode !== 'edit') return
+      const { mode, transformTool: tool } = useEditorStore.getState()
+      if (mode !== 'edit' || tool === 'hand') return
 
       const gizmo = gizmoRef.current
       if (gizmo?.dragging || gizmo?.axis) return

@@ -5,7 +5,7 @@ import type { SceneDocument } from '@haku/schema'
 import { globalCommandBus } from '../commands/command-bus.js'
 
 export type EditorMode = 'edit' | 'play'
-export type TransformTool = 'translate' | 'rotate' | 'scale'
+export type TransformTool = 'translate' | 'rotate' | 'scale' | 'hand'
 
 interface EditorState {
   projectRoot: string | null
@@ -16,6 +16,8 @@ interface EditorState {
   selection: EntityId | null
   mode: EditorMode
   transformTool: TransformTool
+  /** When set, viewport renders through this scene camera entity; otherwise editor scene camera. */
+  viewportCameraEntityId: EntityId | null
   focusSelectionRequest: number
   playSnapshot: World | null
   commandRevision: number
@@ -27,6 +29,7 @@ interface EditorState {
   setWorld: (world: World) => void
   setMode: (mode: EditorMode) => void
   setTransformTool: (tool: TransformTool) => void
+  setViewportCameraEntityId: (id: EntityId | null) => void
   requestFocusSelection: () => void
   enterPlayMode: () => void
   exitPlayMode: () => void
@@ -42,6 +45,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   selection: null,
   mode: 'edit',
   transformTool: 'translate',
+  viewportCameraEntityId: null,
   focusSelectionRequest: 0,
   playSnapshot: null,
   commandRevision: 0,
@@ -55,6 +59,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       world,
       worldRevision: s.worldRevision + 1,
       selection: null,
+      viewportCameraEntityId: null,
     }))
   },
   setSceneDocument: (document) =>
@@ -66,6 +71,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setWorld: (world) => set((s) => ({ world, worldRevision: s.worldRevision + 1 })),
   setMode: (mode) => set({ mode }),
   setTransformTool: (tool) => set({ transformTool: tool }),
+  setViewportCameraEntityId: (id) => set({ viewportCameraEntityId: id }),
   requestFocusSelection: () => set((s) => ({ focusSelectionRequest: s.focusSelectionRequest + 1 })),
 
   enterPlayMode: () => {

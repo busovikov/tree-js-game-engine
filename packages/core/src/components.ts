@@ -30,7 +30,7 @@ export const CameraComponent = {
 export const LightComponent = {
   id: 'Light',
   schema: LightSchema,
-  defaults: () => ({ type: 'directional' as const, color: '#ffffff', intensity: 1 }),
+  defaults: () => LightSchema.parse({ type: 'directional' }),
 } satisfies ComponentType<Light>
 
 export const MeshRendererComponent = {

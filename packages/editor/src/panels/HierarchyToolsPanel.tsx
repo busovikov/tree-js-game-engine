@@ -45,6 +45,20 @@ function ScaleIcon() {
   )
 }
 
+function HandIcon() {
+  return (
+    <ToolIcon>
+      <path
+        d="M7 11V7a1.5 1.5 0 1 1 3 0v4M10 11V6.5a1.5 1.5 0 1 1 3 0V11M13 11V7.5a1.5 1.5 0 1 1 3 0v6.5a5 5 0 0 1-5 5h-1a4 4 0 0 1-4-4v-3.5"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </ToolIcon>
+  )
+}
+
 function ToolButton({
   title,
   active,
@@ -76,11 +90,13 @@ export const HierarchyToolsPanel = memo(function HierarchyToolsPanel() {
   const mode = useEditorStore((s) => s.mode)
   const selection = useEditorStore((s) => s.selection)
   const world = useEditorStore((s) => s.world)
+  const viewportCameraEntityId = useEditorStore((s) => s.viewportCameraEntityId)
   const transformTool = useEditorStore((s) => s.transformTool)
   const setTransformTool = useEditorStore((s) => s.setTransformTool)
   const requestFocusSelection = useEditorStore((s) => s.requestFocusSelection)
 
   const canUse = !!world && mode === 'edit' && !!selection
+  const canPan = !!world && mode === 'edit' && !viewportCameraEntityId
 
   const tools: Array<{ tool: TransformTool; title: string; icon: ReactNode }> = [
     { tool: 'translate', title: 'Move', icon: <MoveIcon /> },
@@ -92,6 +108,15 @@ export const HierarchyToolsPanel = memo(function HierarchyToolsPanel() {
     <div className="haku-hierarchy-tools" aria-label="Object tools">
       <ToolButton title="Focus selection" disabled={!canUse} onClick={requestFocusSelection}>
         <FocusIcon />
+      </ToolButton>
+
+      <ToolButton
+        title="Hand (pan camera)"
+        active={transformTool === 'hand'}
+        disabled={!canPan}
+        onClick={() => setTransformTool('hand')}
+      >
+        <HandIcon />
       </ToolButton>
 
       {tools.map(({ tool, title, icon }) => (

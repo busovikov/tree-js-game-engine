@@ -1,5 +1,6 @@
 import { memo, useCallback } from 'react'
 import type { EntityId } from '@haku/core'
+import { CameraComponent } from '@haku/core'
 import { useEditorStore } from '../store/editor-store.js'
 import { createEntity, deleteEntity } from '../commands/world-commands.js'
 
@@ -15,33 +16,46 @@ function EntityNode({ id, depth }: { id: EntityId; depth: number }) {
   const worldRevision = useEditorStore((s) => s.worldRevision)
   const world = useEditorStore((s) => s.world)
   const selected = useEditorStore((s) => s.selection?.value === id.value)
+  const viewportCameraEntityId = useEditorStore((s) => s.viewportCameraEntityId)
   const setSelection = useEditorStore((s) => s.setSelection)
+  const setViewportCameraEntityId = useEditorStore((s) => s.setViewportCameraEntityId)
 
   if (!world) return null
 
   void worldRevision
   const name = world.getEntityName(id) ?? 'Entity'
   const children = world.getChildren(id)
+  const isCamera = world.hasComponent(id, CameraComponent)
+  const isGameView = viewportCameraEntityId?.value === id.value
 
   return (
     <div>
-      <button
-        type="button"
-        onClick={() => setSelection(id)}
-        style={{
-          display: 'block',
-          width: '100%',
-          textAlign: 'left',
-          padding: '4px 8px',
-          paddingLeft: 8 + depth * 12,
-          background: selected ? '#3d5afe' : 'transparent',
-          color: '#eee',
-          border: 'none',
-          cursor: 'pointer',
-        }}
+      <div
+        className={`haku-hierarchy-row${selected ? ' haku-hierarchy-row--selected' : ''}`}
+        style={{ paddingLeft: 8 + depth * 12 }}
       >
-        {name}
-      </button>
+        <button type="button" className="haku-hierarchy-row__name" onClick={() => setSelection(id)}>
+          {name}
+        </button>
+        {isCamera && (
+          <button
+            type="button"
+            className={`haku-hierarchy-camera-switch${isGameView ? ' haku-hierarchy-camera-switch--game' : ''}`}
+            title={isGameView ? 'Viewport: game camera — click for scene camera' : 'Viewport: scene camera — click for game camera'}
+            aria-pressed={isGameView}
+            onClick={(event) => {
+              event.stopPropagation()
+              setViewportCameraEntityId(isGameView ? null : id)
+            }}
+          >
+            <span className={!isGameView ? 'haku-hierarchy-camera-switch__label--active' : undefined}>Scene</span>
+            <span className="haku-hierarchy-camera-switch__track" aria-hidden="true">
+              <span className="haku-hierarchy-camera-switch__thumb" />
+            </span>
+            <span className={isGameView ? 'haku-hierarchy-camera-switch__label--active' : undefined}>Game</span>
+          </button>
+        )}
+      </div>
       {children.map((child) => (
         <EntityNode key={child.value} id={child} depth={depth + 1} />
       ))}

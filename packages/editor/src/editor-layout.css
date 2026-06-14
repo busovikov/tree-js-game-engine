@@ -88,3 +88,90 @@
   opacity: 0.35;
   cursor: default;
 }
+
+.haku-hierarchy-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.haku-hierarchy-row--selected .haku-hierarchy-row__name {
+  background: #3d5afe;
+}
+
+.haku-hierarchy-row__name {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  padding: 4px 8px;
+  background: transparent;
+  color: #eee;
+  border: none;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.haku-hierarchy-row__name:hover {
+  background: #323240;
+}
+
+.haku-hierarchy-row--selected .haku-hierarchy-row__name:hover {
+  background: #3d5afe;
+}
+
+.haku-hierarchy-camera-switch {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+  margin-right: 4px;
+  padding: 2px 4px;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: #1e1e28;
+  color: #888;
+  font-size: 9px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.haku-hierarchy-camera-switch:hover {
+  border-color: #666;
+  color: #bbb;
+}
+
+.haku-hierarchy-camera-switch__label--active {
+  color: #fff;
+  font-weight: 600;
+}
+
+.haku-hierarchy-camera-switch__track {
+  position: relative;
+  width: 22px;
+  height: 12px;
+  border-radius: 6px;
+  background: #444;
+}
+
+.haku-hierarchy-camera-switch__thumb {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #c8c8d0;
+  transition: transform 0.15s ease;
+}
+
+.haku-hierarchy-camera-switch--game .haku-hierarchy-camera-switch__thumb {
+  transform: translateX(10px);
+  background: #3d5afe;
+}
+
+.haku-hierarchy-camera-switch--game .haku-hierarchy-camera-switch__track {
+  background: #3d5afe55;
+}
