@@ -1,5 +1,5 @@
-import { mkdir, readdir, writeFile } from 'node:fs/promises'
-import { dirname, join, normalize, relative } from 'node:path'
+import { appendFile, mkdir, readdir, writeFile } from 'node:fs/promises'
+import { dirname, join, normalize, relative, resolve } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Plugin } from 'vite'
 
@@ -93,6 +93,9 @@ export async function writePlaygroundAssetsManifest(assetsRoot: string): Promise
 }
 
 export function playgroundAssetsManifestPlugin(assetsRoot: string): Plugin {
+  const playgroundRoot = resolve(assetsRoot, '../..')
+  const playgroundLogPath = join(playgroundRoot, 'logs/haku.log')
+
   return {
     name: 'playground-assets-manifest',
     async buildStart() {
@@ -110,6 +113,20 @@ export function playgroundAssetsManifestPlugin(assetsRoot: string): Plugin {
           } catch (error) {
             res.statusCode = 500
             res.end(error instanceof Error ? error.message : 'Import failed')
+          }
+          return
+        }
+
+        if (pathname === '/__haku/log/append' && req.method === 'POST') {
+          try {
+            const body = await readRequestBody(req)
+            await mkdir(dirname(playgroundLogPath), { recursive: true })
+            await appendFile(playgroundLogPath, body)
+            res.statusCode = 204
+            res.end()
+          } catch (error) {
+            res.statusCode = 500
+            res.end(error instanceof Error ? error.message : 'Log append failed')
           }
           return
         }

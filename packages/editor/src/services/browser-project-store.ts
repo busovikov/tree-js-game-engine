@@ -42,6 +42,12 @@ class BrowserProjectStore {
     const normalized = normalizePath(path)
     const res = await fetch(url)
     if (!res.ok) throw new Error(`Failed to fetch ${url}`)
+
+    const contentType = res.headers.get('content-type') ?? ''
+    if (contentType.includes('text/html')) {
+      throw new Error(`Asset URL returned HTML instead of a file: ${url}`)
+    }
+
     const isBinary = isBinaryPath(path)
     if (isBinary) {
       const blob = await res.blob()
@@ -49,6 +55,9 @@ class BrowserProjectStore {
       this.registerFile(normalized, { file, isBinary: true })
     } else {
       const content = await res.text()
+      if (content.trimStart().toLowerCase().startsWith('<!doctype') || content.trimStart().startsWith('<html')) {
+        throw new Error(`Asset URL returned HTML instead of a file: ${url}`)
+      }
       this.registerFile(normalized, { content })
     }
   }
@@ -58,9 +67,21 @@ class BrowserProjectStore {
     if (!entry) throw new Error(`File not found: ${path}`)
     if (entry.content) return entry.content
     if (!entry.file) throw new Error(`File not readable: ${path}`)
-    if (entry.isBinary) throw new Error(`Binary file cannot be read as text: ${path}`)
+    if (entry.isBinary && !isGltfJsonPath(path)) {
+      throw new Error(`Binary file cannot be read as text: ${path}`)
+    }
     entry.content = await entry.file.text()
     return entry.content
+  }
+
+  async getBlob(path: string): Promise<Blob> {
+    const entry = this.files.get(normalizePath(path))
+    if (!entry) throw new Error(`File not found: ${path}`)
+    if (entry.file) return entry.file
+    if (entry.content !== undefined) {
+      return new Blob([entry.content], { type: blobTypeForPath(path) })
+    }
+    throw new Error(`File not readable: ${path}`)
   }
 
   writeText(path: string, content: string): void {
@@ -139,7 +160,32 @@ function normalizePath(path: string): string {
 
 function isBinaryPath(path: string): boolean {
   const ext = path.split('.').pop()?.toLowerCase()
-  return ext === 'glb' || ext === 'gltf' || ext === 'bin' || ext === 'png' || ext === 'jpg' || ext === 'jpeg' || ext === 'webp'
+  return ext === 'glb' || ext === 'bin' || ext === 'png' || ext === 'jpg' || ext === 'jpeg' || ext === 'webp'
+}
+
+function isGltfJsonPath(path: string): boolean {
+  return path.split('.').pop()?.toLowerCase() === 'gltf'
+}
+
+function blobTypeForPath(path: string): string {
+  const ext = path.split('.').pop()?.toLowerCase()
+  switch (ext) {
+    case 'gltf':
+      return 'model/gltf+json'
+    case 'glb':
+      return 'model/gltf-binary'
+    case 'bin':
+      return 'application/octet-stream'
+    case 'png':
+      return 'image/png'
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg'
+    case 'webp':
+      return 'image/webp'
+    default:
+      return 'application/octet-stream'
+  }
 }
 
 export const browserProjectStore = new BrowserProjectStore()

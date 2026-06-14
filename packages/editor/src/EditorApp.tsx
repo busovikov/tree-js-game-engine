@@ -1,8 +1,10 @@
 import { memo, useCallback, useEffect, useMemo } from 'react'
+import { setHakuLogSink } from '@haku/engine'
 import { EditorLayout } from './EditorLayout.js'
 import { MenuBar } from './components/MenuBar.js'
 import { useEditorStore } from './store/editor-store.js'
 import { projectService } from './services/project-service.js'
+import { projectLogSink } from './services/project-log-sink.js'
 import { globalCommandBus } from './commands/command-bus.js'
 import {
   createPrefab,
@@ -32,6 +34,11 @@ export const EditorApp = memo(function EditorApp() {
   const commandRevision = useEditorStore((s) => s.commandRevision)
   const enterPlayMode = useEditorStore((s) => s.enterPlayMode)
   const exitPlayMode = useEditorStore((s) => s.exitPlayMode)
+
+  useEffect(() => {
+    setHakuLogSink(projectLogSink)
+    return () => setHakuLogSink(null)
+  }, [])
 
   const onOpenProject = useCallback(async () => {
     try {

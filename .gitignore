@@ -10,3 +10,5 @@ package-lock.json
 apps/*/dist
 packages/*/dist
 apps/playground/public/assets/manifest.json
+logs/haku.log
+**/logs/haku.log

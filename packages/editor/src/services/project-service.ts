@@ -2,7 +2,7 @@ import { HakuProjectSchema, type HakuProject, type PrefabDefinition, type SceneD
 import { loadSceneDocument, saveSceneDocument } from '@haku/serializer'
 import type { EntityId, IWorld } from '@haku/core'
 import { MeshRendererComponent, World, getCoreComponent } from '@haku/core'
-import { clearModelCache, modelLog, modelLogError, modelLogUrl } from '@haku/engine'
+import { clearModelCache, modelLog, modelLogError, modelLogUrl, sceneLog, sceneLogError } from '@haku/engine'
 import { browserProjectStore } from './browser-project-store.js'
 import { isFileSystemAccessSupported, nativeProjectStore } from './native-project-store.js'
 import { loadPersonalizedProjectTemplate } from './project-template.js'
@@ -14,6 +14,8 @@ export interface ProjectFileEntry {
 }
 
 type ProjectStorage = 'memory' | 'native' | 'playground'
+
+const PROJECT_LOG_PATH = 'logs/haku.log'
 
 export class ProjectService {
   private root: string | null = null
@@ -31,6 +33,10 @@ export class ProjectService {
   }
 
   isVirtualFs(): boolean {
+    return this.storage === 'memory' || this.storage === 'playground'
+  }
+
+  private usesBrowserProjectStore(): boolean {
     return this.storage === 'memory' || this.storage === 'playground'
   }
 
@@ -62,6 +68,7 @@ export class ProjectService {
     const manifestRaw = await nativeProjectStore.readText('haku.project.json')
     this.manifest = await this.normalizeManifest(HakuProjectSchema.parse(JSON.parse(manifestRaw)))
 
+    sceneLog('project.open', { source: 'native-create', root: projectHandle.name, entryScene: this.manifest.entryScene })
     const { world, document } = await this.loadScene(this.manifest.entryScene)
     const { useEditorStore } = await import('../store/editor-store.js')
     useEditorStore.getState().setProjectRoot(projectHandle.name)
@@ -85,6 +92,7 @@ export class ProjectService {
     const manifestRaw = await nativeProjectStore.readText('haku.project.json')
     this.manifest = await this.normalizeManifest(HakuProjectSchema.parse(JSON.parse(manifestRaw)))
 
+    sceneLog('project.open', { source: 'native', root: rootName, entryScene: this.manifest.entryScene })
     const { world, document } = await this.loadScene(this.manifest.entryScene)
     const { useEditorStore } = await import('../store/editor-store.js')
     useEditorStore.getState().setProjectRoot(rootName)
@@ -104,6 +112,7 @@ export class ProjectService {
     const manifestRaw = await browserProjectStore.readText('haku.project.json')
     this.manifest = await this.normalizeManifest(HakuProjectSchema.parse(JSON.parse(manifestRaw)))
 
+    sceneLog('project.open', { source: 'memory', root: rootName, entryScene: this.manifest.entryScene })
     const { world, document } = await this.loadScene(this.manifest.entryScene)
     const { useEditorStore } = await import('../store/editor-store.js')
     useEditorStore.getState().setProjectRoot(rootName)
@@ -118,6 +127,7 @@ export class ProjectService {
     this.assetBaseUrl = assetBaseUrl
     this.storage = rootPath === 'playground' ? 'playground' : 'memory'
     this.clearModelAssetCache()
+    sceneLog('project.open', { source: rootPath === 'playground' ? 'playground' : 'manifest', root: rootPath, entryScene: manifest.entryScene })
     return manifest
   }
 
@@ -130,23 +140,83 @@ export class ProjectService {
   }
 
   async loadScene(relativePath: string): Promise<{ world: IWorld; document: SceneDocument }> {
-    let document: SceneDocument
+    sceneLog('load.start', {
+      path: relativePath,
+      storage: this.storage,
+      root: this.root,
+    })
+
+    try {
+      let document: SceneDocument
+
+      if (this.storage === 'native') {
+        const raw = await nativeProjectStore.readText(relativePath)
+        sceneLog('load.read', { path: relativePath, source: 'native', bytes: raw.length })
+        document = JSON.parse(raw) as SceneDocument
+      } else if (this.storage === 'memory' || this.storage === 'playground') {
+        const raw = await browserProjectStore.readText(relativePath)
+        sceneLog('load.read', { path: relativePath, source: 'browser-store', bytes: raw.length })
+        document = JSON.parse(raw) as SceneDocument
+      } else {
+        const url = `${this.assetBaseUrl}/${relativePath}`.replace(/\/+/g, '/')
+        const res = await fetch(url)
+        if (!res.ok) throw new Error(`Failed to load scene: ${url}`)
+        sceneLog('load.read', { path: relativePath, source: 'http', url, status: res.status })
+        document = (await res.json()) as SceneDocument
+      }
+
+      const world = loadSceneDocument(document, { expandPrefabs: false })
+      sceneLog('load.success', {
+        path: relativePath,
+        name: document.metadata?.name,
+        entityCount: world.getAllEntities().length,
+        prefabCount: Object.keys(document.prefabs ?? {}).length,
+        prototypeCount: Object.keys(document.prototypes ?? {}).length,
+      })
+      return { world, document }
+    } catch (error) {
+      sceneLogError('load.failed', { path: relativePath, storage: this.storage }, error)
+      throw error
+    }
+  }
+
+  async appendProjectLog(text: string): Promise<void> {
+    const path = PROJECT_LOG_PATH
 
     if (this.storage === 'native') {
-      const raw = await nativeProjectStore.readText(relativePath)
-      document = JSON.parse(raw) as SceneDocument
-    } else if (this.storage === 'memory' || this.storage === 'playground') {
-      const raw = await browserProjectStore.readText(relativePath)
-      document = JSON.parse(raw) as SceneDocument
-    } else {
-      const url = `${this.assetBaseUrl}/${relativePath}`.replace(/\/+/g, '/')
-      const res = await fetch(url)
-      if (!res.ok) throw new Error(`Failed to load scene: ${url}`)
-      document = (await res.json()) as SceneDocument
+      let existing = ''
+      try {
+        existing = await nativeProjectStore.readText(path)
+      } catch {
+        existing = ''
+      }
+      await nativeProjectStore.writeText(path, existing + text)
+      return
     }
 
-    const world = loadSceneDocument(document, { expandPrefabs: false })
-    return { world, document }
+    if (this.usesBrowserProjectStore()) {
+      let existing = ''
+      if (browserProjectStore.has(path)) {
+        existing = await browserProjectStore.readText(path)
+      }
+      browserProjectStore.writeText(path, existing + text)
+
+      if (this.storage === 'playground') {
+        void this.syncPlaygroundLogToDisk(text)
+      }
+    }
+  }
+
+  private async syncPlaygroundLogToDisk(text: string): Promise<void> {
+    try {
+      await fetch('/__haku/log/append', {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+        body: text,
+      })
+    } catch {
+      // Playground log sync is best-effort during local dev.
+    }
   }
 
   async saveScene(relativePath: string, world: IWorld, document: SceneDocument): Promise<SceneDocument> {
@@ -205,17 +275,30 @@ export class ProjectService {
   async seedVirtualAssetsFromManifest(manifestUrl: string, assetsDir?: string): Promise<void> {
     const root = assetsDir ?? this.getAssetsRoot()
     this.storage = 'playground'
-    const res = await fetch(manifestUrl)
-    if (!res.ok) throw new Error(`Failed to load asset manifest: ${manifestUrl}`)
+    browserProjectStore.clear()
 
-    const manifest = (await res.json()) as { files?: string[] }
-    const files = manifest.files ?? []
-    const baseUrl = manifestUrl.slice(0, manifestUrl.lastIndexOf('/'))
+    sceneLog('assets.seed.start', { manifestUrl, assetsRoot: root })
 
-    for (const relativePath of files) {
-      const path = `${root}/${relativePath.replace(/^\/+/, '')}`
-      const url = `${baseUrl}/${relativePath.replace(/^\/+/, '')}`
-      await browserProjectStore.registerFromUrl(path, url)
+    try {
+      const res = await fetch(manifestUrl)
+      if (!res.ok) throw new Error(`Failed to load asset manifest: ${manifestUrl}`)
+
+      const manifest = (await res.json()) as { files?: string[] }
+      const files = manifest.files ?? []
+      const baseUrl = manifestUrl.slice(0, manifestUrl.lastIndexOf('/'))
+
+      sceneLog('assets.seed.manifest', { manifestUrl, fileCount: files.length })
+
+      for (const relativePath of files) {
+        const path = `${root}/${relativePath.replace(/^\/+/, '')}`
+        const url = `${baseUrl}/${relativePath.replace(/^\/+/, '')}`
+        await browserProjectStore.registerFromUrl(path, url)
+      }
+
+      sceneLog('assets.seed.success', { manifestUrl, fileCount: files.length })
+    } catch (error) {
+      sceneLogError('assets.seed.failed', { manifestUrl, assetsRoot: root }, error)
+      throw error
     }
   }
 
@@ -271,11 +354,6 @@ export class ProjectService {
   }
 
   async prepareModelLoad(relativePath: string): Promise<void> {
-    if (this.storage === 'playground') {
-      modelLog('prepare.skip', { relativePath, storage: this.storage, reason: 'playground-http' })
-      return
-    }
-
     const normalized = relativePath.replace(/^\/+/, '')
     const assetsRoot = this.getAssetsRoot()
     const fullPath = `${assetsRoot}/${normalized}`
@@ -320,13 +398,6 @@ export class ProjectService {
     const assetsRoot = this.getAssetsRoot()
     const fullPath = `${assetsRoot}/${relativePath.replace(/^\/+/, '')}`
 
-    // Playground assets are served over HTTP — required so GLTF can load sibling .bin / textures.
-    if (this.storage === 'playground') {
-      const url = projectPathToUrl(fullPath)
-      modelLog('resolve.asset', { relativePath, fullPath, storage: this.storage, source: 'playground-http', url })
-      return url
-    }
-
     if (this.assetBaseUrl) {
       const url = `${this.assetBaseUrl}/${relativePath}`.replace(/\/+/g, '/')
       modelLog('resolve.asset', { relativePath, fullPath, storage: this.storage, source: 'asset-base-url', url })
@@ -345,7 +416,7 @@ export class ProjectService {
       return cached
     }
 
-    if (this.storage === 'memory' || this.storage === 'native') {
+    if (this.usesBrowserProjectStore()) {
       const blobUrl = this.trySyncModelBlobUrl(fullPath)
       if (blobUrl) {
         modelLog('resolve.asset', {
@@ -377,19 +448,6 @@ export class ProjectService {
       : ''
     const fullPath = `${assetsRoot}/${modelDir}${resourceFileName.replace(/^\/+/, '')}`
 
-    if (this.storage === 'playground') {
-      const url = projectPathToUrl(fullPath)
-      modelLog('resolve.resource', {
-        modelRelativePath,
-        resourceFileName,
-        fullPath,
-        storage: this.storage,
-        source: 'playground-http',
-        url,
-      })
-      return url
-    }
-
     if (this.assetBaseUrl) {
       const relative = relativeToAssetsDir(fullPath, assetsRoot)
       if (relative) {
@@ -419,7 +477,7 @@ export class ProjectService {
       return cached
     }
 
-    if (this.storage === 'memory' || this.storage === 'native') {
+    if (this.usesBrowserProjectStore()) {
       const blobUrl = this.trySyncModelBlobUrl(fullPath)
       if (blobUrl) {
         modelLog('resolve.resource', {
@@ -447,13 +505,18 @@ export class ProjectService {
   }
 
   private trySyncModelBlobUrl(fullPath: string): string | null {
-    if (this.storage === 'memory') {
-      const entry = browserProjectStore.getFile(fullPath)
-      if (entry?.file) {
-        return this.cacheModelBlobUrl(fullPath, entry.file)
-      }
+    if (!this.usesBrowserProjectStore()) return null
+
+    const entry = browserProjectStore.getFile(fullPath)
+    if (!entry) return null
+
+    try {
+      const blob = entry.file ?? (entry.content !== undefined ? new Blob([entry.content]) : null)
+      if (!blob) return null
+      return this.cacheModelBlobUrl(fullPath, blob)
+    } catch {
+      return null
     }
-    return null
   }
 
   private cacheModelBlobUrl(fullPath: string, file: File | Blob): string {
@@ -464,6 +527,12 @@ export class ProjectService {
     return url
   }
 
+  private async importPlaygroundAssetFromHttp(fullPath: string): Promise<void> {
+    const url = projectPathToUrl(fullPath)
+    modelLog('playground.import', { fullPath, url })
+    await browserProjectStore.registerFromUrl(fullPath, url)
+  }
+
   private async ensureModelBlobUrl(fullPath: string): Promise<string> {
     const cached = this.modelBlobUrlCache.get(fullPath)
     if (cached) {
@@ -471,14 +540,25 @@ export class ProjectService {
       return cached
     }
 
-    if (this.storage === 'memory') {
+    if (this.usesBrowserProjectStore()) {
+      if (!browserProjectStore.getFile(fullPath)?.file && this.storage === 'playground') {
+        await this.importPlaygroundAssetFromHttp(fullPath)
+      }
+
       const entry = browserProjectStore.getFile(fullPath)
-      if (!entry?.file) {
-        modelLogError('blob.missing', { fullPath, storage: this.storage, source: 'memory' })
+      if (!entry) {
+        modelLogError('blob.missing', { fullPath, storage: this.storage, source: 'browser-store' })
         throw new Error(`Model asset not found: ${fullPath}`)
       }
-      const url = this.cacheModelBlobUrl(fullPath, entry.file)
-      modelLog('blob.created', { fullPath, storage: this.storage, source: 'memory', url: modelLogUrl(url) })
+
+      const blob = entry.file ?? (entry.content !== undefined ? new Blob([entry.content]) : null)
+      if (!blob) {
+        modelLogError('blob.missing', { fullPath, storage: this.storage, source: 'browser-store' })
+        throw new Error(`Model asset not found: ${fullPath}`)
+      }
+
+      const url = this.cacheModelBlobUrl(fullPath, blob)
+      modelLog('blob.created', { fullPath, storage: this.storage, source: 'browser-store', url: modelLogUrl(url) })
       return url
     }
 
@@ -507,7 +587,7 @@ export class ProjectService {
       return JSON.parse(text) as { buffers?: Array<{ uri?: string }>; images?: Array<{ uri?: string }> }
     }
 
-    if (this.storage === 'memory') {
+    if (this.usesBrowserProjectStore()) {
       const text = await browserProjectStore.readText(fullPath)
       return JSON.parse(text) as { buffers?: Array<{ uri?: string }>; images?: Array<{ uri?: string }> }
     }
@@ -565,7 +645,7 @@ export class ProjectService {
 
 function isBinaryFile(name: string): boolean {
   const ext = name.split('.').pop()?.toLowerCase()
-  return ext === 'glb' || ext === 'gltf' || ext === 'bin' || ext === 'png' || ext === 'jpg' || ext === 'jpeg' || ext === 'webp'
+  return ext === 'glb' || ext === 'bin' || ext === 'png' || ext === 'jpg' || ext === 'jpeg' || ext === 'webp'
 }
 
 export const projectService = new ProjectService()
