@@ -1,9 +1,10 @@
-import { memo, useEffect, useRef } from 'react'
+import { memo, useEffect, useLayoutEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { Engine } from '@haku/engine'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js'
 import { TransformComponent } from '@haku/core'
+import { projectService } from '../services/project-service.js'
 import { useEditorStore } from '../store/editor-store.js'
 import { commitTransformChange, transformsEqual } from '../commands/scene-history.js'
 import { computeHierarchyFilterSets } from '../hierarchy/entity-filter.js'
@@ -63,7 +64,18 @@ export const ViewportPanel = memo(function ViewportPanel() {
     if (!canvas) return
 
     const engine = new Engine({ canvas })
+    engine.backend.setModelAssetResolver((path) => projectService.resolveModelAssetUrl(path))
+    engine.backend.setModelResourceResolver((modelPath, resource) =>
+      projectService.resolveModelResourceUrl(modelPath, resource),
+    )
+    engine.backend.setModelLoadPreparer((path) => projectService.prepareModelLoad(path))
     engineRef.current = engine
+
+    const unsubscribeWorld = useEditorStore.subscribe((state, prev) => {
+      if (state.world !== prev.world || state.worldRevision !== prev.worldRevision) {
+        if (state.world) engine.setWorld(state.world)
+      }
+    })
 
     const editorCamera = engine.backend.getEditorCamera()
     const orbit = new OrbitControls(editorCamera, canvas)
@@ -118,6 +130,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
     resize()
 
     return () => {
+      unsubscribeWorld()
       observer.disconnect()
       cameraLookRef.current?.dispose()
       cameraLookRef.current = null
@@ -156,14 +169,18 @@ export const ViewportPanel = memo(function ViewportPanel() {
     if (orbit) orbit.object = engine.backend.getEditorCamera()
   }, [viewportCameraEntityId, world])
 
+  useLayoutEffect(() => {
+    const engine = engineRef.current
+    if (!engine || !world) return
+    engine.setWorld(world)
+  }, [world, worldRevision])
+
   useEffect(() => {
     const engine = engineRef.current
     const gizmo = gizmoRef.current
     const cameraGizmos = cameraGizmosRef.current
     const lightGizmos = lightGizmosRef.current
     if (!engine || !world || !gizmo) return
-
-    engine.backend.sync.update(world)
 
     if (selection) {
       engine.backend.sync.syncEntityTransform(selection)

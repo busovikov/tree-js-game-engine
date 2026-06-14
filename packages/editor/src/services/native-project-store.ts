@@ -62,9 +62,13 @@ class NativeProjectStore {
   }
 
   async readText(path: string): Promise<string> {
-    const fileHandle = await this.getFileHandle(path)
-    const file = await fileHandle.getFile()
+    const file = await this.getFile(path)
     return file.text()
+  }
+
+  async getFile(path: string): Promise<File> {
+    const fileHandle = await this.getFileHandle(path)
+    return fileHandle.getFile()
   }
 
   async writeText(path: string, content: string): Promise<void> {

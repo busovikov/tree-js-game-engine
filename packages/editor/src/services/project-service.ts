@@ -1,7 +1,8 @@
-import { HakuProjectSchema, type HakuProject, type PrefabDefinition, type SceneDocument, DEFAULT_ASSETS_DIR } from '@haku/schema'
+import { HakuProjectSchema, type HakuProject, type PrefabDefinition, type SceneDocument, DEFAULT_ASSETS_DIR, projectPathToUrl, relativeToAssetsDir } from '@haku/schema'
 import { loadSceneDocument, saveSceneDocument } from '@haku/serializer'
 import type { EntityId, IWorld } from '@haku/core'
 import { MeshRendererComponent, World, getCoreComponent } from '@haku/core'
+import { clearModelCache, modelLog, modelLogError, modelLogUrl } from '@haku/engine'
 import { browserProjectStore } from './browser-project-store.js'
 import { isFileSystemAccessSupported, nativeProjectStore } from './native-project-store.js'
 import { loadPersonalizedProjectTemplate } from './project-template.js'
@@ -19,6 +20,7 @@ export class ProjectService {
   private manifest: HakuProject | null = null
   private assetBaseUrl = ''
   private storage: ProjectStorage = 'memory'
+  private modelBlobUrlCache = new Map<string, string>()
 
   isFileSystemAccessSupported(): boolean {
     return isFileSystemAccessSupported()
@@ -55,6 +57,7 @@ export class ProjectService {
     this.storage = 'native'
     this.root = projectHandle.name
     this.assetBaseUrl = ''
+    this.clearModelAssetCache()
 
     const manifestRaw = await nativeProjectStore.readText('haku.project.json')
     this.manifest = await this.normalizeManifest(HakuProjectSchema.parse(JSON.parse(manifestRaw)))
@@ -77,6 +80,7 @@ export class ProjectService {
     this.storage = 'native'
     this.root = rootName
     this.assetBaseUrl = ''
+    this.clearModelAssetCache()
 
     const manifestRaw = await nativeProjectStore.readText('haku.project.json')
     this.manifest = await this.normalizeManifest(HakuProjectSchema.parse(JSON.parse(manifestRaw)))
@@ -95,6 +99,7 @@ export class ProjectService {
     this.storage = 'memory'
     this.root = rootName
     this.assetBaseUrl = ''
+    this.clearModelAssetCache()
 
     const manifestRaw = await browserProjectStore.readText('haku.project.json')
     this.manifest = await this.normalizeManifest(HakuProjectSchema.parse(JSON.parse(manifestRaw)))
@@ -112,6 +117,7 @@ export class ProjectService {
     this.manifest = manifest
     this.assetBaseUrl = assetBaseUrl
     this.storage = rootPath === 'playground' ? 'playground' : 'memory'
+    this.clearModelAssetCache()
     return manifest
   }
 
@@ -253,6 +259,285 @@ export class ProjectService {
 
   getAssetsRoot(): string {
     return this.manifest?.assetsDir ?? DEFAULT_ASSETS_DIR
+  }
+
+  clearModelAssetCache(): void {
+    modelLog('cache.clear', { entries: this.modelBlobUrlCache.size })
+    for (const url of this.modelBlobUrlCache.values()) {
+      URL.revokeObjectURL(url)
+    }
+    this.modelBlobUrlCache.clear()
+    clearModelCache()
+  }
+
+  async prepareModelLoad(relativePath: string): Promise<void> {
+    if (this.storage === 'playground') {
+      modelLog('prepare.skip', { relativePath, storage: this.storage, reason: 'playground-http' })
+      return
+    }
+
+    const normalized = relativePath.replace(/^\/+/, '')
+    const assetsRoot = this.getAssetsRoot()
+    const fullPath = `${assetsRoot}/${normalized}`
+
+    modelLog('prepare.start', { relativePath, fullPath, storage: this.storage, assetsRoot })
+
+    await this.ensureModelBlobUrl(fullPath)
+
+    const ext = normalized.split('.').pop()?.toLowerCase()
+    if (ext !== 'gltf') {
+      modelLog('prepare.done', { relativePath, format: ext ?? 'unknown', resources: 0 })
+      return
+    }
+
+    const gltfJson = await this.readModelGltfJson(fullPath)
+    const modelDir = normalized.includes('/')
+      ? normalized.slice(0, normalized.lastIndexOf('/') + 1)
+      : ''
+
+    const uris = new Set<string>()
+    for (const buffer of gltfJson.buffers ?? []) {
+      if (typeof buffer.uri === 'string' && buffer.uri && !buffer.uri.startsWith('data:')) {
+        uris.add(buffer.uri)
+      }
+    }
+    for (const image of gltfJson.images ?? []) {
+      if (typeof image.uri === 'string' && image.uri && !image.uri.startsWith('data:')) {
+        uris.add(image.uri)
+      }
+    }
+
+    modelLog('prepare.gltf-resources', { relativePath, resources: [...uris] })
+
+    await Promise.all(
+      [...uris].map((uri) => this.ensureModelBlobUrl(`${assetsRoot}/${modelDir}${uri}`)),
+    )
+
+    modelLog('prepare.done', { relativePath, format: 'gltf', resources: uris.size })
+  }
+
+  resolveModelAssetUrl(relativePath: string): string {
+    const assetsRoot = this.getAssetsRoot()
+    const fullPath = `${assetsRoot}/${relativePath.replace(/^\/+/, '')}`
+
+    // Playground assets are served over HTTP — required so GLTF can load sibling .bin / textures.
+    if (this.storage === 'playground') {
+      const url = projectPathToUrl(fullPath)
+      modelLog('resolve.asset', { relativePath, fullPath, storage: this.storage, source: 'playground-http', url })
+      return url
+    }
+
+    if (this.assetBaseUrl) {
+      const url = `${this.assetBaseUrl}/${relativePath}`.replace(/\/+/g, '/')
+      modelLog('resolve.asset', { relativePath, fullPath, storage: this.storage, source: 'asset-base-url', url })
+      return url
+    }
+
+    const cached = this.modelBlobUrlCache.get(fullPath)
+    if (cached) {
+      modelLog('resolve.asset', {
+        relativePath,
+        fullPath,
+        storage: this.storage,
+        source: 'blob-cache',
+        url: modelLogUrl(cached),
+      })
+      return cached
+    }
+
+    if (this.storage === 'memory' || this.storage === 'native') {
+      const blobUrl = this.trySyncModelBlobUrl(fullPath)
+      if (blobUrl) {
+        modelLog('resolve.asset', {
+          relativePath,
+          fullPath,
+          storage: this.storage,
+          source: 'blob-sync',
+          url: modelLogUrl(blobUrl),
+        })
+        return blobUrl
+      }
+    }
+
+    const fallback = projectPathToUrl(fullPath)
+    modelLog('resolve.asset', {
+      relativePath,
+      fullPath,
+      storage: this.storage,
+      source: 'http-fallback',
+      url: fallback,
+    })
+    return fallback
+  }
+
+  resolveModelResourceUrl(modelRelativePath: string, resourceFileName: string): string {
+    const assetsRoot = this.getAssetsRoot()
+    const modelDir = modelRelativePath.includes('/')
+      ? modelRelativePath.slice(0, modelRelativePath.lastIndexOf('/') + 1)
+      : ''
+    const fullPath = `${assetsRoot}/${modelDir}${resourceFileName.replace(/^\/+/, '')}`
+
+    if (this.storage === 'playground') {
+      const url = projectPathToUrl(fullPath)
+      modelLog('resolve.resource', {
+        modelRelativePath,
+        resourceFileName,
+        fullPath,
+        storage: this.storage,
+        source: 'playground-http',
+        url,
+      })
+      return url
+    }
+
+    if (this.assetBaseUrl) {
+      const relative = relativeToAssetsDir(fullPath, assetsRoot)
+      if (relative) {
+        const url = `${this.assetBaseUrl}/${relative}`.replace(/\/+/g, '/')
+        modelLog('resolve.resource', {
+          modelRelativePath,
+          resourceFileName,
+          fullPath,
+          storage: this.storage,
+          source: 'asset-base-url',
+          url,
+        })
+        return url
+      }
+    }
+
+    const cached = this.modelBlobUrlCache.get(fullPath)
+    if (cached) {
+      modelLog('resolve.resource', {
+        modelRelativePath,
+        resourceFileName,
+        fullPath,
+        storage: this.storage,
+        source: 'blob-cache',
+        url: modelLogUrl(cached),
+      })
+      return cached
+    }
+
+    if (this.storage === 'memory' || this.storage === 'native') {
+      const blobUrl = this.trySyncModelBlobUrl(fullPath)
+      if (blobUrl) {
+        modelLog('resolve.resource', {
+          modelRelativePath,
+          resourceFileName,
+          fullPath,
+          storage: this.storage,
+          source: 'blob-sync',
+          url: modelLogUrl(blobUrl),
+        })
+        return blobUrl
+      }
+    }
+
+    const fallback = projectPathToUrl(fullPath)
+    modelLog('resolve.resource', {
+      modelRelativePath,
+      resourceFileName,
+      fullPath,
+      storage: this.storage,
+      source: 'http-fallback',
+      url: fallback,
+    })
+    return fallback
+  }
+
+  private trySyncModelBlobUrl(fullPath: string): string | null {
+    if (this.storage === 'memory') {
+      const entry = browserProjectStore.getFile(fullPath)
+      if (entry?.file) {
+        return this.cacheModelBlobUrl(fullPath, entry.file)
+      }
+    }
+    return null
+  }
+
+  private cacheModelBlobUrl(fullPath: string, file: File | Blob): string {
+    const existing = this.modelBlobUrlCache.get(fullPath)
+    if (existing) return existing
+    const url = URL.createObjectURL(file)
+    this.modelBlobUrlCache.set(fullPath, url)
+    return url
+  }
+
+  private async ensureModelBlobUrl(fullPath: string): Promise<string> {
+    const cached = this.modelBlobUrlCache.get(fullPath)
+    if (cached) {
+      modelLog('blob.cache-hit', { fullPath, storage: this.storage, url: modelLogUrl(cached) })
+      return cached
+    }
+
+    if (this.storage === 'memory') {
+      const entry = browserProjectStore.getFile(fullPath)
+      if (!entry?.file) {
+        modelLogError('blob.missing', { fullPath, storage: this.storage, source: 'memory' })
+        throw new Error(`Model asset not found: ${fullPath}`)
+      }
+      const url = this.cacheModelBlobUrl(fullPath, entry.file)
+      modelLog('blob.created', { fullPath, storage: this.storage, source: 'memory', url: modelLogUrl(url) })
+      return url
+    }
+
+    if (this.storage === 'native') {
+      const file = await nativeProjectStore.getFile(fullPath)
+      const url = this.cacheModelBlobUrl(fullPath, file)
+      modelLog('blob.created', {
+        fullPath,
+        storage: this.storage,
+        source: 'native',
+        url: modelLogUrl(url),
+        bytes: file.size,
+      })
+      return url
+    }
+
+    modelLogError('blob.unsupported-storage', { fullPath, storage: this.storage })
+    throw new Error(`Cannot load model asset: ${fullPath}`)
+  }
+
+  private async readModelGltfJson(
+    fullPath: string,
+  ): Promise<{ buffers?: Array<{ uri?: string }>; images?: Array<{ uri?: string }> }> {
+    if (this.storage === 'native') {
+      const text = await nativeProjectStore.readText(fullPath)
+      return JSON.parse(text) as { buffers?: Array<{ uri?: string }>; images?: Array<{ uri?: string }> }
+    }
+
+    if (this.storage === 'memory') {
+      const text = await browserProjectStore.readText(fullPath)
+      return JSON.parse(text) as { buffers?: Array<{ uri?: string }>; images?: Array<{ uri?: string }> }
+    }
+
+    throw new Error(`Cannot read glTF: ${fullPath}`)
+  }
+
+  async listModelAssets(): Promise<string[]> {
+    if (!this.manifest) return []
+
+    const assetsRoot = this.getAssetsRoot()
+    const models: string[] = []
+    const queue = [assetsRoot]
+
+    while (queue.length > 0) {
+      const dir = queue.shift()!
+      const entries = await this.listDirectory(dir)
+      for (const entry of entries) {
+        if (entry.isDirectory) {
+          queue.push(entry.path)
+          continue
+        }
+        const ext = entry.name.split('.').pop()?.toLowerCase()
+        if (ext !== 'glb' && ext !== 'gltf') continue
+        const relative = relativeToAssetsDir(entry.path, assetsRoot)
+        if (relative) models.push(relative)
+      }
+    }
+
+    return models.sort((a, b) => a.localeCompare(b))
   }
 
   /** Upgrade legacy `assets/` manifest paths to on-disk `public/assets/`. */
