@@ -92,18 +92,6 @@ export const EditorApp = memo(function EditorApp() {
 
     try {
       await projectService.saveScene(scenePath, world, sceneDocument)
-
-      if (projectService.usesNativeFileSystem()) return
-
-      const saved = useEditorStore.getState().sceneDocument
-      if (!saved) return
-      const blob = new Blob([JSON.stringify(saved, null, 2)], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = scenePath.split('/').pop() ?? 'scene.scene.json'
-      a.click()
-      URL.revokeObjectURL(url)
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to save scene')
     }

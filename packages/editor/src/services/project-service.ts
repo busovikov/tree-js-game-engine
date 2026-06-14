@@ -223,11 +223,18 @@ export class ProjectService {
     const saved = saveSceneDocument(world, document.metadata, document.prototypes, document.prefabs)
     const json = JSON.stringify(saved, null, 2) + '\n'
 
+    sceneLog('save.start', { path: relativePath, storage: this.storage })
+
     if (this.storage === 'native') {
       await nativeProjectStore.writeText(relativePath, json)
     } else if (this.storage === 'memory' || this.storage === 'playground') {
       browserProjectStore.writeText(relativePath, json)
+      if (this.storage === 'playground') {
+        await this.writePlaygroundFileToDisk(relativePath, json)
+      }
     }
+
+    sceneLog('save.success', { path: relativePath, storage: this.storage, bytes: json.length })
 
     const { useEditorStore } = await import('../store/editor-store.js')
     useEditorStore.getState().setScene(relativePath, saved, world as World)
@@ -319,16 +326,7 @@ export class ProjectService {
 
     if (this.storage !== 'playground') return
 
-    const res = await fetch('/__haku/assets/import', {
-      method: 'POST',
-      headers: { 'X-Haku-Asset-Path': relativePath },
-      body: file,
-    })
-
-    if (!res.ok) {
-      const message = await res.text()
-      throw new Error(message || `Failed to write asset to disk: ${relativePath}`)
-    }
+    await this.writePlaygroundFileToDisk(relativePath, file)
   }
 
   /** @deprecated Use importAsset */
@@ -525,6 +523,19 @@ export class ProjectService {
     const url = URL.createObjectURL(file)
     this.modelBlobUrlCache.set(fullPath, url)
     return url
+  }
+
+  private async writePlaygroundFileToDisk(relativePath: string, body: string | Blob): Promise<void> {
+    const res = await fetch('/__haku/assets/import', {
+      method: 'POST',
+      headers: { 'X-Haku-Asset-Path': relativePath },
+      body: typeof body === 'string' ? new Blob([body], { type: 'application/json' }) : body,
+    })
+
+    if (!res.ok) {
+      const message = await res.text()
+      throw new Error(message || `Failed to write file to disk: ${relativePath}`)
+    }
   }
 
   private async importPlaygroundAssetFromHttp(fullPath: string): Promise<void> {
