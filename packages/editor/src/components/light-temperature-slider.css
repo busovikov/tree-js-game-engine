@@ -1,0 +1,121 @@
+.light-temperature {
+  display: grid;
+  grid-template-columns: 88px 52px 1fr 16px;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.light-temperature__label {
+  color: #aaa;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.light-temperature__value {
+  width: 52px;
+  box-sizing: border-box;
+  background: #1a1a2e;
+  color: #eee;
+  border: 1px solid #444;
+  border-radius: 3px;
+  padding: 3px 4px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.light-temperature__value:focus {
+  outline: none;
+  border-color: #3d5afe;
+}
+
+.light-temperature__unit {
+  color: #888;
+  font-size: 11px;
+}
+
+.light-temperature__track {
+  position: relative;
+  height: 22px;
+}
+
+.light-temperature__gradient {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 9px;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    #ff5a00 0%,
+    #ffb347 18%,
+    #fff4e8 38%,
+    #ffffff 52%,
+    #dbe8ff 72%,
+    #9eb8ff 100%
+  );
+  pointer-events: none;
+}
+
+.light-temperature__swatch {
+  position: absolute;
+  top: 5px;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  border-radius: 50%;
+  border: 1px solid #222;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+}
+
+.light-temperature__slider {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 22px;
+  margin: 0;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.light-temperature__slider::-webkit-slider-runnable-track {
+  height: 4px;
+  margin-top: 9px;
+  background: transparent;
+  border-radius: 2px;
+}
+
+.light-temperature__slider::-moz-range-track {
+  height: 4px;
+  background: transparent;
+  border-radius: 2px;
+}
+
+.light-temperature__slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: -4px;
+  border-radius: 50%;
+  border: 1px solid #222;
+  background: #f0f0f0;
+  cursor: ew-resize;
+}
+
+.light-temperature__slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid #222;
+  background: #f0f0f0;
+  cursor: ew-resize;
+}
+
+.light-temperature__slider:disabled {
+  opacity: 0.45;
+  cursor: default;
+}

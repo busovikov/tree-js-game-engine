@@ -35,6 +35,7 @@ export const LightTypeSchema = z.enum(['directional', 'point', 'spot'])
 const LightBaseSchema = z.object({
   color: z.string().default('#ffffff'),
   intensity: z.number().default(1),
+  colorTemperature: z.number().min(1000).max(12000).optional(),
 })
 
 export const DirectionalLightDataSchema = LightBaseSchema.extend({
@@ -70,6 +71,7 @@ export const SpotLightDataSchema = LightBaseSchema.extend({
     type: 'spot' as const,
     color: data.color,
     intensity: data.intensity,
+    colorTemperature: data.colorTemperature,
     distance: data.distance,
     decay: data.decay,
     outerAngle,
@@ -99,6 +101,15 @@ export function spotToThreeCone(spot: SpotLight): { angleRad: number; penumbra: 
     spot.outerAngle > 0 ? Math.min(1, Math.max(0, 1 - spot.innerAngle / spot.outerAngle)) : 0
   return { angleRad, penumbra }
 }
+
+export {
+  LIGHT_TEMPERATURE_DEFAULT,
+  LIGHT_TEMPERATURE_MAX,
+  LIGHT_TEMPERATURE_MIN,
+  kelvinToHex,
+  kelvinToRgb,
+  resolveLightColor,
+} from './light-color.js'
 
 import { MeshRendererSchema } from './mesh.js'
 

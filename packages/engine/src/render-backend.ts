@@ -8,7 +8,7 @@ import {
   TransformComponent,
 } from '@haku/core'
 import type { Light, MeshRenderer, PrefabDefinition, Transform } from '@haku/schema'
-import { LightSchema, meshRendererKey, spotToThreeCone } from '@haku/schema'
+import { LightSchema, meshRendererKey, resolveLightColor, spotToThreeCone } from '@haku/schema'
 import * as THREE from 'three'
 import {
   createMeshFromRenderer,
@@ -243,15 +243,16 @@ export class RenderSyncSystem implements ISystem {
   }
 
   private createThreeLight(light: Light): THREE.Light {
+    const color = resolveLightColor(light)
     switch (light.type) {
       case 'point': {
-        const point = new THREE.PointLight(light.color, light.intensity, light.distance, light.decay)
+        const point = new THREE.PointLight(color, light.intensity, light.distance, light.decay)
         return point
       }
       case 'spot': {
         const { angleRad, penumbra } = spotToThreeCone(light)
         return new THREE.SpotLight(
-          light.color,
+          color,
           light.intensity,
           light.distance,
           angleRad,
@@ -260,7 +261,7 @@ export class RenderSyncSystem implements ISystem {
         )
       }
       case 'directional':
-        return new THREE.DirectionalLight(light.color, light.intensity)
+        return new THREE.DirectionalLight(color, light.intensity)
     }
   }
 
@@ -408,7 +409,7 @@ export class RenderSyncSystem implements ISystem {
     const light = this.findLight(object3d)
     if (!light) return
 
-    light.color.set(lightData.color)
+    light.color.set(resolveLightColor(lightData))
     light.intensity = lightData.intensity
 
     if (light instanceof THREE.PointLight && lightData.type === 'point') {

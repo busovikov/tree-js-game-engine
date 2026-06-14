@@ -1,6 +1,7 @@
 import { memo } from 'react'
-import { LightSchema, type Light } from '@haku/schema'
+import { LightSchema, kelvinToHex, type Light } from '@haku/schema'
 import { AngleRangeSlider } from './AngleRangeSlider.js'
+import { LightTemperatureSlider, LIGHT_TEMPERATURE_DEFAULT } from './LightTemperatureSlider.js'
 import './mesh-renderer-fields.css'
 
 const LIGHT_TYPES: Light['type'][] = ['directional', 'point', 'spot']
@@ -46,7 +47,11 @@ export function normalizeLight(data: unknown): Light {
 }
 
 function switchLightType(current: Light, type: Light['type']): Light {
-  const base = { color: current.color, intensity: current.intensity }
+  const base = {
+    color: current.color,
+    intensity: current.intensity,
+    colorTemperature: current.colorTemperature,
+  }
   switch (type) {
     case 'directional':
       return { ...base, type: 'directional' }
@@ -79,6 +84,20 @@ export const LightFields = memo(function LightFields({
   disabled?: boolean
 }) {
   const patch = (partial: Partial<Light>) => onChange({ ...value, ...partial } as Light)
+  const temperature = value.colorTemperature ?? LIGHT_TEMPERATURE_DEFAULT
+  const displayColor =
+    value.colorTemperature !== undefined ? kelvinToHex(value.colorTemperature) : value.color
+
+  const onTemperatureChange = (colorTemperature: number) => {
+    patch({
+      colorTemperature,
+      color: kelvinToHex(colorTemperature),
+    })
+  }
+
+  const onManualColorChange = (color: string) => {
+    patch({ color, colorTemperature: undefined })
+  }
 
   return (
     <div className="mesh-renderer-fields">
@@ -99,21 +118,27 @@ export const LightFields = memo(function LightFields({
           </select>
         </label>
 
+        <LightTemperatureSlider
+          value={temperature}
+          disabled={disabled}
+          onChange={onTemperatureChange}
+        />
+
         <label className="mesh-field">
           <span className="mesh-field__label">Color</span>
           <input
             type="color"
             className="mesh-field__color"
-            value={value.color}
+            value={displayColor}
             disabled={disabled}
-            onChange={(e) => patch({ color: e.target.value })}
+            onChange={(e) => onManualColorChange(e.target.value)}
           />
           <input
             type="text"
             className="mesh-field__input mesh-field__input--hex"
-            value={value.color}
+            value={displayColor}
             disabled={disabled}
-            onChange={(e) => patch({ color: e.target.value })}
+            onChange={(e) => onManualColorChange(e.target.value)}
           />
         </label>
 
