@@ -42,7 +42,6 @@ export const LightTemperatureSlider = memo(function LightTemperatureSlider({
         className="light-temperature__track"
         style={{ '--thumb-color': thumbColor } as CSSProperties}
       >
-        <div className="light-temperature__gradient" aria-hidden="true" />
         <input
           type="range"
           className="light-temperature__slider"

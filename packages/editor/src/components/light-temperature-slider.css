@@ -35,30 +35,8 @@
 }
 
 .light-temperature__track {
-  --thumb-size: 12px;
-  --track-height: 4px;
-  --track-offset: calc((22px - var(--track-height)) / 2);
   position: relative;
   height: 22px;
-}
-
-.light-temperature__gradient {
-  position: absolute;
-  left: calc(var(--thumb-size) / 2);
-  right: calc(var(--thumb-size) / 2);
-  top: var(--track-offset);
-  height: var(--track-height);
-  border-radius: 2px;
-  background: linear-gradient(
-    to right,
-    #ff5a00 0%,
-    #ffb347 18%,
-    #fff4e8 38%,
-    #ffffff 52%,
-    #dbe8ff 72%,
-    #9eb8ff 100%
-  );
-  pointer-events: none;
 }
 
 .light-temperature__slider {
@@ -69,30 +47,46 @@
   height: 22px;
   margin: 0;
   background: transparent;
+  border: none;
   -webkit-appearance: none;
   appearance: none;
 }
 
 .light-temperature__slider::-webkit-slider-runnable-track {
-  height: var(--track-height);
-  margin-top: var(--track-offset);
-  background: transparent;
+  height: 4px;
+  margin-top: 9px;
   border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    #ff5a00 0%,
+    #ffb347 18%,
+    #fff4e8 38%,
+    #ffffff 52%,
+    #dbe8ff 72%,
+    #9eb8ff 100%
+  );
 }
 
 .light-temperature__slider::-moz-range-track {
-  height: var(--track-height);
-  background: transparent;
+  height: 4px;
   border: none;
   border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    #ff5a00 0%,
+    #ffb347 18%,
+    #fff4e8 38%,
+    #ffffff 52%,
+    #dbe8ff 72%,
+    #9eb8ff 100%
+  );
 }
 
 .light-temperature__slider::-webkit-slider-thumb {
   -webkit-appearance: none;
-  box-sizing: border-box;
-  width: var(--thumb-size);
-  height: var(--thumb-size);
-  margin-top: calc((var(--track-height) - var(--thumb-size)) / 2);
+  width: 12px;
+  height: 12px;
+  margin-top: -4px;
   border-radius: 50%;
   border: 1px solid #222;
   background: var(--thumb-color, #f0f0f0);
@@ -101,9 +95,8 @@
 }
 
 .light-temperature__slider::-moz-range-thumb {
-  box-sizing: border-box;
-  width: var(--thumb-size);
-  height: var(--thumb-size);
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   border: 1px solid #222;
   background: var(--thumb-color, #f0f0f0);
