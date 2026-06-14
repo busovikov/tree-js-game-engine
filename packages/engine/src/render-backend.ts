@@ -5,6 +5,7 @@ import {
   LightComponent,
   MeshRendererComponent,
   PrefabInstanceComponent,
+  StaticComponent,
   TransformComponent,
 } from '@haku/core'
 import type { Light, MeshRenderer, PrefabDefinition, Transform } from '@haku/schema'
@@ -15,6 +16,7 @@ import {
   rebuildMesh,
   updateMeshMaterial,
 } from './mesh-factory.js'
+import { setObjectEditorDimmed } from './editor-visual-dim.js'
 
 interface EntityRenderState {
   object3d: THREE.Object3D
@@ -28,6 +30,7 @@ export class RenderSyncSystem implements ISystem {
   private readonly scene: THREE.Scene
   private prefabs: Map<string, PrefabDefinition> = new Map()
   private world: IWorld | null = null
+  private hierarchyHighlightIds: Set<string> | null = null
 
   constructor(scene: THREE.Scene) {
     this.scene = scene
@@ -47,7 +50,7 @@ export class RenderSyncSystem implements ISystem {
 
   detach(): void {
     for (const state of this.entityStates.values()) {
-      this.scene.remove(state.object3d)
+      state.object3d.removeFromParent()
       this.disposeObject(state.object3d)
     }
     this.entityStates.clear()
@@ -61,6 +64,20 @@ export class RenderSyncSystem implements ISystem {
 
   getObject3D(entityId: EntityId): THREE.Object3D | undefined {
     return this.entityStates.get(entityId.value)?.object3d
+  }
+
+  setHierarchyFilterHighlight(ids: Set<string> | null): void {
+    this.hierarchyHighlightIds = ids
+    this.applyHierarchyVisualWeight()
+  }
+
+  private applyHierarchyVisualWeight(): void {
+    const highlightIds = this.hierarchyHighlightIds
+    const filterActive = highlightIds !== null
+    for (const [id, state] of this.entityStates) {
+      const highlighted = !filterActive || highlightIds.has(id)
+      setObjectEditorDimmed(state.object3d, !highlighted)
+    }
   }
 
   getEntityCamera(entityId: EntityId): THREE.PerspectiveCamera | THREE.OrthographicCamera | undefined {
@@ -96,31 +113,58 @@ export class RenderSyncSystem implements ISystem {
         const object3d = this.createObjectForEntity(id)
         state = { object3d, meshKey: this.getMeshKey(id), visualKey }
         this.entityStates.set(id.value, state)
-        this.scene.add(object3d)
       } else if (state.visualKey !== visualKey) {
-        this.scene.remove(state.object3d)
+        state.object3d.removeFromParent()
         this.disposeObject(state.object3d)
         state.object3d = this.createObjectForEntity(id)
         state.visualKey = visualKey
         state.meshKey = this.getMeshKey(id)
-        this.scene.add(state.object3d)
       } else {
         this.syncMeshVisual(id, state)
       }
 
       this.tagPickable(state.object3d, id.value)
-      this.applyTransform(state.object3d, transform)
+      const isStatic = this.isEntityStatic(id)
+      this.applyTransform(state.object3d, transform, isStatic)
       this.syncLight(id, state.object3d)
       this.syncCamera(id, state.object3d)
     }
 
     for (const [id, state] of this.entityStates) {
       if (!alive.has(id)) {
-        this.scene.remove(state.object3d)
+        state.object3d.removeFromParent()
         this.disposeObject(state.object3d)
         this.entityStates.delete(id)
       }
     }
+
+    this.syncSceneHierarchy()
+    this.applyHierarchyVisualWeight()
+  }
+
+  private syncSceneHierarchy(): void {
+    if (!this.world) return
+
+    for (const id of this.world.getAllEntities()) {
+      const state = this.entityStates.get(id.value)
+      if (!state) continue
+
+      const parentId = this.world.getParent(id)
+      let desiredParent: THREE.Object3D = this.scene
+
+      if (parentId) {
+        const parentState = this.entityStates.get(parentId.value)
+        if (parentState) {
+          desiredParent = parentState.object3d
+        }
+      }
+
+      if (state.object3d.parent !== desiredParent) {
+        desiredParent.add(state.object3d)
+      }
+    }
+
+    this.scene.updateMatrixWorld(true)
   }
 
   private createObjectForEntity(id: EntityId): THREE.Object3D {
@@ -265,10 +309,20 @@ export class RenderSyncSystem implements ISystem {
     }
   }
 
-  private applyTransform(object3d: THREE.Object3D, transform: Transform): void {
+  private isEntityStatic(id: EntityId): boolean {
+    if (!this.world?.hasComponent(id, StaticComponent)) return false
+    return this.world.getComponent(id, StaticComponent)?.isStatic ?? false
+  }
+
+  private applyTransform(object3d: THREE.Object3D, transform: Transform, isStatic: boolean): void {
     object3d.position.set(...transform.position)
     object3d.quaternion.set(...transform.rotation)
     object3d.scale.set(...transform.scale)
+    object3d.matrixAutoUpdate = !isStatic
+    object3d.userData.hakuStatic = isStatic
+    if (isStatic) {
+      object3d.updateMatrix()
+    }
     object3d.updateMatrixWorld(true)
   }
 
@@ -277,7 +331,7 @@ export class RenderSyncSystem implements ISystem {
     const transform = this.world.getComponent(entityId, TransformComponent)
     const state = this.entityStates.get(entityId.value)
     if (!transform || !state) return
-    this.applyTransform(state.object3d, transform)
+    this.applyTransform(state.object3d, transform, this.isEntityStatic(entityId))
   }
 
   pickEntityAt(
@@ -380,7 +434,9 @@ export class RenderSyncSystem implements ISystem {
   private getPickRoots(): THREE.Object3D[] {
     const roots: THREE.Object3D[] = []
     for (const state of this.entityStates.values()) {
-      roots.push(state.object3d)
+      if (state.object3d.parent === this.scene) {
+        roots.push(state.object3d)
+      }
     }
     return roots
   }
@@ -571,6 +627,10 @@ export class ThreeRenderBackend implements IRenderBackend {
 
   setPrefabs(prefabs: Record<string, PrefabDefinition>): void {
     this.syncSystem.setPrefabs(prefabs)
+  }
+
+  setHierarchyFilterHighlight(ids: Set<string> | null): void {
+    this.syncSystem.setHierarchyFilterHighlight(ids)
   }
 
   render(): void {
