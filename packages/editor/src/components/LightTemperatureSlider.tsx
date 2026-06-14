@@ -1,4 +1,4 @@
-import { memo, useCallback } from 'react'
+import { memo, useCallback, type CSSProperties } from 'react'
 import {
   LIGHT_TEMPERATURE_DEFAULT,
   LIGHT_TEMPERATURE_MAX,
@@ -16,15 +16,14 @@ export const LightTemperatureSlider = memo(function LightTemperatureSlider({
   disabled?: boolean
   onChange: (kelvin: number) => void
 }) {
-  const span = LIGHT_TEMPERATURE_MAX - LIGHT_TEMPERATURE_MIN
-  const fillPct = ((value - LIGHT_TEMPERATURE_MIN) / span) * 100
-
   const onSliderChange = useCallback(
     (next: number) => {
       onChange(Math.max(LIGHT_TEMPERATURE_MIN, Math.min(LIGHT_TEMPERATURE_MAX, next)))
     },
     [onChange],
   )
+
+  const thumbColor = kelvinToHex(value)
 
   return (
     <div className="light-temperature">
@@ -39,13 +38,11 @@ export const LightTemperatureSlider = memo(function LightTemperatureSlider({
         disabled={disabled}
         onChange={(e) => onSliderChange(Number(e.target.value))}
       />
-      <div className="light-temperature__track">
+      <div
+        className="light-temperature__track"
+        style={{ '--thumb-color': thumbColor } as CSSProperties}
+      >
         <div className="light-temperature__gradient" aria-hidden="true" />
-        <div
-          className="light-temperature__swatch"
-          style={{ left: `${fillPct}%`, backgroundColor: kelvinToHex(value) }}
-          aria-hidden="true"
-        />
         <input
           type="range"
           className="light-temperature__slider"
