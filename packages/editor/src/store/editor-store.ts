@@ -9,11 +9,11 @@ export type TransformTool = 'translate' | 'rotate' | 'scale' | 'hand'
 
 export function canActivateTransformTool(
   tool: TransformTool,
-  state: Pick<EditorState, 'world' | 'mode' | 'selection' | 'viewportCameraEntityId'>,
+  state: Pick<EditorState, 'world' | 'mode' | 'viewportCameraEntityId'>,
 ): boolean {
   if (!state.world || state.mode !== 'edit') return false
   if (tool === 'hand') return !state.viewportCameraEntityId
-  return !!state.selection
+  return true
 }
 
 interface EditorState {
@@ -53,7 +53,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   worldRevision: 0,
   selection: null,
   mode: 'edit',
-  transformTool: 'hand',
+  transformTool: 'translate',
   viewportCameraEntityId: null,
   focusSelectionRequest: 0,
   playSnapshot: null,
@@ -68,7 +68,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       world,
       worldRevision: s.worldRevision + 1,
       selection: null,
-      transformTool: 'hand',
       viewportCameraEntityId: null,
     }))
   },
@@ -77,13 +76,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       sceneDocument: document,
       worldRevision: s.worldRevision + 1,
     })),
-  setSelection: (id) =>
-    set((state) => {
-      if (id || state.transformTool === 'hand') {
-        return { selection: id }
-      }
-      return { selection: id, transformTool: 'hand' }
-    }),
+  setSelection: (id) => set({ selection: id }),
   setWorld: (world) => set((s) => ({ world, worldRevision: s.worldRevision + 1 })),
   setMode: (mode) => set({ mode }),
   setTransformTool: (tool) => {
@@ -109,7 +102,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         worldRevision: s.worldRevision + 1,
         playSnapshot: null,
         selection: null,
-        transformTool: 'hand',
       }))
     } else {
       set({ mode: 'edit' })

@@ -100,7 +100,7 @@ export const HierarchyToolsPanel = memo(function HierarchyToolsPanel() {
   const setTransformTool = useEditorStore((s) => s.setTransformTool)
   const requestFocusSelection = useEditorStore((s) => s.requestFocusSelection)
 
-  const canUse = !!world && mode === 'edit' && !!selection
+  const canEdit = !!world && mode === 'edit'
   const canPan = !!world && mode === 'edit' && !viewportCameraEntityId
 
   const tools: Array<{ tool: TransformTool; title: string; icon: ReactNode }> = [
@@ -113,7 +113,7 @@ export const HierarchyToolsPanel = memo(function HierarchyToolsPanel() {
     <div className="haku-hierarchy-tools" aria-label="Object tools">
       <ToolButton
         title={formatToolTitle('Focus selection', FOCUS_SELECTION_SHORTCUT)}
-        disabled={!canUse}
+        disabled={!canEdit || !selection}
         onClick={requestFocusSelection}
       >
         <FocusIcon />
@@ -133,7 +133,7 @@ export const HierarchyToolsPanel = memo(function HierarchyToolsPanel() {
           key={tool}
           title={title}
           active={transformTool === tool}
-          disabled={!canUse}
+          disabled={!canEdit}
           onClick={() => setTransformTool(tool)}
         >
           {icon}

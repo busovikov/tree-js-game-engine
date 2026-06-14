@@ -10,11 +10,12 @@ export const TRANSFORM_TOOL_SHORTCUT: Record<TransformTool, string> = {
   scale: 'R',
 }
 
-const TRANSFORM_TOOL_BY_KEY: Record<string, TransformTool> = {
-  q: 'hand',
-  w: 'translate',
-  e: 'rotate',
-  r: 'scale',
+/** Physical key codes — layout-independent (QWERTY labels on any keyboard language). */
+const TRANSFORM_TOOL_BY_CODE: Record<string, TransformTool> = {
+  KeyQ: 'hand',
+  KeyW: 'translate',
+  KeyE: 'rotate',
+  KeyR: 'scale',
 }
 
 export function formatToolTitle(title: string, shortcut: string): string {
@@ -35,9 +36,7 @@ export function handleTransformToolShortcut(event: KeyboardEvent): boolean {
   if (event.metaKey || event.ctrlKey || event.altKey) return false
   if (isEditableTarget(event.target)) return false
 
-  const key = event.key.toLowerCase()
-
-  if (key === FOCUS_SELECTION_SHORTCUT.toLowerCase()) {
+  if (event.code === 'KeyF') {
     const { world, mode, selection } = useEditorStore.getState()
     if (!world || mode !== 'edit' || !selection) return false
     useEditorStore.getState().requestFocusSelection()
@@ -45,7 +44,7 @@ export function handleTransformToolShortcut(event: KeyboardEvent): boolean {
     return true
   }
 
-  const tool = TRANSFORM_TOOL_BY_KEY[key]
+  const tool = TRANSFORM_TOOL_BY_CODE[event.code]
   if (!tool) return false
 
   const state = useEditorStore.getState()
