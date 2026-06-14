@@ -23,16 +23,14 @@
 }
 
 .haku-entity-menu__dropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
+  position: fixed;
   min-width: 180px;
   background: #1e1e28;
   border: 1px solid #444;
   border-radius: 6px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   padding: 4px 0;
-  z-index: 30;
+  z-index: 1000;
 }
 
 .haku-entity-menu__item {
@@ -97,7 +95,7 @@
   border-radius: 6px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   padding: 4px 0;
-  z-index: 31;
+  z-index: 1001;
 }
 
 .haku-entity-menu__submenu:hover .haku-entity-menu__flyout,
