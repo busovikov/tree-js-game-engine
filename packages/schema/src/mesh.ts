@@ -9,10 +9,27 @@ export const MeshGeometryTypeSchema = z.enum([
   'TorusGeometry',
   'RingGeometry',
   'CapsuleGeometry',
+  'ModelGeometry',
 ])
 export type MeshGeometryType = z.infer<typeof MeshGeometryTypeSchema>
 
 export const MESH_GEOMETRY_TYPES = MeshGeometryTypeSchema.options
+
+export const MESH_GEOMETRY_TYPE_LABELS: Record<MeshGeometryType, string> = {
+  BoxGeometry: 'Cube',
+  SphereGeometry: 'Sphere',
+  PlaneGeometry: 'Plane',
+  CylinderGeometry: 'Cylinder',
+  ConeGeometry: 'Cone',
+  TorusGeometry: 'Torus',
+  RingGeometry: 'Ring',
+  CapsuleGeometry: 'Capsule',
+  ModelGeometry: 'Model',
+}
+
+export const MESH_PRIMITIVE_GEOMETRY_TYPES = MESH_GEOMETRY_TYPES.filter(
+  (type) => type !== 'ModelGeometry',
+)
 
 export interface GeometryParamSpec {
   key: string
@@ -66,6 +83,7 @@ export const GEOMETRY_PARAM_SPECS: Record<MeshGeometryType, GeometryParamSpec[]>
     { key: 'capSegments', label: 'Cap Segments', default: 4, min: 1, max: 32, step: 1 },
     { key: 'radialSegments', label: 'Radial Segments', default: 8, min: 3, max: 64, step: 1 },
   ],
+  ModelGeometry: [],
 }
 
 export function defaultGeometryParams(type: MeshGeometryType): Record<string, number> {
@@ -89,6 +107,7 @@ export type MeshMaterial = z.infer<typeof MeshMaterialSchema>
 const MeshRendererBaseSchema = z.object({
   geometryType: MeshGeometryTypeSchema.default('BoxGeometry'),
   geometryParams: z.record(z.number()).default({}),
+  modelAsset: z.string().default(''),
   material: MeshMaterialSchema.default({}),
 })
 

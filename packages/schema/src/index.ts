@@ -121,6 +121,8 @@ export { StaticSchema, type Static } from './static.js'
 export {
   GEOMETRY_PARAM_SPECS,
   MESH_GEOMETRY_TYPES,
+  MESH_GEOMETRY_TYPE_LABELS,
+  MESH_PRIMITIVE_GEOMETRY_TYPES,
   MeshGeometryTypeSchema,
   MeshMaterialSchema,
   MeshRendererSchema,
