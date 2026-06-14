@@ -3,13 +3,33 @@
 }
 
 .haku-entity-menu__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
   background: #323240;
   border: 1px solid #444;
   color: #eee;
-  padding: 4px 10px;
+  padding: 4px 8px;
   border-radius: 4px;
   cursor: pointer;
   font-size: 12px;
+  line-height: 1;
+}
+
+.haku-entity-menu__plus {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.haku-entity-menu__chevron {
+  color: #aaa;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.haku-entity-menu__trigger:hover:not(:disabled) .haku-entity-menu__chevron,
+.haku-entity-menu__trigger--open .haku-entity-menu__chevron {
+  color: #ddd;
 }
 
 .haku-entity-menu__trigger:hover:not(:disabled),

@@ -87,7 +87,7 @@ export const HierarchyPanel = memo(function HierarchyPanel() {
         {!world ? (
           <div style={{ padding: 12, color: '#888', fontSize: 12 }}>Load a scene to edit hierarchy</div>
         ) : roots.length === 0 ? (
-          <div style={{ padding: 12, color: '#888', fontSize: 12 }}>No entities — click + Entity</div>
+          <div style={{ padding: 12, color: '#888', fontSize: 12 }}>No entities — click +</div>
         ) : (
           roots.map((id) => <EntityNode key={id.value} id={id} depth={0} />)
         )}

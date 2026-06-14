@@ -87,9 +87,16 @@ export const EntityCreateMenu = memo(function EntityCreateMenu({
         disabled={disabled}
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-label="Add entity"
+        title="Add entity"
         onClick={toggleOpen}
       >
-        + Entity
+        <span className="haku-entity-menu__plus" aria-hidden="true">
+          +
+        </span>
+        <span className="haku-entity-menu__chevron" aria-hidden="true">
+          ▾
+        </span>
       </button>
 
       {open &&
