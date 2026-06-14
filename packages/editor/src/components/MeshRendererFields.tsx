@@ -1,12 +1,17 @@
-import { memo } from 'react'
+import { memo, useEffect, useState } from 'react'
 import {
   GEOMETRY_PARAM_SPECS,
   MESH_GEOMETRY_TYPES,
+  MESH_GEOMETRY_TYPE_LABELS,
   defaultGeometryParams,
   type MeshGeometryType,
   type MeshMaterial,
   type MeshRenderer,
 } from '@haku/schema'
+import { modelLog } from '@haku/engine'
+import { projectService } from '../services/project-service.js'
+import { ModelPickerDialog } from './ModelPickerDialog.js'
+import { modelAssetFileName } from './model-picker-utils.js'
 import './mesh-renderer-fields.css'
 
 function NumberField({
@@ -53,6 +58,24 @@ export const MeshRendererFields = memo(function MeshRendererFields({
   disabled?: boolean
 }) {
   const paramSpecs = GEOMETRY_PARAM_SPECS[value.geometryType]
+  const isModel = value.geometryType === 'ModelGeometry'
+  const [modelAssets, setModelAssets] = useState<string[]>([])
+  const [pickerOpen, setPickerOpen] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    void projectService.listModelAssets().then((assets) => {
+      if (!cancelled) setModelAssets(assets)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!pickerOpen) return
+    void projectService.listModelAssets().then(setModelAssets)
+  }, [pickerOpen])
 
   const patch = (partial: Partial<MeshRenderer>) => onChange({ ...value, ...partial })
 
@@ -77,21 +100,55 @@ export const MeshRendererFields = memo(function MeshRendererFields({
             disabled={disabled}
             onChange={(e) => {
               const geometryType = e.target.value as MeshGeometryType
+              modelLog('inspector.geometry-type', {
+                from: value.geometryType,
+                to: geometryType,
+                modelAsset: value.modelAsset,
+              })
               patch({
                 geometryType,
                 geometryParams: defaultGeometryParams(geometryType),
+                modelAsset: geometryType === 'ModelGeometry' ? value.modelAsset : '',
               })
             }}
           >
             {MESH_GEOMETRY_TYPES.map((type) => (
               <option key={type} value={type}>
-                {type.replace(/Geometry$/, '')}
+                {MESH_GEOMETRY_TYPE_LABELS[type]}
               </option>
             ))}
           </select>
         </label>
 
-        {paramSpecs.map((spec) => (
+        {isModel && (
+          <label className="mesh-field">
+            <span className="mesh-field__label">Model</span>
+            <button
+              type="button"
+              className="mesh-field__model-btn"
+              disabled={disabled}
+              onClick={() => setPickerOpen(true)}
+            >
+              {value.modelAsset ? modelAssetFileName(value.modelAsset) : 'Select model…'}
+            </button>
+            <ModelPickerDialog
+              open={pickerOpen}
+              assets={modelAssets}
+              selected={value.modelAsset}
+              onSelect={(modelAsset) => {
+                modelLog('inspector.model-selected', {
+                  previous: value.modelAsset,
+                  next: modelAsset,
+                })
+                patch({ modelAsset })
+              }}
+              onClose={() => setPickerOpen(false)}
+            />
+          </label>
+        )}
+
+        {!isModel &&
+          paramSpecs.map((spec) => (
           <NumberField
             key={spec.key}
             label={spec.label}

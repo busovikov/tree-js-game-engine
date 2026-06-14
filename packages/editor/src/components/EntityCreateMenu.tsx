@@ -1,16 +1,15 @@
 import { memo, useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
-import { MESH_GEOMETRY_TYPES } from '@haku/schema'
+import { MESH_GEOMETRY_TYPE_LABELS, MESH_PRIMITIVE_GEOMETRY_TYPES } from '@haku/schema'
 import {
-  MESH_PRIMITIVE_LABELS,
   createEmptyEntity,
   createMeshPrimitive,
 } from '../commands/world-commands.js'
 import './entity-create-menu.css'
 
-const MESH_PRIMITIVES = MESH_GEOMETRY_TYPES.map((geometryType) => ({
+const MESH_PRIMITIVES = MESH_PRIMITIVE_GEOMETRY_TYPES.map((geometryType) => ({
   geometryType,
-  label: MESH_PRIMITIVE_LABELS[geometryType],
+  label: MESH_GEOMETRY_TYPE_LABELS[geometryType],
 }))
 
 function menuPosition(trigger: HTMLElement): CSSProperties {

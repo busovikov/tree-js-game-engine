@@ -6,7 +6,7 @@ import {
   getCoreComponent,
 } from '@haku/core'
 import type { MeshGeometryType } from '@haku/schema'
-import { defaultGeometryParams } from '@haku/schema'
+import { MESH_GEOMETRY_TYPE_LABELS, defaultGeometryParams } from '@haku/schema'
 import type { Command } from './command-bus.js'
 import { globalCommandBus } from './command-bus.js'
 import { commitSceneEdit } from './scene-history.js'
@@ -18,16 +18,7 @@ import {
   uniqueEntityName,
 } from './entity-placement.js'
 
-export const MESH_PRIMITIVE_LABELS: Record<MeshGeometryType, string> = {
-  BoxGeometry: 'Cube',
-  SphereGeometry: 'Sphere',
-  PlaneGeometry: 'Plane',
-  CylinderGeometry: 'Cylinder',
-  ConeGeometry: 'Cone',
-  TorusGeometry: 'Torus',
-  RingGeometry: 'Ring',
-  CapsuleGeometry: 'Capsule',
-}
+export const MESH_PRIMITIVE_LABELS = MESH_GEOMETRY_TYPE_LABELS
 
 export function createEmptyEntity(placement: EntityPlacement = 'root'): void {
   const { selection } = useEditorStore.getState()
