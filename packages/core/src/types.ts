@@ -42,6 +42,12 @@ export interface IWorld {
   setParent(child: EntityId, parent: EntityId | null): void
   getParent(id: EntityId): EntityId | null
   getChildren(id: EntityId): readonly EntityId[]
+  getRootEntities(): readonly EntityId[]
+  moveEntityInHierarchy(
+    entity: EntityId,
+    target: EntityId,
+    mode: 'before' | 'after' | 'child',
+  ): void
 
   query(...types: ComponentType[]): Iterable<EntityId>
 }

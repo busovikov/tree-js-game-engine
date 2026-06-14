@@ -69,7 +69,7 @@ export function createEntity(name: string): void {
       draft.world.addComponent(id, TransformComponent, defaults)
       draft.world.setParent(id, selection)
     } else {
-      const roots = draft.world.getAllEntities().filter((entity) => draft.world.getParent(entity) === null)
+      const roots = draft.world.getRootEntities()
       const index = Math.max(0, roots.length - 1)
       draft.world.addComponent(id, TransformComponent, {
         ...defaults,

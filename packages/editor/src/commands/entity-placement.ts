@@ -13,7 +13,7 @@ export function uniqueEntityName(world: World, base: string): string {
 }
 
 function rootSpawnPosition(world: World): [number, number, number] {
-  const roots = world.getAllEntities().filter((entity) => world.getParent(entity) === null)
+  const roots = world.getRootEntities()
   const index = Math.max(0, roots.length - 1)
   return [index * 1.5, 0, 0]
 }

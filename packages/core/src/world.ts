@@ -10,6 +10,7 @@ interface GameObject {
 
 export class World implements IWorld {
   private readonly entities = new Map<string, GameObject>()
+  private roots: EntityId[] = []
 
   createEntity(name = 'Entity', id?: EntityId): EntityId {
     const entityIdValue = id ?? entityId(crypto.randomUUID())
@@ -22,6 +23,7 @@ export class World implements IWorld {
       children: [],
       components: new Map(),
     })
+    this.roots.push(entityIdValue)
     return entityIdValue
   }
 
@@ -40,6 +42,7 @@ export class World implements IWorld {
       }
     }
 
+    this.roots = this.roots.filter((root) => root.value !== id.value)
     this.entities.delete(id.value)
   }
 
@@ -107,6 +110,8 @@ export class World implements IWorld {
       if (oldParent) {
         oldParent.children = oldParent.children.filter((c) => c.value !== child.value)
       }
+    } else {
+      this.roots = this.roots.filter((root) => root.value !== child.value)
     }
 
     childObj.parent = parent
@@ -116,6 +121,8 @@ export class World implements IWorld {
       if (!parentObj.children.some((c) => c.value === child.value)) {
         parentObj.children.push(child)
       }
+    } else if (!this.roots.some((root) => root.value === child.value)) {
+      this.roots.push(child)
     }
   }
 
@@ -127,12 +134,85 @@ export class World implements IWorld {
     return this.entities.get(id.value)?.children ?? []
   }
 
+  getRootEntities(): readonly EntityId[] {
+    return this.roots.filter((id) => this.entities.has(id.value))
+  }
+
+  moveEntityInHierarchy(
+    entity: EntityId,
+    target: EntityId,
+    mode: 'before' | 'after' | 'child',
+  ): void {
+    if (!this.hasEntity(entity) || !this.hasEntity(target)) {
+      throw new Error('Entity not found')
+    }
+    if (entity.value === target.value) return
+    if (this.isDescendant(entity, target)) {
+      throw new Error('Cannot move entity into its descendant')
+    }
+
+    if (mode === 'child') {
+      this.setParent(entity, target)
+      return
+    }
+
+    const parent = this.getParent(target)
+    if (parent && this.isDescendant(entity, parent)) {
+      throw new Error('Cannot move entity relative to its descendant')
+    }
+
+    const siblings = this.getSiblingList(parent)
+    const targetIndex = siblings.findIndex((sibling) => sibling.value === target.value)
+    if (targetIndex === -1) return
+
+    let insertIndex = mode === 'before' ? targetIndex : targetIndex + 1
+
+    const oldParent = this.getParent(entity)
+    const oldSiblings = this.getSiblingList(oldParent)
+    const oldIndex = oldSiblings.findIndex((sibling) => sibling.value === entity.value)
+
+    const sameList =
+      (oldParent === null && parent === null) ||
+      (oldParent !== null && parent !== null && oldParent.value === parent.value)
+
+    this.setParent(entity, parent)
+
+    if (sameList && oldIndex !== -1 && oldIndex < insertIndex) {
+      insertIndex -= 1
+    }
+
+    this.insertSiblingAt(entity, parent, insertIndex)
+  }
+
+  copyHierarchyOrderFrom(source: World): void {
+    this.roots = source.getRootEntities().filter((id) => this.hasEntity(id))
+    for (const id of source.getAllEntities()) {
+      const obj = this.entities.get(id.value)
+      if (!obj) continue
+      obj.children = source.getChildren(id).filter((child) => this.hasEntity(child))
+    }
+  }
+
   *query(...types: ComponentType[]): Iterable<EntityId> {
     for (const [idStr, obj] of this.entities) {
       if (types.every((t) => obj.components.has(t.id))) {
         yield entityId(idStr)
       }
     }
+  }
+
+  private getSiblingList(parent: EntityId | null): EntityId[] {
+    return parent ? [...this.getChildren(parent)] : [...this.getRootEntities()]
+  }
+
+  private insertSiblingAt(entity: EntityId, parent: EntityId | null, index: number): void {
+    const list = parent ? this.entities.get(parent.value)!.children : this.roots
+    const fromIndex = list.findIndex((sibling) => sibling.value === entity.value)
+    if (fromIndex === -1) return
+
+    const [item] = list.splice(fromIndex, 1)
+    const clamped = Math.max(0, Math.min(index, list.length))
+    list.splice(clamped, 0, item)
   }
 
   private isDescendant(candidate: EntityId, ancestor: EntityId): boolean {
@@ -162,5 +242,6 @@ export function cloneWorld(source: World): World {
   for (const id of source.getAllEntities()) {
     clone.setParent(id, source.getParent(id))
   }
+  clone.copyHierarchyOrderFrom(source)
   return clone
 }

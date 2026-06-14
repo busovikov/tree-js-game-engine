@@ -35,6 +35,22 @@ describe('@haku/core World', () => {
     expect(world.getChildren(parent)).toHaveLength(1)
   })
 
+  it('reorders siblings and roots', () => {
+    const world = new World()
+    const a = world.createEntity('A')
+    const b = world.createEntity('B')
+    const c = world.createEntity('C')
+    world.setParent(c, a)
+
+    world.moveEntityInHierarchy(c, b, 'before')
+    expect(world.getParent(c)).toBeNull()
+    expect(world.getRootEntities().map((id) => id.value)).toEqual([a.value, c.value, b.value])
+
+    world.moveEntityInHierarchy(c, a, 'child')
+    expect(world.getParent(c)?.value).toBe(a.value)
+    expect(world.getChildren(a).map((id) => id.value)).toEqual([c.value])
+  })
+
   it('accepts explicit entity id', () => {
     const world = new World()
     const id = entityId('a0000000-0000-4000-8000-000000000001')

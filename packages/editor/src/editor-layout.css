@@ -96,6 +96,27 @@
   min-width: 0;
 }
 
+.haku-hierarchy-row--draggable {
+  cursor: grab;
+}
+
+.haku-hierarchy-row--dragging {
+  opacity: 0.45;
+}
+
+.haku-hierarchy-row--drop-before {
+  box-shadow: inset 0 2px 0 0 #3d5afe;
+}
+
+.haku-hierarchy-row--drop-after {
+  box-shadow: inset 0 -2px 0 0 #3d5afe;
+}
+
+.haku-hierarchy-row--drop-child {
+  background: rgba(61, 90, 254, 0.15);
+  border-radius: 4px;
+}
+
 .haku-hierarchy-row--selected .haku-hierarchy-row__name {
   background: #3d5afe;
 }
