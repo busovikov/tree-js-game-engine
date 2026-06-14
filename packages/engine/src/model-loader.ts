@@ -45,20 +45,23 @@ function isGltfRelativeResourceName(name: string): boolean {
   return /\.(bin|gltf|glb|png|jpe?g|webp|ktx2?)$/i.test(name)
 }
 
-/** Three.js turns `model.bin` into `blob:<origin>/model.bin` when the glTF itself is a blob URL. */
+/** Three.js may pass `model.bin`, `blob:…/model.bin`, or `/assets/models/model.bin`. */
 function extractGltfResourceFileName(resourceUrl: string): string | null {
+  if (resourceUrl.startsWith('data:')) return null
+
+  const fileName = resourceUrl.split('/').pop() ?? resourceUrl
+  if (!isGltfRelativeResourceName(fileName)) return null
+
   if (resourceUrl.startsWith('blob:')) {
-    const fileName = resourceUrl.split('/').pop() ?? ''
-    return isGltfRelativeResourceName(fileName) ? fileName : null
+    return fileName
   }
 
   if (
     resourceUrl.startsWith('http://') ||
     resourceUrl.startsWith('https://') ||
-    resourceUrl.startsWith('data:') ||
     resourceUrl.startsWith('/')
   ) {
-    return null
+    return fileName
   }
 
   return resourceUrl
@@ -70,7 +73,7 @@ function resolveGltfResourceUrl(relativeAssetPath: string, resourceUrl: string, 
     return resolveModelResourceUrl(relativeAssetPath, fileName)
   }
 
-  if (resourcePath) {
+  if (resourcePath && !resourceUrl.startsWith('/') && !resourceUrl.startsWith('http')) {
     return `${resourcePath}${resourceUrl}`
   }
 

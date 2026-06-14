@@ -16,4 +16,4 @@ export {
   type ModelResourceResolver,
   type ModelLoadPreparer,
 } from './model-loader.js'
-export { modelLog, modelLogWarn, modelLogError, modelLogUrl } from './model-log.js'
+export { modelLog, modelLogWarn, modelLogError, modelLogUrl, sceneLog, sceneLogWarn, sceneLogError, setHakuLogSink, type HakuLogSink, type HakuLogCategory, type HakuLogLevel } from './model-log.js'
