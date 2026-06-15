@@ -11,6 +11,7 @@ import {
 import type { Light, MeshRenderer, PrefabDefinition, Transform } from '@haku/schema'
 import { LightSchema, meshRendererKey, resolveLightColor, spotToThreeCone } from '@haku/schema'
 import * as THREE from 'three'
+import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass.js'
 import {
   createMeshFromRenderer,
   rebuildMesh,
@@ -519,20 +520,18 @@ export class RenderSyncSystem implements ISystem {
         if (!this.isViewportPickable(hit.object)) continue
         const picked = this.resolveEntityId(hit.object)
         if (!picked) continue
+        if (!this.isCameraPickHit(hit.object, picked)) continue
         if (!closest || hit.distance < closest.distance) {
           closest = { entityId: picked, distance: hit.distance }
         }
       }
     }
 
-    if (
-      closest &&
-      this.shouldBlockCameraPickFromOverlay(clientX, clientY, rect, pickRoots, camera, closest.entityId)
-    ) {
-      return { entityId: null, hitEditorOverlay: true }
+    if (closest) {
+      return { entityId: closest.entityId, hitEditorOverlay: false }
     }
 
-    return { entityId: closest?.entityId ?? null, hitEditorOverlay: false }
+    return { entityId: null, hitEditorOverlay: false }
   }
 
   pickEntitiesInRect(
@@ -593,37 +592,21 @@ export class RenderSyncSystem implements ISystem {
     return selected
   }
 
-  /** Block camera selection when the click is on its frustum overlay, not the pick handle. */
-  private shouldBlockCameraPickFromOverlay(
-    clientX: number,
-    clientY: number,
-    rect: DOMRect,
-    pickRoots: THREE.Object3D[],
-    viewportCamera: THREE.Camera,
-    picked: EntityId,
-  ): boolean {
-    if (!this.world?.hasComponent(picked, CameraComponent)) return false
-
-    const ndc = new THREE.Vector2(
-      ((clientX - rect.left) / rect.width) * 2 - 1,
-      -((clientY - rect.top) / rect.height) * 2 + 1,
-    )
-    const raycaster = new THREE.Raycaster()
-    raycaster.setFromCamera(ndc, viewportCamera)
-
-    for (const hit of raycaster.intersectObjects(pickRoots, true)) {
-      if (this.isViewportPickable(hit.object)) return false
-      const overlayEntity = this.resolveEntityId(hit.object)
-      if (overlayEntity?.value === picked.value) return true
-    }
-
-    return false
-  }
-
   private isViewportPickable(object: THREE.Object3D): boolean {
     if (object.userData.hakuEditorPickTarget) return true
-    if (object.userData.hakuEditorOverlay) return false
+
+    let current: THREE.Object3D | null = object
+    while (current) {
+      if (current.userData.hakuEditorOverlay) return false
+      current = current.parent
+    }
+
     return true
+  }
+
+  private isCameraPickHit(object: THREE.Object3D, entityId: EntityId): boolean {
+    if (!this.world?.hasComponent(entityId, CameraComponent)) return true
+    return object.userData.hakuEditorPickTarget === true
   }
 
   private getPickRoots(): THREE.Object3D[] {
@@ -740,10 +723,14 @@ export class ThreeRenderBackend implements IRenderBackend {
   private world: IWorld | null = null
   private activeCamera: THREE.Camera
   private viewportUsesEditorCamera = true
+  private selectionOutlineTargets: THREE.Object3D[] = []
+  private outlinePass: OutlinePass | null = null
+  private outlineScratchBuffer: THREE.WebGLRenderTarget | null = null
 
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace
     this.scene.background = new THREE.Color(0x1a1a2e)
     this.syncSystem = new RenderSyncSystem(this.scene)
     this.editorCamera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000)
@@ -810,6 +797,8 @@ export class ThreeRenderBackend implements IRenderBackend {
   detach(): void {
     this.syncSystem.detach()
     this.world = null
+    this.selectionOutlineTargets = []
+    this.disposeSelectionOutline()
   }
 
   setActiveCamera(entityId: EntityId): void {
@@ -840,12 +829,91 @@ export class ThreeRenderBackend implements IRenderBackend {
     setModelLoadPreparer(preparer)
   }
 
+  setSelectionOutlineTargets(targets: readonly THREE.Object3D[]): void {
+    this.selectionOutlineTargets = [...targets]
+    if (this.selectionOutlineTargets.length === 0) return
+
+    this.ensureSelectionOutline()
+    if (this.outlinePass) {
+      this.outlinePass.selectedObjects = this.selectionOutlineTargets
+    }
+  }
+
+  private ensureSelectionOutline(): void {
+    if (this.outlinePass) return
+
+    const size = new THREE.Vector2()
+    this.renderer.getSize(size)
+    const pixelRatio = this.renderer.getPixelRatio()
+    const width = Math.max(1, Math.round(size.width * pixelRatio))
+    const height = Math.max(1, Math.round(size.height * pixelRatio))
+
+    this.outlinePass = new OutlinePass(new THREE.Vector2(width, height), this.scene, this.activeCamera)
+    this.outlinePass.edgeStrength = 3
+    this.outlinePass.edgeGlow = 0
+    this.outlinePass.edgeThickness = 1.5
+    this.outlinePass.pulsePeriod = 0
+    this.outlinePass.visibleEdgeColor.set(0xffc107)
+    this.outlinePass.hiddenEdgeColor.set(0xb38600)
+
+    this.outlineScratchBuffer = new THREE.WebGLRenderTarget(width, height, {
+      type: THREE.UnsignedByteType,
+    })
+  }
+
+  private syncSelectionOutlineCamera(): void {
+    if (this.outlinePass) {
+      this.outlinePass.renderCamera = this.activeCamera
+    }
+  }
+
+  private renderSelectionOutline(): void {
+    const pass = this.outlinePass
+    const scratch = this.outlineScratchBuffer
+    if (!pass || !scratch || this.selectionOutlineTargets.length === 0) return
+
+    pass.selectedObjects = this.selectionOutlineTargets
+    pass.renderCamera = this.activeCamera
+    pass.renderToScreen = false
+
+    // Build edge mask/blur buffers; final composite to scratch is discarded.
+    pass.render(this.renderer, scratch, scratch, 0, false)
+
+    const oldAutoClear = this.renderer.autoClear
+    this.renderer.autoClear = false
+    this.renderer.setRenderTarget(null)
+    pass.fsQuad.material = pass.overlayMaterial
+    pass.fsQuad.render(this.renderer)
+    this.renderer.autoClear = oldAutoClear
+  }
+
   render(): void {
+    this.renderer.autoClear = true
+    this.renderer.setRenderTarget(null)
     this.renderer.render(this.scene, this.activeCamera)
+
+    if (this.selectionOutlineTargets.length > 0) {
+      this.ensureSelectionOutline()
+      this.syncSelectionOutlineCamera()
+      this.renderSelectionOutline()
+    }
+  }
+
+  private disposeSelectionOutline(): void {
+    this.outlinePass?.dispose()
+    this.outlinePass = null
+    this.outlineScratchBuffer?.dispose()
+    this.outlineScratchBuffer = null
   }
 
   resize(width: number, height: number): void {
     this.renderer.setSize(width, height, false)
+    const pixelRatio = this.renderer.getPixelRatio()
+    const bufferWidth = Math.max(1, Math.round(width * pixelRatio))
+    const bufferHeight = Math.max(1, Math.round(height * pixelRatio))
+    this.outlinePass?.setSize(bufferWidth, bufferHeight)
+    this.outlinePass?.resolution.set(width, height)
+    this.outlineScratchBuffer?.setSize(bufferWidth, bufferHeight)
     const aspect = width / Math.max(height, 1)
 
     if (this.editorCamera instanceof THREE.PerspectiveCamera) {

@@ -130,6 +130,7 @@ function ensureOverlay(root: THREE.Object3D): Omit<LightGizmoEntry, 'lightType'>
   })
   const pickMesh = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 10), pickMaterial)
   pickMesh.name = 'pick'
+  pickMesh.userData.hakuEditorPickTarget = true
   pickMesh.renderOrder = 999
   overlay.add(pickMesh)
 

@@ -25,6 +25,13 @@ export interface SceneCameraGizmosOptions {
   hideActiveViewportFrustum: boolean
 }
 
+function markOverlayGeometry(root: THREE.Object3D): void {
+  root.traverse((child) => {
+    if (child.userData.hakuEditorPickTarget) return
+    child.userData.hakuEditorOverlay = true
+  })
+}
+
 function createCameraIcon(): THREE.Object3D {
   const material = new THREE.LineBasicMaterial({
     color: 0xaaccff,
@@ -75,6 +82,7 @@ function ensureOverlay(root: THREE.Object3D): Omit<CameraGizmoEntry, 'frustum'> 
   overlay.userData.hakuEditorOverlay = true
 
   const icon = createCameraIcon()
+  markOverlayGeometry(icon)
   overlay.add(icon)
 
   const pickMaterial = new THREE.MeshBasicMaterial({

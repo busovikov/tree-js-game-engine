@@ -79,6 +79,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
   const dragStartTransform = useRef<ReturnType<typeof TransformComponent.schema.parse> | null>(null)
   const dragStartSnapshots = useRef<EntityDragSnapshot[]>([])
   const uniformScaleDragStart = useRef<THREE.Vector3 | null>(null)
+  const gizmoPointerRef = useRef(false)
 
   const world = useEditorStore((s) => s.world)
   const worldRevision = useEditorStore((s) => s.worldRevision)
@@ -186,7 +187,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
       lightGizmosRef.current = null
       aabbGizmosRef.current?.dispose()
       aabbGizmosRef.current = null
-      selectionOutlineRef.current?.dispose()
+      selectionOutlineRef.current?.dispose(engine.backend)
       selectionOutlineRef.current = null
       selectionPivotRef.current?.dispose()
       selectionPivotRef.current = null
@@ -270,7 +271,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
     }
 
     if (selectionOutline) {
-      selectionOutline.sync(engine.backend.sync, {
+      selectionOutline.sync(engine.backend, engine.backend.sync, {
         visible: mode === 'edit' && selectedIds.length > 0,
         selectedIds: selectedIdSet,
       })
@@ -359,6 +360,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
     if (!gizmo) return
 
     const onMouseDown = () => {
+      gizmoPointerRef.current = true
       const { selection: currentSelection, world: w } = useEditorStore.getState()
       const engine = engineRef.current
       const selectionPivot = selectionPivotRef.current
@@ -395,6 +397,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
     }
 
     const onMouseUp = () => {
+      gizmoPointerRef.current = false
       const w = useEditorStore.getState().world
       const selectionPivot = selectionPivotRef.current
       if (!w || !selectionPivot) return
@@ -518,6 +521,29 @@ export const ViewportPanel = memo(function ViewportPanel() {
     let pointerDown = { x: 0, y: 0 }
     let dragging = false
     let isMarquee = false
+    let marqueeAdditive = false
+    let marqueeBaseSelection: EntityId[] = []
+
+    const applyMarqueeSelection = (clientX: number, clientY: number) => {
+      const engine = engineRef.current
+      const canvas = canvasRef.current
+      if (!engine || !canvas) return
+
+      const picked = engine.backend.pickEntitiesInRect(
+        pointerDown.x,
+        pointerDown.y,
+        clientX,
+        clientY,
+        canvas,
+      )
+
+      const store = useEditorStore.getState()
+      if (marqueeAdditive) {
+        store.setSelection(mergeSelection(marqueeBaseSelection, picked, true))
+      } else {
+        store.setSelection(picked)
+      }
+    }
 
     const hideMarquee = () => {
       marquee.style.display = 'none'
@@ -546,6 +572,8 @@ export const ViewportPanel = memo(function ViewportPanel() {
       pointerDown = { x: event.clientX, y: event.clientY }
       dragging = true
       isMarquee = false
+      marqueeAdditive = event.metaKey || event.ctrlKey || event.shiftKey
+      marqueeBaseSelection = useEditorStore.getState().selection
       canvas.setPointerCapture(event.pointerId)
     }
 
@@ -568,6 +596,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
         event.clientX - rect.left,
         event.clientY - rect.top,
       )
+      applyMarqueeSelection(event.clientX, event.clientY)
     }
 
     const onPointerUp = (event: PointerEvent) => {
@@ -583,23 +612,13 @@ export const ViewportPanel = memo(function ViewportPanel() {
       if (mode !== 'edit' || tool === 'hand') return
 
       const gizmo = gizmoRef.current
-      if (gizmo?.dragging || gizmo?.axis) return
+      if (gizmo?.dragging || gizmo?.axis || gizmoPointerRef.current) return
 
       const engine = engineRef.current
       if (!engine) return
 
-      const additive = event.metaKey || event.ctrlKey || event.shiftKey
-
       if (isMarquee) {
-        const picked = engine.backend.pickEntitiesInRect(
-          pointerDown.x,
-          pointerDown.y,
-          event.clientX,
-          event.clientY,
-          canvas,
-        )
-        const store = useEditorStore.getState()
-        store.setSelection(mergeSelection(store.selection, picked, additive))
+        applyMarqueeSelection(event.clientX, event.clientY)
         return
       }
 
@@ -612,7 +631,10 @@ export const ViewportPanel = memo(function ViewportPanel() {
         useEditorStore.getState().setSelection([])
         return
       }
-      useEditorStore.getState().selectEntity(pick.entityId, additive)
+      useEditorStore.getState().selectEntity(
+        pick.entityId,
+        event.metaKey || event.ctrlKey || event.shiftKey,
+      )
     }
 
     const onPointerCancel = (event: PointerEvent) => {
