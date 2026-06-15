@@ -12,11 +12,13 @@ import { modelLog } from '@haku/engine'
 import { projectService } from '../services/project-service.js'
 import { ModelPickerDialog } from './ModelPickerDialog.js'
 import { modelAssetFileName } from './model-picker-utils.js'
+import type { MixedBool, MixedNumber } from '../inspector/multi-edit.js'
 import './mesh-renderer-fields.css'
 
 function NumberField({
   label,
   value,
+  mixed,
   onChange,
   disabled,
   min,
@@ -25,6 +27,7 @@ function NumberField({
 }: {
   label: string
   value: number
+  mixed?: MixedNumber
   onChange: (v: number) => void
   disabled?: boolean
   min?: number
@@ -36,8 +39,9 @@ function NumberField({
       <span className="mesh-field__label">{label}</span>
       <input
         type="number"
-        className="mesh-field__input"
-        value={value}
+        className={`mesh-field__input${mixed === null ? ' mesh-field__input--mixed' : ''}`}
+        value={mixed === null ? '' : value}
+        placeholder={mixed === null ? '—' : undefined}
         min={min}
         max={max}
         step={step}
@@ -51,10 +55,37 @@ function NumberField({
 export const MeshRendererFields = memo(function MeshRendererFields({
   value,
   onChange,
+  onPatch,
+  onMaterialPatch,
+  onGeometryTypeChange,
+  onModelAssetChange,
+  onGeometryParamChange,
+  mixedGeometryType,
+  mixedModelAsset,
+  mixedMaterialColor,
+  mixedMaterialNumber,
+  mixedMaterialBool,
   disabled,
 }: {
   value: MeshRenderer
-  onChange: (next: MeshRenderer) => void
+  onChange?: (next: MeshRenderer) => void
+  onPatch?: (patch: Partial<MeshRenderer>) => void
+  onMaterialPatch?: (patch: Partial<MeshMaterial>) => void
+  onGeometryTypeChange?: (geometryType: MeshGeometryType) => void
+  onModelAssetChange?: (modelAsset: string) => void
+  onGeometryParamChange?: (key: string, value: number) => void
+  mixedGeometryType?: string | null
+  mixedModelAsset?: string | null
+  mixedMaterialColor?: string | null
+  mixedMaterialNumber?: {
+    metalness?: MixedNumber
+    roughness?: MixedNumber
+    opacity?: MixedNumber
+  }
+  mixedMaterialBool?: {
+    wireframe?: MixedBool
+    transparent?: MixedBool
+  }
   disabled?: boolean
 }) {
   const paramSpecs = GEOMETRY_PARAM_SPECS[value.geometryType]
@@ -77,16 +108,49 @@ export const MeshRendererFields = memo(function MeshRendererFields({
     void projectService.listModelAssets().then(setModelAssets)
   }, [pickerOpen])
 
-  const patch = (partial: Partial<MeshRenderer>) => onChange({ ...value, ...partial })
+  const patch = (partial: Partial<MeshRenderer>) => {
+    if (onPatch) {
+      onPatch(partial)
+      return
+    }
+    onChange?.({ ...value, ...partial })
+  }
 
-  const patchMaterial = (partial: Partial<MeshMaterial>) =>
-    onChange({ ...value, material: { ...value.material, ...partial } })
+  const patchMaterial = (partial: Partial<MeshMaterial>) => {
+    if (onMaterialPatch) {
+      onMaterialPatch(partial)
+      return
+    }
+    onChange?.({ ...value, material: { ...value.material, ...partial } })
+  }
 
-  const patchParam = (key: string, num: number) =>
-    onChange({
+  const patchParam = (key: string, num: number) => {
+    if (onGeometryParamChange) {
+      onGeometryParamChange(key, num)
+      return
+    }
+    onChange?.({
       ...value,
       geometryParams: { ...value.geometryParams, [key]: num },
     })
+  }
+
+  const setGeometryType = (geometryType: MeshGeometryType) => {
+    modelLog('inspector.geometry-type', {
+      from: value.geometryType,
+      to: geometryType,
+      modelAsset: value.modelAsset,
+    })
+    if (onGeometryTypeChange) {
+      onGeometryTypeChange(geometryType)
+      return
+    }
+    patch({
+      geometryType,
+      geometryParams: defaultGeometryParams(geometryType),
+      modelAsset: geometryType === 'ModelGeometry' ? value.modelAsset : '',
+    })
+  }
 
   return (
     <div className="mesh-renderer-fields">
@@ -95,23 +159,12 @@ export const MeshRendererFields = memo(function MeshRendererFields({
         <label className="mesh-field">
           <span className="mesh-field__label">Type</span>
           <select
-            className="mesh-field__input"
-            value={value.geometryType}
+            className={`mesh-field__input${mixedGeometryType === null ? ' mesh-field__input--mixed' : ''}`}
+            value={mixedGeometryType === null ? '' : value.geometryType}
             disabled={disabled}
-            onChange={(e) => {
-              const geometryType = e.target.value as MeshGeometryType
-              modelLog('inspector.geometry-type', {
-                from: value.geometryType,
-                to: geometryType,
-                modelAsset: value.modelAsset,
-              })
-              patch({
-                geometryType,
-                geometryParams: defaultGeometryParams(geometryType),
-                modelAsset: geometryType === 'ModelGeometry' ? value.modelAsset : '',
-              })
-            }}
+            onChange={(e) => setGeometryType(e.target.value as MeshGeometryType)}
           >
+            {mixedGeometryType === null && <option value="">—</option>}
             {MESH_GEOMETRY_TYPES.map((type) => (
               <option key={type} value={type}>
                 {MESH_GEOMETRY_TYPE_LABELS[type]}
@@ -125,11 +178,15 @@ export const MeshRendererFields = memo(function MeshRendererFields({
             <span className="mesh-field__label">Model</span>
             <button
               type="button"
-              className="mesh-field__model-btn"
+              className={`mesh-field__model-btn${mixedModelAsset === null ? ' mesh-field__model-btn--mixed' : ''}`}
               disabled={disabled}
               onClick={() => setPickerOpen(true)}
             >
-              {value.modelAsset ? modelAssetFileName(value.modelAsset) : 'Select model…'}
+              {mixedModelAsset === null
+                ? '—'
+                : value.modelAsset
+                  ? modelAssetFileName(value.modelAsset)
+                  : 'Select model…'}
             </button>
             <ModelPickerDialog
               open={pickerOpen}
@@ -140,7 +197,11 @@ export const MeshRendererFields = memo(function MeshRendererFields({
                   previous: value.modelAsset,
                   next: modelAsset,
                 })
-                patch({ modelAsset })
+                if (onModelAssetChange) {
+                  onModelAssetChange(modelAsset)
+                } else {
+                  patch({ modelAsset })
+                }
               }}
               onClose={() => setPickerOpen(false)}
             />
@@ -149,17 +210,17 @@ export const MeshRendererFields = memo(function MeshRendererFields({
 
         {!isModel &&
           paramSpecs.map((spec) => (
-          <NumberField
-            key={spec.key}
-            label={spec.label}
-            value={value.geometryParams[spec.key] ?? spec.default}
-            min={spec.min}
-            max={spec.max}
-            step={spec.step ?? (Number.isInteger(spec.default) ? 1 : 0.1)}
-            disabled={disabled}
-            onChange={(num) => patchParam(spec.key, num)}
-          />
-        ))}
+            <NumberField
+              key={spec.key}
+              label={spec.label}
+              value={value.geometryParams[spec.key] ?? spec.default}
+              min={spec.min}
+              max={spec.max}
+              step={spec.step ?? (Number.isInteger(spec.default) ? 1 : 0.1)}
+              disabled={disabled}
+              onChange={(num) => patchParam(spec.key, num)}
+            />
+          ))}
       </div>
 
       <div className="mesh-renderer-fields__section">
@@ -169,14 +230,15 @@ export const MeshRendererFields = memo(function MeshRendererFields({
           <input
             type="color"
             className="mesh-field__color"
-            value={value.material.color}
-            disabled={disabled}
+            value={mixedMaterialColor ?? value.material.color}
+            disabled={disabled || mixedMaterialColor === null}
             onChange={(e) => patchMaterial({ color: e.target.value })}
           />
           <input
             type="text"
-            className="mesh-field__input mesh-field__input--hex"
-            value={value.material.color}
+            className={`mesh-field__input mesh-field__input--hex${mixedMaterialColor === null ? ' mesh-field__input--mixed' : ''}`}
+            value={mixedMaterialColor === null ? '' : value.material.color}
+            placeholder={mixedMaterialColor === null ? '—' : undefined}
             disabled={disabled}
             onChange={(e) => patchMaterial({ color: e.target.value })}
           />
@@ -185,6 +247,7 @@ export const MeshRendererFields = memo(function MeshRendererFields({
         <NumberField
           label="Metalness"
           value={value.material.metalness}
+          mixed={mixedMaterialNumber?.metalness}
           min={0}
           max={1}
           step={0.05}
@@ -194,6 +257,7 @@ export const MeshRendererFields = memo(function MeshRendererFields({
         <NumberField
           label="Roughness"
           value={value.material.roughness}
+          mixed={mixedMaterialNumber?.roughness}
           min={0}
           max={1}
           step={0.05}
@@ -203,6 +267,7 @@ export const MeshRendererFields = memo(function MeshRendererFields({
         <NumberField
           label="Opacity"
           value={value.material.opacity}
+          mixed={mixedMaterialNumber?.opacity}
           min={0}
           max={1}
           step={0.05}
@@ -210,7 +275,7 @@ export const MeshRendererFields = memo(function MeshRendererFields({
           onChange={(num) =>
             patchMaterial({
               opacity: num,
-              transparent: num < 1 ? true : value.material.transparent,
+              transparent: num < 1 ? true : false,
             })
           }
         />
@@ -218,7 +283,10 @@ export const MeshRendererFields = memo(function MeshRendererFields({
         <label className="mesh-field mesh-field--checkbox">
           <input
             type="checkbox"
-            checked={value.material.wireframe}
+            checked={mixedMaterialBool?.wireframe ?? value.material.wireframe}
+            ref={(input) => {
+              if (input) input.indeterminate = mixedMaterialBool?.wireframe === null
+            }}
             disabled={disabled}
             onChange={(e) => patchMaterial({ wireframe: e.target.checked })}
           />
@@ -227,7 +295,10 @@ export const MeshRendererFields = memo(function MeshRendererFields({
         <label className="mesh-field mesh-field--checkbox">
           <input
             type="checkbox"
-            checked={value.material.transparent}
+            checked={mixedMaterialBool?.transparent ?? value.material.transparent}
+            ref={(input) => {
+              if (input) input.indeterminate = mixedMaterialBool?.transparent === null
+            }}
             disabled={disabled}
             onChange={(e) => patchMaterial({ transparent: e.target.checked })}
           />

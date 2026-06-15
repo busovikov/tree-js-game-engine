@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import {
   CameraComponent,
   LightComponent,
@@ -9,8 +9,8 @@ import {
   TransformComponent,
   getCoreComponent,
 } from '@haku/core'
-import type { ComponentType } from '@haku/core'
-import type { Camera, Light, MeshRenderer, Transform } from '@haku/schema'
+import type { ComponentType, EntityId } from '@haku/core'
+import type { Camera, Light, MeshMaterial, MeshRenderer, Transform } from '@haku/schema'
 import { useEditorStore } from '../store/editor-store.js'
 import { commitSceneEdit } from '../commands/scene-history.js'
 import { CameraFields, normalizeCamera } from '../components/CameraFields.js'
@@ -19,7 +19,16 @@ import { TransformFields } from '../components/TransformFields.js'
 import { MeshRendererFields } from '../components/MeshRendererFields.js'
 import { TagFields } from '../components/TagFields.js'
 import { SchemaFields } from '../components/SchemaFields.js'
-import { normalizeMeshRenderer } from '@haku/schema'
+import { normalizeMeshRenderer, defaultGeometryParams } from '@haku/schema'
+import {
+  commonComponentTypes,
+  mergeBooleans,
+  mergeNumbers,
+  mergeStrings,
+  mergeVec3,
+  type MixedBool,
+} from '../inspector/multi-edit.js'
+import * as THREE from 'three'
 import './inspector-panel.css'
 
 const DEFAULT_TRANSFORM: Transform = {
@@ -48,6 +57,31 @@ function InspectorSeparator() {
   return <hr className="haku-inspector__separator" />
 }
 
+function quatToEulerDegrees(q: [number, number, number, number]): [number, number, number] {
+  const euler = new THREE.Euler().setFromQuaternion(
+    new THREE.Quaternion(q[0], q[1], q[2], q[3]),
+    'XYZ',
+  )
+  return [
+    THREE.MathUtils.radToDeg(euler.x),
+    THREE.MathUtils.radToDeg(euler.y),
+    THREE.MathUtils.radToDeg(euler.z),
+  ]
+}
+
+function eulerAxisToQuat(axis: 0 | 1 | 2, degrees: number, current: [number, number, number, number]): [number, number, number, number] {
+  const euler = quatToEulerDegrees(current)
+  euler[axis] = degrees
+  const rotation = new THREE.Euler(
+    THREE.MathUtils.degToRad(euler[0]),
+    THREE.MathUtils.degToRad(euler[1]),
+    THREE.MathUtils.degToRad(euler[2]),
+    'XYZ',
+  )
+  const q = new THREE.Quaternion().setFromEuler(rotation)
+  return [q.x, q.y, q.z, q.w]
+}
+
 export const InspectorPanel = memo(function InspectorPanel() {
   const selection = useEditorStore((s) => s.selection)
   const world = useEditorStore((s) => s.world)
@@ -56,66 +90,149 @@ export const InspectorPanel = memo(function InspectorPanel() {
 
   void worldRevision
 
-  const canEdit = !!selection && !!world && mode === 'edit'
-  const componentTypes = selection && world ? world.getComponentTypes(selection) : []
-  const entityName = selection && world ? (world.getEntityName(selection) ?? 'Entity') : ''
-  const entityTags =
-    selection && world && world.hasComponent(selection, TagComponent)
-      ? (world.getComponent(selection, TagComponent)?.tags ?? [])
-      : []
-  const isStatic =
-    !!selection &&
-    !!world &&
-    world.hasComponent(selection, StaticComponent) &&
-    (world.getComponent(selection, StaticComponent)?.isStatic ?? false)
-  const transform =
-    selection && world ? world.getComponent(selection, TransformComponent) : undefined
+  const selectedIds = useMemo(
+    () => selection.filter((id) => world?.hasEntity(id)),
+    [selection, world, worldRevision],
+  )
 
-  const [nameDraft, setNameDraft] = useState(entityName)
+  const canEdit = selectedIds.length > 0 && !!world && mode === 'edit'
+  const isMulti = selectedIds.length > 1
+
+  const entityNames = useMemo(
+    () => selectedIds.map((id) => world?.getEntityName(id) ?? 'Entity'),
+    [selectedIds, world, worldRevision],
+  )
+  const mergedName = mergeStrings(entityNames)
+  const headerLabel = isMulti
+    ? `${selectedIds.length} entities selected`
+    : (mergedName ?? 'Entity')
+
+  const entityTags = useMemo(() => {
+    if (!world || selectedIds.length !== 1) return []
+    const id = selectedIds[0]!
+    return world.hasComponent(id, TagComponent)
+      ? (world.getComponent(id, TagComponent)?.tags ?? [])
+      : []
+  }, [selectedIds, world, worldRevision])
+
+  const staticMixed: MixedBool = useMemo(() => {
+    if (!world || selectedIds.length === 0) return null
+    return mergeBooleans(
+      selectedIds.map((id) =>
+        world.hasComponent(id, StaticComponent)
+          ? (world.getComponent(id, StaticComponent)?.isStatic ?? false)
+          : false,
+      ),
+    )
+  }, [selectedIds, world, worldRevision])
+
+  const transforms = useMemo(() => {
+    if (!world) return []
+    return selectedIds
+      .map((id) => world.getComponent(id, TransformComponent))
+      .filter((value): value is Transform => !!value)
+  }, [selectedIds, world, worldRevision])
+
+  const transformDisplay = transforms[0] ?? DEFAULT_TRANSFORM
+  const mixedPosition = useMemo(
+    () => mergeVec3(transforms.map((value) => value.position as [number, number, number])),
+    [transforms],
+  )
+  const mixedScale = useMemo(
+    () => mergeVec3(transforms.map((value) => value.scale as [number, number, number])),
+    [transforms],
+  )
+  const mixedRotation = useMemo(
+    () =>
+      mergeVec3(
+        transforms.map((value) => quatToEulerDegrees(value.rotation as [number, number, number, number])),
+      ),
+    [transforms],
+  )
+
+  const commonTypes = useMemo(
+    () => (world ? commonComponentTypes(world, selectedIds) : []),
+    [world, selectedIds, worldRevision],
+  )
+
+  const [nameDraft, setNameDraft] = useState(headerLabel)
   useEffect(() => {
-    setNameDraft(entityName)
-  }, [selection?.value, entityName])
+    setNameDraft(headerLabel)
+  }, [selectedIds.map((id) => id.value).join(','), headerLabel])
+
+  const forEachSelected = useCallback(
+    (edit: (id: EntityId, draftWorld: NonNullable<typeof world>) => void) => {
+      if (!canEdit || !world) return
+      commitSceneEdit((draft) => {
+        for (const id of selectedIds) {
+          if (draft.world.hasEntity(id)) edit(id, draft.world)
+        }
+      })
+    },
+    [canEdit, selectedIds, world],
+  )
 
   const updateEntityName = useCallback(
     (name: string) => {
-      if (!canEdit || !selection || !world) return
+      if (!canEdit || isMulti || !world || selectedIds.length !== 1) return
+      const id = selectedIds[0]!
       const trimmed = name.trim()
       if (!trimmed) {
-        setNameDraft(world.getEntityName(selection) ?? 'Entity')
+        setNameDraft(world.getEntityName(id) ?? 'Entity')
         return
       }
-      if (trimmed === world.getEntityName(selection)) return
+      if (trimmed === world.getEntityName(id)) return
       commitSceneEdit((draft) => {
-        draft.world.setEntityName(selection, trimmed)
+        draft.world.setEntityName(id, trimmed)
       })
     },
-    [canEdit, selection, world],
+    [canEdit, isMulti, selectedIds, world],
   )
 
   const updateStatic = useCallback(
     (checked: boolean) => {
-      if (!canEdit || !selection || !world) return
-      commitSceneEdit((draft) => {
+      forEachSelected((id, draftWorld) => {
         if (checked) {
-          draft.world.addComponent(selection, StaticComponent, { isStatic: true })
+          draftWorld.addComponent(id, StaticComponent, { isStatic: true })
           return
         }
-        if (draft.world.hasComponent(selection, StaticComponent)) {
-          draft.world.removeComponent(selection, StaticComponent)
+        if (draftWorld.hasComponent(id, StaticComponent)) {
+          draftWorld.removeComponent(id, StaticComponent)
         }
       })
     },
-    [canEdit, selection, world],
+    [forEachSelected],
+  )
+
+  const applyTransformAxis = useCallback(
+    (
+      field: 'position' | 'scale' | 'rotation',
+      axis: 0 | 1 | 2,
+      value: number,
+    ) => {
+      forEachSelected((id, draftWorld) => {
+        const current = draftWorld.getComponent(id, TransformComponent) ?? DEFAULT_TRANSFORM
+        const next = structuredClone(current)
+        if (field === 'position') {
+          next.position[axis] = value
+        } else if (field === 'scale') {
+          next.scale[axis] = value
+        } else {
+          next.rotation = eulerAxisToQuat(axis, value, current.rotation as [number, number, number, number])
+        }
+        draftWorld.addComponent(id, TransformComponent, next)
+      })
+    },
+    [forEachSelected],
   )
 
   const updateTransform = useCallback(
     (after: Transform) => {
-      if (!canEdit || !selection || !world) return
-      commitSceneEdit((draft) => {
-        draft.world.addComponent(selection, TransformComponent, after)
+      forEachSelected((id, draftWorld) => {
+        draftWorld.addComponent(id, TransformComponent, after)
       })
     },
-    [canEdit, selection, world],
+    [forEachSelected],
   )
 
   const resetTransform = useCallback(() => {
@@ -124,37 +241,52 @@ export const InspectorPanel = memo(function InspectorPanel() {
 
   const updateCamera = useCallback(
     (after: Camera) => {
-      if (!canEdit || !selection || !world) return
-      commitSceneEdit((draft) => {
-        draft.world.addComponent(selection, CameraComponent, after)
+      forEachSelected((id, draftWorld) => {
+        if (draftWorld.hasComponent(id, CameraComponent)) {
+          draftWorld.addComponent(id, CameraComponent, after)
+        }
       })
     },
-    [canEdit, selection, world],
+    [forEachSelected],
   )
 
   const updateLight = useCallback(
     (after: Light) => {
-      if (!canEdit || !selection || !world) return
-      commitSceneEdit((draft) => {
-        draft.world.addComponent(selection, LightComponent, after)
+      forEachSelected((id, draftWorld) => {
+        if (draftWorld.hasComponent(id, LightComponent)) {
+          draftWorld.addComponent(id, LightComponent, after)
+        }
       })
     },
-    [canEdit, selection, world],
+    [forEachSelected],
   )
 
   const updateMeshRenderer = useCallback(
     (after: MeshRenderer) => {
-      if (!canEdit || !selection || !world) return
-      commitSceneEdit((draft) => {
-        draft.world.addComponent(selection, MeshRendererComponent, after)
+      forEachSelected((id, draftWorld) => {
+        if (draftWorld.hasComponent(id, MeshRendererComponent)) {
+          draftWorld.addComponent(id, MeshRendererComponent, after)
+        }
       })
     },
-    [canEdit, selection, world],
+    [forEachSelected],
+  )
+
+  const patchMeshRenderer = useCallback(
+    (patch: (current: MeshRenderer) => MeshRenderer) => {
+      forEachSelected((id, draftWorld) => {
+        if (!draftWorld.hasComponent(id, MeshRendererComponent)) return
+        const current = normalizeMeshRenderer(draftWorld.getComponent(id, MeshRendererComponent))
+        draftWorld.addComponent(id, MeshRendererComponent, patch(current))
+      })
+    },
+    [forEachSelected],
   )
 
   const updateTags = useCallback(
     (tags: string[]) => {
-      if (!canEdit || !selection || !world) return
+      if (!canEdit || selectedIds.length !== 1 || !world) return
+      const id = selectedIds[0]!
       const normalized = tags
         .map((tag) => tag.trim())
         .filter(Boolean)
@@ -162,44 +294,43 @@ export const InspectorPanel = memo(function InspectorPanel() {
 
       commitSceneEdit((draft) => {
         if (normalized.length === 0) {
-          if (draft.world.hasComponent(selection, TagComponent)) {
-            draft.world.removeComponent(selection, TagComponent)
+          if (draft.world.hasComponent(id, TagComponent)) {
+            draft.world.removeComponent(id, TagComponent)
           }
           return
         }
-        draft.world.addComponent(selection, TagComponent, { tags: normalized })
+        draft.world.addComponent(id, TagComponent, { tags: normalized })
       })
     },
-    [canEdit, selection, world],
+    [canEdit, selectedIds, world],
   )
 
   const addComponent = useCallback(
     (component: ComponentType) => {
-      if (!canEdit || !selection || !world) return
-      if (world.hasComponent(selection, component)) return
-
-      commitSceneEdit((draft) => {
+      forEachSelected((id, draftWorld) => {
+        if (draftWorld.hasComponent(id, component)) return
         const defaults =
           'defaults' in component && typeof component.defaults === 'function'
             ? component.defaults()
             : component.schema.parse({})
-        draft.world.addComponent(selection, component, defaults)
+        draftWorld.addComponent(id, component, defaults)
       })
     },
-    [canEdit, selection, world],
+    [forEachSelected],
   )
 
   const removeComponent = useCallback(
     (component: ComponentType) => {
-      if (!canEdit || !selection || !world) return
-      commitSceneEdit((draft) => {
-        draft.world.removeComponent(selection, component)
+      forEachSelected((id, draftWorld) => {
+        if (draftWorld.hasComponent(id, component)) {
+          draftWorld.removeComponent(id, component)
+        }
       })
     },
-    [canEdit, selection, world],
+    [forEachSelected],
   )
 
-  if (!selection || !world) {
+  if (!world || selectedIds.length === 0) {
     return (
       <div className="haku-inspector haku-inspector--empty">
         Select an entity
@@ -207,9 +338,8 @@ export const InspectorPanel = memo(function InspectorPanel() {
     )
   }
 
-  const otherComponents = world
-    .getComponentTypes(selection)
-    .filter((typeId) => !HIDDEN_COMPONENTS.has(typeId))
+  const otherComponents = commonTypes.filter((typeId) => !HIDDEN_COMPONENTS.has(typeId))
+  const showTransform = commonTypes.includes('Transform')
 
   return (
     <div className="haku-inspector">
@@ -218,7 +348,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
           type="text"
           className="haku-inspector__name-input"
           value={nameDraft}
-          disabled={!canEdit}
+          disabled={!canEdit || isMulti}
           onChange={(event) => setNameDraft(event.target.value)}
           onBlur={() => updateEntityName(nameDraft)}
           onKeyDown={(event) => {
@@ -230,7 +360,10 @@ export const InspectorPanel = memo(function InspectorPanel() {
         <label className="haku-inspector__static">
           <input
             type="checkbox"
-            checked={isStatic}
+            checked={staticMixed === true}
+            ref={(input) => {
+              if (input) input.indeterminate = staticMixed === null
+            }}
             disabled={!canEdit}
             onChange={(event) => updateStatic(event.target.checked)}
           />
@@ -238,18 +371,20 @@ export const InspectorPanel = memo(function InspectorPanel() {
         </label>
       </div>
 
-      <div className="haku-inspector__tags">
-        <TagFields
-          key={selection.value}
-          tags={entityTags}
-          disabled={!canEdit}
-          onChange={updateTags}
-        />
-      </div>
+      {!isMulti && (
+        <div className="haku-inspector__tags">
+          <TagFields
+            key={selectedIds[0]!.value}
+            tags={entityTags}
+            disabled={!canEdit}
+            onChange={updateTags}
+          />
+        </div>
+      )}
 
       <InspectorSeparator />
 
-      {transform && (
+      {showTransform && (
         <section className="haku-inspector__section">
           <div className="haku-inspector__section-header">
             <h4 className="haku-inspector__section-title">Transform</h4>
@@ -264,9 +399,21 @@ export const InspectorPanel = memo(function InspectorPanel() {
             </button>
           </div>
           <TransformFields
-            value={transform}
+            value={transformDisplay}
+            mixedPosition={isMulti ? mixedPosition : undefined}
+            mixedRotation={isMulti ? mixedRotation : undefined}
+            mixedScale={isMulti ? mixedScale : undefined}
             disabled={mode === 'play'}
-            onChange={updateTransform}
+            onChange={isMulti ? undefined : updateTransform}
+            onPositionAxisChange={
+              isMulti ? (axis, value) => applyTransformAxis('position', axis, value) : undefined
+            }
+            onRotationAxisChange={
+              isMulti ? (axis, value) => applyTransformAxis('rotation', axis, value) : undefined
+            }
+            onScaleAxisChange={
+              isMulti ? (axis, value) => applyTransformAxis('scale', axis, value) : undefined
+            }
           />
         </section>
       )}
@@ -277,8 +424,18 @@ export const InspectorPanel = memo(function InspectorPanel() {
         const key = typeId as keyof typeof COMPONENT_MAP
         if (!(key in COMPONENT_MAP)) return null
         const type = getCoreComponent(typeId)
-        const data = type ? world.getComponent(selection, type) : undefined
-        if (!data || typeof data !== 'object') return null
+        if (!type) return null
+
+        const component = COMPONENT_MAP[key]
+        const targets = selectedIds.filter((entityId) => world.hasComponent(entityId, component))
+        if (targets.length === 0) return null
+
+        const values = targets
+          .map((id) => world.getComponent(id, type))
+          .filter((value): value is NonNullable<typeof value> => value !== undefined && typeof value === 'object')
+
+        if (values.length === 0) return null
+        const data = values[0]!
 
         return (
           <section key={typeId} className="haku-inspector__section">
@@ -311,7 +468,91 @@ export const InspectorPanel = memo(function InspectorPanel() {
               <MeshRendererFields
                 value={normalizeMeshRenderer(data)}
                 disabled={mode === 'play'}
-                onChange={updateMeshRenderer}
+                mixedGeometryType={
+                  isMulti
+                    ? mergeStrings(values.map((value) => normalizeMeshRenderer(value).geometryType))
+                    : undefined
+                }
+                mixedModelAsset={
+                  isMulti
+                    ? mergeStrings(values.map((value) => normalizeMeshRenderer(value).modelAsset))
+                    : undefined
+                }
+                mixedMaterialColor={
+                  isMulti
+                    ? mergeStrings(values.map((value) => normalizeMeshRenderer(value).material.color))
+                    : undefined
+                }
+                mixedMaterialNumber={
+                  isMulti
+                    ? {
+                        metalness: mergeNumbers(
+                          values.map((value) => normalizeMeshRenderer(value).material.metalness),
+                        ),
+                        roughness: mergeNumbers(
+                          values.map((value) => normalizeMeshRenderer(value).material.roughness),
+                        ),
+                        opacity: mergeNumbers(
+                          values.map((value) => normalizeMeshRenderer(value).material.opacity),
+                        ),
+                      }
+                    : undefined
+                }
+                mixedMaterialBool={
+                  isMulti
+                    ? {
+                        wireframe: mergeBooleans(
+                          values.map((value) => normalizeMeshRenderer(value).material.wireframe),
+                        ),
+                        transparent: mergeBooleans(
+                          values.map((value) => normalizeMeshRenderer(value).material.transparent),
+                        ),
+                      }
+                    : undefined
+                }
+                onChange={isMulti ? undefined : updateMeshRenderer}
+                onPatch={
+                  isMulti
+                    ? (patch) => {
+                        patchMeshRenderer((current) => ({ ...current, ...patch }))
+                      }
+                    : undefined
+                }
+                onMaterialPatch={
+                  isMulti
+                    ? (patch: Partial<MeshMaterial>) => {
+                        patchMeshRenderer((current) => ({
+                          ...current,
+                          material: { ...current.material, ...patch },
+                        }))
+                      }
+                    : undefined
+                }
+                onGeometryTypeChange={
+                  isMulti
+                    ? (geometryType) => {
+                        patchMeshRenderer((current) => ({
+                          ...current,
+                          geometryType,
+                          geometryParams: defaultGeometryParams(geometryType),
+                          modelAsset: geometryType === 'ModelGeometry' ? current.modelAsset : '',
+                        }))
+                      }
+                    : undefined
+                }
+                onModelAssetChange={
+                  isMulti ? (modelAsset) => patchMeshRenderer((current) => ({ ...current, modelAsset })) : undefined
+                }
+                onGeometryParamChange={
+                  isMulti
+                    ? (paramKey, num) => {
+                        patchMeshRenderer((current) => ({
+                          ...current,
+                          geometryParams: { ...current.geometryParams, [paramKey]: num },
+                        }))
+                      }
+                    : undefined
+                }
               />
             ) : (
               <SchemaFields
@@ -319,8 +560,8 @@ export const InspectorPanel = memo(function InspectorPanel() {
                 data={data as Record<string, unknown>}
                 disabled={mode === 'play'}
                 onChange={(next) =>
-                  commitSceneEdit((draft) => {
-                    draft.world.addComponent(selection, COMPONENT_MAP[key], next)
+                  forEachSelected((id, draftWorld) => {
+                    draftWorld.addComponent(id, COMPONENT_MAP[key], next)
                   })
                 }
               />
@@ -334,13 +575,13 @@ export const InspectorPanel = memo(function InspectorPanel() {
           <h4 className="haku-inspector__add-title">Add Component</h4>
           <div className="haku-inspector__add-buttons">
             {ADDABLE_COMPONENTS.map(({ id, component, label }) => {
-              const present = componentTypes.includes(id)
+              const allHave = selectedIds.every((entityId) => world.hasComponent(entityId, component))
               return (
                 <button
                   key={id}
                   type="button"
-                  disabled={present}
-                  className={`haku-inspector__add-btn${present ? ' haku-inspector__add-btn--present' : ''}`}
+                  disabled={allHave}
+                  className={`haku-inspector__add-btn${allHave ? ' haku-inspector__add-btn--present' : ''}`}
                   onClick={() => addComponent(component)}
                 >
                   {label}

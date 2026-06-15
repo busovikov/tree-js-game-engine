@@ -1,30 +1,56 @@
-import { memo, useEffect, useLayoutEffect, useRef } from 'react'
+import { memo, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { Engine } from '@haku/engine'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js'
-import { TransformComponent } from '@haku/core'
+import { TransformComponent, type EntityId } from '@haku/core'
 import { projectService } from '../services/project-service.js'
 import { useEditorStore } from '../store/editor-store.js'
-import { commitTransformChange, transformsEqual } from '../commands/scene-history.js'
+import { commitMultiTransformChange, commitTransformChange, transformsEqual } from '../commands/scene-history.js'
 import { computeHierarchyFilterSets } from '../hierarchy/entity-filter.js'
 import { focusSelection } from '../viewport/focus-selection.js'
+import {
+  focusSelectionBounds,
+  SelectionTransformPivot,
+  type EntityDragSnapshot,
+} from '../viewport/selection-transform-pivot.js'
+import { applyAabbEdgeSnap, applyAabbEdgeSnapToSelectionPivot } from '../viewport/aabb-snap.js'
 import { applyEditorTransformGizmoLayout, applyUniformScaleDamping } from '../viewport/transform-gizmo-config.js'
 import { applyOrbitToolMode } from '../viewport/viewport-orbit.js'
 import { attachCameraLookControls } from '../viewport/viewport-camera-look.js'
 import { SceneCameraGizmos } from '../viewport/scene-camera-gizmos.js'
 import { SceneLightGizmos } from '../viewport/scene-light-gizmos.js'
+import { primarySelection, mergeSelection } from '../selection/selection-utils.js'
+import { SceneAabbGizmos } from '../viewport/scene-aabb-gizmos.js'
+import { SceneSelectionOutline } from '../viewport/scene-selection-outline.js'
 
 function refreshGizmo(
   gizmo: TransformControls,
-  object: import('three').Object3D | undefined,
+  selection: EntityId[],
+  pivot: SelectionTransformPivot,
+  getObject3D: (id: EntityId) => import('three').Object3D | undefined,
 ): void {
-  if (!object) {
+  if (selection.length === 0) {
     gizmo.detach()
     return
   }
-  object.updateMatrixWorld(true)
-  gizmo.attach(object)
+
+  if (selection.length === 1) {
+    const object = getObject3D(selection[0]!)
+    if (!object) {
+      gizmo.detach()
+      return
+    }
+    gizmo.setSpace('local')
+    object.updateMatrixWorld(true)
+    gizmo.attach(object)
+    return
+  }
+
+  gizmo.setSpace('world')
+  pivot.syncCenter(selection, getObject3D)
+  pivot.object.updateMatrixWorld(true)
+  gizmo.attach(pivot.object)
 }
 
 function syncViewportCamera(engine: Engine): void {
@@ -38,20 +64,33 @@ function syncViewportCamera(engine: Engine): void {
 
 export const ViewportPanel = memo(function ViewportPanel() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const marqueeRef = useRef<HTMLDivElement>(null)
   const engineRef = useRef<Engine | null>(null)
   const orbitRef = useRef<OrbitControls | null>(null)
   const cameraLookRef = useRef<ReturnType<typeof attachCameraLookControls> | null>(null)
   const gizmoRef = useRef<TransformControls | null>(null)
+  const selectionPivotRef = useRef<SelectionTransformPivot | null>(null)
   const cameraGizmosRef = useRef<SceneCameraGizmos | null>(null)
   const lightGizmosRef = useRef<SceneLightGizmos | null>(null)
+  const aabbGizmosRef = useRef<SceneAabbGizmos | null>(null)
+  const selectionOutlineRef = useRef<SceneSelectionOutline | null>(null)
   const lastHandledFocusRequest = useRef(0)
   const dragStartTransform = useRef<ReturnType<typeof TransformComponent.schema.parse> | null>(null)
+  const dragStartSnapshots = useRef<EntityDragSnapshot[]>([])
   const uniformScaleDragStart = useRef<THREE.Vector3 | null>(null)
 
   const world = useEditorStore((s) => s.world)
   const worldRevision = useEditorStore((s) => s.worldRevision)
   const sceneDocument = useEditorStore((s) => s.sceneDocument)
   const selection = useEditorStore((s) => s.selection)
+  const selectedIds = useMemo(
+    () => selection.filter((id) => world?.hasEntity(id)),
+    [selection, world, worldRevision],
+  )
+  const primary = primarySelection(selectedIds)
+  const selectedIdSet = useMemo(() => new Set(selectedIds.map((id) => id.value)), [selectedIds])
+  const showAabb = useEditorStore((s) => s.showAabb)
   const mode = useEditorStore((s) => s.mode)
   const transformTool = useEditorStore((s) => s.transformTool)
   const viewportCameraEntityId = useEditorStore((s) => s.viewportCameraEntityId)
@@ -106,8 +145,15 @@ export const ViewportPanel = memo(function ViewportPanel() {
     engine.backend.threeScene.add(gizmo.getHelper())
     gizmoRef.current = gizmo
 
+    const selectionPivot = new SelectionTransformPivot()
+    engine.backend.threeScene.add(selectionPivot.object)
+    selectionPivotRef.current = selectionPivot
+
     cameraGizmosRef.current = new SceneCameraGizmos()
     lightGizmosRef.current = new SceneLightGizmos()
+    aabbGizmosRef.current = new SceneAabbGizmos()
+    aabbGizmosRef.current.attach(engine.backend.threeScene)
+    selectionOutlineRef.current = new SceneSelectionOutline()
 
     const tick = () => {
       orbit.update()
@@ -138,6 +184,12 @@ export const ViewportPanel = memo(function ViewportPanel() {
       cameraGizmosRef.current = null
       lightGizmosRef.current?.dispose()
       lightGizmosRef.current = null
+      aabbGizmosRef.current?.dispose()
+      aabbGizmosRef.current = null
+      selectionOutlineRef.current?.dispose()
+      selectionOutlineRef.current = null
+      selectionPivotRef.current?.dispose()
+      selectionPivotRef.current = null
       gizmo.dispose()
       orbit.dispose()
       engine.dispose()
@@ -180,17 +232,24 @@ export const ViewportPanel = memo(function ViewportPanel() {
     const gizmo = gizmoRef.current
     const cameraGizmos = cameraGizmosRef.current
     const lightGizmos = lightGizmosRef.current
-    if (!engine || !world || !gizmo) return
+    const aabbGizmos = aabbGizmosRef.current
+    const selectionOutline = selectionOutlineRef.current
+    const selectionPivot = selectionPivotRef.current
+    if (!engine || !world || !gizmo || !selectionPivot) return
 
-    if (selection) {
-      engine.backend.sync.syncEntityTransform(selection)
-      refreshGizmo(gizmo, engine.backend.sync.getObject3D(selection))
+    const getObject3D = (id: EntityId) => engine.backend.sync.getObject3D(id)
+
+    if (!selectionPivot.isDragging()) {
+      for (const id of selectedIds) {
+        engine.backend.sync.syncEntityTransform(id)
+      }
+      refreshGizmo(gizmo, selectedIds, selectionPivot, getObject3D)
     }
 
     if (cameraGizmos) {
       cameraGizmos.sync(world, engine.backend.sync, {
         visible: mode === 'edit',
-        selectedId: selection?.value ?? null,
+        selectedId: primary?.value ?? null,
         viewportCameraId: viewportCameraEntityId?.value ?? null,
         hideActiveViewportFrustum: !!viewportCameraEntityId,
       })
@@ -199,10 +258,24 @@ export const ViewportPanel = memo(function ViewportPanel() {
     if (lightGizmos) {
       lightGizmos.sync(world, engine.backend.sync, {
         visible: mode === 'edit',
-        selectedId: selection?.value ?? null,
+        selectedId: primary?.value ?? null,
       })
     }
-  }, [world, worldRevision, selection, mode, viewportCameraEntityId])
+
+    if (aabbGizmos) {
+      aabbGizmos.sync(world, engine.backend.sync, {
+        visible: mode === 'edit' && showAabb,
+        selectedIds: selectedIdSet,
+      })
+    }
+
+    if (selectionOutline) {
+      selectionOutline.sync(engine.backend.sync, {
+        visible: mode === 'edit' && selectedIds.length > 0,
+        selectedIds: selectedIdSet,
+      })
+    }
+  }, [world, worldRevision, selectedIds, selectedIdSet, mode, viewportCameraEntityId, showAabb, primary])
 
   useEffect(() => {
     const engine = engineRef.current
@@ -222,21 +295,22 @@ export const ViewportPanel = memo(function ViewportPanel() {
     const engine = engineRef.current
     const gizmo = gizmoRef.current
     const orbit = orbitRef.current
-    if (!engine || !gizmo || !orbit) return
+    const selectionPivot = selectionPivotRef.current
+    if (!engine || !gizmo || !orbit || !selectionPivot) return
 
     const isEdit = mode === 'edit'
     const usesEditorCamera = !viewportCameraEntityId
     const isHandTool = transformTool === 'hand'
 
-    gizmo.getHelper().visible = isEdit && !!selection && !isHandTool
+    gizmo.getHelper().visible = isEdit && selectedIds.length > 0 && !isHandTool
     orbit.enabled = isEdit && usesEditorCamera
 
-    if (selection && !isHandTool) {
-      refreshGizmo(gizmo, engine.backend.sync.getObject3D(selection))
-    } else {
+    if (selectedIds.length > 0 && !isHandTool && !selectionPivot.isDragging()) {
+      refreshGizmo(gizmo, selectedIds, selectionPivot, (id) => engine.backend.sync.getObject3D(id))
+    } else if (!selectedIds.length || isHandTool) {
       gizmo.detach()
     }
-  }, [selection, mode, world, transformTool, viewportCameraEntityId])
+  }, [selectedIds, mode, world, transformTool, viewportCameraEntityId])
 
   useEffect(() => {
     const gizmo = gizmoRef.current
@@ -266,14 +340,18 @@ export const ViewportPanel = memo(function ViewportPanel() {
 
     lastHandledFocusRequest.current = focusSelectionRequest
 
-    const selected = useEditorStore.getState().selection
-    if (!selected) return
+    const selected = useEditorStore.getState().selection.filter((id) => engine.backend.sync.getObject3D(id))
+    if (selected.length === 0) return
 
-    const object = engine.backend.sync.getObject3D(selected)
     const camera = engine.backend.getEditorCamera()
-    if (!object) return
+    if (selected.length === 1) {
+      const object = engine.backend.sync.getObject3D(selected[0]!)
+      if (!object) return
+      focusSelection(object, camera, orbit)
+      return
+    }
 
-    focusSelection(object, camera, orbit)
+    focusSelectionBounds(selected, (id) => engine.backend.sync.getObject3D(id), camera, orbit)
   }, [focusSelectionRequest])
 
   useEffect(() => {
@@ -281,9 +359,29 @@ export const ViewportPanel = memo(function ViewportPanel() {
     if (!gizmo) return
 
     const onMouseDown = () => {
-      const sel = useEditorStore.getState().selection
-      const w = useEditorStore.getState().world
-      const obj = sel ? engineRef.current?.backend.sync.getObject3D(sel) : null
+      const { selection: currentSelection, world: w } = useEditorStore.getState()
+      const engine = engineRef.current
+      const selectionPivot = selectionPivotRef.current
+      if (!engine || !w || !selectionPivot) return
+
+      const ids = currentSelection.filter((id) => w.hasEntity(id))
+      const getObject3D = (id: EntityId) => engine.backend.sync.getObject3D(id)
+
+      if (ids.length > 1) {
+        dragStartSnapshots.current = selectionPivot.beginDrag(ids, w, getObject3D)
+        dragStartTransform.current = null
+
+        if (gizmo.mode === 'scale' && gizmo.axis === 'XYZ') {
+          uniformScaleDragStart.current = selectionPivot.object.scale.clone()
+        } else {
+          uniformScaleDragStart.current = null
+        }
+        return
+      }
+
+      const sel = primarySelection(ids)
+      const obj = sel ? getObject3D(sel) : null
+      dragStartSnapshots.current = []
 
       if (sel && w) {
         dragStartTransform.current = w.getComponent(sel, TransformComponent) ?? null
@@ -297,10 +395,41 @@ export const ViewportPanel = memo(function ViewportPanel() {
     }
 
     const onMouseUp = () => {
-      const sel = useEditorStore.getState().selection
       const w = useEditorStore.getState().world
+      const selectionPivot = selectionPivotRef.current
+      if (!w || !selectionPivot) return
+
+      if (dragStartSnapshots.current.length > 0) {
+        const snapshots = dragStartSnapshots.current
+        selectionPivot.endDrag()
+        const changes = snapshots
+          .map((snapshot) => {
+            const after = w.getComponent(snapshot.id, TransformComponent)
+            if (!after) return null
+            return { entityId: snapshot.id, before: snapshot.before, after }
+          })
+          .filter((change): change is NonNullable<typeof change> => !!change)
+
+        if (changes.length > 0) {
+          commitMultiTransformChange(changes)
+        }
+
+        dragStartSnapshots.current = []
+        uniformScaleDragStart.current = null
+
+        const engine = engineRef.current
+        const activeGizmo = gizmoRef.current
+        const pivot = selectionPivotRef.current
+        if (engine && activeGizmo && pivot) {
+          const ids = useEditorStore.getState().selection.filter((id) => w.hasEntity(id))
+          refreshGizmo(activeGizmo, ids, pivot, (id) => engine.backend.sync.getObject3D(id))
+        }
+        return
+      }
+
+      const sel = primarySelection(useEditorStore.getState().selection)
       const before = dragStartTransform.current
-      if (!sel || !w || !before) return
+      if (!sel || !before) return
       const after = w.getComponent(sel, TransformComponent)
       if (!after || transformsEqual(before, after)) {
         dragStartTransform.current = null
@@ -316,13 +445,49 @@ export const ViewportPanel = memo(function ViewportPanel() {
     const onObjectChange = () => {
       if (!gizmo.dragging) return
 
-      const sel = useEditorStore.getState().selection
-      const w = useEditorStore.getState().world
-      const obj = sel ? engineRef.current?.backend.sync.getObject3D(sel) : null
-      if (!sel || !w || !obj) return
+      const { selection: currentSelection, world: w, snapEnabled } = useEditorStore.getState()
+      const engine = engineRef.current
+      const selectionPivot = selectionPivotRef.current
+      if (!engine || !w || !selectionPivot) return
+
+      const ids = currentSelection.filter((id) => w.hasEntity(id))
+      const getObject3D = (id: EntityId) => engine.backend.sync.getObject3D(id)
+
+      if (ids.length > 1) {
+        if (gizmo.mode === 'scale' && gizmo.axis === 'XYZ' && uniformScaleDragStart.current) {
+          applyUniformScaleDamping(selectionPivot.object, uniformScaleDragStart.current)
+        }
+
+        if (snapEnabled && gizmo.mode === 'translate') {
+          const snapState = selectionPivot.getSnapDragState()
+          if (snapState) {
+            applyAabbEdgeSnapToSelectionPivot(
+              selectionPivot.object,
+              ids,
+              snapState.startBounds,
+              snapState.startPivotWorld,
+              w,
+              getObject3D,
+              gizmo.axis,
+            )
+          }
+        }
+
+        selectionPivot.applyDrag(w, getObject3D)
+        useEditorStore.getState().setWorld(w)
+        return
+      }
+
+      const sel = primarySelection(ids)
+      const obj = sel ? getObject3D(sel) : null
+      if (!sel || !obj) return
 
       if (gizmo.mode === 'scale' && gizmo.axis === 'XYZ' && uniformScaleDragStart.current) {
         applyUniformScaleDamping(obj, uniformScaleDragStart.current)
+      }
+
+      if (snapEnabled && gizmo.mode === 'translate') {
+        applyAabbEdgeSnap(obj, sel, w, getObject3D, gizmo.axis)
       }
 
       w.addComponent(sel, TransformComponent, {
@@ -346,45 +511,149 @@ export const ViewportPanel = memo(function ViewportPanel() {
 
   useEffect(() => {
     const canvas = canvasRef.current
-    if (!canvas) return
+    const marquee = marqueeRef.current
+    if (!canvas || !marquee) return
 
+    const dragThresholdSq = 36
     let pointerDown = { x: 0, y: 0 }
+    let dragging = false
+    let isMarquee = false
 
-    const onPointerDown = (event: PointerEvent) => {
-      pointerDown = { x: event.clientX, y: event.clientY }
+    const hideMarquee = () => {
+      marquee.style.display = 'none'
     }
 
-    const onPointerUp = (event: PointerEvent) => {
+    const updateMarquee = (x0: number, y0: number, x1: number, y1: number) => {
+      const left = Math.min(x0, x1)
+      const top = Math.min(y0, y1)
+      const width = Math.abs(x1 - x0)
+      const height = Math.abs(y1 - y0)
+      marquee.style.display = 'block'
+      marquee.style.left = `${left}px`
+      marquee.style.top = `${top}px`
+      marquee.style.width = `${width}px`
+      marquee.style.height = `${height}px`
+    }
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.button !== 0) return
       const { mode, transformTool: tool } = useEditorStore.getState()
       if (mode !== 'edit' || tool === 'hand') return
 
       const gizmo = gizmoRef.current
       if (gizmo?.dragging || gizmo?.axis) return
 
+      pointerDown = { x: event.clientX, y: event.clientY }
+      dragging = true
+      isMarquee = false
+      canvas.setPointerCapture(event.pointerId)
+    }
+
+    const onPointerMove = (event: PointerEvent) => {
+      if (!dragging) return
+
       const dx = event.clientX - pointerDown.x
       const dy = event.clientY - pointerDown.y
-      if (dx * dx + dy * dy > 100) return
+      if (!isMarquee && dx * dx + dy * dy > dragThresholdSq) {
+        isMarquee = true
+      }
+      if (!isMarquee) return
+
+      const container = containerRef.current
+      if (!container) return
+      const rect = container.getBoundingClientRect()
+      updateMarquee(
+        pointerDown.x - rect.left,
+        pointerDown.y - rect.top,
+        event.clientX - rect.left,
+        event.clientY - rect.top,
+      )
+    }
+
+    const onPointerUp = (event: PointerEvent) => {
+      if (!dragging) return
+      dragging = false
+      hideMarquee()
+
+      if (canvas.hasPointerCapture(event.pointerId)) {
+        canvas.releasePointerCapture(event.pointerId)
+      }
+
+      const { mode, transformTool: tool } = useEditorStore.getState()
+      if (mode !== 'edit' || tool === 'hand') return
+
+      const gizmo = gizmoRef.current
+      if (gizmo?.dragging || gizmo?.axis) return
 
       const engine = engineRef.current
       if (!engine) return
 
+      const additive = event.metaKey || event.ctrlKey || event.shiftKey
+
+      if (isMarquee) {
+        const picked = engine.backend.pickEntitiesInRect(
+          pointerDown.x,
+          pointerDown.y,
+          event.clientX,
+          event.clientY,
+          canvas,
+        )
+        const store = useEditorStore.getState()
+        store.setSelection(mergeSelection(store.selection, picked, additive))
+        return
+      }
+
+      const dx = event.clientX - pointerDown.x
+      const dy = event.clientY - pointerDown.y
+      if (dx * dx + dy * dy > dragThresholdSq) return
+
       const pick = engine.backend.pickEntityAt(event.clientX, event.clientY, canvas)
-      useEditorStore.getState().setSelection(pick.entityId)
+      if (!pick.entityId) {
+        useEditorStore.getState().setSelection([])
+        return
+      }
+      useEditorStore.getState().selectEntity(pick.entityId, additive)
+    }
+
+    const onPointerCancel = (event: PointerEvent) => {
+      dragging = false
+      isMarquee = false
+      hideMarquee()
+      if (canvas.hasPointerCapture(event.pointerId)) {
+        canvas.releasePointerCapture(event.pointerId)
+      }
     }
 
     canvas.addEventListener('pointerdown', onPointerDown)
+    canvas.addEventListener('pointermove', onPointerMove)
     canvas.addEventListener('pointerup', onPointerUp)
+    canvas.addEventListener('pointercancel', onPointerCancel)
 
     return () => {
       canvas.removeEventListener('pointerdown', onPointerDown)
+      canvas.removeEventListener('pointermove', onPointerMove)
       canvas.removeEventListener('pointerup', onPointerUp)
+      canvas.removeEventListener('pointercancel', onPointerCancel)
     }
   }, [])
 
   return (
-    <canvas
-      ref={canvasRef}
-      style={{ width: '100%', height: '100%', display: 'block', background: '#111' }}
-    />
+    <div ref={containerRef} style={{ position: 'relative', width: '100%', height: '100%' }}>
+      <canvas
+        ref={canvasRef}
+        style={{ width: '100%', height: '100%', display: 'block', background: '#111' }}
+      />
+      <div
+        ref={marqueeRef}
+        style={{
+          display: 'none',
+          position: 'absolute',
+          pointerEvents: 'none',
+          border: '1px solid #6af',
+          background: 'rgba(100, 170, 255, 0.12)',
+          boxSizing: 'border-box',
+        }}
+      />
+    </div>
   )
 })

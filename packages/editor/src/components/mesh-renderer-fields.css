@@ -47,6 +47,12 @@
   font-size: 12px;
 }
 
+.mesh-field__input--mixed,
+.mesh-field__model-btn--mixed {
+  color: #9aa0b4;
+  font-style: italic;
+}
+
 .mesh-field__input--hex {
   max-width: 88px;
 }

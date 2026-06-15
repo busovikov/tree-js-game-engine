@@ -10,7 +10,12 @@ import {
   createPrefab,
   placePrefab,
 } from './commands/world-commands.js'
-import { handleTransformToolShortcut } from './viewport/transform-tool-shortcuts.js'
+import { primarySelection } from './selection/selection-utils.js'
+import {
+  handleDeleteShortcut,
+  handleDuplicateShortcut,
+  handleTransformToolShortcut,
+} from './viewport/transform-tool-shortcuts.js'
 
 function pickProjectFolder(): Promise<FileList | null> {
   return new Promise((resolve) => {
@@ -30,6 +35,7 @@ export const EditorApp = memo(function EditorApp() {
   const mode = useEditorStore((s) => s.mode)
   const scenePath = useEditorStore((s) => s.scenePath)
   const selection = useEditorStore((s) => s.selection)
+  const primary = primarySelection(selection)
   const sceneDocument = useEditorStore((s) => s.sceneDocument)
   const commandRevision = useEditorStore((s) => s.commandRevision)
   const enterPlayMode = useEditorStore((s) => s.enterPlayMode)
@@ -98,11 +104,11 @@ export const EditorApp = memo(function EditorApp() {
   }, [])
 
   const onCreatePrefab = useCallback(() => {
-    if (!selection) return
-    const prefabId = prompt('Prefab id', `${useEditorStore.getState().world?.getEntityName(selection) ?? 'prefab'}`.toLowerCase())
+    if (!primary) return
+    const prefabId = prompt('Prefab id', `${useEditorStore.getState().world?.getEntityName(primary) ?? 'prefab'}`.toLowerCase())
     if (!prefabId) return
-    createPrefab(selection, prefabId)
-  }, [selection])
+    createPrefab(primary, prefabId)
+  }, [primary])
 
   const onPlacePrefab = useCallback(() => {
     const ids = Object.keys(sceneDocument?.prefabs ?? {})
@@ -127,6 +133,8 @@ export const EditorApp = memo(function EditorApp() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (handleDeleteShortcut(event)) return
+      if (handleDuplicateShortcut(event)) return
       if (handleTransformToolShortcut(event)) return
 
       if (useEditorStore.getState().mode === 'play') return
@@ -184,7 +192,7 @@ export const EditorApp = memo(function EditorApp() {
         <MenuBar menus={menus} />
         <button type="button" onClick={onUndo} disabled={!globalCommandBus.canUndo() || mode === 'play'}>Undo</button>
         <button type="button" onClick={onRedo} disabled={!globalCommandBus.canRedo() || mode === 'play'}>Redo</button>
-        <button type="button" onClick={onCreatePrefab} disabled={!selection || mode === 'play'}>Create Prefab</button>
+        <button type="button" onClick={onCreatePrefab} disabled={!primary || mode === 'play'}>Create Prefab</button>
         <button type="button" onClick={onPlacePrefab} disabled={mode === 'play'}>Place Prefab</button>
         {mode === 'edit' ? (
           <button type="button" onClick={enterPlayMode} disabled={!scenePath}>▶ Play</button>

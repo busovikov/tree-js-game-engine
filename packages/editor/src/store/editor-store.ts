@@ -3,6 +3,7 @@ import type { EntityId } from '@haku/core'
 import { World, cloneWorld } from '@haku/core'
 import type { SceneDocument } from '@haku/schema'
 import { globalCommandBus } from '../commands/command-bus.js'
+import { resolveClickSelection } from '../selection/selection-utils.js'
 import type { HierarchyFilterMode } from '../hierarchy/entity-filter.js'
 
 export type EditorMode = 'edit' | 'play'
@@ -23,9 +24,12 @@ interface EditorState {
   sceneDocument: SceneDocument | null
   world: World | null
   worldRevision: number
-  selection: EntityId | null
+  selection: EntityId[]
+  selectionAnchor: EntityId | null
   mode: EditorMode
   transformTool: TransformTool
+  snapEnabled: boolean
+  showAabb: boolean
   /** When set, viewport renders through this scene camera entity; otherwise editor scene camera. */
   viewportCameraEntityId: EntityId | null
   focusSelectionRequest: number
@@ -37,10 +41,14 @@ interface EditorState {
   setProjectRoot: (root: string | null) => void
   setScene: (path: string, document: SceneDocument, world: World) => void
   setSceneDocument: (document: SceneDocument) => void
-  setSelection: (id: EntityId | null) => void
+  setSelection: (ids: EntityId[]) => void
+  selectEntity: (id: EntityId, additive?: boolean) => void
+  selectEntityRange: (ids: EntityId[]) => void
   setWorld: (world: World) => void
   setMode: (mode: EditorMode) => void
   setTransformTool: (tool: TransformTool) => void
+  setSnapEnabled: (enabled: boolean) => void
+  setShowAabb: (enabled: boolean) => void
   setViewportCameraEntityId: (id: EntityId | null) => void
   requestFocusSelection: () => void
   enterPlayMode: () => void
@@ -56,9 +64,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   sceneDocument: null,
   world: null,
   worldRevision: 0,
-  selection: null,
+  selection: [],
+  selectionAnchor: null,
   mode: 'edit',
   transformTool: 'translate',
+  snapEnabled: false,
+  showAabb: false,
   viewportCameraEntityId: null,
   focusSelectionRequest: 0,
   playSnapshot: null,
@@ -74,7 +85,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       sceneDocument: document,
       world,
       worldRevision: s.worldRevision + 1,
-      selection: null,
+      selection: [],
+      selectionAnchor: null,
       viewportCameraEntityId: null,
     }))
   },
@@ -83,7 +95,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       sceneDocument: document,
       worldRevision: s.worldRevision + 1,
     })),
-  setSelection: (id) => set({ selection: id }),
+  setSelection: (ids) => set({ selection: ids, selectionAnchor: ids[ids.length - 1] ?? null }),
+  selectEntity: (id, additive = false) =>
+    set((state) => ({
+      selection: resolveClickSelection(state.selection, id, additive),
+      selectionAnchor: id,
+    })),
+  selectEntityRange: (ids) => set({ selection: ids, selectionAnchor: ids[ids.length - 1] ?? null }),
   setWorld: (world) => set((s) => ({ world, worldRevision: s.worldRevision + 1 })),
   setMode: (mode) => set({ mode }),
   setTransformTool: (tool) => {
@@ -91,6 +109,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (!canActivateTransformTool(tool, state)) return
     set({ transformTool: tool })
   },
+  setSnapEnabled: (enabled) => set({ snapEnabled: enabled }),
+  setShowAabb: (enabled) => set({ showAabb: enabled }),
   setViewportCameraEntityId: (id) => set({ viewportCameraEntityId: id }),
   requestFocusSelection: () => set((s) => ({ focusSelectionRequest: s.focusSelectionRequest + 1 })),
 
@@ -108,7 +128,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         world: playSnapshot,
         worldRevision: s.worldRevision + 1,
         playSnapshot: null,
-        selection: null,
+        selection: [],
+        selectionAnchor: null,
       }))
     } else {
       set({ mode: 'edit' })

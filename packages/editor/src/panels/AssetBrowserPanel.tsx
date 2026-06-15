@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { primarySelection } from '../selection/selection-utils.js'
 import { useEditorStore } from '../store/editor-store.js'
 import { projectService } from '../services/project-service.js'
 import type { ProjectFileEntry } from '../services/project-service.js'
@@ -58,6 +59,7 @@ export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
   const projectRoot = useEditorStore((s) => s.projectRoot)
   const sceneDocument = useEditorStore((s) => s.sceneDocument)
   const selection = useEditorStore((s) => s.selection)
+  const primary = primarySelection(selection)
   const world = useEditorStore((s) => s.world)
   const setScene = useEditorStore((s) => s.setScene)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -142,14 +144,14 @@ export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
   }, [selectedPath, setScene])
 
   const onAssignAsset = useCallback(() => {
-    if (!selectedPath || !selection || !world) return
+    if (!selectedPath || !primary || !world) return
     const ext = selectedPath.split('.').pop()?.toLowerCase()
     if (ext !== 'glb' && ext !== 'gltf') {
       alert('Select a GLTF/GLB model to assign as mesh prototype.')
       return
     }
     alert('Imported models are stored in assets. Use Inspector → MeshRenderer to pick a primitive geometry for now.')
-  }, [selectedPath, selection, world])
+  }, [selectedPath, primary, world])
 
   const onImport = async (files: FileList | null) => {
     if (!files?.length) return
@@ -265,8 +267,8 @@ export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
                 Open Scene
               </button>
             )}
-            {(selectedPath.endsWith('.glb') || selectedPath.endsWith('.gltf')) && selection && (
-              <button type="button" onClick={onAssignAsset} disabled={!selection}>
+            {(selectedPath.endsWith('.glb') || selectedPath.endsWith('.gltf')) && primary && (
+              <button type="button" onClick={onAssignAsset} disabled={!primary}>
                 Assign to Entity
               </button>
             )}

@@ -64,6 +64,29 @@ function HandIcon() {
   )
 }
 
+function SnapIcon() {
+  return (
+    <ToolIcon>
+      <path
+        d="M4 4h6v6H4V4ZM14 4h6v6h-6V4ZM4 14h6v6H4v-6ZM17 14v3M20 17h-3M17 20v-3"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </ToolIcon>
+  )
+}
+
+function AabbIcon() {
+  return (
+    <ToolIcon>
+      <path d="M4 7h16v10H4V7Z" stroke="currentColor" strokeWidth="1.75" />
+      <path d="M4 7l4-3h8l4 3M8 4v3M16 4v3M20 10v7M4 10v7" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+    </ToolIcon>
+  )
+}
+
 function ToolButton({
   title,
   active,
@@ -94,10 +117,14 @@ function ToolButton({
 export const HierarchyToolsPanel = memo(function HierarchyToolsPanel() {
   const mode = useEditorStore((s) => s.mode)
   const selection = useEditorStore((s) => s.selection)
+  const showAabb = useEditorStore((s) => s.showAabb)
+  const setShowAabb = useEditorStore((s) => s.setShowAabb)
   const world = useEditorStore((s) => s.world)
   const viewportCameraEntityId = useEditorStore((s) => s.viewportCameraEntityId)
   const transformTool = useEditorStore((s) => s.transformTool)
+  const snapEnabled = useEditorStore((s) => s.snapEnabled)
   const setTransformTool = useEditorStore((s) => s.setTransformTool)
+  const setSnapEnabled = useEditorStore((s) => s.setSnapEnabled)
   const requestFocusSelection = useEditorStore((s) => s.requestFocusSelection)
 
   const canEdit = !!world && mode === 'edit'
@@ -113,7 +140,7 @@ export const HierarchyToolsPanel = memo(function HierarchyToolsPanel() {
     <div className="haku-hierarchy-tools" aria-label="Object tools">
       <ToolButton
         title={formatToolTitle('Focus selection', FOCUS_SELECTION_SHORTCUT)}
-        disabled={!canEdit || !selection}
+        disabled={!canEdit || selection.length === 0}
         onClick={requestFocusSelection}
       >
         <FocusIcon />
@@ -139,6 +166,24 @@ export const HierarchyToolsPanel = memo(function HierarchyToolsPanel() {
           {icon}
         </ToolButton>
       ))}
+
+      <ToolButton
+        title="Snap (AABB edge)"
+        active={snapEnabled}
+        disabled={!canEdit}
+        onClick={() => setSnapEnabled(!snapEnabled)}
+      >
+        <SnapIcon />
+      </ToolButton>
+
+      <ToolButton
+        title="Show AABB"
+        active={showAabb}
+        disabled={!canEdit}
+        onClick={() => setShowAabb(!showAabb)}
+      >
+        <AabbIcon />
+      </ToolButton>
     </div>
   )
 })

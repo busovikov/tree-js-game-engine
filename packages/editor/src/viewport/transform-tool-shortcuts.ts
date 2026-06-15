@@ -1,5 +1,6 @@
 import type { TransformTool } from '../store/editor-store.js'
 import { canActivateTransformTool, useEditorStore } from '../store/editor-store.js'
+import { deleteSelectedEntities, duplicateSelectedEntity } from '../commands/world-commands.js'
 
 export const FOCUS_SELECTION_SHORTCUT = 'F'
 
@@ -29,6 +30,43 @@ function isEditableTarget(target: EventTarget | null): boolean {
   return target.isContentEditable
 }
 
+/** Returns true when delete was handled. */
+export function handleDeleteShortcut(event: KeyboardEvent): boolean {
+  if (useEditorStore.getState().mode === 'play') return false
+  if (event.repeat) return false
+  if (isEditableTarget(event.target)) return false
+
+  const isDeleteKey = event.code === 'Delete' || event.code === 'Backspace'
+  if (!isDeleteKey) return false
+
+  const isCmdBackspace = event.code === 'Backspace' && event.metaKey
+  if (!isCmdBackspace && (event.metaKey || event.ctrlKey || event.altKey)) return false
+
+  const { selection, world } = useEditorStore.getState()
+  if (!world || selection.length === 0) return false
+
+  deleteSelectedEntities()
+  event.preventDefault()
+  return true
+}
+
+/** Returns true when duplicate (Cmd/Ctrl+D) was handled. */
+export function handleDuplicateShortcut(event: KeyboardEvent): boolean {
+  if (useEditorStore.getState().mode === 'play') return false
+  if (event.repeat) return false
+  if (!(event.metaKey || event.ctrlKey) || event.altKey || event.shiftKey) return false
+  if (event.code !== 'KeyD') return false
+  if (isEditableTarget(event.target)) return false
+
+  const { world, selection } = useEditorStore.getState()
+  if (!world || selection.length === 0) return false
+  if (!selection.some((id) => world.hasEntity(id))) return false
+
+  duplicateSelectedEntity()
+  event.preventDefault()
+  return true
+}
+
 /** Returns true when a tool shortcut was handled. */
 export function handleTransformToolShortcut(event: KeyboardEvent): boolean {
   if (useEditorStore.getState().mode === 'play') return false
@@ -38,7 +76,7 @@ export function handleTransformToolShortcut(event: KeyboardEvent): boolean {
 
   if (event.code === 'KeyF') {
     const { world, mode, selection } = useEditorStore.getState()
-    if (!world || mode !== 'edit' || !selection) return false
+    if (!world || mode !== 'edit' || selection.length === 0) return false
     useEditorStore.getState().requestFocusSelection()
     event.preventDefault()
     return true

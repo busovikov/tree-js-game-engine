@@ -5,13 +5,14 @@ import type { SceneDocument, Transform } from '@haku/schema'
 import type { Command } from './command-bus.js'
 import { globalCommandBus } from './command-bus.js'
 import { useEditorStore } from '../store/editor-store.js'
+import { selectionFromSnapshot } from '../selection/selection-utils.js'
 
 const EPSILON = 1e-4
 
 export interface SceneSnapshot {
   world: World
   sceneDocument: SceneDocument | null
-  selection: EntityId | null
+  selection: EntityId[]
 }
 
 function cloneSceneDocument(document: SceneDocument | null): SceneDocument | null {
@@ -22,7 +23,7 @@ export function cloneSceneSnapshot(snapshot: SceneSnapshot): SceneSnapshot {
   return {
     world: cloneWorld(snapshot.world),
     sceneDocument: cloneSceneDocument(snapshot.sceneDocument),
-    selection: snapshot.selection,
+    selection: snapshot.selection.map((id) => ({ ...id })),
   }
 }
 
@@ -66,7 +67,7 @@ export class SceneEditCommand implements Command {
 }
 
 export function commitSceneEdit(
-  edit: (draft: { world: World; sceneDocument: SceneDocument | null }) => EntityId | null | void,
+  edit: (draft: { world: World; sceneDocument: SceneDocument | null }) => EntityId[] | null | void,
 ): void {
   const before = captureSceneSnapshot()
   const draftWorld = cloneWorld(before.world)
@@ -77,20 +78,33 @@ export function commitSceneEdit(
   const after: SceneSnapshot = {
     world: draftWorld,
     sceneDocument: draftDocument,
-    selection: selectionOverride !== undefined ? selectionOverride : before.selection,
+    selection:
+      selectionOverride !== undefined
+        ? selectionFromSnapshot(selectionOverride)
+        : before.selection,
   }
 
   applySceneSnapshot(after)
   globalCommandBus.record(new SceneEditCommand(before, after))
 }
 
-/** Record a transform edit that is already applied to the live scene (e.g. gizmo drag). */
+/** Record transform edits already applied to the live scene (e.g. gizmo drag). */
 export function commitTransformChange(entityId: EntityId, before: Transform, after: Transform): void {
-  if (transformsEqual(before, after)) return
+  commitMultiTransformChange([{ entityId, before, after }])
+}
+
+export function commitMultiTransformChange(
+  changes: Array<{ entityId: EntityId; before: Transform; after: Transform }>,
+): void {
+  const meaningful = changes.filter((change) => !transformsEqual(change.before, change.after))
+  if (meaningful.length === 0) return
 
   const afterSnapshot = captureSceneSnapshot()
   const beforeWorld = cloneWorld(afterSnapshot.world)
-  beforeWorld.addComponent(entityId, TransformComponent, before)
+
+  for (const { entityId, before } of meaningful) {
+    beforeWorld.addComponent(entityId, TransformComponent, before)
+  }
 
   const beforeSnapshot: SceneSnapshot = {
     world: beforeWorld,

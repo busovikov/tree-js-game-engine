@@ -6,6 +6,8 @@ import { EntityCreateMenu } from '../components/EntityCreateMenu.js'
 import { HierarchyFilterBar } from '../components/HierarchyFilterBar.js'
 import { moveEntityInHierarchyByDrop } from '../commands/hierarchy-commands.js'
 import { computeHierarchyFilterSets } from '../hierarchy/entity-filter.js'
+import { flattenVisibleHierarchy, resolveRangeSelection } from '../hierarchy/hierarchy-list.js'
+import { isEntitySelected } from '../selection/selection-utils.js'
 import {
   canDropEntity,
   resolveDropMode,
@@ -28,6 +30,7 @@ function EntityNode({
   onDragOver,
   onDragLeave,
   onDrop,
+  orderedVisibleIds,
 }: {
   id: EntityId
   depth: number
@@ -40,12 +43,14 @@ function EntityNode({
   onDragOver: (id: string, mode: HierarchyDropMode) => void
   onDragLeave: (id: string) => void
   onDrop: (targetId: string, mode: HierarchyDropMode) => void
+  orderedVisibleIds: EntityId[]
 }) {
   const worldRevision = useEditorStore((s) => s.worldRevision)
   const world = useEditorStore((s) => s.world)
-  const selected = useEditorStore((s) => s.selection?.value === id.value)
+  const selected = useEditorStore((s) => isEntitySelected(s.selection, id))
   const viewportCameraEntityId = useEditorStore((s) => s.viewportCameraEntityId)
-  const setSelection = useEditorStore((s) => s.setSelection)
+  const selectEntity = useEditorStore((s) => s.selectEntity)
+  const selectEntityRange = useEditorStore((s) => s.selectEntityRange)
   const setViewportCameraEntityId = useEditorStore((s) => s.setViewportCameraEntityId)
 
   if (!world) return null
@@ -124,7 +129,22 @@ function EntityNode({
         onDragLeave={() => onDragLeave(id.value)}
         onDrop={handleDrop}
       >
-        <button type="button" className="haku-hierarchy-row__name" onClick={() => setSelection(id)}>
+        <button
+          type="button"
+          className="haku-hierarchy-row__name"
+          onClick={(event) => {
+            if (event.shiftKey) {
+              const anchor = useEditorStore.getState().selectionAnchor
+              if (anchor) {
+                selectEntityRange(resolveRangeSelection(orderedVisibleIds, anchor, id))
+              } else {
+                selectEntity(id, false)
+              }
+              return
+            }
+            selectEntity(id, event.metaKey || event.ctrlKey)
+          }}
+        >
           {name}
         </button>
         {isCamera && (
@@ -161,6 +181,7 @@ function EntityNode({
           onDragOver={onDragOver}
           onDragLeave={onDragLeave}
           onDrop={onDrop}
+          orderedVisibleIds={orderedVisibleIds}
         />
       ))}
     </div>
@@ -190,6 +211,11 @@ export const HierarchyPanel = memo(function HierarchyPanel() {
         .getRootEntities()
         .filter((id) => !visibleIds || visibleIds.has(id.value))
     : []
+
+  const orderedVisibleIds = useMemo(() => {
+    if (!world) return []
+    return flattenVisibleHierarchy(world, world.getRootEntities(), visibleIds)
+  }, [world, worldRevision, visibleIds])
 
   const canEdit = !!world && mode === 'edit'
 
@@ -224,13 +250,24 @@ export const HierarchyPanel = memo(function HierarchyPanel() {
     [draggedId],
   )
 
+  const setSelection = useEditorStore((s) => s.setSelection)
+
+  const handleListBackgroundPointerDown = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const target = event.target as HTMLElement
+      if (target.closest('.haku-hierarchy-row')) return
+      setSelection([])
+    },
+    [setSelection],
+  )
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#252530' }}>
       <div style={{ padding: 8, borderBottom: '1px solid #333', display: 'flex', gap: 4, alignItems: 'stretch' }}>
-        <EntityCreateMenu disabled={!canEdit} hasSelection={!!selection} />
+        <EntityCreateMenu disabled={!canEdit} hasSelection={selection.length > 0} />
         <HierarchyFilterBar />
       </div>
-      <div style={{ flex: 1, overflow: 'auto' }}>
+      <div style={{ flex: 1, overflow: 'auto' }} onPointerDown={handleListBackgroundPointerDown}>
         {!world ? (
           <div style={{ padding: 12, color: '#888', fontSize: 12 }}>Load a scene to edit hierarchy</div>
         ) : roots.length === 0 ? (
@@ -252,6 +289,7 @@ export const HierarchyPanel = memo(function HierarchyPanel() {
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
+              orderedVisibleIds={orderedVisibleIds}
             />
           ))
         )}

@@ -63,6 +63,11 @@
   font-variant-numeric: tabular-nums;
 }
 
+.haku-transform-input--mixed {
+  color: #9aa0b4;
+  font-style: italic;
+}
+
 .haku-transform-input:focus {
   outline: none;
   border-color: #3d5afe;

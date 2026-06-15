@@ -12,53 +12,55 @@ import { globalCommandBus } from './command-bus.js'
 import { commitSceneEdit } from './scene-history.js'
 import { useEditorStore } from '../store/editor-store.js'
 import { extractPrefabSubtree } from '../services/project-service.js'
+import { primarySelection } from '../selection/selection-utils.js'
 import {
   type EntityPlacement,
   createEntityWithPlacement,
+  duplicateEntitySubtree,
   uniqueEntityName,
 } from './entity-placement.js'
 
 export const MESH_PRIMITIVE_LABELS = MESH_GEOMETRY_TYPE_LABELS
 
 export function createEmptyEntity(placement: EntityPlacement = 'root'): void {
-  const { selection } = useEditorStore.getState()
+  const selected = primarySelection(useEditorStore.getState().selection)
   const baseName =
     placement === 'child' ? 'New Child' : placement === 'parent' ? 'New Parent' : 'New Entity'
 
   commitSceneEdit((draft) => {
     const name = uniqueEntityName(draft.world, baseName)
-    return createEntityWithPlacement(draft.world, name, placement, selection)
+    return [createEntityWithPlacement(draft.world, name, placement, selected)]
   })
 }
 
 export function createMeshPrimitive(geometryType: MeshGeometryType, placement: EntityPlacement = 'root'): void {
-  const { selection } = useEditorStore.getState()
+  const selected = primarySelection(useEditorStore.getState().selection)
   const label = MESH_PRIMITIVE_LABELS[geometryType]
 
   commitSceneEdit((draft) => {
     const name = uniqueEntityName(draft.world, label)
-    const id = createEntityWithPlacement(draft.world, name, placement, selection)
+    const id = createEntityWithPlacement(draft.world, name, placement, selected)
     const meshDefaults = MeshRendererComponent.defaults!()
     draft.world.addComponent(id, MeshRendererComponent, {
       ...meshDefaults,
       geometryType,
       geometryParams: defaultGeometryParams(geometryType),
     })
-    return id
+    return [id]
   })
 }
 
 /** @deprecated Use createEmptyEntity('child') instead. */
 export function createEntity(name: string): void {
-  const selection = useEditorStore.getState().selection
+  const selected = primarySelection(useEditorStore.getState().selection)
 
   commitSceneEdit((draft) => {
     const id = draft.world.createEntity(name)
     const defaults = TransformComponent.defaults!()
 
-    if (selection && draft.world.hasEntity(selection)) {
+    if (selected && draft.world.hasEntity(selected)) {
       draft.world.addComponent(id, TransformComponent, defaults)
-      draft.world.setParent(id, selection)
+      draft.world.setParent(id, selected)
     } else {
       const roots = draft.world.getRootEntities()
       const index = Math.max(0, roots.length - 1)
@@ -68,14 +70,49 @@ export function createEntity(name: string): void {
       })
     }
 
-    return id
+    return [id]
   })
 }
 
-export function deleteEntity(entityId: EntityId): void {
+export function deleteSelectedEntities(): void {
+  const { selection, world } = useEditorStore.getState()
+  if (selection.length === 0 || !world) return
+
   commitSceneEdit((draft) => {
-    draft.world.destroyEntity(entityId)
-    return null
+    for (const id of selection) {
+      if (draft.world.hasEntity(id)) {
+        draft.world.destroyEntity(id)
+      }
+    }
+    return []
+  })
+}
+
+function selectionDuplicateRoots(
+  world: import('@haku/core').World,
+  selection: readonly EntityId[],
+): EntityId[] {
+  const selected = new Set(selection.map((id) => id.value))
+  return selection.filter((id) => {
+    const parent = world.getParent(id)
+    return !parent || !selected.has(parent.value)
+  })
+}
+
+export function duplicateSelectedEntity(): void {
+  const { selection, world } = useEditorStore.getState()
+  if (selection.length === 0 || !world) return
+
+  const roots = selectionDuplicateRoots(world, selection)
+  if (roots.length === 0) return
+
+  commitSceneEdit((draft) => {
+    const duplicated: EntityId[] = []
+    for (const root of roots) {
+      if (!draft.world.hasEntity(root)) continue
+      duplicated.push(duplicateEntitySubtree(draft.world, root))
+    }
+    return duplicated.length > 0 ? duplicated : null
   })
 }
 
@@ -87,7 +124,7 @@ export function createPrefab(rootId: EntityId, prefabId: string): void {
   const childIds = world.getChildren(rootId)
 
   commitSceneEdit((draft) => {
-    if (!draft.sceneDocument) return rootId
+    if (!draft.sceneDocument) return [rootId]
 
     for (const childId of childIds) {
       draft.world.destroyEntity(childId)
@@ -105,7 +142,7 @@ export function createPrefab(rootId: EntityId, prefabId: string): void {
       prefabs: { ...draft.sceneDocument.prefabs, [prefabId]: prefab },
     }
 
-    return rootId
+    return [rootId]
   })
 }
 
@@ -124,7 +161,7 @@ export function placePrefab(prefabId: string, position: [number, number, number]
       prefabId,
       overrides: { Transform: { position } },
     })
-    return id
+    return [id]
   })
 }
 

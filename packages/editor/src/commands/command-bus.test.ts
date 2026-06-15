@@ -19,14 +19,14 @@ describe('scene history', () => {
       world,
       sceneDocument: null,
       scenePath: null,
-      selection: id,
+      selection: [id],
       worldRevision: 0,
       commandRevision: 0,
     })
   })
 
   it('undoes transform edits one step at a time', () => {
-    const id = useEditorStore.getState().selection!
+    const id = useEditorStore.getState().selection[0]!
     const initial = useEditorStore.getState().world!.getComponent(id, TransformComponent)!
     const stepOne = {
       position: [1, 0, 0] as [number, number, number],
@@ -55,7 +55,7 @@ describe('scene history', () => {
   })
 
   it('undoes inspector component edits as scene snapshots', () => {
-    const id = useEditorStore.getState().selection!
+    const id = useEditorStore.getState().selection[0]!
 
     commitSceneEdit((draft) => {
       draft.world.addComponent(id, MeshRendererComponent, {
