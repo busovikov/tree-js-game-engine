@@ -1,4 +1,5 @@
 import { memo, useCallback } from 'react'
+import { DraggableNumberLabel } from './DraggableNumberLabel.js'
 import './angle-range-slider.css'
 
 export const AngleRangeSlider = memo(function AngleRangeSlider({
@@ -42,17 +43,33 @@ export const AngleRangeSlider = memo(function AngleRangeSlider({
 
   return (
     <div className="angle-range">
-      <span className="angle-range__label">{label}</span>
-      <input
-        type="number"
-        className="angle-range__value"
-        value={Number(inner.toFixed(1))}
-        min={min}
-        max={max}
-        step={step}
-        disabled={disabled}
-        onChange={(e) => onInnerChange(Number(e.target.value))}
-      />
+      <span className="angle-range__label" title="Spot light inner and outer cone angles in degrees.">
+        {label}
+      </span>
+      <div className="angle-range__value-group">
+        <DraggableNumberLabel
+          className="angle-range__value-label"
+          value={inner}
+          step={step}
+          min={min}
+          max={max}
+          disabled={disabled}
+          hint="Inner cone angle (full brightness)."
+          onChange={onInnerChange}
+        >
+          In
+        </DraggableNumberLabel>
+        <input
+          type="number"
+          className="angle-range__value"
+          value={Number(inner.toFixed(1))}
+          min={min}
+          max={max}
+          step={step}
+          disabled={disabled}
+          onChange={(e) => onInnerChange(Number(e.target.value))}
+        />
+      </div>
       <div className="angle-range__track">
         <div
           className="angle-range__fill"
@@ -79,16 +96,30 @@ export const AngleRangeSlider = memo(function AngleRangeSlider({
           onChange={(e) => onOuterChange(Number(e.target.value))}
         />
       </div>
-      <input
-        type="number"
-        className="angle-range__value"
-        value={Number(outer.toFixed(1))}
-        min={min}
-        max={max}
-        step={step}
-        disabled={disabled}
-        onChange={(e) => onOuterChange(Number(e.target.value))}
-      />
+      <div className="angle-range__value-group">
+        <DraggableNumberLabel
+          className="angle-range__value-label"
+          value={outer}
+          step={step}
+          min={min}
+          max={max}
+          disabled={disabled}
+          hint="Outer cone angle (falloff edge)."
+          onChange={onOuterChange}
+        >
+          Out
+        </DraggableNumberLabel>
+        <input
+          type="number"
+          className="angle-range__value"
+          value={Number(outer.toFixed(1))}
+          min={min}
+          max={max}
+          step={step}
+          disabled={disabled}
+          onChange={(e) => onOuterChange(Number(e.target.value))}
+        />
+      </div>
     </div>
   )
 })

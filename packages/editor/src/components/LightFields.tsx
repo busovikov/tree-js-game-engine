@@ -2,45 +2,10 @@ import { memo } from 'react'
 import { LightSchema, kelvinToHex, type Light } from '@haku/schema'
 import { AngleRangeSlider } from './AngleRangeSlider.js'
 import { LightTemperatureSlider, LIGHT_TEMPERATURE_DEFAULT } from './LightTemperatureSlider.js'
+import { NumberField } from './NumberField.js'
 import './mesh-renderer-fields.css'
 
 const LIGHT_TYPES: Light['type'][] = ['directional', 'point', 'spot']
-
-function NumberField({
-  label,
-  value,
-  onChange,
-  disabled,
-  min,
-  max,
-  step = 0.1,
-  hint,
-}: {
-  label: string
-  value: number
-  onChange: (v: number) => void
-  disabled?: boolean
-  min?: number
-  max?: number
-  step?: number
-  hint?: string
-}) {
-  return (
-    <label className="mesh-field" title={hint}>
-      <span className="mesh-field__label">{label}</span>
-      <input
-        type="number"
-        className="mesh-field__input"
-        value={value}
-        min={min}
-        max={max}
-        step={step}
-        disabled={disabled}
-        onChange={(e) => onChange(Number(e.target.value))}
-      />
-    </label>
-  )
-}
 
 export function normalizeLight(data: unknown): Light {
   return LightSchema.parse(data)
@@ -147,6 +112,7 @@ export const LightFields = memo(function LightFields({
           value={value.intensity}
           min={0}
           step={0.05}
+          hint="Light brightness multiplier."
           disabled={disabled}
           onChange={(intensity) => patch({ intensity: Math.max(0, intensity) })}
         />
@@ -170,7 +136,7 @@ export const LightFields = memo(function LightFields({
             min={0}
             step={0.5}
             disabled={disabled}
-            hint="0 = infinite range"
+            hint="Maximum light range. 0 = infinite."
             onChange={(distance) => patch({ distance: Math.max(0, distance) })}
           />
           <NumberField
@@ -179,6 +145,7 @@ export const LightFields = memo(function LightFields({
             min={0}
             step={0.1}
             disabled={disabled}
+            hint="Physical light falloff exponent."
             onChange={(decay) => patch({ decay: Math.max(0, decay) })}
           />
         </div>
@@ -193,7 +160,7 @@ export const LightFields = memo(function LightFields({
             min={0}
             step={0.5}
             disabled={disabled}
-            hint="0 = infinite range"
+            hint="Maximum light range. 0 = infinite."
             onChange={(distance) => patch({ distance: Math.max(0, distance) })}
           />
           <AngleRangeSlider
@@ -212,6 +179,7 @@ export const LightFields = memo(function LightFields({
             min={0}
             step={0.1}
             disabled={disabled}
+            hint="Physical light falloff exponent."
             onChange={(decay) => patch({ decay: Math.max(0, decay) })}
           />
           <p style={{ margin: 0, fontSize: 11, color: '#888', lineHeight: 1.4 }}>

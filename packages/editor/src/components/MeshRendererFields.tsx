@@ -13,44 +13,8 @@ import { projectService } from '../services/project-service.js'
 import { ModelPickerDialog } from './ModelPickerDialog.js'
 import { modelAssetFileName } from './model-picker-utils.js'
 import type { MixedBool, MixedNumber } from '../inspector/multi-edit.js'
+import { NumberField } from './NumberField.js'
 import './mesh-renderer-fields.css'
-
-function NumberField({
-  label,
-  value,
-  mixed,
-  onChange,
-  disabled,
-  min,
-  max,
-  step = 0.1,
-}: {
-  label: string
-  value: number
-  mixed?: MixedNumber
-  onChange: (v: number) => void
-  disabled?: boolean
-  min?: number
-  max?: number
-  step?: number
-}) {
-  return (
-    <label className="mesh-field">
-      <span className="mesh-field__label">{label}</span>
-      <input
-        type="number"
-        className={`mesh-field__input${mixed === null ? ' mesh-field__input--mixed' : ''}`}
-        value={mixed === null ? '' : value}
-        placeholder={mixed === null ? '—' : undefined}
-        min={min}
-        max={max}
-        step={step}
-        disabled={disabled}
-        onChange={(e) => onChange(Number(e.target.value))}
-      />
-    </label>
-  )
-}
 
 export const MeshRendererFields = memo(function MeshRendererFields({
   value,
@@ -157,7 +121,9 @@ export const MeshRendererFields = memo(function MeshRendererFields({
       <div className="mesh-renderer-fields__section">
         <div className="mesh-renderer-fields__heading">Geometry</div>
         <label className="mesh-field">
-          <span className="mesh-field__label">Type</span>
+          <span className="mesh-field__label" title="Mesh primitive or imported model.">
+            Type
+          </span>
           <select
             className={`mesh-field__input${mixedGeometryType === null ? ' mesh-field__input--mixed' : ''}`}
             value={mixedGeometryType === null ? '' : value.geometryType}
@@ -175,7 +141,9 @@ export const MeshRendererFields = memo(function MeshRendererFields({
 
         {isModel && (
           <label className="mesh-field">
-            <span className="mesh-field__label">Model</span>
+            <span className="mesh-field__label" title="GLTF model asset from the project.">
+              Model
+            </span>
             <button
               type="button"
               className={`mesh-field__model-btn${mixedModelAsset === null ? ' mesh-field__model-btn--mixed' : ''}`}
@@ -218,6 +186,7 @@ export const MeshRendererFields = memo(function MeshRendererFields({
               max={spec.max}
               step={spec.step ?? (Number.isInteger(spec.default) ? 1 : 0.1)}
               disabled={disabled}
+              hint={`${spec.label} geometry parameter.`}
               onChange={(num) => patchParam(spec.key, num)}
             />
           ))}
@@ -226,7 +195,9 @@ export const MeshRendererFields = memo(function MeshRendererFields({
       <div className="mesh-renderer-fields__section">
         <div className="mesh-renderer-fields__heading">Material</div>
         <label className="mesh-field">
-          <span className="mesh-field__label">Color</span>
+          <span className="mesh-field__label" title="Base color of the material.">
+            Color
+          </span>
           <input
             type="color"
             className="mesh-field__color"
@@ -251,6 +222,7 @@ export const MeshRendererFields = memo(function MeshRendererFields({
           min={0}
           max={1}
           step={0.05}
+          hint="How metallic the surface appears (0–1)."
           disabled={disabled}
           onChange={(num) => patchMaterial({ metalness: num })}
         />
@@ -262,6 +234,7 @@ export const MeshRendererFields = memo(function MeshRendererFields({
           max={1}
           step={0.05}
           disabled={disabled}
+          hint="Surface roughness (0 = mirror, 1 = fully rough)."
           onChange={(num) => patchMaterial({ roughness: num })}
         />
         <NumberField
@@ -271,6 +244,7 @@ export const MeshRendererFields = memo(function MeshRendererFields({
           min={0}
           max={1}
           step={0.05}
+          hint="Material opacity (0 = transparent, 1 = opaque)."
           disabled={disabled}
           onChange={(num) =>
             patchMaterial({
@@ -280,7 +254,7 @@ export const MeshRendererFields = memo(function MeshRendererFields({
           }
         />
 
-        <label className="mesh-field mesh-field--checkbox">
+        <label className="mesh-field mesh-field--checkbox" title="Render mesh edges only.">
           <input
             type="checkbox"
             checked={mixedMaterialBool?.wireframe ?? value.material.wireframe}
@@ -292,7 +266,7 @@ export const MeshRendererFields = memo(function MeshRendererFields({
           />
           <span>Wireframe</span>
         </label>
-        <label className="mesh-field mesh-field--checkbox">
+        <label className="mesh-field mesh-field--checkbox" title="Enable alpha blending for transparency.">
           <input
             type="checkbox"
             checked={mixedMaterialBool?.transparent ?? value.material.transparent}

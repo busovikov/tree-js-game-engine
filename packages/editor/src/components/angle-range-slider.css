@@ -1,9 +1,23 @@
 .angle-range {
   display: grid;
-  grid-template-columns: 88px 44px 1fr 44px;
+  grid-template-columns: 88px minmax(64px, auto) 1fr minmax(64px, auto);
   gap: 6px;
   align-items: center;
   margin-bottom: 6px;
+}
+
+.angle-range__value-group {
+  display: grid;
+  grid-template-columns: auto 44px;
+  gap: 4px;
+  align-items: center;
+}
+
+.angle-range__value-label {
+  color: #888;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .angle-range__label {

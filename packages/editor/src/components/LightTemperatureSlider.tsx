@@ -5,6 +5,7 @@ import {
   LIGHT_TEMPERATURE_MIN,
   kelvinToHex,
 } from '@haku/schema'
+import { DraggableNumberLabel } from './DraggableNumberLabel.js'
 import './light-temperature-slider.css'
 
 export const LightTemperatureSlider = memo(function LightTemperatureSlider({
@@ -27,7 +28,18 @@ export const LightTemperatureSlider = memo(function LightTemperatureSlider({
 
   return (
     <div className="light-temperature">
-      <span className="light-temperature__label">Temperature</span>
+      <DraggableNumberLabel
+        className="light-temperature__label"
+        value={value}
+        step={50}
+        min={LIGHT_TEMPERATURE_MIN}
+        max={LIGHT_TEMPERATURE_MAX}
+        disabled={disabled}
+        hint="Color temperature in Kelvin when not using manual color."
+        onChange={onSliderChange}
+      >
+        Temperature
+      </DraggableNumberLabel>
       <input
         type="number"
         className="light-temperature__value"
@@ -53,7 +65,9 @@ export const LightTemperatureSlider = memo(function LightTemperatureSlider({
           onChange={(e) => onSliderChange(Number(e.target.value))}
         />
       </div>
-      <span className="light-temperature__unit">K</span>
+      <span className="light-temperature__unit" title="Kelvin">
+        K
+      </span>
     </div>
   )
 })

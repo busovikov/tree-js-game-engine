@@ -1,40 +1,7 @@
 import { memo } from 'react'
 import { CameraSchema, type Camera } from '@haku/schema'
+import { NumberField } from './NumberField.js'
 import './mesh-renderer-fields.css'
-
-function NumberField({
-  label,
-  value,
-  onChange,
-  disabled,
-  min,
-  max,
-  step = 0.1,
-}: {
-  label: string
-  value: number
-  onChange: (v: number) => void
-  disabled?: boolean
-  min?: number
-  max?: number
-  step?: number
-}) {
-  return (
-    <label className="mesh-field">
-      <span className="mesh-field__label">{label}</span>
-      <input
-        type="number"
-        className="mesh-field__input"
-        value={value}
-        min={min}
-        max={max}
-        step={step}
-        disabled={disabled}
-        onChange={(e) => onChange(Number(e.target.value))}
-      />
-    </label>
-  )
-}
 
 export function normalizeCamera(data: unknown): Camera {
   return CameraSchema.parse(data)
@@ -61,6 +28,7 @@ export const CameraFields = memo(function CameraFields({
           max={179}
           step={1}
           disabled={disabled}
+          hint="Vertical field of view in degrees."
           onChange={(fov) => patch({ fov })}
         />
         <NumberField
@@ -69,6 +37,7 @@ export const CameraFields = memo(function CameraFields({
           min={0.001}
           step={0.01}
           disabled={disabled}
+          hint="Near clipping plane distance."
           onChange={(near) => patch({ near: Math.max(0.001, near) })}
         />
         <NumberField
@@ -77,12 +46,13 @@ export const CameraFields = memo(function CameraFields({
           min={value.near + 0.01}
           step={1}
           disabled={disabled}
+          hint="Far clipping plane distance."
           onChange={(far) => patch({ far: Math.max(value.near + 0.01, far) })}
         />
       </div>
 
       <div className="mesh-renderer-fields__section">
-        <label className="mesh-field mesh-field--checkbox">
+        <label className="mesh-field mesh-field--checkbox" title="Use orthographic projection instead of perspective.">
           <input
             type="checkbox"
             checked={!!value.ortho}
@@ -98,6 +68,7 @@ export const CameraFields = memo(function CameraFields({
             min={0.01}
             step={0.1}
             disabled={disabled}
+            hint="Half-height of the orthographic view volume."
             onChange={(orthoSize) => patch({ orthoSize })}
           />
         )}

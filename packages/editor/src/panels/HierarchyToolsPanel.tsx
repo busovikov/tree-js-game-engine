@@ -168,7 +168,7 @@ export const HierarchyToolsPanel = memo(function HierarchyToolsPanel() {
       ))}
 
       <ToolButton
-        title="Snap (AABB edge)"
+        title="Snap selected objects to nearby AABB edges while translating."
         active={snapEnabled}
         disabled={!canEdit}
         onClick={() => setSnapEnabled(!snapEnabled)}
@@ -177,7 +177,7 @@ export const HierarchyToolsPanel = memo(function HierarchyToolsPanel() {
       </ToolButton>
 
       <ToolButton
-        title="Show AABB"
+        title="Show axis-aligned bounding boxes for mesh entities."
         active={showAabb}
         disabled={!canEdit}
         onClick={() => setShowAabb(!showAabb)}

@@ -1,0 +1,10 @@
+.haku-scrub-label {
+  cursor: ew-resize;
+  user-select: none;
+  touch-action: none;
+}
+
+.haku-scrub-label--disabled {
+  cursor: default;
+  user-select: auto;
+}
