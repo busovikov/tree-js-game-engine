@@ -17,10 +17,11 @@ import {
   updateMeshMaterial,
   applyMaterial,
 } from './mesh-factory.js'
+import { applyMaterialToObject } from './model-loader.js'
+import { syncWireframeOverlay } from './editor-wireframe-overlay.js'
 import { setObjectEditorDimmed } from './editor-visual-dim.js'
 import { countObject3DMeshes, modelLog, modelLogError, modelLogWarn } from './model-log.js'
 import {
-  applyMaterialToObject,
   loadModelTemplate,
   setModelAssetResolver,
   setModelLoadPreparer,
@@ -259,7 +260,11 @@ export class RenderSyncSystem implements ISystem {
     }
 
     if (this.world.hasComponent(id, MeshRendererComponent)) {
-      return `mesh:${meshRendererKey(this.world.getComponent(id, MeshRendererComponent)!)}`
+      const meshRenderer = this.world.getComponent(id, MeshRendererComponent)!
+      if (meshRenderer.geometryType === 'ModelGeometry') {
+        return `model:${meshRenderer.modelAsset}`
+      }
+      return `mesh:${meshRendererKey(meshRenderer)}`
     }
 
     if (this.world.hasComponent(id, PrefabInstanceComponent)) {
@@ -379,6 +384,20 @@ export class RenderSyncSystem implements ISystem {
   }
 
   private applyRendererMaterial(object3d: THREE.Object3D, material: MeshRenderer['material']): void {
+    const isModel = object3d.getObjectByName(MODEL_ROOT_NAME) != null
+
+    if (isModel) {
+      applyMaterialToObject(object3d, (meshMaterial) => {
+        const editable = meshMaterial as THREE.Material & { wireframe?: boolean }
+        if (typeof editable.wireframe === 'boolean') {
+          editable.wireframe = false
+        }
+        applyMaterial(meshMaterial, material)
+      })
+      syncWireframeOverlay(object3d, material.wireframe, material.color)
+      return
+    }
+
     applyMaterialToObject(object3d, (meshMaterial) => applyMaterial(meshMaterial, material))
   }
 
@@ -514,6 +533,64 @@ export class RenderSyncSystem implements ISystem {
     }
 
     return { entityId: closest?.entityId ?? null, hitEditorOverlay: false }
+  }
+
+  pickEntitiesInRect(
+    clientLeft: number,
+    clientTop: number,
+    clientRight: number,
+    clientBottom: number,
+    canvas: HTMLCanvasElement,
+    camera: THREE.Camera,
+  ): EntityId[] {
+    const rect = canvas.getBoundingClientRect()
+    if (rect.width <= 0 || rect.height <= 0) return []
+
+    const left = Math.min(clientLeft, clientRight)
+    const right = Math.max(clientLeft, clientRight)
+    const top = Math.min(clientTop, clientBottom)
+    const bottom = Math.max(clientTop, clientBottom)
+
+    camera.updateMatrixWorld(true)
+
+    const box = new THREE.Box3()
+    const corner = new THREE.Vector3()
+    const projected = new THREE.Vector3()
+    const selected: EntityId[] = []
+
+    for (const [id, state] of this.entityStates) {
+      const object3d = state.object3d
+      object3d.updateMatrixWorld(true)
+      box.setFromObject(object3d)
+      if (box.isEmpty()) continue
+
+      let fullyInside = true
+      for (let xi = 0; xi < 2 && fullyInside; xi++) {
+        for (let yi = 0; yi < 2 && fullyInside; yi++) {
+          for (let zi = 0; zi < 2 && fullyInside; zi++) {
+            corner.set(
+              xi === 0 ? box.min.x : box.max.x,
+              yi === 0 ? box.min.y : box.max.y,
+              zi === 0 ? box.min.z : box.max.z,
+            )
+            projected.copy(corner).project(camera)
+
+            const clientX = rect.left + ((projected.x + 1) / 2) * rect.width
+            const clientY = rect.top + ((-projected.y + 1) / 2) * rect.height
+
+            if (clientX < left || clientX > right || clientY < top || clientY > bottom) {
+              fullyInside = false
+            }
+          }
+        }
+      }
+
+      if (fullyInside) {
+        selected.push(entityId(id))
+      }
+    }
+
+    return selected
   }
 
   /** Block camera selection when the click is on its frustum overlay, not the pick handle. */
@@ -794,5 +871,23 @@ export class ThreeRenderBackend implements IRenderBackend {
   ): { entityId: EntityId | null; hitEditorOverlay: boolean } {
     const camera = this.viewportUsesEditorCamera ? this.editorCamera : this.activeCamera
     return this.syncSystem.pickEntityAt(clientX, clientY, canvas, camera)
+  }
+
+  pickEntitiesInRect(
+    clientLeft: number,
+    clientTop: number,
+    clientRight: number,
+    clientBottom: number,
+    canvas: HTMLCanvasElement,
+  ): EntityId[] {
+    const camera = this.viewportUsesEditorCamera ? this.editorCamera : this.activeCamera
+    return this.syncSystem.pickEntitiesInRect(
+      clientLeft,
+      clientTop,
+      clientRight,
+      clientBottom,
+      canvas,
+      camera,
+    )
   }
 }

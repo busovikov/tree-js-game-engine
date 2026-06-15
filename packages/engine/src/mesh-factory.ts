@@ -39,8 +39,41 @@ export function createGeometry(type: MeshGeometryType, params: Record<string, nu
   }
 }
 
+type EditableMaterial = THREE.Material & {
+  color?: THREE.Color
+  metalness?: number
+  roughness?: number
+  wireframe?: boolean
+  opacity?: number
+  transparent?: boolean
+  depthWrite?: boolean
+  transmission?: number
+  side?: THREE.Side
+}
+
+export function applyMaterial(material: THREE.Material, data: MeshMaterial): void {
+  const m = material as EditableMaterial
+  const transparent = data.transparent || data.opacity < 1
+
+  if (m.color) m.color.set(data.color)
+  if (typeof m.metalness === 'number') m.metalness = data.metalness
+  if (typeof m.roughness === 'number') m.roughness = data.roughness
+  if (typeof m.wireframe === 'boolean') m.wireframe = data.wireframe
+
+  m.opacity = data.opacity
+  m.transparent = transparent
+  m.depthWrite = !transparent
+  m.side = transparent ? THREE.DoubleSide : THREE.FrontSide
+
+  if (transparent && typeof m.transmission === 'number' && m.transmission > 0) {
+    m.transmission = 0
+  }
+
+  m.needsUpdate = true
+}
+
 export function createMaterial(material: MeshMaterial): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({
+  const result = new THREE.MeshStandardMaterial({
     color: material.color,
     metalness: material.metalness,
     roughness: material.roughness,
@@ -48,15 +81,8 @@ export function createMaterial(material: MeshMaterial): THREE.MeshStandardMateri
     opacity: material.opacity,
     transparent: material.transparent || material.opacity < 1,
   })
-}
-
-export function applyMaterial(material: THREE.MeshStandardMaterial, data: MeshMaterial): void {
-  material.color.set(data.color)
-  material.metalness = data.metalness
-  material.roughness = data.roughness
-  material.wireframe = data.wireframe
-  material.opacity = data.opacity
-  material.transparent = data.transparent || data.opacity < 1
+  applyMaterial(result, material)
+  return result
 }
 
 export function createMeshFromRenderer(data: MeshRenderer | unknown): THREE.Object3D {
@@ -70,30 +96,39 @@ export function createMeshFromRenderer(data: MeshRenderer | unknown): THREE.Obje
   )
 }
 
-export function rebuildMesh(mesh: THREE.Mesh, data: MeshRenderer | unknown): void {
-  const meshRenderer = normalizeMeshRenderer(data)
-  mesh.geometry.dispose()
-  mesh.geometry = createGeometry(meshRenderer.geometryType, meshRenderer.geometryParams)
+function applyMaterialToMesh(mesh: THREE.Mesh, meshRenderer: MeshRenderer): void {
+  const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+  let applied = false
 
-  if (mesh.material instanceof THREE.MeshStandardMaterial) {
-    applyMaterial(mesh.material, meshRenderer.material)
-  } else {
+  for (const material of materials) {
+    if ('color' in material) {
+      applyMaterial(material, meshRenderer.material)
+      applied = true
+    }
+  }
+
+  if (!applied) {
     if (Array.isArray(mesh.material)) {
-      mesh.material.forEach((m) => m.dispose())
+      mesh.material.forEach((material) => material.dispose())
     } else {
       mesh.material.dispose()
     }
     mesh.material = createMaterial(meshRenderer.material)
   }
+
+  mesh.renderOrder =
+    meshRenderer.material.transparent || meshRenderer.material.opacity < 1 ? 1 : 0
+}
+
+export function rebuildMesh(mesh: THREE.Mesh, data: MeshRenderer | unknown): void {
+  const meshRenderer = normalizeMeshRenderer(data)
+  mesh.geometry.dispose()
+  mesh.geometry = createGeometry(meshRenderer.geometryType, meshRenderer.geometryParams)
+  applyMaterialToMesh(mesh, meshRenderer)
 }
 
 export function updateMeshMaterial(mesh: THREE.Mesh, data: MeshRenderer | unknown): void {
-  const meshRenderer = normalizeMeshRenderer(data)
-  if (mesh.material instanceof THREE.MeshStandardMaterial) {
-    applyMaterial(mesh.material, meshRenderer.material)
-    return
-  }
-  rebuildMesh(mesh, meshRenderer)
+  applyMaterialToMesh(mesh, normalizeMeshRenderer(data))
 }
 
 export { GEOMETRY_PARAM_SPECS, defaultGeometryParams, normalizeMeshRenderer }

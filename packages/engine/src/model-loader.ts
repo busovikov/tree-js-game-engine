@@ -160,14 +160,17 @@ export async function loadModelTemplate(relativeAssetPath: string): Promise<THRE
   return template.clone(true)
 }
 
-export function applyMaterialToObject(root: THREE.Object3D, apply: (material: THREE.MeshStandardMaterial) => void): void {
+export function applyMaterialToObject(root: THREE.Object3D, apply: (material: THREE.Material) => void): void {
   root.traverse((child) => {
     if (!(child instanceof THREE.Mesh)) return
     const materials = Array.isArray(child.material) ? child.material : [child.material]
+    let transparent = false
     for (const material of materials) {
-      if (material instanceof THREE.MeshStandardMaterial) {
+      if ('color' in material) {
         apply(material)
       }
+      if (material.transparent) transparent = true
     }
+    child.renderOrder = transparent ? 1 : 0
   })
 }
