@@ -4,6 +4,55 @@ import type { TransformControls } from 'three/examples/jsm/controls/TransformCon
 /** Dampens uniform XYZ scale drag to feel closer to single-axis handles. */
 export const UNIFORM_SCALE_DRAG_FACTOR = 0.3
 
+function axisScaleRatio(current: number, start: number): number | null {
+  if (start === 0) return null
+  return current / start
+}
+
+/** Keeps proportions while dragging any scale handle when uniform lock is enabled. */
+export function applyLockedUniformScale(
+  object: Object3D,
+  startScale: Vector3,
+  axis: string | null | undefined,
+): void {
+  const handle = axis ?? ''
+  const ratio =
+    (handle.includes('X') ? axisScaleRatio(object.scale.x, startScale.x) : null) ??
+    (handle.includes('Y') ? axisScaleRatio(object.scale.y, startScale.y) : null) ??
+    (handle.includes('Z') ? axisScaleRatio(object.scale.z, startScale.z) : null)
+
+  if (ratio === null) return
+
+  object.scale.set(
+    startScale.x * ratio,
+    startScale.y * ratio,
+    startScale.z * ratio,
+  )
+}
+
+export function shouldTrackUniformScaleDrag(
+  mode: string,
+  axis: string | null | undefined,
+  uniformScaleLocked: boolean,
+): boolean {
+  return mode === 'scale' && (uniformScaleLocked || axis === 'XYZ')
+}
+
+export function applyScaleGizmoConstraint(
+  object: Object3D,
+  startScale: Vector3,
+  axis: string | null | undefined,
+  uniformScaleLocked: boolean,
+): void {
+  if (uniformScaleLocked) {
+    applyLockedUniformScale(object, startScale, axis)
+    return
+  }
+  if (axis === 'XYZ') {
+    applyUniformScaleDamping(object, startScale)
+  }
+}
+
 export function applyUniformScaleDamping(object: Object3D, startScale: Vector3, factor = UNIFORM_SCALE_DRAG_FACTOR): void {
   object.scale.set(
     startScale.x + (object.scale.x - startScale.x) * factor,

@@ -15,7 +15,7 @@ import {
   type EntityDragSnapshot,
 } from '../viewport/selection-transform-pivot.js'
 import { applyAabbEdgeSnap, applyAabbEdgeSnapToSelectionPivot } from '../viewport/aabb-snap.js'
-import { applyEditorTransformGizmoLayout, applyUniformScaleDamping } from '../viewport/transform-gizmo-config.js'
+import { applyEditorTransformGizmoLayout, applyScaleGizmoConstraint, shouldTrackUniformScaleDrag } from '../viewport/transform-gizmo-config.js'
 import { applyOrbitToolMode } from '../viewport/viewport-orbit.js'
 import { attachCameraLookControls } from '../viewport/viewport-camera-look.js'
 import { SceneCameraGizmos } from '../viewport/scene-camera-gizmos.js'
@@ -373,7 +373,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
         dragStartSnapshots.current = selectionPivot.beginDrag(ids, w, getObject3D)
         dragStartTransform.current = null
 
-        if (gizmo.mode === 'scale' && gizmo.axis === 'XYZ') {
+        if (shouldTrackUniformScaleDrag(gizmo.mode, gizmo.axis, useEditorStore.getState().uniformScaleLocked)) {
           uniformScaleDragStart.current = selectionPivot.object.scale.clone()
         } else {
           uniformScaleDragStart.current = null
@@ -389,7 +389,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
         dragStartTransform.current = w.getComponent(sel, TransformComponent) ?? null
       }
 
-      if (gizmo.mode === 'scale' && gizmo.axis === 'XYZ' && obj) {
+      if (shouldTrackUniformScaleDrag(gizmo.mode, gizmo.axis, useEditorStore.getState().uniformScaleLocked) && obj) {
         uniformScaleDragStart.current = obj.scale.clone()
       } else {
         uniformScaleDragStart.current = null
@@ -456,9 +456,16 @@ export const ViewportPanel = memo(function ViewportPanel() {
       const ids = currentSelection.filter((id) => w.hasEntity(id))
       const getObject3D = (id: EntityId) => engine.backend.sync.getObject3D(id)
 
+      const uniformScaleLocked = useEditorStore.getState().uniformScaleLocked
+
       if (ids.length > 1) {
-        if (gizmo.mode === 'scale' && gizmo.axis === 'XYZ' && uniformScaleDragStart.current) {
-          applyUniformScaleDamping(selectionPivot.object, uniformScaleDragStart.current)
+        if (gizmo.mode === 'scale' && uniformScaleDragStart.current) {
+          applyScaleGizmoConstraint(
+            selectionPivot.object,
+            uniformScaleDragStart.current,
+            gizmo.axis,
+            uniformScaleLocked,
+          )
         }
 
         if (snapEnabled && gizmo.mode === 'translate') {
@@ -485,8 +492,8 @@ export const ViewportPanel = memo(function ViewportPanel() {
       const obj = sel ? getObject3D(sel) : null
       if (!sel || !obj) return
 
-      if (gizmo.mode === 'scale' && gizmo.axis === 'XYZ' && uniformScaleDragStart.current) {
-        applyUniformScaleDamping(obj, uniformScaleDragStart.current)
+      if (gizmo.mode === 'scale' && uniformScaleDragStart.current) {
+        applyScaleGizmoConstraint(obj, uniformScaleDragStart.current, gizmo.axis, uniformScaleLocked)
       }
 
       if (snapEnabled && gizmo.mode === 'translate') {

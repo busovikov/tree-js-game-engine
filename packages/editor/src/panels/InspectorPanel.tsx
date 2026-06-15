@@ -226,6 +226,25 @@ export const InspectorPanel = memo(function InspectorPanel() {
     [forEachSelected],
   )
 
+  const applyUniformScaleAxis = useCallback(
+    (axis: 0 | 1 | 2, value: number) => {
+      forEachSelected((id, draftWorld) => {
+        const current = draftWorld.getComponent(id, TransformComponent) ?? DEFAULT_TRANSFORM
+        const next = structuredClone(current)
+        const scale = current.scale as [number, number, number]
+        const base = scale[axis]
+        if (base === 0) {
+          next.scale[axis] = value
+        } else {
+          const ratio = value / base
+          next.scale = [scale[0] * ratio, scale[1] * ratio, scale[2] * ratio]
+        }
+        draftWorld.addComponent(id, TransformComponent, next)
+      })
+    },
+    [forEachSelected],
+  )
+
   const updateTransform = useCallback(
     (after: Transform) => {
       forEachSelected((id, draftWorld) => {
@@ -414,6 +433,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
             onScaleAxisChange={
               isMulti ? (axis, value) => applyTransformAxis('scale', axis, value) : undefined
             }
+            onUniformScaleAxisChange={(axis, value) => applyUniformScaleAxis(axis, value)}
           />
         </section>
       )}

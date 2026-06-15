@@ -30,6 +30,7 @@ interface EditorState {
   transformTool: TransformTool
   snapEnabled: boolean
   showAabb: boolean
+  uniformScaleLocked: boolean
   /** When set, viewport renders through this scene camera entity; otherwise editor scene camera. */
   viewportCameraEntityId: EntityId | null
   focusSelectionRequest: number
@@ -49,6 +50,7 @@ interface EditorState {
   setTransformTool: (tool: TransformTool) => void
   setSnapEnabled: (enabled: boolean) => void
   setShowAabb: (enabled: boolean) => void
+  setUniformScaleLocked: (locked: boolean) => void
   setViewportCameraEntityId: (id: EntityId | null) => void
   requestFocusSelection: () => void
   enterPlayMode: () => void
@@ -70,6 +72,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   transformTool: 'translate',
   snapEnabled: false,
   showAabb: false,
+  uniformScaleLocked: false,
   viewportCameraEntityId: null,
   focusSelectionRequest: 0,
   playSnapshot: null,
@@ -111,6 +114,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
   setSnapEnabled: (enabled) => set({ snapEnabled: enabled }),
   setShowAabb: (enabled) => set({ showAabb: enabled }),
+  setUniformScaleLocked: (locked) => set({ uniformScaleLocked: locked }),
   setViewportCameraEntityId: (id) => set({ viewportCameraEntityId: id }),
   requestFocusSelection: () => set((s) => ({ focusSelectionRequest: s.focusSelectionRequest + 1 })),
 
