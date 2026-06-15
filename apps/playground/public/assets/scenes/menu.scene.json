@@ -1,16 +1,43 @@
 {
   "schemaVersion": 1,
-  "metadata": { "name": "Menu" },
-  "prototypes": {},
-  "prefabs": {},
+  "metadata": {
+    "name": "Menu"
+  },
   "entities": [
     {
       "id": "a0000000-0000-4000-8000-000000000001",
       "name": "MainCamera",
       "parent": null,
       "components": [
-        { "type": "Transform", "data": { "position": [0, 2, 5], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] } },
-        { "type": "Camera", "data": { "fov": 60, "near": 0.1, "far": 1000 } }
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              2,
+              5
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "Camera",
+          "data": {
+            "fov": 60,
+            "near": 0.1,
+            "far": 1000
+          }
+        }
       ]
     },
     {
@@ -18,12 +45,33 @@
       "name": "Box",
       "parent": null,
       "components": [
-        { "type": "Transform", "data": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] } },
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
         {
           "type": "MeshRenderer",
           "data": {
-            "geometryType": "BoxGeometry",
-            "geometryParams": { "width": 1, "height": 1, "depth": 1 },
+            "geometryType": "ModelGeometry",
+            "geometryParams": {},
+            "modelAsset": "models/Floor_Dirt.gltf",
             "material": {
               "color": "#6699ff",
               "metalness": 0,
@@ -41,9 +89,258 @@
       "name": "Sun",
       "parent": null,
       "components": [
-        { "type": "Transform", "data": { "position": [5, 10, 5], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] } },
-        { "type": "Light", "data": { "type": "directional", "color": "#ffffff", "intensity": 1 } }
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              5,
+              10,
+              5
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "Light",
+          "data": {
+            "color": "#ffffff",
+            "intensity": 1,
+            "type": "directional"
+          }
+        }
+      ]
+    },
+    {
+      "id": "ded31fe9-7988-4199-b3e0-bca88b90b1ac",
+      "name": "Box 2",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              4.0045669107216755,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "ModelGeometry",
+            "geometryParams": {},
+            "modelAsset": "models/Floor_Dirt.gltf",
+            "material": {
+              "color": "#6699ff",
+              "metalness": 0,
+              "roughness": 0.5,
+              "wireframe": false,
+              "opacity": 1,
+              "transparent": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "cc647f96-d006-492a-a9f6-2d289f9d7579",
+      "name": "Box 2 2",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -4.009920645806466,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "ModelGeometry",
+            "geometryParams": {},
+            "modelAsset": "models/Floor_Dirt.gltf",
+            "material": {
+              "color": "#6699ff",
+              "metalness": 0,
+              "roughness": 0.5,
+              "wireframe": false,
+              "opacity": 1,
+              "transparent": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "2f5313e4-33c5-44db-8395-8795eb12eaad",
+      "name": "Box 2 2 2",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -4.011249048850457,
+              0,
+              -4.079759937252238
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "ModelGeometry",
+            "geometryParams": {},
+            "modelAsset": "models/Floor_Dirt.gltf",
+            "material": {
+              "color": "#6699ff",
+              "metalness": 0,
+              "roughness": 0.5,
+              "wireframe": false,
+              "opacity": 1,
+              "transparent": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "2be0a6cf-668b-448e-ac5d-a3f572a6b987",
+      "name": "Box 2 2 2 2",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0.004867289872801717,
+              0,
+              -4.079759937252238
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "ModelGeometry",
+            "geometryParams": {},
+            "modelAsset": "models/Floor_Dirt.gltf",
+            "material": {
+              "color": "#6699ff",
+              "metalness": 0,
+              "roughness": 0.5,
+              "wireframe": false,
+              "opacity": 1,
+              "transparent": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "817edf5b-abfe-46a1-b48a-f88a4d01de43",
+      "name": "Box 2 2 2 2 2",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              4.006015460445036,
+              0,
+              -4.079759937252238
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "ModelGeometry",
+            "geometryParams": {},
+            "modelAsset": "models/Floor_Dirt.gltf",
+            "material": {
+              "color": "#6699ff",
+              "metalness": 0,
+              "roughness": 0.5,
+              "wireframe": false,
+              "opacity": 1,
+              "transparent": false
+            }
+          }
+        }
       ]
     }
-  ]
+  ],
+  "prototypes": {},
+  "prefabs": {}
 }
