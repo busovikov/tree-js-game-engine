@@ -4,8 +4,15 @@ import type { RenderPrototype, SceneDocument, SceneMetadata } from '@haku/schema
 import { validateSceneDocument } from '@haku/schema'
 import { ThreeRenderBackend } from './render-backend.js'
 
+export interface EngineFeatureFlags {
+  selectionOutline?: boolean
+  viewportPicking?: boolean
+  hierarchyDim?: boolean
+}
+
 export interface EngineOptions {
   canvas: HTMLCanvasElement
+  features?: EngineFeatureFlags
 }
 
 export interface LoadedScene {
@@ -24,14 +31,22 @@ export class Engine {
   private rafId = 0
 
   constructor(options: EngineOptions) {
-    this.backend = new ThreeRenderBackend(options.canvas)
+    this.backend = new ThreeRenderBackend(options.canvas, options.features)
     this.setupResize(options.canvas)
   }
 
-  loadWorld(world: IWorld, prototypes: Record<string, RenderPrototype> = {}, prefabs: SceneDocument['prefabs'] = {}): void {
+  loadWorld(
+    world: IWorld,
+    prototypes: Record<string, RenderPrototype> = {},
+    prefabs: SceneDocument['prefabs'] = {},
+    renderSettings?: SceneDocument['renderSettings'],
+  ): void {
     this.world = world
     this.backend.setPrototypes(prototypes)
     this.backend.setPrefabs(prefabs)
+    if (renderSettings) {
+      this.backend.setRenderSettings(renderSettings)
+    }
     this.backend.attach(world)
   }
 

@@ -1,5 +1,6 @@
 export { Engine, SceneLoader, ThreeRenderBackend, RenderSyncSystem } from './engine.js'
-export type { EngineOptions, LoadedScene } from './engine.js'
+export type { EngineOptions, EngineFeatureFlags, LoadedScene } from './engine.js'
+export type { EditorRenderExtensions } from '@haku/core'
 export {
   createGeometry,
   createMaterial,
