@@ -19,4 +19,19 @@ describe('browserProjectStore.listDirectory', () => {
     const models = browserProjectStore.listDirectory('public/assets/models')
     expect(models[0].name).toBe('box.glb')
   })
+
+  it('creates empty directories via placeholder file', () => {
+    browserProjectStore.clear()
+    browserProjectStore.createDirectory('public/assets/new-folder')
+
+    const entries = browserProjectStore.listDirectory('public/assets')
+    expect(entries.find((e) => e.name === 'new-folder')).toMatchObject({
+      name: 'new-folder',
+      isDirectory: true,
+    })
+
+    const folderEntries = browserProjectStore.listDirectory('public/assets/new-folder')
+    expect(folderEntries).toHaveLength(0)
+    expect(browserProjectStore.has('public/assets/new-folder/.gitkeep')).toBe(true)
+  })
 })

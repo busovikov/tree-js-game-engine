@@ -87,6 +87,11 @@ class NativeProjectStore {
     await writable.close()
   }
 
+  async createDirectory(dirPath: string): Promise<void> {
+    await this.ensureWritePermission()
+    await this.getDirectoryHandle(dirPath, true)
+  }
+
   async listDirectory(dirPath: string): Promise<DirectoryEntry[]> {
     return this.listDirectoryAt(dirPath)
   }

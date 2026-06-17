@@ -1,3 +1,5 @@
+const DIRECTORY_PLACEHOLDER = '.gitkeep'
+
 /** In-memory project files loaded from folder picker (browser). */
 export interface VirtualFile {
   path: string
@@ -90,6 +92,16 @@ class BrowserProjectStore {
     this.files.set(normalized, { path: normalized, content, file: existing?.file, isBinary: false })
   }
 
+  /** Register a placeholder so empty folders appear in listDirectory. */
+  createDirectory(dirPath: string): void {
+    const normalized = normalizePath(dirPath)
+    if (!normalized) throw new Error('Invalid directory path')
+    const placeholderPath = `${normalized}/${DIRECTORY_PLACEHOLDER}`
+    if (!this.files.has(placeholderPath)) {
+      this.registerFile(placeholderPath, { content: '' })
+    }
+  }
+
   /** Immediate children of a directory (folders first, then files). */
   listDirectory(dirPath: string): DirectoryEntry[] {
     const dir = normalizePath(dirPath)
@@ -110,6 +122,7 @@ class BrowserProjectStore {
 
       const slash = rest.indexOf('/')
       if (slash === -1) {
+        if (rest === DIRECTORY_PLACEHOLDER) continue
         files.push({ path, name: rest, isDirectory: false })
       } else {
         const folderName = rest.slice(0, slash)

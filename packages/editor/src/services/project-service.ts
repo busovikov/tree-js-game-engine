@@ -329,6 +329,28 @@ export class ProjectService {
     await this.writePlaygroundFileToDisk(relativePath, file)
   }
 
+  async createDirectory(relativePath: string): Promise<void> {
+    if (!this.manifest) throw new Error('No project open')
+
+    const assetsRoot = this.manifest.assetsDir
+    const dir = relativePath.replace(/^\/+/, '').replace(/\/+$/, '')
+
+    if (dir !== assetsRoot && !dir.startsWith(`${assetsRoot}/`)) {
+      throw new Error(`Directory must be under ${assetsRoot}/`)
+    }
+
+    if (this.storage === 'native') {
+      await nativeProjectStore.createDirectory(dir)
+      return
+    }
+
+    browserProjectStore.createDirectory(dir)
+
+    if (this.storage === 'playground') {
+      await this.writePlaygroundFileToDisk(`${dir}/.gitkeep`, '')
+    }
+  }
+
   /** @deprecated Use importAsset */
   importVirtualAsset(relativePath: string, file: File): void {
     void this.importAsset(relativePath, file)
