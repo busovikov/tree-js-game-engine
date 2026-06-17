@@ -17,13 +17,13 @@ import { CameraFields, normalizeCamera } from '../components/CameraFields.js'
 import { LightFields, normalizeLight } from '../components/LightFields.js'
 import { TransformFields } from '../components/TransformFields.js'
 import { MeshRendererFields } from '../components/MeshRendererFields.js'
+import { buildMaterialMixedValues } from '../components/MaterialPropertiesPanel.js'
 import { TagFields } from '../components/TagFields.js'
 import { SchemaFields } from '../components/SchemaFields.js'
 import { normalizeMeshRenderer, defaultGeometryParams } from '@haku/schema'
 import {
   commonComponentTypes,
   mergeBooleans,
-  mergeNumbers,
   mergeStrings,
   mergeVec3,
   type MixedBool,
@@ -498,38 +498,9 @@ export const InspectorPanel = memo(function InspectorPanel() {
                     ? mergeStrings(values.map((value) => normalizeMeshRenderer(value).modelAsset))
                     : undefined
                 }
-                mixedMaterialColor={
-                  isMulti
-                    ? mergeStrings(values.map((value) => normalizeMeshRenderer(value).material.color))
-                    : undefined
-                }
-                mixedMaterialNumber={
-                  isMulti
-                    ? {
-                        metalness: mergeNumbers(
-                          values.map((value) => normalizeMeshRenderer(value).material.metalness),
-                        ),
-                        roughness: mergeNumbers(
-                          values.map((value) => normalizeMeshRenderer(value).material.roughness),
-                        ),
-                        opacity: mergeNumbers(
-                          values.map((value) => normalizeMeshRenderer(value).material.opacity),
-                        ),
-                      }
-                    : undefined
-                }
-                mixedMaterialBool={
-                  isMulti
-                    ? {
-                        wireframe: mergeBooleans(
-                          values.map((value) => normalizeMeshRenderer(value).material.wireframe),
-                        ),
-                        transparent: mergeBooleans(
-                          values.map((value) => normalizeMeshRenderer(value).material.transparent),
-                        ),
-                      }
-                    : undefined
-                }
+                {...(isMulti
+                  ? buildMaterialMixedValues(values.map((value) => normalizeMeshRenderer(value).material))
+                  : {})}
                 onChange={isMulti ? undefined : updateMeshRenderer}
                 onPatch={
                   isMulti
