@@ -1,4 +1,7 @@
-import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { MeshRendererComponent } from '@haku/core'
+import { defaultGeometryParams, normalizeMeshRenderer, relativeToAssetsDir } from '@haku/schema'
+import { commitSceneEdit } from '../commands/scene-history.js'
 import { primarySelection } from '../selection/selection-utils.js'
 import { useEditorStore } from '../store/editor-store.js'
 import { projectService } from '../services/project-service.js'
@@ -11,6 +14,50 @@ function fileIcon(name: string, isDirectory: boolean): string {
   if (ext === 'png' || ext === 'jpg' || ext === 'jpeg' || ext === 'webp') return '🖼'
   if (name.endsWith('.scene.json') || ext === 'json') return '📋'
   return '📄'
+}
+
+function ToolbarIcon({ children }: { children: ReactNode }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      {children}
+    </svg>
+  )
+}
+
+function FolderUpIcon() {
+  return (
+    <ToolbarIcon>
+      <path
+        d="M4 9h6l2 2h8v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9Z"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+      />
+      <path d="M12 6V3M9 6l3-3 3 3" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+    </ToolbarIcon>
+  )
+}
+
+const toolbarButtonStyle: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 4,
+  padding: '3px 8px',
+  border: '1px solid #444',
+  borderRadius: 4,
+  background: '#2a2a35',
+  color: '#eee',
+  cursor: 'pointer',
+  fontSize: 11,
+}
+
+function isValidFolderName(name: string): string | null {
+  const trimmed = name.trim()
+  if (!trimmed) return 'Folder name is required'
+  if (trimmed.includes('/') || trimmed.includes('\\')) return 'Folder name cannot contain slashes'
+  if (trimmed === '.' || trimmed === '..') return 'Invalid folder name'
+  return null
 }
 
 function Breadcrumbs({
@@ -70,6 +117,9 @@ export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [showNewFolder, setShowNewFolder] = useState(false)
+  const [newFolderName, setNewFolderName] = useState('')
+  const [newFolderError, setNewFolderError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!projectRoot) {
@@ -144,13 +194,45 @@ export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
   }, [selectedPath, setScene])
 
   const onAssignAsset = useCallback(() => {
-    if (!selectedPath || !primary || !world) return
-    const ext = selectedPath.split('.').pop()?.toLowerCase()
-    if (ext !== 'glb' && ext !== 'gltf') {
-      alert('Select a GLTF/GLB model to assign as mesh prototype.')
+    if (!selectedPath) {
+      alert('Select a GLB or GLTF model in the asset browser.')
       return
     }
-    alert('Imported models are stored in assets. Use Inspector → MeshRenderer to pick a primitive geometry for now.')
+    if (!primary || !world) {
+      alert('Select an entity in the scene hierarchy to assign the model.')
+      return
+    }
+    const ext = selectedPath.split('.').pop()?.toLowerCase()
+    if (ext !== 'glb' && ext !== 'gltf') {
+      alert('Only GLB and GLTF models can be assigned to entities.')
+      return
+    }
+    const modelAsset = relativeToAssetsDir(selectedPath, projectService.getAssetsRoot())
+    if (!modelAsset) {
+      alert(`Asset is outside the project assets directory (${projectService.getAssetsRoot()}).`)
+      return
+    }
+
+    commitSceneEdit((draft) => {
+      const entityId = primary
+      if (!draft.world.hasComponent(entityId, MeshRendererComponent)) {
+        const meshDefaults = MeshRendererComponent.defaults!()
+        draft.world.addComponent(entityId, MeshRendererComponent, {
+          ...meshDefaults,
+          geometryType: 'ModelGeometry',
+          geometryParams: defaultGeometryParams('ModelGeometry'),
+          modelAsset,
+        })
+        return
+      }
+      const current = normalizeMeshRenderer(draft.world.getComponent(entityId, MeshRendererComponent))
+      draft.world.addComponent(entityId, MeshRendererComponent, {
+        ...current,
+        geometryType: 'ModelGeometry',
+        geometryParams: defaultGeometryParams('ModelGeometry'),
+        modelAsset,
+      })
+    })
   }, [selectedPath, primary, world])
 
   const onImport = async (files: FileList | null) => {
@@ -166,6 +248,33 @@ export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
       alert(err instanceof Error ? err.message : 'Failed to import asset')
     }
   }
+
+  const onCreateFolder = useCallback(async () => {
+    const error = isValidFolderName(newFolderName)
+    if (error) {
+      setNewFolderError(error)
+      return
+    }
+
+    const folderName = newFolderName.trim()
+    const dest = `${currentDir}/${folderName}`
+
+    try {
+      await projectService.createDirectory(dest)
+      setShowNewFolder(false)
+      setNewFolderName('')
+      setNewFolderError(null)
+      setRefreshKey((k) => k + 1)
+    } catch (err) {
+      setNewFolderError(err instanceof Error ? err.message : 'Failed to create folder')
+    }
+  }, [currentDir, newFolderName])
+
+  const onCancelNewFolder = useCallback(() => {
+    setShowNewFolder(false)
+    setNewFolderName('')
+    setNewFolderError(null)
+  }, [])
 
   if (!projectRoot) {
     return (
@@ -191,17 +300,84 @@ export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
           <h3 style={{ margin: 0, fontSize: 13 }}>Assets</h3>
           <div style={{ display: 'flex', gap: 4 }}>
-            <button type="button" onClick={goUp} disabled={currentDir === assetsRoot} title="Up">
-              ↑
+            <button
+              type="button"
+              onClick={goUp}
+              disabled={currentDir === assetsRoot}
+              title="Up to parent folder"
+              aria-label="Up to parent folder"
+              style={{
+                ...toolbarButtonStyle,
+                padding: '3px 6px',
+                opacity: currentDir === assetsRoot ? 0.4 : 1,
+                cursor: currentDir === assetsRoot ? 'default' : 'pointer',
+              }}
+            >
+              <FolderUpIcon />
             </button>
-            <button type="button" onClick={() => void onRefreshAssets()} title="Refresh">
+            <button type="button" onClick={() => void onRefreshAssets()} title="Refresh" style={toolbarButtonStyle}>
               ↻
             </button>
-            <button type="button" onClick={() => fileInputRef.current?.click()}>
+            <button type="button" onClick={() => setShowNewFolder(true)} style={toolbarButtonStyle}>
+              New Folder
+            </button>
+            <button type="button" onClick={() => fileInputRef.current?.click()} style={toolbarButtonStyle}>
               Import
             </button>
           </div>
         </div>
+        {showNewFolder && (
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              gap: 6,
+              marginBottom: 8,
+              padding: 8,
+              background: '#1e1e28',
+              borderRadius: 4,
+              border: '1px solid #444',
+            }}
+          >
+            <label style={{ fontSize: 11, color: '#aaa' }} htmlFor="asset-new-folder-name">
+              Folder name
+            </label>
+            <input
+              id="asset-new-folder-name"
+              type="text"
+              value={newFolderName}
+              autoFocus
+              onChange={(e) => {
+                setNewFolderName(e.target.value)
+                setNewFolderError(null)
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void onCreateFolder()
+                if (e.key === 'Escape') onCancelNewFolder()
+              }}
+              style={{
+                flex: 1,
+                minWidth: 120,
+                padding: '4px 6px',
+                border: '1px solid #555',
+                borderRadius: 4,
+                background: '#252530',
+                color: '#eee',
+                fontSize: 12,
+              }}
+            />
+            <button type="button" onClick={() => void onCreateFolder()} style={toolbarButtonStyle}>
+              Create
+            </button>
+            <button type="button" onClick={onCancelNewFolder} style={toolbarButtonStyle}>
+              Cancel
+            </button>
+            {newFolderError && (
+              <span style={{ width: '100%', fontSize: 11, color: '#f88' }}>{newFolderError}</span>
+            )}
+          </div>
+        )}
         <Breadcrumbs path={currentDir} assetsRoot={assetsRoot} onNavigate={navigateTo} />
       </div>
 
@@ -222,7 +398,7 @@ export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
           <div style={{ padding: 12, color: '#888', fontSize: 12 }}>Loading…</div>
         ) : entries.length === 0 ? (
           <div style={{ padding: 12, color: '#888', fontSize: 12 }}>
-            Empty folder — use Import or add files under <code>{currentDir}/</code>
+            Empty folder — use Import, New Folder, or add files under <code>{currentDir}/</code>
           </div>
         ) : (
           entries.map((entry) => {
