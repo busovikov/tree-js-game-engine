@@ -1,6 +1,8 @@
 import {
   GEOMETRY_PARAM_SPECS,
   defaultGeometryParams,
+  defaultMaterialProperties,
+  normalizeMeshMaterial,
   type MeshGeometryType,
   type MeshMaterial,
   type MeshRenderer,
@@ -52,15 +54,17 @@ type EditableMaterial = THREE.Material & {
 }
 
 export function applyMaterial(material: THREE.Material, data: MeshMaterial): void {
+  const normalized = normalizeMeshMaterial(data)
+  if (normalized.materialType !== 'standard') return
   const m = material as EditableMaterial
-  const transparent = data.transparent || data.opacity < 1
+  const transparent = normalized.transparent || normalized.opacity < 1
 
-  if (m.color) m.color.set(data.color)
-  if (typeof m.metalness === 'number') m.metalness = data.metalness
-  if (typeof m.roughness === 'number') m.roughness = data.roughness
-  if (typeof m.wireframe === 'boolean') m.wireframe = data.wireframe
+  if (m.color) m.color.set(normalized.color)
+  if (typeof m.metalness === 'number') m.metalness = normalized.metalness
+  if (typeof m.roughness === 'number') m.roughness = normalized.roughness
+  if (typeof m.wireframe === 'boolean') m.wireframe = normalized.wireframe
 
-  m.opacity = data.opacity
+  m.opacity = normalized.opacity
   m.transparent = transparent
   m.depthWrite = !transparent
   m.side = transparent ? THREE.DoubleSide : THREE.FrontSide
@@ -73,15 +77,19 @@ export function applyMaterial(material: THREE.Material, data: MeshMaterial): voi
 }
 
 export function createMaterial(material: MeshMaterial): THREE.MeshStandardMaterial {
+  const normalized = normalizeMeshMaterial(material)
+  if (normalized.materialType !== 'standard') {
+    return createMaterial(defaultMaterialProperties('standard'))
+  }
   const result = new THREE.MeshStandardMaterial({
-    color: material.color,
-    metalness: material.metalness,
-    roughness: material.roughness,
-    wireframe: material.wireframe,
-    opacity: material.opacity,
-    transparent: material.transparent || material.opacity < 1,
+    color: normalized.color,
+    metalness: normalized.metalness,
+    roughness: normalized.roughness,
+    wireframe: normalized.wireframe,
+    opacity: normalized.opacity,
+    transparent: normalized.transparent || normalized.opacity < 1,
   })
-  applyMaterial(result, material)
+  applyMaterial(result, normalized)
   return result
 }
 
