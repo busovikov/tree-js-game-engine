@@ -1,8 +1,9 @@
-import type { TransformTool } from '../store/editor-store.js'
+import type { GizmoSpace, TransformTool } from '../store/editor-store.js'
 import { canActivateTransformTool, useEditorStore } from '../store/editor-store.js'
 import { deleteSelectedEntities, duplicateSelectedEntity } from '../commands/world-commands.js'
 
 export const FOCUS_SELECTION_SHORTCUT = 'F'
+export const GIZMO_SPACE_SHORTCUT = 'X'
 
 export const TRANSFORM_TOOL_SHORTCUT: Record<TransformTool, string> = {
   hand: 'Q',
@@ -78,6 +79,15 @@ export function handleTransformToolShortcut(event: KeyboardEvent): boolean {
     const { world, mode, selection } = useEditorStore.getState()
     if (!world || mode !== 'edit' || selection.length === 0) return false
     useEditorStore.getState().requestFocusSelection()
+    event.preventDefault()
+    return true
+  }
+
+  if (event.code === 'KeyX') {
+    const { world, mode } = useEditorStore.getState()
+    if (!world || mode !== 'edit') return false
+    const next: GizmoSpace = useEditorStore.getState().gizmoSpace === 'local' ? 'world' : 'local'
+    useEditorStore.getState().setGizmoSpace(next)
     event.preventDefault()
     return true
   }

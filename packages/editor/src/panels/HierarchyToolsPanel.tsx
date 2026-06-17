@@ -2,6 +2,7 @@ import { memo, type ReactNode } from 'react'
 import { useEditorStore, type TransformTool } from '../store/editor-store.js'
 import {
   FOCUS_SELECTION_SHORTCUT,
+  GIZMO_SPACE_SHORTCUT,
   TRANSFORM_TOOL_SHORTCUT,
   formatToolTitle,
 } from '../viewport/transform-tool-shortcuts.js'
@@ -87,6 +88,24 @@ function AabbIcon() {
   )
 }
 
+function LocalSpaceIcon() {
+  return (
+    <ToolIcon>
+      <rect x="8" y="8" width="8" height="8" rx="1" stroke="currentColor" strokeWidth="1.75" transform="rotate(20 12 12)" />
+      <path d="M12 4v4M12 16v4M4 12h4M16 12h4" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" transform="rotate(20 12 12)" />
+    </ToolIcon>
+  )
+}
+
+function WorldSpaceIcon() {
+  return (
+    <ToolIcon>
+      <path d="M12 4v16M4 12h16" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+      <circle cx="12" cy="12" r="2" stroke="currentColor" strokeWidth="1.75" />
+    </ToolIcon>
+  )
+}
+
 function ToolButton({
   title,
   active,
@@ -123,8 +142,10 @@ export const HierarchyToolsPanel = memo(function HierarchyToolsPanel() {
   const viewportCameraEntityId = useEditorStore((s) => s.viewportCameraEntityId)
   const transformTool = useEditorStore((s) => s.transformTool)
   const snapEnabled = useEditorStore((s) => s.snapEnabled)
+  const gizmoSpace = useEditorStore((s) => s.gizmoSpace)
   const setTransformTool = useEditorStore((s) => s.setTransformTool)
   const setSnapEnabled = useEditorStore((s) => s.setSnapEnabled)
+  const setGizmoSpace = useEditorStore((s) => s.setGizmoSpace)
   const requestFocusSelection = useEditorStore((s) => s.requestFocusSelection)
 
   const canEdit = !!world && mode === 'edit'
@@ -166,6 +187,19 @@ export const HierarchyToolsPanel = memo(function HierarchyToolsPanel() {
           {icon}
         </ToolButton>
       ))}
+
+      <ToolButton
+        title={
+          gizmoSpace === 'local'
+            ? `${formatToolTitle('Local space', GIZMO_SPACE_SHORTCUT)} — gizmo axes follow each object's rotation. Click for global (world) space.`
+            : `${formatToolTitle('Global (world) space', GIZMO_SPACE_SHORTCUT)} — gizmo axes stay aligned to world X/Y/Z. Click for local space.`
+        }
+        active={gizmoSpace === 'world'}
+        disabled={!canEdit}
+        onClick={() => setGizmoSpace(gizmoSpace === 'local' ? 'world' : 'local')}
+      >
+        {gizmoSpace === 'local' ? <LocalSpaceIcon /> : <WorldSpaceIcon />}
+      </ToolButton>
 
       <ToolButton
         title="Snap selected objects to nearby AABB edges while translating."

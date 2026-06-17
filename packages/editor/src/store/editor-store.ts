@@ -8,6 +8,7 @@ import type { HierarchyFilterMode } from '../hierarchy/entity-filter.js'
 
 export type EditorMode = 'edit' | 'play'
 export type TransformTool = 'translate' | 'rotate' | 'scale' | 'hand'
+export type GizmoSpace = 'local' | 'world'
 
 export function canActivateTransformTool(
   tool: TransformTool,
@@ -31,6 +32,7 @@ interface EditorState {
   snapEnabled: boolean
   showAabb: boolean
   uniformScaleLocked: boolean
+  gizmoSpace: GizmoSpace
   /** When set, viewport renders through this scene camera entity; otherwise editor scene camera. */
   viewportCameraEntityId: EntityId | null
   focusSelectionRequest: number
@@ -51,6 +53,7 @@ interface EditorState {
   setSnapEnabled: (enabled: boolean) => void
   setShowAabb: (enabled: boolean) => void
   setUniformScaleLocked: (locked: boolean) => void
+  setGizmoSpace: (space: GizmoSpace) => void
   setViewportCameraEntityId: (id: EntityId | null) => void
   requestFocusSelection: () => void
   enterPlayMode: () => void
@@ -73,6 +76,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   snapEnabled: false,
   showAabb: false,
   uniformScaleLocked: false,
+  gizmoSpace: 'local',
   viewportCameraEntityId: null,
   focusSelectionRequest: 0,
   playSnapshot: null,
@@ -115,6 +119,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setSnapEnabled: (enabled) => set({ snapEnabled: enabled }),
   setShowAabb: (enabled) => set({ showAabb: enabled }),
   setUniformScaleLocked: (locked) => set({ uniformScaleLocked: locked }),
+  setGizmoSpace: (space) => set({ gizmoSpace: space }),
   setViewportCameraEntityId: (id) => set({ viewportCameraEntityId: id }),
   requestFocusSelection: () => set((s) => ({ focusSelectionRequest: s.focusSelectionRequest + 1 })),
 

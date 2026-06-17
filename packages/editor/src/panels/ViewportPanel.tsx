@@ -35,19 +35,18 @@ function refreshGizmo(
     return
   }
 
+  gizmo.setSpace(useEditorStore.getState().gizmoSpace)
+
   if (selection.length === 1) {
     const object = getObject3D(selection[0]!)
     if (!object) {
       gizmo.detach()
       return
     }
-    gizmo.setSpace('local')
     object.updateMatrixWorld(true)
     gizmo.attach(object)
     return
   }
-
-  gizmo.setSpace('world')
   pivot.syncCenter(selection, getObject3D)
   pivot.object.updateMatrixWorld(true)
   gizmo.attach(pivot.object)
@@ -98,6 +97,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
   const focusSelectionRequest = useEditorStore((s) => s.focusSelectionRequest)
   const hierarchyFilterQuery = useEditorStore((s) => s.hierarchyFilterQuery)
   const hierarchyFilterMode = useEditorStore((s) => s.hierarchyFilterMode)
+  const gizmoSpace = useEditorStore((s) => s.gizmoSpace)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -312,6 +312,16 @@ export const ViewportPanel = memo(function ViewportPanel() {
       gizmo.detach()
     }
   }, [selectedIds, mode, world, transformTool, viewportCameraEntityId])
+
+  useEffect(() => {
+    const engine = engineRef.current
+    const gizmo = gizmoRef.current
+    const selectionPivot = selectionPivotRef.current
+    if (!engine || !gizmo || !selectionPivot) return
+    if (selectedIds.length === 0 || transformTool === 'hand' || selectionPivot.isDragging()) return
+
+    refreshGizmo(gizmo, selectedIds, selectionPivot, (id) => engine.backend.sync.getObject3D(id))
+  }, [gizmoSpace, selectedIds, transformTool])
 
   useEffect(() => {
     const gizmo = gizmoRef.current
