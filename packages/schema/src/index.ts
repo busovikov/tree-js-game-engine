@@ -36,6 +36,10 @@ const LightBaseSchema = z.object({
   color: z.string().default('#ffffff'),
   intensity: z.number().default(1),
   colorTemperature: z.number().min(1000).max(12000).optional(),
+  castShadow: z.boolean().default(false),
+  shadowMapSize: z.number().int().positive().optional(),
+  shadowBias: z.number().optional(),
+  shadowNormalBias: z.number().optional(),
 })
 
 export const DirectionalLightDataSchema = LightBaseSchema.extend({
@@ -76,6 +80,10 @@ export const SpotLightDataSchema = LightBaseSchema.extend({
     decay: data.decay,
     outerAngle,
     innerAngle,
+    castShadow: data.castShadow,
+    shadowMapSize: data.shadowMapSize,
+    shadowBias: data.shadowBias,
+    shadowNormalBias: data.shadowNormalBias,
   }
 })
 
@@ -114,6 +122,8 @@ export {
 import { MeshRendererSchema } from './mesh.js'
 import { StaticSchema } from './static.js'
 import { TagSchema } from './tag.js'
+import { RenderingLayersSchema } from './rendering-layers.js'
+import { RenderTextureSchema } from './render-texture.js'
 
 export { TagSchema, type Tag } from './tag.js'
 export { StaticSchema, type Static } from './static.js'
@@ -141,6 +151,8 @@ export {
   MaterialTypeSchema,
   MeshMaterialSchema,
   StandardMaterialSchema,
+  BasicMaterialSchema,
+  PhysicalMaterialSchema,
   defaultMaterialProperties,
   normalizeMeshMaterial,
   switchMaterialType,
@@ -197,13 +209,22 @@ export const SceneMetadataSchema = z.object({
 })
 export type SceneMetadata = z.infer<typeof SceneMetadataSchema>
 
-export const SceneDocumentSchema = z.object({
+import { RenderSettingsSchema, defaultRenderSettings } from './render-settings.js'
+
+export const SceneDocumentSchema = z.preprocess((input) => {
+  if (typeof input !== 'object' || input === null) return input
+  if (!('renderSettings' in input)) {
+    return { ...input, renderSettings: defaultRenderSettings() }
+  }
+  return input
+}, z.object({
   schemaVersion: z.literal(1),
   metadata: SceneMetadataSchema,
   entities: z.array(EntityRecordSchema),
   prototypes: z.record(RenderPrototypeSchema).default({}),
   prefabs: z.record(PrefabDefinitionSchema).default({}),
-})
+  renderSettings: RenderSettingsSchema.default({}),
+}))
 export type SceneDocument = z.infer<typeof SceneDocumentSchema>
 
 export const HakuProjectSchema = z.object({
@@ -220,6 +241,42 @@ export {
   relativeToAssetsDir,
 } from './paths.js'
 
+export {
+  RenderSettingsSchema,
+  RenderSettingsFeaturesSchema,
+  defaultRenderSettings,
+  isFeatureActive,
+  resolveShadowSettings,
+  SHADOW_QUALITY_PRESETS,
+  type RenderSettings,
+  type RenderSettingsFeatures,
+  type ShadowQuality,
+  type ShadowSettings,
+  type ToneMappingType,
+  type PostEffect,
+  type PostProcessingProfile,
+} from './render-settings.js'
+
+export {
+  RenderingLayersSchema,
+  RENDER_LAYER_DEFAULT,
+  RENDER_LAYER_TRANSPARENT,
+  RENDER_LAYER_EDITOR_GIZMO,
+  RENDER_LAYER_PICKING,
+  RENDER_LAYER_DEBUG,
+  layerBit,
+  hasLayer,
+  defaultCameraLayerMask,
+  type RenderingLayers,
+} from './rendering-layers.js'
+
+export {
+  RenderTextureSchema,
+  RenderTextureUpdateModeSchema,
+  type RenderTexture,
+  type RenderTextureUpdateMode,
+} from './render-texture.js'
+
 export const CORE_COMPONENT_IDS = [
   'Transform',
   'Camera',
@@ -229,6 +286,8 @@ export const CORE_COMPONENT_IDS = [
   'PrefabInstance',
   'Tag',
   'Static',
+  'RenderingLayers',
+  'RenderTexture',
 ] as const
 
 export type CoreComponentId = (typeof CORE_COMPONENT_IDS)[number]
@@ -242,6 +301,8 @@ export const coreComponentSchemas = {
   PrefabInstance: PrefabInstanceSchema,
   Tag: TagSchema,
   Static: StaticSchema,
+  RenderingLayers: RenderingLayersSchema,
+  RenderTexture: RenderTextureSchema,
 } as const
 
 export function validateSceneDocument(data: unknown): SceneDocument {
