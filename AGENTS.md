@@ -5,6 +5,7 @@ Monorepo for the @haku browser game engine and editor.
 ## Source of truth
 
 - Architecture and phases: `IMPLEMENTATION_PLAN.md` (copy from project docs)
+- Rendering stack roadmap: `RENDER_PLAN.md` (RenderSettings, RenderGraph, materials, shadows, post FX)
 - Package boundaries: engine/playground never depend on editor or React
 
 ## Layout
