@@ -220,6 +220,25 @@ export const MeshRendererFields = memo(function MeshRendererFields({
           mixed={mixedMaterial}
           disabled={disabled}
         />
+
+        <label className="mesh-field mesh-field--checkbox">
+          <input
+            type="checkbox"
+            checked={value.castShadow}
+            disabled={disabled}
+            onChange={(e) => patch({ castShadow: e.target.checked })}
+          />
+          <span>Cast Shadow</span>
+        </label>
+        <label className="mesh-field mesh-field--checkbox">
+          <input
+            type="checkbox"
+            checked={value.receiveShadow}
+            disabled={disabled}
+            onChange={(e) => patch({ receiveShadow: e.target.checked })}
+          />
+          <span>Receive Shadow</span>
+        </label>
       </div>
     </div>
   )

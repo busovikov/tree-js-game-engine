@@ -103,7 +103,14 @@ export const ViewportPanel = memo(function ViewportPanel() {
     const canvas = canvasRef.current
     if (!canvas) return
 
-    const engine = new Engine({ canvas })
+    const engine = new Engine({
+      canvas,
+      features: {
+        selectionOutline: true,
+        viewportPicking: true,
+        hierarchyDim: true,
+      },
+    })
     engine.backend.setModelAssetResolver((path) => projectService.resolveModelAssetUrl(path))
     engine.backend.setModelResourceResolver((modelPath, resource) =>
       projectService.resolveModelResourceUrl(modelPath, resource),
@@ -201,7 +208,12 @@ export const ViewportPanel = memo(function ViewportPanel() {
   useEffect(() => {
     const engine = engineRef.current
     if (!engine || !world) return
-    engine.loadWorld(world, sceneDocument?.prototypes ?? {}, sceneDocument?.prefabs ?? {})
+    engine.loadWorld(
+      world,
+      sceneDocument?.prototypes ?? {},
+      sceneDocument?.prefabs ?? {},
+      sceneDocument?.renderSettings,
+    )
     syncViewportCamera(engine)
 
     const gizmo = gizmoRef.current
@@ -209,6 +221,12 @@ export const ViewportPanel = memo(function ViewportPanel() {
     if (gizmo) gizmo.camera = engine.backend.getActiveCamera()
     if (orbit) orbit.object = engine.backend.getEditorCamera()
   }, [world, sceneDocument])
+
+  useEffect(() => {
+    const engine = engineRef.current
+    if (!engine || !sceneDocument?.renderSettings) return
+    engine.backend.setRenderSettings(sceneDocument.renderSettings)
+  }, [sceneDocument?.renderSettings])
 
   useEffect(() => {
     const engine = engineRef.current

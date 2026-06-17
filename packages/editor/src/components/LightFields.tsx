@@ -12,31 +12,28 @@ export function normalizeLight(data: unknown): Light {
 }
 
 function switchLightType(current: Light, type: Light['type']): Light {
-  const base = {
+  if (current.type === type) return current
+  return LightSchema.parse({
     color: current.color,
     intensity: current.intensity,
     colorTemperature: current.colorTemperature,
-  }
-  switch (type) {
-    case 'directional':
-      return { ...base, type: 'directional' }
-    case 'point':
-      return {
-        ...base,
-        type: 'point',
-        distance: current.type === 'point' ? current.distance : 10,
-        decay: current.type === 'point' ? current.decay : 2,
-      }
-    case 'spot':
-      return {
-        ...base,
-        type: 'spot',
-        distance: current.type === 'spot' ? current.distance : 15,
-        decay: current.type === 'spot' ? current.decay : 2,
-        outerAngle: current.type === 'spot' ? current.outerAngle : 45,
-        innerAngle: current.type === 'spot' ? current.innerAngle : 22.5,
-      }
-  }
+    castShadow: 'castShadow' in current ? current.castShadow : false,
+    type,
+    ...(type === 'point'
+      ? {
+          distance: current.type === 'point' ? current.distance : 10,
+          decay: current.type === 'point' ? current.decay : 2,
+        }
+      : {}),
+    ...(type === 'spot'
+      ? {
+          distance: current.type === 'spot' ? current.distance : 15,
+          decay: current.type === 'spot' ? current.decay : 2,
+          outerAngle: current.type === 'spot' ? current.outerAngle : 45,
+          innerAngle: current.type === 'spot' ? current.innerAngle : 22.5,
+        }
+      : {}),
+  })
 }
 
 export const LightFields = memo(function LightFields({
@@ -116,6 +113,16 @@ export const LightFields = memo(function LightFields({
           disabled={disabled}
           onChange={(intensity) => patch({ intensity: Math.max(0, intensity) })}
         />
+
+        <label className="mesh-field mesh-field--checkbox">
+          <input
+            type="checkbox"
+            checked={'castShadow' in value ? value.castShadow : false}
+            disabled={disabled}
+            onChange={(e) => patch({ castShadow: e.target.checked })}
+          />
+          <span>Cast Shadow</span>
+        </label>
       </div>
 
       {value.type === 'directional' && (

@@ -1,7 +1,9 @@
-import { memo, useCallback, useEffect, useMemo } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { setHakuLogSink } from '@haku/engine'
 import { EditorLayout } from './EditorLayout.js'
 import { MenuBar } from './components/MenuBar.js'
+import { RenderSettingsDialog } from './components/RenderSettingsDialog.js'
+import { commitSceneEdit } from './commands/scene-history.js'
 import { useEditorStore } from './store/editor-store.js'
 import { projectService } from './services/project-service.js'
 import { projectLogSink } from './services/project-log-sink.js'
@@ -40,6 +42,7 @@ export const EditorApp = memo(function EditorApp() {
   const commandRevision = useEditorStore((s) => s.commandRevision)
   const enterPlayMode = useEditorStore((s) => s.enterPlayMode)
   const exitPlayMode = useEditorStore((s) => s.exitPlayMode)
+  const [renderSettingsOpen, setRenderSettingsOpen] = useState(false)
 
   useEffect(() => {
     setHakuLogSink(projectLogSink)
@@ -154,6 +157,18 @@ export const EditorApp = memo(function EditorApp() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
+  const onRenderSettings = useCallback(() => {
+    setRenderSettingsOpen(true)
+  }, [])
+
+  const onApplyRenderSettings = useCallback((renderSettings: import('@haku/schema').RenderSettings) => {
+    commitSceneEdit((draft) => {
+      if (draft.sceneDocument) {
+        draft.sceneDocument.renderSettings = renderSettings
+      }
+    })
+  }, [])
+
   const menus = useMemo(
     () => [
       {
@@ -171,8 +186,20 @@ export const EditorApp = memo(function EditorApp() {
           { id: 'demo', label: 'Demo Scene', onClick: onLoadPlayground },
         ],
       },
+      {
+        id: 'view',
+        label: 'View',
+        items: [
+          {
+            id: 'render-settings',
+            label: 'Render Settings…',
+            disabled: !sceneDocument || mode === 'play',
+            onClick: onRenderSettings,
+          },
+        ],
+      },
     ],
-    [mode, onCreateProject, onLoadPlayground, onOpenProject, onSave, scenePath],
+    [mode, onCreateProject, onLoadPlayground, onOpenProject, onRenderSettings, onSave, sceneDocument, scenePath],
   )
 
   return (
@@ -206,6 +233,12 @@ export const EditorApp = memo(function EditorApp() {
       <div style={{ flex: 1, minHeight: 0 }}>
         <EditorLayout />
       </div>
+      <RenderSettingsDialog
+        open={renderSettingsOpen}
+        initialSettings={sceneDocument?.renderSettings}
+        onApply={onApplyRenderSettings}
+        onClose={() => setRenderSettingsOpen(false)}
+      />
     </div>
   )
 })

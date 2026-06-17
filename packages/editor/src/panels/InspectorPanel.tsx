@@ -20,7 +20,7 @@ import { MeshRendererFields } from '../components/MeshRendererFields.js'
 import { buildMaterialMixedValues } from '../components/MaterialPropertiesPanel.js'
 import { TagFields } from '../components/TagFields.js'
 import { SchemaFields } from '../components/SchemaFields.js'
-import { normalizeMeshRenderer, defaultGeometryParams } from '@haku/schema'
+import { normalizeMeshRenderer, normalizeMeshMaterial, defaultGeometryParams } from '@haku/schema'
 import {
   commonComponentTypes,
   mergeBooleans,
@@ -514,7 +514,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                     ? (patch: Partial<MeshMaterial>) => {
                         patchMeshRenderer((current) => ({
                           ...current,
-                          material: { ...current.material, ...patch },
+                          material: normalizeMeshMaterial({ ...current.material, ...patch }),
                         }))
                       }
                     : undefined

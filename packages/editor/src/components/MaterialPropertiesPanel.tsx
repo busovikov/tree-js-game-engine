@@ -63,6 +63,8 @@ export const MaterialPropertiesPanel = memo(function MaterialPropertiesPanel({
   disabled?: boolean
 }) {
   const specs = MATERIAL_PROPERTY_SPECS[materialType]
+  const basicSpecs = specs.filter((s) => s.group !== 'advanced')
+  const advancedSpecs = specs.filter((s) => s.group === 'advanced')
 
   const patchField = (key: string, value: string | number | boolean) => {
     if (key === 'opacity' && typeof value === 'number') {
@@ -75,69 +77,77 @@ export const MaterialPropertiesPanel = memo(function MaterialPropertiesPanel({
     onPatch({ [key]: value } as Partial<MeshMaterial>)
   }
 
+  const renderSpec = (spec: MaterialPropertySpec) => {
+    if (spec.kind === 'color') {
+      const mixedColor = mixed?.color
+      const colorValue = mixedColor ?? (materialValue(material, spec) as string)
+      return (
+        <label key={spec.key} className="mesh-field">
+          <span className="mesh-field__label" title={spec.hint}>
+            {spec.label}
+          </span>
+          <input
+            type="color"
+            className="mesh-field__color"
+            value={colorValue}
+            disabled={disabled || mixedColor === null}
+            onChange={(e) => patchField(spec.key, e.target.value)}
+          />
+          <input
+            type="text"
+            className={`mesh-field__input mesh-field__input--hex${mixedColor === null ? ' mesh-field__input--mixed' : ''}`}
+            value={mixedColor === null ? '' : colorValue}
+            placeholder={mixedColor === null ? '—' : undefined}
+            disabled={disabled}
+            onChange={(e) => patchField(spec.key, e.target.value)}
+          />
+        </label>
+      )
+    }
+
+    if (spec.kind === 'number') {
+      return (
+        <NumberField
+          key={spec.key}
+          label={spec.label}
+          value={materialValue(material, spec) as number}
+          mixed={mixed?.numbers?.[spec.key]}
+          min={spec.min}
+          max={spec.max}
+          step={spec.step ?? 0.05}
+          hint={spec.hint}
+          disabled={disabled}
+          onChange={(num) => patchField(spec.key, num)}
+        />
+      )
+    }
+
+    const mixedBool = mixed?.booleans?.[spec.key]
+    return (
+      <label key={spec.key} className="mesh-field mesh-field--checkbox" title={spec.hint}>
+        <input
+          type="checkbox"
+          checked={mixedBool ?? (materialValue(material, spec) as boolean)}
+          ref={(input) => {
+            if (input) input.indeterminate = mixedBool === null
+          }}
+          disabled={disabled}
+          onChange={(e) => patchField(spec.key, e.target.checked)}
+        />
+        <span>{spec.label}</span>
+      </label>
+    )
+  }
+
   return (
     <>
-      {specs.map((spec) => {
-        if (spec.kind === 'color') {
-          const mixedColor = mixed?.color
-          const colorValue = mixedColor ?? (materialValue(material, spec) as string)
-          return (
-            <label key={spec.key} className="mesh-field">
-              <span className="mesh-field__label" title={spec.hint}>
-                {spec.label}
-              </span>
-              <input
-                type="color"
-                className="mesh-field__color"
-                value={colorValue}
-                disabled={disabled || mixedColor === null}
-                onChange={(e) => patchField(spec.key, e.target.value)}
-              />
-              <input
-                type="text"
-                className={`mesh-field__input mesh-field__input--hex${mixedColor === null ? ' mesh-field__input--mixed' : ''}`}
-                value={mixedColor === null ? '' : colorValue}
-                placeholder={mixedColor === null ? '—' : undefined}
-                disabled={disabled}
-                onChange={(e) => patchField(spec.key, e.target.value)}
-              />
-            </label>
-          )
-        }
-
-        if (spec.kind === 'number') {
-          return (
-            <NumberField
-              key={spec.key}
-              label={spec.label}
-              value={materialValue(material, spec) as number}
-              mixed={mixed?.numbers?.[spec.key]}
-              min={spec.min}
-              max={spec.max}
-              step={spec.step ?? 0.05}
-              hint={spec.hint}
-              disabled={disabled}
-              onChange={(num) => patchField(spec.key, num)}
-            />
-          )
-        }
-
-        const mixedBool = mixed?.booleans?.[spec.key]
-        return (
-          <label key={spec.key} className="mesh-field mesh-field--checkbox" title={spec.hint}>
-            <input
-              type="checkbox"
-              checked={mixedBool ?? (materialValue(material, spec) as boolean)}
-              ref={(input) => {
-                if (input) input.indeterminate = mixedBool === null
-              }}
-              disabled={disabled}
-              onChange={(e) => patchField(spec.key, e.target.checked)}
-            />
-            <span>{spec.label}</span>
-          </label>
-        )
-      })}
+      {basicSpecs.map(renderSpec)}
+      {advancedSpecs.length > 0 && (
+        <details className="mesh-renderer-fields__section" style={{ marginTop: 8 }}>
+          <summary style={{ cursor: 'pointer', color: '#aaa', marginBottom: 8 }}>Advanced</summary>
+          {advancedSpecs.map(renderSpec)}
+        </details>
+      )}
     </>
   )
 })
