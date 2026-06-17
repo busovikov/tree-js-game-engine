@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { MeshMaterialSchema } from './material.js'
 
 export const MeshGeometryTypeSchema = z.enum([
   'BoxGeometry',
@@ -94,15 +95,7 @@ export function defaultGeometryParams(type: MeshGeometryType): Record<string, nu
   return params
 }
 
-export const MeshMaterialSchema = z.object({
-  color: z.string().default('#6699ff'),
-  metalness: z.number().min(0).max(1).default(0),
-  roughness: z.number().min(0).max(1).default(0.5),
-  wireframe: z.boolean().default(false),
-  opacity: z.number().min(0).max(1).default(1),
-  transparent: z.boolean().default(false),
-})
-export type MeshMaterial = z.infer<typeof MeshMaterialSchema>
+export { MeshMaterialSchema, type MeshMaterial } from './material.js'
 
 const MeshRendererBaseSchema = z.object({
   geometryType: MeshGeometryTypeSchema.default('BoxGeometry'),

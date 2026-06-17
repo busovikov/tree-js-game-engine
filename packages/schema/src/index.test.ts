@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { DEFAULT_ASSETS_DIR, projectPathToUrl, relativeToAssetsDir, validateSceneDocument } from '../src/index.js'
+import {
+  DEFAULT_ASSETS_DIR,
+  MeshMaterialSchema,
+  MeshRendererSchema,
+  normalizeMeshMaterial,
+  normalizeMeshRenderer,
+  projectPathToUrl,
+  relativeToAssetsDir,
+  validateSceneDocument,
+} from '../src/index.js'
 
 describe('@haku/schema', () => {
   it('validates minimal.scene.json', () => {
@@ -16,5 +25,38 @@ describe('@haku/schema', () => {
     expect(projectPathToUrl('public/assets/scenes/menu.scene.json')).toBe('/assets/scenes/menu.scene.json')
     expect(DEFAULT_ASSETS_DIR).toBe('public/assets')
     expect(relativeToAssetsDir('public/assets/models/box.glb')).toBe('models/box.glb')
+  })
+
+  it('defaults materialType to standard for legacy material objects', () => {
+    const material = normalizeMeshMaterial({
+      color: '#ff0000',
+      metalness: 0.5,
+      roughness: 0.25,
+    })
+    expect(material.materialType).toBe('standard')
+    expect(material.color).toBe('#ff0000')
+    expect(material.metalness).toBe(0.5)
+    expect(material.roughness).toBe(0.25)
+  })
+
+  it('parses MeshRenderer with legacy inline material', () => {
+    const renderer = normalizeMeshRenderer({
+      geometryType: 'BoxGeometry',
+      geometryParams: {},
+      material: { color: '#112233' },
+    })
+    expect(renderer.material.materialType).toBe('standard')
+    expect(renderer.material.color).toBe('#112233')
+  })
+
+  it('accepts explicit standard materialType', () => {
+    const parsed = MeshMaterialSchema.parse({ materialType: 'standard' })
+    expect(parsed.materialType).toBe('standard')
+    expect(parsed.color).toBe('#6699ff')
+  })
+
+  it('embeds material defaults on empty MeshRenderer', () => {
+    const renderer = MeshRendererSchema.parse({})
+    expect(renderer.material.materialType).toBe('standard')
   })
 })

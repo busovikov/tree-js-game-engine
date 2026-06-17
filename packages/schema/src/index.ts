@@ -124,16 +124,32 @@ export {
   MESH_GEOMETRY_TYPE_LABELS,
   MESH_PRIMITIVE_GEOMETRY_TYPES,
   MeshGeometryTypeSchema,
-  MeshMaterialSchema,
   MeshRendererSchema,
   defaultGeometryParams,
   meshRendererKey,
   normalizeMeshRenderer,
   type GeometryParamSpec,
   type MeshGeometryType,
-  type MeshMaterial,
   type MeshRenderer,
 } from './mesh.js'
+
+export {
+  MATERIAL_PROPERTY_SPECS,
+  MATERIAL_TYPE_LABELS,
+  MATERIAL_TYPE_SCHEMAS,
+  MATERIAL_TYPES,
+  MaterialTypeSchema,
+  MeshMaterialSchema,
+  StandardMaterialSchema,
+  defaultMaterialProperties,
+  normalizeMeshMaterial,
+  switchMaterialType,
+  type MaterialPropertyKind,
+  type MaterialPropertySpec,
+  type MaterialType,
+  type MeshMaterial,
+  type StandardMaterial,
+} from './material.js'
 
 export const ScriptRefSchema = z.object({
   path: z.string(),
