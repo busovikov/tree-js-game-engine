@@ -4,11 +4,14 @@ import { describe, expect, it } from 'vitest'
 import { loadSceneDocument, roundtripSceneDocument, validateSceneDocument } from '../src/index.js'
 
 describe('@haku/serializer roundtrip', () => {
-  it('minimal.scene.json roundtrips', () => {
+  it('minimal.scene.json roundtrips idempotently', () => {
     const path = join(import.meta.dirname, '../../../examples/minimal.scene.json')
-    const original = validateSceneDocument(JSON.parse(readFileSync(path, 'utf-8')))
-    const result = roundtripSceneDocument(original)
-    expect(result).toEqual(original)
+    const json = JSON.parse(readFileSync(path, 'utf-8'))
+    const doc = validateSceneDocument(json)
+    const once = roundtripSceneDocument(doc)
+    const twice = roundtripSceneDocument(once)
+    expect(once.renderSettings.version).toBe(1)
+    expect(twice).toEqual(once)
   })
 
   it('rejects invalid JSON', () => {

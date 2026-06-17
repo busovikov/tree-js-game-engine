@@ -9,6 +9,7 @@ import {
 import {
   PrefabInstanceSchema,
   SceneDocumentSchema,
+  defaultRenderSettings,
   validateSceneDocument,
   type ComponentRecord,
   type EntityRecord,
@@ -122,6 +123,7 @@ export function saveSceneDocument(
   metadata: SceneDocument['metadata'] = { name: 'Untitled' },
   prototypes: SceneDocument['prototypes'] = {},
   prefabs: SceneDocument['prefabs'] = {},
+  renderSettings: SceneDocument['renderSettings'] = defaultRenderSettings(),
 ): SceneDocument {
   const entities: EntityRecord[] = []
 
@@ -131,7 +133,7 @@ export function saveSceneDocument(
       const type = getComponentType(typeId)
       const data = world.getComponent(id, type)
       if (data !== undefined) {
-        components.push({ type: typeId, data: data as Record<string, unknown> })
+        components.push({ type: typeId, data: type.schema.parse(data) as Record<string, unknown> })
       }
     }
     entities.push({
@@ -148,12 +150,13 @@ export function saveSceneDocument(
     entities,
     prototypes,
     prefabs,
+    renderSettings,
   })
 }
 
 export function roundtripSceneDocument(doc: SceneDocument): SceneDocument {
   const world = loadSceneDocument(doc)
-  return saveSceneDocument(world, doc.metadata, doc.prototypes, doc.prefabs)
+  return saveSceneDocument(world, doc.metadata, doc.prototypes, doc.prefabs, doc.renderSettings)
 }
 
 export { validateSceneDocument }
