@@ -71,7 +71,9 @@ export const ModelPickerDialog = memo(function ModelPickerDialog({
         />
 
         <div className="haku-model-picker__body">
-          {filteredGroups.length === 0 ? (
+          {assets.length === 0 ? (
+            <div className="haku-model-picker__empty">No model assets in project</div>
+          ) : filteredGroups.length === 0 ? (
             <div className="haku-model-picker__empty">No models match filter</div>
           ) : (
             filteredGroups.map((group) => (

@@ -12,6 +12,7 @@ import { globalCommandBus } from './command-bus.js'
 import { commitSceneEdit } from './scene-history.js'
 import { useEditorStore } from '../store/editor-store.js'
 import { extractPrefabSubtree } from '../services/project-service.js'
+import { modelAssetFileName } from '../components/model-picker-utils.js'
 import { primarySelection } from '../selection/selection-utils.js'
 import {
   type EntityPlacement,
@@ -45,6 +46,24 @@ export function createMeshPrimitive(geometryType: MeshGeometryType, placement: E
       ...meshDefaults,
       geometryType,
       geometryParams: defaultGeometryParams(geometryType),
+    })
+    return [id]
+  })
+}
+
+export function createModelEntity(modelAsset: string, placement: EntityPlacement = 'root'): void {
+  const selected = primarySelection(useEditorStore.getState().selection)
+  const baseName = modelAssetFileName(modelAsset)
+
+  commitSceneEdit((draft) => {
+    const name = uniqueEntityName(draft.world, baseName)
+    const id = createEntityWithPlacement(draft.world, name, placement, selected)
+    const meshDefaults = MeshRendererComponent.defaults!()
+    draft.world.addComponent(id, MeshRendererComponent, {
+      ...meshDefaults,
+      geometryType: 'ModelGeometry',
+      geometryParams: {},
+      modelAsset,
     })
     return [id]
   })

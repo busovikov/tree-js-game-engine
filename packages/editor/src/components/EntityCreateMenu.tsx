@@ -4,7 +4,10 @@ import { MESH_GEOMETRY_TYPE_LABELS, MESH_PRIMITIVE_GEOMETRY_TYPES } from '@haku/
 import {
   createEmptyEntity,
   createMeshPrimitive,
+  createModelEntity,
 } from '../commands/world-commands.js'
+import { projectService } from '../services/project-service.js'
+import { ModelPickerDialog } from './ModelPickerDialog.js'
 import './entity-create-menu.css'
 
 const MESH_PRIMITIVES = MESH_PRIMITIVE_GEOMETRY_TYPES.map((geometryType) => ({
@@ -28,6 +31,8 @@ export const EntityCreateMenu = memo(function EntityCreateMenu({
   hasSelection: boolean
 }) {
   const [open, setOpen] = useState(false)
+  const [modelPickerOpen, setModelPickerOpen] = useState(false)
+  const [modelAssets, setModelAssets] = useState<string[]>([])
   const [dropdownStyle, setDropdownStyle] = useState<CSSProperties>({})
   const triggerRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -51,6 +56,11 @@ export const EntityCreateMenu = memo(function EntityCreateMenu({
   }, [open, updatePosition])
 
   useEffect(() => {
+    if (!modelPickerOpen) return
+    void projectService.listModelAssets().then(setModelAssets)
+  }, [modelPickerOpen])
+
+  useEffect(() => {
     const onPointerDown = (event: MouseEvent) => {
       const target = event.target as Node
       if (triggerRef.current?.contains(target)) return
@@ -65,6 +75,11 @@ export const EntityCreateMenu = memo(function EntityCreateMenu({
   const run = useCallback((action: () => void) => {
     setOpen(false)
     action()
+  }, [])
+
+  const openModelPicker = useCallback(() => {
+    setOpen(false)
+    setModelPickerOpen(true)
   }, [])
 
   const toggleOpen = useCallback(() => {
@@ -158,11 +173,28 @@ export const EntityCreateMenu = memo(function EntityCreateMenu({
                     {label}
                   </button>
                 ))}
+                <div className="haku-entity-menu__separator" role="separator" />
+                <button
+                  type="button"
+                  className="haku-entity-menu__item"
+                  role="menuitem"
+                  onClick={openModelPicker}
+                >
+                  Model…
+                </button>
               </div>
             </div>
           </div>,
           document.body,
         )}
+
+      <ModelPickerDialog
+        open={modelPickerOpen}
+        assets={modelAssets}
+        selected=""
+        onSelect={(modelAsset) => createModelEntity(modelAsset)}
+        onClose={() => setModelPickerOpen(false)}
+      />
     </div>
   )
 })
