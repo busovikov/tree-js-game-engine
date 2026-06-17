@@ -15,6 +15,10 @@ import {
   type Static,
   type Tag,
   type Transform,
+  RenderingLayersSchema,
+  RenderTextureSchema,
+  type RenderingLayers,
+  type RenderTexture,
 } from '@haku/schema'
 import type { ComponentType } from './types.js'
 import { globalComponentRegistry } from './registry.js'
@@ -65,6 +69,17 @@ export const StaticComponent = {
   defaults: () => StaticSchema.parse({}),
 } satisfies ComponentType<Static>
 
+export const RenderingLayersComponent = {
+  id: 'RenderingLayers',
+  schema: RenderingLayersSchema,
+  defaults: () => RenderingLayersSchema.parse({}),
+} satisfies ComponentType<RenderingLayers>
+
+export const RenderTextureComponent = {
+  id: 'RenderTexture',
+  schema: RenderTextureSchema,
+} satisfies ComponentType<RenderTexture>
+
 export const coreComponents = [
   TransformComponent,
   CameraComponent,
@@ -74,6 +89,8 @@ export const coreComponents = [
   PrefabInstanceComponent,
   TagComponent,
   StaticComponent,
+  RenderingLayersComponent,
+  RenderTextureComponent,
 ] as const
 
 export function registerCoreComponents(): void {

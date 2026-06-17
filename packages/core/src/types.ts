@@ -57,12 +57,28 @@ export interface ISystem {
   update(world: IWorld, dt: number): void
 }
 
+import type { RenderSettings } from '@haku/schema'
+
+export interface ViewportRenderOverrides {
+  previewShadows?: boolean
+}
+
+export interface EditorRenderExtensions {
+  selectionOutline?: boolean
+  viewportPicking?: boolean
+  hierarchyDim?: boolean
+}
+
 export interface IRenderBackend {
   attach(world: IWorld): void
   detach(): void
   setActiveCamera(entityId: EntityId): void
+  setRenderSettings(settings: RenderSettings): void
+  setViewportOverrides(overrides: ViewportRenderOverrides): void
   render(): void
   resize(width: number, height: number): void
+  getRenderTarget?(entityId: EntityId): unknown
+  requestRenderTargetUpdate?(entityId: EntityId): void
 }
 
 export type { RenderMode, RenderPrototype } from '@haku/schema'
