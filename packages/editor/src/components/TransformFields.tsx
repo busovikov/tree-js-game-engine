@@ -1,13 +1,15 @@
 import { memo, useCallback } from 'react'
-import * as THREE from 'three'
 import type { Transform } from '@haku/schema'
 import type { MixedVec3 } from '../inspector/multi-edit.js'
 import { useEditorStore } from '../store/editor-store.js'
 import { DraggableNumberLabel } from './DraggableNumberLabel.js'
+import {
+  ROTATION_SCRUB_STEP,
+  quatToEulerDegrees,
+  type Quat,
+  type Vec3,
+} from '../transform/euler-degrees.js'
 import './transform-fields.css'
-
-type Vec3 = [number, number, number]
-type Quat = [number, number, number, number]
 
 const MIXED_PLACEHOLDER = '—'
 
@@ -27,29 +29,6 @@ const AXIS_CLASS: Record<string, string> = {
   X: 'haku-transform-axis--x',
   Y: 'haku-transform-axis--y',
   Z: 'haku-transform-axis--z',
-}
-
-function quatToEulerDegrees(q: Quat): Vec3 {
-  const euler = new THREE.Euler().setFromQuaternion(
-    new THREE.Quaternion(q[0], q[1], q[2], q[3]),
-    'XYZ',
-  )
-  return [
-    THREE.MathUtils.radToDeg(euler.x),
-    THREE.MathUtils.radToDeg(euler.y),
-    THREE.MathUtils.radToDeg(euler.z),
-  ]
-}
-
-function eulerDegreesToQuat(eulerDeg: Vec3): Quat {
-  const euler = new THREE.Euler(
-    THREE.MathUtils.degToRad(eulerDeg[0]),
-    THREE.MathUtils.degToRad(eulerDeg[1]),
-    THREE.MathUtils.degToRad(eulerDeg[2]),
-    'XYZ',
-  )
-  const q = new THREE.Quaternion().setFromEuler(euler)
-  return [q.x, q.y, q.z, q.w]
 }
 
 export function applyUniformScaleAxis(value: Vec3, axis: 0 | 1 | 2, nextValue: number): Vec3 {
@@ -128,7 +107,11 @@ function Vec3Row({
                 disabled={axisDisabled}
                 value={isMixed ? '' : Number.isFinite(value[i]) ? value[i] : 0}
                 placeholder={isMixed ? MIXED_PLACEHOLDER : undefined}
-                onChange={(e) => setAxis(axisIndex, Number(e.target.value))}
+                onChange={(e) => {
+                  const parsed = parseFloat(e.target.value)
+                  if (!Number.isFinite(parsed)) return
+                  setAxis(axisIndex, parsed)
+                }}
               />
             </label>
           )
@@ -250,7 +233,11 @@ function ScaleRow({
                 disabled={axisDisabled}
                 value={isMixed ? '' : Number.isFinite(value[i]) ? value[i] : 0}
                 placeholder={isMixed ? MIXED_PLACEHOLDER : undefined}
-                onChange={(e) => setAxis(axisIndex, Number(e.target.value))}
+                onChange={(e) => {
+                  const parsed = parseFloat(e.target.value)
+                  if (!Number.isFinite(parsed)) return
+                  setAxis(axisIndex, parsed)
+                }}
               />
             </label>
           )
@@ -308,12 +295,8 @@ export const TransformFields = memo(function TransformFields({
         value={rotationEuler}
         mixed={mixedRotation}
         disabled={disabled}
-        step={1}
-        onChange={
-          onChange
-            ? (euler) => patch({ rotation: eulerDegreesToQuat(euler) })
-            : undefined
-        }
+        step={ROTATION_SCRUB_STEP}
+        scrubMultiplier={20}
         onAxisChange={onRotationAxisChange}
       />
 

@@ -21,6 +21,7 @@ import { buildMaterialMixedValues } from '../components/MaterialPropertiesPanel.
 import { TagFields } from '../components/TagFields.js'
 import { SchemaFields } from '../components/SchemaFields.js'
 import { normalizeMeshRenderer, normalizeMeshMaterial, defaultGeometryParams } from '@haku/schema'
+import { eulerAxisToQuat, quatToEulerDegrees } from '../transform/euler-degrees.js'
 import {
   commonComponentTypes,
   mergeBooleans,
@@ -28,7 +29,6 @@ import {
   mergeVec3,
   type MixedBool,
 } from '../inspector/multi-edit.js'
-import * as THREE from 'three'
 import './inspector-panel.css'
 
 const DEFAULT_TRANSFORM: Transform = {
@@ -55,31 +55,6 @@ const ADDABLE_COMPONENTS = [
 
 function InspectorSeparator() {
   return <hr className="haku-inspector__separator" />
-}
-
-function quatToEulerDegrees(q: [number, number, number, number]): [number, number, number] {
-  const euler = new THREE.Euler().setFromQuaternion(
-    new THREE.Quaternion(q[0], q[1], q[2], q[3]),
-    'XYZ',
-  )
-  return [
-    THREE.MathUtils.radToDeg(euler.x),
-    THREE.MathUtils.radToDeg(euler.y),
-    THREE.MathUtils.radToDeg(euler.z),
-  ]
-}
-
-function eulerAxisToQuat(axis: 0 | 1 | 2, degrees: number, current: [number, number, number, number]): [number, number, number, number] {
-  const euler = quatToEulerDegrees(current)
-  euler[axis] = degrees
-  const rotation = new THREE.Euler(
-    THREE.MathUtils.degToRad(euler[0]),
-    THREE.MathUtils.degToRad(euler[1]),
-    THREE.MathUtils.degToRad(euler[2]),
-    'XYZ',
-  )
-  const q = new THREE.Quaternion().setFromEuler(rotation)
-  return [q.x, q.y, q.z, q.w]
 }
 
 export const InspectorPanel = memo(function InspectorPanel() {
@@ -424,12 +399,8 @@ export const InspectorPanel = memo(function InspectorPanel() {
             mixedScale={isMulti ? mixedScale : undefined}
             disabled={mode === 'play'}
             onChange={isMulti ? undefined : updateTransform}
-            onPositionAxisChange={
-              isMulti ? (axis, value) => applyTransformAxis('position', axis, value) : undefined
-            }
-            onRotationAxisChange={
-              isMulti ? (axis, value) => applyTransformAxis('rotation', axis, value) : undefined
-            }
+            onPositionAxisChange={(axis, value) => applyTransformAxis('position', axis, value)}
+            onRotationAxisChange={(axis, value) => applyTransformAxis('rotation', axis, value)}
             onScaleAxisChange={
               isMulti ? (axis, value) => applyTransformAxis('scale', axis, value) : undefined
             }
