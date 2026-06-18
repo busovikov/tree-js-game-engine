@@ -121,6 +121,9 @@ export const OutputTab = memo(function OutputTab({
   )
 })
 
+const labelStyle = { color: '#ddd' } as const
+const inputStyle = { display: 'block', marginTop: 4, width: '100%' } as const
+
 export const ShadowsTab = memo(function ShadowsTab({
   settings,
   onChange,
@@ -128,41 +131,150 @@ export const ShadowsTab = memo(function ShadowsTab({
   settings: RenderSettings
   onChange: (next: RenderSettings) => void
 }) {
+  const shadows = settings.shadows
+  const setShadows = (patch: Partial<RenderSettings['shadows']>) =>
+    onChange({ ...settings, shadows: { ...shadows, ...patch } })
+
+  // Map size and type are preset-driven, so manual edits switch to "custom".
+  const setManual = (patch: Partial<RenderSettings['shadows']>) =>
+    setShadows({ quality: 'custom', ...patch })
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <label style={{ color: '#ddd' }}>
+      <label style={labelStyle}>
         <input
           type="checkbox"
-          checked={settings.shadows.enabled}
-          onChange={(e) =>
-            onChange({
-              ...settings,
-              shadows: { ...settings.shadows, enabled: e.target.checked },
-            })
-          }
+          checked={shadows.enabled}
+          onChange={(e) => setShadows({ enabled: e.target.checked })}
         />{' '}
         Shadows enabled
       </label>
-      <label style={{ color: '#ddd' }}>
+
+      <label style={labelStyle}>
         Quality Preset
         <select
-          value={settings.shadows.quality}
+          value={shadows.quality}
           onChange={(e) => {
             const quality = e.target.value as RenderSettings['shadows']['quality']
             const preset = SHADOW_QUALITY_PRESETS[quality]
-            onChange({
-              ...settings,
-              shadows: { ...settings.shadows, quality, ...preset },
-            })
+            setShadows({ quality, ...preset })
           }}
-          style={{ display: 'block', marginTop: 4, width: '100%' }}
+          style={inputStyle}
         >
           <option value="off">Off</option>
           <option value="low">Low (512)</option>
           <option value="medium">Medium (1024 PCF)</option>
           <option value="high">High (2048 PCF Soft)</option>
+          <option value="custom">Custom</option>
         </select>
       </label>
+
+      <fieldset
+        disabled={!shadows.enabled}
+        style={{ border: '1px solid #333', borderRadius: 4, padding: 10, margin: 0, display: 'flex', flexDirection: 'column', gap: 10 }}
+      >
+        <legend style={{ color: '#aaa', fontSize: 12, padding: '0 6px' }}>Manual controls</legend>
+
+        <label style={labelStyle}>
+          Map Size
+          <select
+            value={shadows.mapSize}
+            onChange={(e) =>
+              setManual({ mapSize: Number(e.target.value) as RenderSettings['shadows']['mapSize'] })
+            }
+            style={inputStyle}
+          >
+            <option value={512}>512</option>
+            <option value={1024}>1024</option>
+            <option value={2048}>2048</option>
+            <option value={4096}>4096</option>
+          </select>
+        </label>
+
+        <label style={labelStyle}>
+          Shadow Type
+          <select
+            value={shadows.type}
+            onChange={(e) =>
+              setManual({ type: e.target.value as RenderSettings['shadows']['type'] })
+            }
+            style={inputStyle}
+          >
+            <option value="basic">Basic (hard)</option>
+            <option value="pcf">PCF</option>
+            <option value="pcfsoft">PCF Soft</option>
+            <option value="vsm">VSM</option>
+          </select>
+        </label>
+
+        <label style={labelStyle}>
+          Edge Softness (radius): {shadows.radius}
+          <input
+            type="range"
+            min={0}
+            max={10}
+            step={0.5}
+            value={shadows.radius}
+            onChange={(e) => setShadows({ radius: Number(e.target.value) })}
+            style={inputStyle}
+          />
+        </label>
+
+        <label style={labelStyle}>
+          <input
+            type="checkbox"
+            checked={shadows.followCamera}
+            onChange={(e) => setShadows({ followCamera: e.target.checked })}
+          />{' '}
+          Follow camera (sun tracks the view)
+        </label>
+
+        <label style={labelStyle}>
+          Shadow Area (world units)
+          <input
+            type="number"
+            min={1}
+            step={1}
+            value={shadows.cameraSize}
+            onChange={(e) => setShadows({ cameraSize: Math.max(1, Number(e.target.value)) })}
+            style={inputStyle}
+          />
+        </label>
+
+        <label style={labelStyle}>
+          Shadow Distance (depth)
+          <input
+            type="number"
+            min={1}
+            step={1}
+            value={shadows.cameraDistance}
+            onChange={(e) => setShadows({ cameraDistance: Math.max(1, Number(e.target.value)) })}
+            style={inputStyle}
+          />
+        </label>
+
+        <label style={labelStyle}>
+          Bias
+          <input
+            type="number"
+            step={0.0001}
+            value={shadows.bias}
+            onChange={(e) => setShadows({ bias: Number(e.target.value) })}
+            style={inputStyle}
+          />
+        </label>
+
+        <label style={labelStyle}>
+          Normal Bias
+          <input
+            type="number"
+            step={0.01}
+            value={shadows.normalBias}
+            onChange={(e) => setShadows({ normalBias: Number(e.target.value) })}
+            style={inputStyle}
+          />
+        </label>
+      </fieldset>
     </div>
   )
 })

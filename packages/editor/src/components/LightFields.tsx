@@ -36,6 +36,90 @@ function switchLightType(current: Light, type: Light['type']): Light {
   })
 }
 
+const SHADOW_MAP_SIZES = [512, 1024, 2048, 4096] as const
+
+function LightShadowOverrides({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: Light
+  onChange: (partial: Partial<Light>) => void
+  disabled?: boolean
+}) {
+  const mapSize = value.shadowMapSize
+  const bias = value.shadowBias
+  const normalBias = value.shadowNormalBias
+
+  return (
+    <div className="mesh-renderer-fields__section">
+      <div className="mesh-renderer-fields__heading">Shadow Overrides</div>
+      <p style={{ margin: 0, fontSize: 11, color: '#888', lineHeight: 1.4 }}>
+        Per-light overrides. Leave on “Inherit” to use the scene Render Settings.
+      </p>
+
+      <label className="mesh-field">
+        <span className="mesh-field__label">Map Size</span>
+        <select
+          className="mesh-field__input"
+          value={mapSize ?? ''}
+          disabled={disabled}
+          onChange={(e) =>
+            onChange({ shadowMapSize: e.target.value === '' ? undefined : Number(e.target.value) })
+          }
+        >
+          <option value="">Inherit</option>
+          {SHADOW_MAP_SIZES.map((size) => (
+            <option key={size} value={size}>
+              {size}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="mesh-field mesh-field--checkbox">
+        <input
+          type="checkbox"
+          checked={bias !== undefined}
+          disabled={disabled}
+          onChange={(e) => onChange({ shadowBias: e.target.checked ? -0.0001 : undefined })}
+        />
+        <span>Override Bias</span>
+      </label>
+      {bias !== undefined && (
+        <NumberField
+          label="Bias"
+          value={bias}
+          step={0.0001}
+          disabled={disabled}
+          hint="Depth offset to reduce shadow acne."
+          onChange={(shadowBias) => onChange({ shadowBias })}
+        />
+      )}
+
+      <label className="mesh-field mesh-field--checkbox">
+        <input
+          type="checkbox"
+          checked={normalBias !== undefined}
+          disabled={disabled}
+          onChange={(e) => onChange({ shadowNormalBias: e.target.checked ? 0.02 : undefined })}
+        />
+        <span>Override Normal Bias</span>
+      </label>
+      {normalBias !== undefined && (
+        <NumberField
+          label="Normal Bias"
+          value={normalBias}
+          step={0.01}
+          disabled={disabled}
+          hint="Offset along surface normal to reduce peter-panning."
+          onChange={(shadowNormalBias) => onChange({ shadowNormalBias })}
+        />
+      )}
+    </div>
+  )
+}
+
 export const LightFields = memo(function LightFields({
   value,
   onChange,
@@ -130,8 +214,14 @@ export const LightFields = memo(function LightFields({
           <div className="mesh-renderer-fields__heading">Directional</div>
           <p style={{ margin: 0, fontSize: 11, color: '#888', lineHeight: 1.4 }}>
             Direction follows entity rotation. Use the rotate gizmo or rotation in Transform.
+            Position does not affect a directional light — its shadow volume tracks the view
+            camera (configure in Render Settings → Shadows).
           </p>
         </div>
+      )}
+
+      {'castShadow' in value && value.castShadow && (
+        <LightShadowOverrides value={value} onChange={patch} disabled={disabled} />
       )}
 
       {value.type === 'point' && (

@@ -171,6 +171,7 @@ export class ThreeRenderBackend implements IRenderBackend {
 
   render(): void {
     this.syncRenderTargetEntries()
+    this.syncSystem.updateDirectionalShadowRigs(this.activeCamera)
     this.renderGraph.render(this.scene, this.activeCamera)
   }
 

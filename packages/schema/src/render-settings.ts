@@ -24,7 +24,7 @@ export const BackgroundSettingsSchema = z.object({
 })
 export type BackgroundSettings = z.infer<typeof BackgroundSettingsSchema>
 
-export const ShadowQualitySchema = z.enum(['off', 'low', 'medium', 'high'])
+export const ShadowQualitySchema = z.enum(['off', 'low', 'medium', 'high', 'custom'])
 export type ShadowQuality = z.infer<typeof ShadowQualitySchema>
 
 export const ShadowTypeSchema = z.enum(['basic', 'pcf', 'pcfsoft', 'vsm'])
@@ -38,7 +38,26 @@ export const ShadowSettingsSchema = z.object({
   maxCasters: z.number().int().min(1).max(8).default(1),
   bias: z.number().default(-0.0001),
   normalBias: z.number().default(0.02),
+  /** Edge softening radius (PCF/PCFSoft). Higher = blurrier shadow edges. */
+  radius: z.number().min(0).default(2),
   autoUpdate: z.boolean().default(true),
+  /**
+   * Side length (world units) of the orthographic shadow volume used by
+   * directional lights. Larger values cover more of the scene at the cost of
+   * shadow-map resolution per unit.
+   */
+  cameraSize: z.number().positive().default(40),
+  /**
+   * Distance (world units) the directional shadow camera sits back from the
+   * shadow volume centre along the light direction. Defines the depth range.
+   */
+  cameraDistance: z.number().positive().default(100),
+  /**
+   * When true, the directional shadow volume tracks the active view camera so
+   * shadows stay sharp wherever you look. When false it stays centred on the
+   * world origin. Direction always comes from the light's rotation.
+   */
+  followCamera: z.boolean().default(true),
 })
 export type ShadowSettings = z.infer<typeof ShadowSettingsSchema>
 
@@ -92,6 +111,8 @@ export const SHADOW_QUALITY_PRESETS: Record<
   low: { mapSize: 512, type: 'basic', enabled: true },
   medium: { mapSize: 1024, type: 'pcf', enabled: true },
   high: { mapSize: 2048, type: 'pcfsoft', enabled: true },
+  // Custom leaves map size / type under manual control (no preset overrides).
+  custom: {},
 }
 
 export function defaultRenderSettings(): RenderSettings {

@@ -26,7 +26,7 @@ import {
   loadModelTemplate,
 } from '../model-loader.js'
 import { syncMeshShadowFlags } from './sync-mesh-shadow.js'
-import { computeMeshWorldBounds, fitDirectionalShadowCamera } from './fit-directional-shadow.js'
+import { computeCameraShadowAnchor, updateDirectionalShadowRig } from './directional-shadow.js'
 import { applyLayerMask, resolveEntityLayerMask } from '../render/layers/layer-resolver.js'
 
 const MODEL_ROOT_NAME = 'haku-model-root'
@@ -49,6 +49,7 @@ export class RenderSyncSystem implements ISystem {
   private hierarchyHighlightIds: Set<string> | null = null
   private renderSettings: RenderSettings = defaultRenderSettings()
   private shadowCasterCount = 0
+  private readonly _shadowAnchor = new THREE.Vector3()
 
   constructor(scene: THREE.Scene) {
     this.scene = scene
@@ -169,23 +170,42 @@ export class RenderSyncSystem implements ISystem {
 
     this.syncSceneHierarchy()
     this.applyHierarchyVisualWeight()
-    this.fitDirectionalShadowCameras()
   }
 
-  private fitDirectionalShadowCameras(): void {
-    if (!isFeatureActive(this.renderSettings, 'shadows')) return
-    const shadows = resolveShadowSettings(this.renderSettings.shadows)
-    if (!shadows.enabled) return
-
+  /**
+   * Position every shadow-casting directional light's shadow volume. Direction
+   * comes from each light's rotation; the volume centres on the view camera
+   * (Option A) when `followCamera` is set, otherwise on the world origin.
+   * Called every frame by the backend so it tracks camera motion.
+   */
+  updateDirectionalShadowRigs(viewCamera: THREE.Camera | null): void {
+    const shadows = this.directionalShadowConfig()
+    if (!shadows) return
     this.scene.updateMatrixWorld(true)
-    const bounds = computeMeshWorldBounds(this.scene)
+
+    const anchor =
+      shadows.followCamera && viewCamera
+        ? computeCameraShadowAnchor(viewCamera, shadows.cameraSize, this._shadowAnchor)
+        : undefined
 
     for (const state of this.entityStates.values()) {
       const light = this.findLight(state.object3d)
       if (light instanceof THREE.DirectionalLight && light.castShadow) {
-        fitDirectionalShadowCamera(light, bounds)
+        updateDirectionalShadowRig(light, {
+          size: shadows.cameraSize,
+          distance: shadows.cameraDistance,
+          mapSize: shadows.mapSize,
+          anchor,
+        })
       }
     }
+  }
+
+  private directionalShadowConfig(): ReturnType<typeof resolveShadowSettings> | null {
+    if (!isFeatureActive(this.renderSettings, 'shadows')) return null
+    const shadows = resolveShadowSettings(this.renderSettings.shadows)
+    if (!shadows.enabled) return null
+    return shadows
   }
 
   private syncSceneHierarchy(): void {
@@ -685,13 +705,15 @@ export class RenderSyncSystem implements ISystem {
 
     if (canCast && light instanceof THREE.DirectionalLight) {
       light.castShadow = true
-      light.shadow.mapSize.set(shadows.mapSize, shadows.mapSize)
+      const mapSize =
+        'shadowMapSize' in lightData && lightData.shadowMapSize
+          ? lightData.shadowMapSize
+          : shadows.mapSize
+      this.setShadowMapSize(light, mapSize)
       light.shadow.bias = ('shadowBias' in lightData ? lightData.shadowBias : undefined) ?? shadows.bias
       light.shadow.normalBias =
         ('shadowNormalBias' in lightData ? lightData.shadowNormalBias : undefined) ?? shadows.normalBias
-      if ('shadowMapSize' in lightData && lightData.shadowMapSize) {
-        light.shadow.mapSize.set(lightData.shadowMapSize, lightData.shadowMapSize)
-      }
+      light.shadow.radius = shadows.radius
       this.shadowCasterCount++
     } else {
       light.castShadow = false
@@ -708,6 +730,16 @@ export class RenderSyncSystem implements ISystem {
       light.decay = lightData.decay
       light.angle = angleRad
       light.penumbra = penumbra
+    }
+  }
+
+  /** Resize a light's shadow map, disposing the old one so Three.js reallocates it. */
+  private setShadowMapSize(light: THREE.DirectionalLight, size: number): void {
+    if (light.shadow.mapSize.width === size && light.shadow.mapSize.height === size) return
+    light.shadow.mapSize.set(size, size)
+    if (light.shadow.map) {
+      light.shadow.map.dispose()
+      light.shadow.map = null as unknown as THREE.WebGLRenderTarget
     }
   }
 
