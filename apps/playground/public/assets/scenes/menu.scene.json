@@ -54,10 +54,10 @@
               -0.31023736195429774
             ],
             "rotation": [
-              -0.7154714528676916,
-              0.015502802029329505,
-              -0.01723540602761189,
-              0.6982572620744429
+              -0.3486038197484921,
+              0.09320626759865305,
+              -0.26032895475696516,
+              0.8955539089592737
             ],
             "scale": [
               1,
@@ -72,7 +72,17 @@
             "color": "#ffffff",
             "intensity": 1,
             "castShadow": false,
-            "type": "directional"
+            "type": "directional",
+            "localPosition": [
+              0,
+              0,
+              0
+            ],
+            "targetPosition": [
+              0,
+              0,
+              -1
+            ]
           }
         }
       ]
@@ -86,9 +96,9 @@
           "type": "Transform",
           "data": {
             "position": [
-              4.193117504300135,
-              0,
-              8.193169737370784
+              3.5543223454805934,
+              1.3651241717255198,
+              -2.1628108765437615
             ],
             "rotation": [
               0,
@@ -177,6 +187,53 @@
           }
         }
       ]
+    },
+    {
+      "id": "c5a0794d-112e-4234-989e-513f0b5ee74a",
+      "name": "Box_A.gltf",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -2.5852949722068264,
+              0,
+              -2.9228585060772962
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "ModelGeometry",
+            "geometryParams": {},
+            "modelAsset": "models/Box_A.gltf",
+            "material": {
+              "color": "#6699ff",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0,
+              "roughness": 0.5
+            },
+            "castShadow": true,
+            "receiveShadow": true
+          }
+        }
+      ]
     }
   ],
   "prototypes": {},
@@ -208,7 +265,14 @@
       "maxCasters": 1,
       "bias": -0.0001,
       "normalBias": 0.02,
-      "autoUpdate": true
+      "radius": 2,
+      "autoUpdate": true,
+      "cameraSize": 40,
+      "cameraDistance": 100,
+      "followCamera": true,
+      "anchorGroundY": 0,
+      "anchorMaxDistanceFactor": 4,
+      "anchorFallbackDistanceFactor": 0.5
     },
     "ambient": {
       "color": "#ffffff",
