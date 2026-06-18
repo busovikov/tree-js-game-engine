@@ -1,7 +1,7 @@
 import type { IWorld, ISystem } from '@haku/core'
 import { loadSceneDocument } from '@haku/serializer'
-import type { RenderPrototype, SceneDocument, SceneMetadata } from '@haku/schema'
-import { validateSceneDocument } from '@haku/schema'
+import type { RenderPrototype, RenderSettings, SceneDocument, SceneMetadata } from '@haku/schema'
+import { defaultRenderSettings, validateSceneDocument } from '@haku/schema'
 import { ThreeRenderBackend } from './render-backend.js'
 
 export interface EngineFeatureFlags {
@@ -20,6 +20,7 @@ export interface LoadedScene {
   prototypes: Record<string, RenderPrototype>
   metadata: SceneMetadata
   prefabs: SceneDocument['prefabs']
+  renderSettings: RenderSettings
 }
 
 export class Engine {
@@ -123,6 +124,7 @@ export class SceneLoader {
       prototypes: doc.prototypes,
       metadata: doc.metadata,
       prefabs: doc.prefabs,
+      renderSettings: doc.renderSettings ?? defaultRenderSettings(),
     }
   }
 }

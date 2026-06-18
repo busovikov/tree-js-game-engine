@@ -220,7 +220,13 @@ export class ProjectService {
   }
 
   async saveScene(relativePath: string, world: IWorld, document: SceneDocument): Promise<SceneDocument> {
-    const saved = saveSceneDocument(world, document.metadata, document.prototypes, document.prefabs)
+    const saved = saveSceneDocument(
+      world,
+      document.metadata,
+      document.prototypes,
+      document.prefabs,
+      document.renderSettings,
+    )
     const json = JSON.stringify(saved, null, 2) + '\n'
 
     sceneLog('save.start', { path: relativePath, storage: this.storage })

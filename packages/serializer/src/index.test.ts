@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { loadSceneDocument, roundtripSceneDocument, validateSceneDocument } from '../src/index.js'
+import { RenderSettingsSchema } from '@haku/schema'
+import { loadSceneDocument, roundtripSceneDocument, saveSceneDocument, validateSceneDocument } from '../src/index.js'
 
 describe('@haku/serializer roundtrip', () => {
   it('minimal.scene.json roundtrips idempotently', () => {
@@ -12,6 +13,28 @@ describe('@haku/serializer roundtrip', () => {
     const twice = roundtripSceneDocument(once)
     expect(once.renderSettings.version).toBe(1)
     expect(twice).toEqual(once)
+  })
+
+  it('saveSceneDocument preserves explicit renderSettings', () => {
+    const renderSettings = RenderSettingsSchema.parse({
+      features: { shadows: true },
+      toneMappingExposure: 1.5,
+    })
+    const doc = validateSceneDocument({
+      schemaVersion: 1,
+      metadata: { name: 'RenderSettingsTest' },
+      entities: [],
+      renderSettings,
+    })
+    const saved = saveSceneDocument(
+      loadSceneDocument(doc),
+      doc.metadata,
+      doc.prototypes,
+      doc.prefabs,
+      renderSettings,
+    )
+    expect(saved.renderSettings.features.shadows).toBe(true)
+    expect(saved.renderSettings.toneMappingExposure).toBe(1.5)
   })
 
   it('rejects invalid JSON', () => {

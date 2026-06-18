@@ -13,6 +13,27 @@ const FEATURE_LABELS: Record<keyof RenderSettingsFeatures, string> = {
   vignette: 'Vignette (requires Post Processing)',
 }
 
+function applyShadowsFeatureToggle(
+  settings: RenderSettings,
+  enabled: boolean,
+): RenderSettings {
+  if (!enabled) {
+    return {
+      ...settings,
+      features: { ...settings.features, shadows: false },
+      shadows: { ...settings.shadows, enabled: false },
+    }
+  }
+
+  const quality = settings.shadows.quality === 'off' ? 'medium' : settings.shadows.quality
+  const preset = SHADOW_QUALITY_PRESETS[quality]
+  return {
+    ...settings,
+    features: { ...settings.features, shadows: true },
+    shadows: { ...settings.shadows, quality, ...preset, enabled: true },
+  }
+}
+
 export const FeaturesTab = memo(function FeaturesTab({
   settings,
   onChange,
@@ -21,6 +42,10 @@ export const FeaturesTab = memo(function FeaturesTab({
   onChange: (next: RenderSettings) => void
 }) {
   const toggleFeature = (key: keyof RenderSettingsFeatures, value: boolean) => {
+    if (key === 'shadows') {
+      onChange(applyShadowsFeatureToggle(settings, value))
+      return
+    }
     const features = { ...settings.features, [key]: value }
     if (key === 'postProcessing' && !value) {
       features.fxaa = false
@@ -132,6 +157,7 @@ export const ShadowsTab = memo(function ShadowsTab({
   onChange: (next: RenderSettings) => void
 }) {
   const shadows = settings.shadows
+  const shadowsFeatureOn = settings.features.shadows
   const setShadows = (patch: Partial<RenderSettings['shadows']>) =>
     onChange({ ...settings, shadows: { ...shadows, ...patch } })
 
@@ -141,14 +167,11 @@ export const ShadowsTab = memo(function ShadowsTab({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <label style={labelStyle}>
-        <input
-          type="checkbox"
-          checked={shadows.enabled}
-          onChange={(e) => setShadows({ enabled: e.target.checked })}
-        />{' '}
-        Shadows enabled
-      </label>
+      {!shadowsFeatureOn && (
+        <p style={{ margin: 0, color: '#888', fontSize: 12 }}>
+          Enable <strong>Shadows</strong> on the Features tab to use these settings.
+        </p>
+      )}
 
       <label style={labelStyle}>
         Quality Preset
@@ -160,6 +183,7 @@ export const ShadowsTab = memo(function ShadowsTab({
             setShadows({ quality, ...preset })
           }}
           style={inputStyle}
+          disabled={!shadowsFeatureOn}
         >
           <option value="off">Off</option>
           <option value="low">Low (512)</option>
@@ -170,7 +194,7 @@ export const ShadowsTab = memo(function ShadowsTab({
       </label>
 
       <fieldset
-        disabled={!shadows.enabled}
+        disabled={!shadowsFeatureOn}
         style={{ border: '1px solid #333', borderRadius: 4, padding: 10, margin: 0, display: 'flex', flexDirection: 'column', gap: 10 }}
       >
         <legend style={{ color: '#aaa', fontSize: 12, padding: '0 6px' }}>Manual controls</legend>
