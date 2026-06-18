@@ -1,6 +1,14 @@
 import * as THREE from 'three'
 
-/** World-space bounds of all meshes under root (skips helpers without geometry). */
+const _center = new THREE.Vector3()
+const _size = new THREE.Vector3()
+const _lightPos = new THREE.Vector3()
+const _targetPos = new THREE.Vector3()
+const _lightDir = new THREE.Vector3()
+const _lookAt = new THREE.Vector3()
+const _up = new THREE.Vector3()
+
+/** World-space bounds of all meshes under root (skips editor overlay helpers). */
 export function computeMeshWorldBounds(root: THREE.Object3D): THREE.Box3 {
   const box = new THREE.Box3()
   const chunk = new THREE.Box3()
@@ -20,9 +28,17 @@ export function computeMeshWorldBounds(root: THREE.Object3D): THREE.Box3 {
   return box
 }
 
+/** World-space light direction (normalized, from light toward target). */
+export function getDirectionalLightWorldDirection(light: THREE.DirectionalLight): THREE.Vector3 {
+  light.getWorldPosition(_lightPos)
+  light.target.getWorldPosition(_targetPos)
+  return _targetPos.sub(_lightPos).normalize()
+}
+
 /**
- * Fit a directional light shadow ortho frustum to scene content.
- * Centers the light target on the bounds and expands the frustum symmetrically.
+ * Fit directional shadow ortho frustum to scene content.
+ * Only the shadow camera moves — light.target stays fixed so illumination direction
+ * does not change when geometry moves.
  */
 export function fitDirectionalShadowCamera(
   light: THREE.DirectionalLight,
@@ -42,24 +58,30 @@ export function fitDirectionalShadowCamera(
     return
   }
 
-  const center = sceneBounds.getCenter(new THREE.Vector3())
-  const size = sceneBounds.getSize(new THREE.Vector3())
-  const maxDim = Math.max(size.x, size.y, size.z, 1) * padding
+  sceneBounds.getCenter(_center)
+  sceneBounds.getSize(_size)
+  const maxDim = Math.max(_size.x, _size.y, _size.z, 1) * padding
 
-  const targetParent = light.target.parent
-  if (targetParent) {
-    targetParent.updateMatrixWorld(true)
-    light.target.position.copy(targetParent.worldToLocal(center.clone()))
-  } else {
-    light.target.position.copy(center)
+  light.getWorldPosition(_lightPos)
+  light.target.getWorldPosition(_targetPos)
+  _lightDir.subVectors(_targetPos, _lightPos).normalize()
+
+  camera.position.copy(_center)
+  _up.set(0, 1, 0)
+  if (Math.abs(_lightDir.dot(_up)) > 0.99) {
+    _up.set(0, 0, 1)
   }
-  light.target.updateMatrixWorld(true)
+  _lookAt.copy(_center).add(_lightDir)
+  camera.up.copy(_up)
+  camera.lookAt(_lookAt)
+  camera.updateMatrixWorld(true)
 
-  camera.left = -maxDim / 2
-  camera.right = maxDim / 2
-  camera.top = maxDim / 2
-  camera.bottom = -maxDim / 2
+  const half = maxDim / 2
+  camera.left = -half
+  camera.right = half
+  camera.top = half
+  camera.bottom = -half
   camera.near = 0.5
-  camera.far = maxDim * 2 + size.y
+  camera.far = maxDim * 2 + _size.y
   camera.updateProjectionMatrix()
 }
