@@ -140,6 +140,8 @@ export function buildLightGizmoPositions(light: Light): Float32Array {
         light.innerAngle,
         light.outerAngle,
       ).outer
+    case 'hemisphere':
+      return buildPointGizmoPositions(lightDisplayDistance(light))
   }
 }
 

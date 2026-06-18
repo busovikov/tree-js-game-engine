@@ -1,4 +1,10 @@
 import { z } from 'zod'
+import {
+  HEMISPHERE_LIGHT_DEFAULT_GROUND_COLOR,
+  HEMISPHERE_LIGHT_DEFAULT_SKY_COLOR,
+  LIGHT_DEFAULT_LOCAL_POSITION,
+  LIGHT_DEFAULT_TARGET_POSITION,
+} from './light-defaults.js'
 
 export const Vec3Schema = z.tuple([z.number(), z.number(), z.number()])
 export type Vec3 = z.infer<typeof Vec3Schema>
@@ -30,7 +36,7 @@ export const CameraSchema = z.object({
 })
 export type Camera = z.infer<typeof CameraSchema>
 
-export const LightTypeSchema = z.enum(['directional', 'point', 'spot'])
+export const LightTypeSchema = z.enum(['directional', 'point', 'spot', 'hemisphere'])
 
 const LightBaseSchema = z.object({
   color: z.string().default('#ffffff'),
@@ -44,6 +50,10 @@ const LightBaseSchema = z.object({
 
 export const DirectionalLightDataSchema = LightBaseSchema.extend({
   type: z.literal('directional'),
+  /** Local offset of the light source (Three.js DirectionalLight.position). */
+  localPosition: Vec3Schema.default(LIGHT_DEFAULT_LOCAL_POSITION),
+  /** Local aim point (Three.js DirectionalLight.target.position). */
+  targetPosition: Vec3Schema.default(LIGHT_DEFAULT_TARGET_POSITION),
 })
 
 export const PointLightDataSchema = LightBaseSchema.extend({
@@ -56,6 +66,8 @@ export const SpotLightDataSchema = LightBaseSchema.extend({
   type: z.literal('spot'),
   distance: z.number().min(0).default(15),
   decay: z.number().min(0).default(2),
+  localPosition: Vec3Schema.default(LIGHT_DEFAULT_LOCAL_POSITION),
+  targetPosition: Vec3Schema.default(LIGHT_DEFAULT_TARGET_POSITION),
   outerAngle: z.number().min(1).max(179).optional(),
   innerAngle: z.number().min(0).max(179).optional(),
   /** @deprecated use outerAngle */
@@ -80,6 +92,8 @@ export const SpotLightDataSchema = LightBaseSchema.extend({
     decay: data.decay,
     outerAngle,
     innerAngle,
+    localPosition: data.localPosition ?? LIGHT_DEFAULT_LOCAL_POSITION,
+    targetPosition: data.targetPosition ?? LIGHT_DEFAULT_TARGET_POSITION,
     castShadow: data.castShadow,
     shadowMapSize: data.shadowMapSize,
     shadowBias: data.shadowBias,
@@ -87,16 +101,23 @@ export const SpotLightDataSchema = LightBaseSchema.extend({
   }
 })
 
+export const HemisphereLightDataSchema = LightBaseSchema.omit({ castShadow: true }).extend({
+  type: z.literal('hemisphere'),
+  skyColor: z.string().default(HEMISPHERE_LIGHT_DEFAULT_SKY_COLOR),
+  groundColor: z.string().default(HEMISPHERE_LIGHT_DEFAULT_GROUND_COLOR),
+})
+
 export const LightSchema = z.union([
   DirectionalLightDataSchema,
   PointLightDataSchema,
   SpotLightDataSchema,
+  HemisphereLightDataSchema,
 ])
 export type Light = z.infer<typeof LightSchema>
 
 /** Editor/range visualization when distance is 0 (infinite in Three.js). */
 export function lightDisplayDistance(light: Light): number {
-  if (light.type === 'directional') return 2
+  if (light.type === 'directional' || light.type === 'hemisphere') return 2
   const distance = light.distance ?? 0
   return distance > 0 ? distance : 5
 }
@@ -110,6 +131,12 @@ export function spotToThreeCone(spot: SpotLight): { angleRad: number; penumbra: 
   return { angleRad, penumbra }
 }
 
+export {
+  HEMISPHERE_LIGHT_DEFAULT_GROUND_COLOR,
+  HEMISPHERE_LIGHT_DEFAULT_SKY_COLOR,
+  LIGHT_DEFAULT_LOCAL_POSITION,
+  LIGHT_DEFAULT_TARGET_POSITION,
+} from './light-defaults.js'
 export {
   LIGHT_TEMPERATURE_DEFAULT,
   LIGHT_TEMPERATURE_MAX,

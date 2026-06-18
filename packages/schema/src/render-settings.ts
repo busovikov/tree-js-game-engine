@@ -58,6 +58,12 @@ export const ShadowSettingsSchema = z.object({
    * world origin. Direction always comes from the light's rotation.
    */
   followCamera: z.boolean().default(true),
+  /** World Y of the ground plane used when followCamera computes the shadow anchor. */
+  anchorGroundY: z.number().default(0),
+  /** Max travel along the view ray as a multiple of cameraSize. */
+  anchorMaxDistanceFactor: z.number().positive().default(4),
+  /** Fallback travel when the view ray does not hit the ground plane (× cameraSize). */
+  anchorFallbackDistanceFactor: z.number().positive().default(0.5),
 })
 export type ShadowSettings = z.infer<typeof ShadowSettingsSchema>
 

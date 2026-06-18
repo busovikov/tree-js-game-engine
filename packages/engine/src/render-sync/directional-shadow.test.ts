@@ -1,18 +1,28 @@
 import { describe, expect, it } from 'vitest'
 import * as THREE from 'three'
+import { defaultRenderSettings } from '@haku/schema'
 import { computeCameraShadowAnchor, updateDirectionalShadowRig } from './directional-shadow.js'
+import { applyDirectionalLightPose } from './apply-directional-light.js'
+import {
+  LIGHT_DEFAULT_LOCAL_POSITION,
+  LIGHT_DEFAULT_TARGET_POSITION,
+} from '@haku/schema'
 
 function makeLightGroup(): { group: THREE.Group; light: THREE.DirectionalLight } {
   const scene = new THREE.Scene()
   const group = new THREE.Group()
   const light = new THREE.DirectionalLight(0xffffff, 1)
   const target = new THREE.Object3D()
-  target.position.set(0, 0, -1)
   group.add(light)
   group.add(target)
   light.target = target
+  applyDirectionalLightPose(
+    light,
+    LIGHT_DEFAULT_LOCAL_POSITION,
+    LIGHT_DEFAULT_TARGET_POSITION,
+  )
   scene.add(group)
-  scene.updateMatrixWorld(true)
+  group.updateMatrixWorld(true)
   return { group, light }
 }
 
@@ -67,9 +77,12 @@ describe('updateDirectionalShadowRig', () => {
     updateDirectionalShadowRig(light, config)
 
     const dir = worldDirection(light)
-    const expected = new THREE.Vector3(0, 0, -1)
-      .applyQuaternion(group.getWorldQuaternion(new THREE.Quaternion()))
-      .normalize()
+    const localDir = new THREE.Vector3(
+      LIGHT_DEFAULT_TARGET_POSITION[0] - LIGHT_DEFAULT_LOCAL_POSITION[0],
+      LIGHT_DEFAULT_TARGET_POSITION[1] - LIGHT_DEFAULT_LOCAL_POSITION[1],
+      LIGHT_DEFAULT_TARGET_POSITION[2] - LIGHT_DEFAULT_LOCAL_POSITION[2],
+    ).normalize()
+    const expected = localDir.applyQuaternion(group.getWorldQuaternion(new THREE.Quaternion()))
     expect(dir.x).toBeCloseTo(expected.x, 5)
     expect(dir.y).toBeCloseTo(expected.y, 5)
     expect(dir.z).toBeCloseTo(expected.z, 5)
@@ -123,15 +136,70 @@ describe('updateDirectionalShadowRig', () => {
 })
 
 describe('computeCameraShadowAnchor', () => {
+  const anchorConfig = defaultRenderSettings().shadows
+
   it('returns a point ahead of the camera along its look direction', () => {
     const camera = new THREE.PerspectiveCamera()
     camera.position.set(0, 5, 20)
     camera.lookAt(0, 0, 0)
     camera.updateMatrixWorld(true)
 
-    const anchor = computeCameraShadowAnchor(camera, 40)
+    const anchor = computeCameraShadowAnchor(camera, 40, {
+      groundPlaneY: anchorConfig.anchorGroundY,
+      maxDistanceFactor: anchorConfig.anchorMaxDistanceFactor,
+      fallbackDistanceFactor: anchorConfig.anchorFallbackDistanceFactor,
+    })
     // Forward is roughly toward origin, so the anchor sits between camera and target.
     expect(anchor.z).toBeLessThan(20)
     expect(anchor.length()).toBeLessThan(camera.position.length())
+  })
+
+  it('anchors on what the camera looks at even when dollied far back', () => {
+    // Regression: a fixed size*0.5 offset left far-away scene content outside
+    // the shadow frustum, so some objects cast shadows and others did not.
+    const camera = new THREE.PerspectiveCamera()
+    camera.position.set(0, 60, 90)
+    camera.lookAt(0, 0, 0)
+    camera.updateMatrixWorld(true)
+
+    const anchor = computeCameraShadowAnchor(camera, 40, {
+      groundPlaneY: anchorConfig.anchorGroundY,
+      maxDistanceFactor: anchorConfig.anchorMaxDistanceFactor,
+      fallbackDistanceFactor: anchorConfig.anchorFallbackDistanceFactor,
+    })
+    // The view ray meets the ground near the origin where the scene sits.
+    expect(anchor.x).toBeCloseTo(0, 3)
+    expect(anchor.y).toBeCloseTo(0, 3)
+    expect(anchor.z).toBeCloseTo(0, 3)
+  })
+
+  it('clamps the anchor distance for near-horizontal views', () => {
+    const camera = new THREE.PerspectiveCamera()
+    camera.position.set(0, 2, 0)
+    camera.lookAt(0, 1.99, -100) // almost level: ground hit would be very far
+    camera.updateMatrixWorld(true)
+
+    const anchor = computeCameraShadowAnchor(camera, 40, {
+      groundPlaneY: anchorConfig.anchorGroundY,
+      maxDistanceFactor: anchorConfig.anchorMaxDistanceFactor,
+      fallbackDistanceFactor: anchorConfig.anchorFallbackDistanceFactor,
+    })
+    const travelled = anchor.distanceTo(camera.position)
+    expect(travelled).toBeLessThanOrEqual(40 * anchorConfig.anchorMaxDistanceFactor + 1e-3)
+  })
+
+  it('falls back to a fixed offset when the view points away from the ground', () => {
+    const camera = new THREE.PerspectiveCamera()
+    camera.position.set(0, 5, 0)
+    camera.lookAt(0, 50, -10) // looking upward, never meets y = 0 ahead
+    camera.updateMatrixWorld(true)
+
+    const anchor = computeCameraShadowAnchor(camera, 40, {
+      groundPlaneY: anchorConfig.anchorGroundY,
+      maxDistanceFactor: anchorConfig.anchorMaxDistanceFactor,
+      fallbackDistanceFactor: anchorConfig.anchorFallbackDistanceFactor,
+    })
+    const travelled = anchor.distanceTo(camera.position)
+    expect(travelled).toBeCloseTo(40 * anchorConfig.anchorFallbackDistanceFactor, 3)
   })
 })

@@ -254,6 +254,47 @@ export const ShadowsTab = memo(function ShadowsTab({
         </label>
 
         <label style={labelStyle}>
+          Anchor Ground Y
+          <input
+            type="number"
+            step={0.1}
+            value={shadows.anchorGroundY}
+            onChange={(e) => setShadows({ anchorGroundY: Number(e.target.value) })}
+            style={inputStyle}
+          />
+        </label>
+
+        <label style={labelStyle}>
+          Anchor Max Distance (× area)
+          <input
+            type="number"
+            min={0.1}
+            step={0.1}
+            value={shadows.anchorMaxDistanceFactor}
+            onChange={(e) =>
+              setShadows({ anchorMaxDistanceFactor: Math.max(0.1, Number(e.target.value)) })
+            }
+            style={inputStyle}
+          />
+        </label>
+
+        <label style={labelStyle}>
+          Anchor Fallback (× area)
+          <input
+            type="number"
+            min={0.1}
+            step={0.1}
+            value={shadows.anchorFallbackDistanceFactor}
+            onChange={(e) =>
+              setShadows({
+                anchorFallbackDistanceFactor: Math.max(0.1, Number(e.target.value)),
+              })
+            }
+            style={inputStyle}
+          />
+        </label>
+
+        <label style={labelStyle}>
           Bias
           <input
             type="number"

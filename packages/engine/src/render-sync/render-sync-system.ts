@@ -26,7 +26,15 @@ import {
   loadModelTemplate,
 } from '../model-loader.js'
 import { syncMeshShadowFlags } from './sync-mesh-shadow.js'
-import { computeCameraShadowAnchor, updateDirectionalShadowRig } from './directional-shadow.js'
+import {
+  computeCameraShadowAnchor,
+  shadowAnchorConfigFromSettings,
+  updateDirectionalShadowRig,
+} from './directional-shadow.js'
+import {
+  applyDirectionalLightPose,
+  applySpotLightPose,
+} from './apply-directional-light.js'
 import { applyLayerMask, resolveEntityLayerMask } from '../render/layers/layer-resolver.js'
 
 const MODEL_ROOT_NAME = 'haku-model-root'
@@ -185,7 +193,12 @@ export class RenderSyncSystem implements ISystem {
 
     const anchor =
       shadows.followCamera && viewCamera
-        ? computeCameraShadowAnchor(viewCamera, shadows.cameraSize, this._shadowAnchor)
+        ? computeCameraShadowAnchor(
+            viewCamera,
+            shadows.cameraSize,
+            shadowAnchorConfigFromSettings(shadows),
+            this._shadowAnchor,
+          )
         : undefined
 
     for (const state of this.entityStates.values()) {
@@ -464,11 +477,16 @@ export class RenderSyncSystem implements ISystem {
     const threeLight = this.createThreeLight(light)
     group.add(threeLight)
 
-    if (threeLight instanceof THREE.DirectionalLight || threeLight instanceof THREE.SpotLight) {
+    if (threeLight instanceof THREE.DirectionalLight && light.type === 'directional') {
       const target = new THREE.Object3D()
-      target.position.set(0, 0, -1)
       group.add(target)
       threeLight.target = target
+      applyDirectionalLightPose(threeLight, light.localPosition, light.targetPosition)
+    } else if (threeLight instanceof THREE.SpotLight && light.type === 'spot') {
+      const target = new THREE.Object3D()
+      group.add(target)
+      threeLight.target = target
+      applySpotLightPose(threeLight, light.localPosition, light.targetPosition)
     }
 
     return group
@@ -494,6 +512,12 @@ export class RenderSyncSystem implements ISystem {
       }
       case 'directional':
         return new THREE.DirectionalLight(color, light.intensity)
+      case 'hemisphere':
+        return new THREE.HemisphereLight(
+          light.skyColor,
+          light.groundColor,
+          light.intensity,
+        )
     }
   }
 
@@ -693,27 +717,55 @@ export class RenderSyncSystem implements ISystem {
     const light = this.findLight(object3d)
     if (!light) return
 
-    light.color.set(resolveLightColor(lightData))
-    light.intensity = lightData.intensity
-
     const shadows = resolveShadowSettings(this.renderSettings.shadows)
     const shadowsActive = isFeatureActive(this.renderSettings, 'shadows') && shadows.enabled
     const castShadow = 'castShadow' in lightData ? Boolean(lightData.castShadow) : false
     const wantsShadow = shadowsActive && (castShadow || lightData.type === 'directional')
-    const canCast =
-      wantsShadow && this.shadowCasterCount < shadows.maxCasters
+    const canCast = wantsShadow && this.shadowCasterCount < shadows.maxCasters
 
-    if (canCast && light instanceof THREE.DirectionalLight) {
+    if (light instanceof THREE.HemisphereLight && lightData.type === 'hemisphere') {
+      light.color.set(lightData.skyColor)
+      light.groundColor.set(lightData.groundColor)
+      light.intensity = lightData.intensity
+    } else {
+      light.color.set(resolveLightColor(lightData))
+      light.intensity = lightData.intensity
+    }
+
+    if (light instanceof THREE.DirectionalLight && lightData.type === 'directional') {
+      applyDirectionalLightPose(light, lightData.localPosition, lightData.targetPosition)
+    }
+
+    if (light instanceof THREE.SpotLight && lightData.type === 'spot') {
+      applySpotLightPose(light, lightData.localPosition, lightData.targetPosition)
+    }
+
+    if (
+      canCast &&
+      (light instanceof THREE.DirectionalLight ||
+        light instanceof THREE.PointLight ||
+        light instanceof THREE.SpotLight)
+    ) {
       light.castShadow = true
       const mapSize =
         'shadowMapSize' in lightData && lightData.shadowMapSize
           ? lightData.shadowMapSize
           : shadows.mapSize
-      this.setShadowMapSize(light, mapSize)
-      light.shadow.bias = ('shadowBias' in lightData ? lightData.shadowBias : undefined) ?? shadows.bias
+      if (light instanceof THREE.DirectionalLight) {
+        this.setShadowMapSize(light, mapSize)
+      } else if (light instanceof THREE.SpotLight || light instanceof THREE.PointLight) {
+        if (light.shadow.mapSize.width !== mapSize || light.shadow.mapSize.height !== mapSize) {
+          light.shadow.mapSize.set(mapSize, mapSize)
+        }
+      }
+      light.shadow.bias =
+        ('shadowBias' in lightData ? lightData.shadowBias : undefined) ?? shadows.bias
       light.shadow.normalBias =
-        ('shadowNormalBias' in lightData ? lightData.shadowNormalBias : undefined) ?? shadows.normalBias
-      light.shadow.radius = shadows.radius
+        ('shadowNormalBias' in lightData ? lightData.shadowNormalBias : undefined) ??
+        shadows.normalBias
+      if (light instanceof THREE.DirectionalLight) {
+        light.shadow.radius = shadows.radius
+      }
       this.shadowCasterCount++
     } else {
       light.castShadow = false
