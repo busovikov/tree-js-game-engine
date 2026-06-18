@@ -2,7 +2,7 @@ import type { EntityId, IRenderBackend, IWorld, ViewportRenderOverrides } from '
 import { entityId, CameraComponent, RenderTextureComponent } from '@haku/core'
 import type { EngineFeatureFlags } from './engine.js'
 import type { PrefabDefinition, RenderSettings } from '@haku/schema'
-import { defaultRenderSettings } from '@haku/schema'
+import { defaultRenderSettings, RenderSettingsSchema } from '@haku/schema'
 import * as THREE from 'three'
 import {
   setModelAssetResolver,
@@ -126,10 +126,13 @@ export class ThreeRenderBackend implements IRenderBackend {
   }
 
   setRenderSettings(settings: RenderSettings): void {
-    this.renderSettings = settings
-    this.syncSystem.setRenderSettings(settings)
-    this.applyRenderSettings(settings)
-    this.renderGraph.setSettings(settings)
+    // Normalize so missing fields (e.g. legacy scenes saved before newer shadow
+    // options) get schema defaults instead of producing NaN in the renderer.
+    const normalized = RenderSettingsSchema.parse(settings)
+    this.renderSettings = normalized
+    this.syncSystem.setRenderSettings(normalized)
+    this.applyRenderSettings(normalized)
+    this.renderGraph.setSettings(normalized)
     this.syncRenderTargetEntries()
   }
 

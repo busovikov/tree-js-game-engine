@@ -1,4 +1,4 @@
-import { HakuProjectSchema, type HakuProject, type PrefabDefinition, type SceneDocument, DEFAULT_ASSETS_DIR, projectPathToUrl, relativeToAssetsDir } from '@haku/schema'
+import { HakuProjectSchema, type HakuProject, type PrefabDefinition, type SceneDocument, DEFAULT_ASSETS_DIR, projectPathToUrl, relativeToAssetsDir, validateSceneDocument } from '@haku/schema'
 import { loadSceneDocument, saveSceneDocument } from '@haku/serializer'
 import type { EntityId, IWorld } from '@haku/core'
 import { MeshRendererComponent, World, getCoreComponent } from '@haku/core'
@@ -152,17 +152,17 @@ export class ProjectService {
       if (this.storage === 'native') {
         const raw = await nativeProjectStore.readText(relativePath)
         sceneLog('load.read', { path: relativePath, source: 'native', bytes: raw.length })
-        document = JSON.parse(raw) as SceneDocument
+        document = validateSceneDocument(JSON.parse(raw))
       } else if (this.storage === 'memory' || this.storage === 'playground') {
         const raw = await browserProjectStore.readText(relativePath)
         sceneLog('load.read', { path: relativePath, source: 'browser-store', bytes: raw.length })
-        document = JSON.parse(raw) as SceneDocument
+        document = validateSceneDocument(JSON.parse(raw))
       } else {
         const url = `${this.assetBaseUrl}/${relativePath}`.replace(/\/+/g, '/')
         const res = await fetch(url)
         if (!res.ok) throw new Error(`Failed to load scene: ${url}`)
         sceneLog('load.read', { path: relativePath, source: 'http', url, status: res.status })
-        document = (await res.json()) as SceneDocument
+        document = validateSceneDocument(await res.json())
       }
 
       const world = loadSceneDocument(document, { expandPrefabs: false })
