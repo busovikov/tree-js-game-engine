@@ -11,6 +11,8 @@ import {
 } from '@haku/core'
 import type { ComponentType, EntityId } from '@haku/core'
 import type { Camera, Light, MeshMaterial, MeshRenderer, Transform } from '@haku/schema'
+import { resolveActiveCameraId } from '@haku/schema'
+import { commitActiveSceneCamera } from '../commands/active-scene-camera.js'
 import { useEditorStore } from '../store/editor-store.js'
 import { commitSceneEdit } from '../commands/scene-history.js'
 import { CameraFields, normalizeCamera } from '../components/CameraFields.js'
@@ -62,6 +64,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
   const world = useEditorStore((s) => s.world)
   const worldRevision = useEditorStore((s) => s.worldRevision)
   const mode = useEditorStore((s) => s.mode)
+  const sceneDocument = useEditorStore((s) => s.sceneDocument)
 
   void worldRevision
 
@@ -428,10 +431,21 @@ export const InspectorPanel = memo(function InspectorPanel() {
         if (values.length === 0) return null
         const data = values[0]!
 
+        const isActiveCamera =
+          key === 'Camera' &&
+          sceneDocument &&
+          targets.length === 1 &&
+          resolveActiveCameraId(sceneDocument) === targets[0]!.value
+
         return (
           <section key={typeId} className="haku-inspector__section">
             <div className="haku-inspector__section-header">
-              <h4 className="haku-inspector__section-title">{typeId}</h4>
+              <h4 className="haku-inspector__section-title">
+                {typeId}
+                {isActiveCamera && (
+                  <span className="haku-inspector__active-camera-badge">Active</span>
+                )}
+              </h4>
               <button
                 type="button"
                 className="haku-inspector__remove-btn"
@@ -444,11 +458,23 @@ export const InspectorPanel = memo(function InspectorPanel() {
             </div>
 
             {key === 'Camera' ? (
-              <CameraFields
-                value={normalizeCamera(data)}
-                disabled={mode === 'play'}
-                onChange={updateCamera}
-              />
+              <>
+                <CameraFields
+                  value={normalizeCamera(data)}
+                  disabled={mode === 'play'}
+                  onChange={updateCamera}
+                />
+                {!isMulti && targets.length === 1 && !isActiveCamera && (
+                  <button
+                    type="button"
+                    className="haku-inspector__active-camera-btn"
+                    disabled={!canEdit}
+                    onClick={() => commitActiveSceneCamera(targets[0]!)}
+                  >
+                    Set as Active Camera
+                  </button>
+                )}
+              </>
             ) : key === 'Light' ? (
               <LightFields
                 value={normalizeLight(data)}

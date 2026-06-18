@@ -6,7 +6,7 @@ async function main() {
   const engine = new Engine({ canvas })
 
   const loaded = await SceneLoader.load(projectPathToUrl(project.entryScene))
-  engine.loadWorld(loaded.world, loaded.prototypes, loaded.prefabs, loaded.renderSettings)
+  engine.loadWorld(loaded.world, loaded.prototypes, loaded.prefabs, loaded.renderSettings, loaded.activeCameraId)
   engine.start()
 }
 

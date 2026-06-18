@@ -139,7 +139,7 @@ export const HierarchyToolsPanel = memo(function HierarchyToolsPanel() {
   const showAabb = useEditorStore((s) => s.showAabb)
   const setShowAabb = useEditorStore((s) => s.setShowAabb)
   const world = useEditorStore((s) => s.world)
-  const viewportCameraEntityId = useEditorStore((s) => s.viewportCameraEntityId)
+  const activeViewportTab = useEditorStore((s) => s.activeViewportTab)
   const transformTool = useEditorStore((s) => s.transformTool)
   const snapEnabled = useEditorStore((s) => s.snapEnabled)
   const gizmoSpace = useEditorStore((s) => s.gizmoSpace)
@@ -149,7 +149,7 @@ export const HierarchyToolsPanel = memo(function HierarchyToolsPanel() {
   const requestFocusSelection = useEditorStore((s) => s.requestFocusSelection)
 
   const canEdit = !!world && mode === 'edit'
-  const canPan = !!world && mode === 'edit' && !viewportCameraEntityId
+  const canPan = !!world && mode === 'edit' && activeViewportTab === 'scene'
 
   const tools: Array<{ tool: TransformTool; title: string; icon: ReactNode }> = [
     { tool: 'translate', title: formatToolTitle('Move', TRANSFORM_TOOL_SHORTCUT.translate), icon: <MoveIcon /> },

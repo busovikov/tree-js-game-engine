@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "metadata": { "name": "Minimal" },
+  "metadata": { "name": "Minimal", "activeCameraId": "a0000000-0000-4000-8000-000000000001" },
   "prototypes": {},
   "prefabs": {},
   "entities": [

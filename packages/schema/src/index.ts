@@ -233,6 +233,8 @@ export type PrefabDefinition = z.infer<typeof PrefabDefinitionSchema>
 
 export const SceneMetadataSchema = z.object({
   name: z.string(),
+  /** Entity id of the active game camera (must have a Camera component). */
+  activeCameraId: z.string().nullable().optional(),
 })
 export type SceneMetadata = z.infer<typeof SceneMetadataSchema>
 
@@ -267,6 +269,22 @@ export {
   projectPathToUrl,
   relativeToAssetsDir,
 } from './paths.js'
+
+export {
+  EditorProjectSettingsSchema,
+  EditorCameraStateSchema,
+  SceneEditorStateSchema,
+  ViewportTabSchema,
+  EDITOR_PROJECT_SETTINGS_PATH,
+  defaultEditorProjectSettings,
+  defaultSceneEditorState,
+  type EditorProjectSettings,
+  type EditorCameraState,
+  type SceneEditorState,
+  type ViewportTab,
+} from './editor-project-settings.js'
+
+export { listCameraEntityIds, resolveActiveCameraId } from './scene-camera.js'
 
 export {
   RenderSettingsSchema,

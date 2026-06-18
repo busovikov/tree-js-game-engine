@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "metadata": { "name": "Menu" },
+  "metadata": { "name": "Menu", "activeCameraId": "a0000000-0000-4000-8000-000000000001" },
   "prototypes": {},
   "prefabs": {},
   "entities": [

@@ -1,8 +1,11 @@
 import type { IWorld, ISystem } from '@haku/core'
+import { entityId } from '@haku/core'
 import { loadSceneDocument } from '@haku/serializer'
 import type { RenderPrototype, RenderSettings, SceneDocument, SceneMetadata } from '@haku/schema'
-import { defaultRenderSettings, validateSceneDocument } from '@haku/schema'
+import { defaultRenderSettings, resolveActiveCameraId, validateSceneDocument } from '@haku/schema'
 import { ThreeRenderBackend } from './render-backend.js'
+
+export type { ViewportMode } from './render-backend.js'
 
 export interface EngineFeatureFlags {
   selectionOutline?: boolean
@@ -21,6 +24,7 @@ export interface LoadedScene {
   metadata: SceneMetadata
   prefabs: SceneDocument['prefabs']
   renderSettings: RenderSettings
+  activeCameraId: string | null
 }
 
 export class Engine {
@@ -41,6 +45,7 @@ export class Engine {
     prototypes: Record<string, RenderPrototype> = {},
     prefabs: SceneDocument['prefabs'] = {},
     renderSettings?: SceneDocument['renderSettings'],
+    activeCameraId?: string | null,
   ): void {
     this.world = world
     this.backend.setPrototypes(prototypes)
@@ -49,6 +54,12 @@ export class Engine {
       this.backend.setRenderSettings(renderSettings)
     }
     this.backend.attach(world)
+    const resolved = activeCameraId ?? null
+    if (resolved) {
+      this.backend.setActiveSceneCamera(entityId(resolved))
+    } else {
+      this.backend.setActiveSceneCamera(null)
+    }
   }
 
   setWorld(world: IWorld): void {
@@ -125,6 +136,7 @@ export class SceneLoader {
       metadata: doc.metadata,
       prefabs: doc.prefabs,
       renderSettings: doc.renderSettings ?? defaultRenderSettings(),
+      activeCameraId: resolveActiveCameraId(doc),
     }
   }
 }

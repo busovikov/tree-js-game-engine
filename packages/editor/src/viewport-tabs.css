@@ -1,0 +1,105 @@
+.haku-viewport-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+}
+
+.haku-viewport-shell__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 8px;
+  border-bottom: 1px solid #333;
+  background: #1a1a24;
+  flex-shrink: 0;
+}
+
+.haku-viewport-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.haku-viewport-tab {
+  padding: 4px 12px;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: transparent;
+  color: #bbb;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.haku-viewport-tab:hover {
+  background: #2a2a38;
+  color: #eee;
+}
+
+.haku-viewport-tab--active {
+  background: #333;
+  color: #fff;
+  border-color: #555;
+}
+
+.haku-viewport-shell__play-badge {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: #7cfc9a;
+}
+
+.haku-viewport-shell__body {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  position: relative;
+}
+
+.haku-hierarchy-camera-active {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: #666;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.haku-hierarchy-camera-active:hover {
+  color: #ccc;
+  background: #2a2a38;
+}
+
+.haku-hierarchy-camera-active--on {
+  color: #ffd866;
+  border-color: #554a20;
+}
+
+.haku-inspector__active-camera-btn {
+  margin-top: 8px;
+  padding: 4px 10px;
+  font-size: 12px;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: #2a2a38;
+  color: #ddd;
+  cursor: pointer;
+}
+
+.haku-inspector__active-camera-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.haku-inspector__active-camera-badge {
+  margin-left: 8px;
+  font-size: 11px;
+  color: #ffd866;
+  font-weight: 600;
+}

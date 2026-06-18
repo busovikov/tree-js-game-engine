@@ -62,6 +62,7 @@ export function hakuTemplatesPlugin(): Plugin {
 
 export const HAKU_TEMPLATE_PATHS = [
   'haku.project.json',
+  '.haku/editor.json',
   'package.json',
   'index.html',
   'vite.config.ts',

@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { EntityId } from '@haku/core'
 import { World, cloneWorld } from '@haku/core'
-import type { SceneDocument } from '@haku/schema'
+import type { SceneDocument, ViewportTab } from '@haku/schema'
 import { globalCommandBus } from '../commands/command-bus.js'
 import { resolveClickSelection } from '../selection/selection-utils.js'
 import type { HierarchyFilterMode } from '../hierarchy/entity-filter.js'
@@ -12,10 +12,10 @@ export type GizmoSpace = 'local' | 'world'
 
 export function canActivateTransformTool(
   tool: TransformTool,
-  state: Pick<EditorState, 'world' | 'mode' | 'viewportCameraEntityId'>,
+  state: Pick<EditorState, 'world' | 'mode' | 'activeViewportTab'>,
 ): boolean {
   if (!state.world || state.mode !== 'edit') return false
-  if (tool === 'hand') return !state.viewportCameraEntityId
+  if (tool === 'hand') return state.activeViewportTab === 'scene'
   return true
 }
 
@@ -33,8 +33,8 @@ interface EditorState {
   showAabb: boolean
   uniformScaleLocked: boolean
   gizmoSpace: GizmoSpace
-  /** When set, viewport renders through this scene camera entity; otherwise editor scene camera. */
-  viewportCameraEntityId: EntityId | null
+  activeViewportTab: ViewportTab
+  playPreviousTab: ViewportTab | null
   focusSelectionRequest: number
   playSnapshot: World | null
   commandRevision: number
@@ -42,7 +42,7 @@ interface EditorState {
   hierarchyFilterMode: HierarchyFilterMode
 
   setProjectRoot: (root: string | null) => void
-  setScene: (path: string, document: SceneDocument, world: World) => void
+  setScene: (path: string, document: SceneDocument, world: World, viewportTab?: ViewportTab) => void
   setSceneDocument: (document: SceneDocument) => void
   setSelection: (ids: EntityId[]) => void
   selectEntity: (id: EntityId, additive?: boolean) => void
@@ -54,7 +54,7 @@ interface EditorState {
   setShowAabb: (enabled: boolean) => void
   setUniformScaleLocked: (locked: boolean) => void
   setGizmoSpace: (space: GizmoSpace) => void
-  setViewportCameraEntityId: (id: EntityId | null) => void
+  setActiveViewportTab: (tab: ViewportTab) => void
   requestFocusSelection: () => void
   enterPlayMode: () => void
   exitPlayMode: () => void
@@ -77,7 +77,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   showAabb: false,
   uniformScaleLocked: false,
   gizmoSpace: 'local',
-  viewportCameraEntityId: null,
+  activeViewportTab: 'scene',
+  playPreviousTab: null,
   focusSelectionRequest: 0,
   playSnapshot: null,
   commandRevision: 0,
@@ -85,7 +86,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   hierarchyFilterMode: 'all',
 
   setProjectRoot: (root) => set({ projectRoot: root }),
-  setScene: (path, document, world) => {
+  setScene: (path, document, world, viewportTab = 'scene') => {
     globalCommandBus.clear()
     set((s) => ({
       scenePath: path,
@@ -94,7 +95,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       worldRevision: s.worldRevision + 1,
       selection: [],
       selectionAnchor: null,
-      viewportCameraEntityId: null,
+      activeViewportTab: viewportTab,
+      playPreviousTab: null,
     }))
   },
   setSceneDocument: (document) =>
@@ -120,17 +122,22 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setShowAabb: (enabled) => set({ showAabb: enabled }),
   setUniformScaleLocked: (locked) => set({ uniformScaleLocked: locked }),
   setGizmoSpace: (space) => set({ gizmoSpace: space }),
-  setViewportCameraEntityId: (id) => set({ viewportCameraEntityId: id }),
+  setActiveViewportTab: (tab) => set({ activeViewportTab: tab }),
   requestFocusSelection: () => set((s) => ({ focusSelectionRequest: s.focusSelectionRequest + 1 })),
 
   enterPlayMode: () => {
-    const { world } = get()
+    const { world, activeViewportTab } = get()
     if (!world) return
-    set({ mode: 'play', playSnapshot: cloneWorld(world) })
+    set({
+      mode: 'play',
+      playSnapshot: cloneWorld(world),
+      playPreviousTab: activeViewportTab,
+      activeViewportTab: 'view',
+    })
   },
 
   exitPlayMode: () => {
-    const { playSnapshot } = get()
+    const { playSnapshot, playPreviousTab } = get()
     if (playSnapshot) {
       set((s) => ({
         mode: 'edit',
@@ -139,9 +146,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         playSnapshot: null,
         selection: [],
         selectionAnchor: null,
+        activeViewportTab: playPreviousTab ?? s.activeViewportTab,
+        playPreviousTab: null,
       }))
     } else {
-      set({ mode: 'edit' })
+      set((s) => ({
+        mode: 'edit',
+        activeViewportTab: playPreviousTab ?? s.activeViewportTab,
+        playPreviousTab: null,
+      }))
     }
   },
 

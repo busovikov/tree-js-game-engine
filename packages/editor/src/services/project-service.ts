@@ -1,4 +1,20 @@
-import { HakuProjectSchema, type HakuProject, type PrefabDefinition, type SceneDocument, DEFAULT_ASSETS_DIR, projectPathToUrl, relativeToAssetsDir, validateSceneDocument } from '@haku/schema'
+import {
+  EDITOR_PROJECT_SETTINGS_PATH,
+  EditorProjectSettingsSchema,
+  HakuProjectSchema,
+  defaultEditorProjectSettings,
+  defaultSceneEditorState,
+  type EditorProjectSettings,
+  type HakuProject,
+  type PrefabDefinition,
+  type SceneDocument,
+  type SceneEditorState,
+  DEFAULT_ASSETS_DIR,
+  projectPathToUrl,
+  relativeToAssetsDir,
+  validateSceneDocument,
+  SceneEditorStateSchema,
+} from '@haku/schema'
 import { loadSceneDocument, saveSceneDocument } from '@haku/serializer'
 import type { EntityId, IWorld } from '@haku/core'
 import { MeshRendererComponent, World, getCoreComponent } from '@haku/core'
@@ -23,6 +39,7 @@ export class ProjectService {
   private assetBaseUrl = ''
   private storage: ProjectStorage = 'memory'
   private modelBlobUrlCache = new Map<string, string>()
+  private editorSettings: EditorProjectSettings = defaultEditorProjectSettings()
 
   isFileSystemAccessSupported(): boolean {
     return isFileSystemAccessSupported()
@@ -68,11 +85,17 @@ export class ProjectService {
     const manifestRaw = await nativeProjectStore.readText('haku.project.json')
     this.manifest = await this.normalizeManifest(HakuProjectSchema.parse(JSON.parse(manifestRaw)))
 
+    await this.loadEditorSettings()
     sceneLog('project.open', { source: 'native-create', root: projectHandle.name, entryScene: this.manifest.entryScene })
     const { world, document } = await this.loadScene(this.manifest.entryScene)
     const { useEditorStore } = await import('../store/editor-store.js')
     useEditorStore.getState().setProjectRoot(projectHandle.name)
-    useEditorStore.getState().setScene(this.manifest.entryScene, document, world as World)
+    useEditorStore.getState().setScene(
+      this.manifest.entryScene,
+      document,
+      world as World,
+      this.getSceneEditorState(this.manifest.entryScene).activeTab,
+    )
 
     return this.manifest
   }
@@ -92,11 +115,17 @@ export class ProjectService {
     const manifestRaw = await nativeProjectStore.readText('haku.project.json')
     this.manifest = await this.normalizeManifest(HakuProjectSchema.parse(JSON.parse(manifestRaw)))
 
+    await this.loadEditorSettings()
     sceneLog('project.open', { source: 'native', root: rootName, entryScene: this.manifest.entryScene })
     const { world, document } = await this.loadScene(this.manifest.entryScene)
     const { useEditorStore } = await import('../store/editor-store.js')
     useEditorStore.getState().setProjectRoot(rootName)
-    useEditorStore.getState().setScene(this.manifest.entryScene, document, world as World)
+    useEditorStore.getState().setScene(
+      this.manifest.entryScene,
+      document,
+      world as World,
+      this.getSceneEditorState(this.manifest.entryScene).activeTab,
+    )
 
     return this.manifest
   }
@@ -112,11 +141,17 @@ export class ProjectService {
     const manifestRaw = await browserProjectStore.readText('haku.project.json')
     this.manifest = await this.normalizeManifest(HakuProjectSchema.parse(JSON.parse(manifestRaw)))
 
+    await this.loadEditorSettings()
     sceneLog('project.open', { source: 'memory', root: rootName, entryScene: this.manifest.entryScene })
     const { world, document } = await this.loadScene(this.manifest.entryScene)
     const { useEditorStore } = await import('../store/editor-store.js')
     useEditorStore.getState().setProjectRoot(rootName)
-    useEditorStore.getState().setScene(this.manifest.entryScene, document, world as World)
+    useEditorStore.getState().setScene(
+      this.manifest.entryScene,
+      document,
+      world as World,
+      this.getSceneEditorState(this.manifest.entryScene).activeTab,
+    )
 
     return this.manifest
   }
@@ -657,6 +692,67 @@ export class ProjectService {
     }
 
     return models.sort((a, b) => a.localeCompare(b))
+  }
+
+  getSceneEditorState(scenePath: string): SceneEditorState {
+    return this.editorSettings.scenes[scenePath] ?? defaultSceneEditorState()
+  }
+
+  updateSceneEditorState(scenePath: string, patch: Partial<SceneEditorState>): void {
+    const current = this.getSceneEditorState(scenePath)
+    this.editorSettings = {
+      ...this.editorSettings,
+      scenes: {
+        ...this.editorSettings.scenes,
+        [scenePath]: SceneEditorStateSchema.parse({ ...current, ...patch }),
+      },
+    }
+  }
+
+  async loadEditorSettings(): Promise<void> {
+    try {
+      let raw: string
+      if (this.storage === 'native') {
+        raw = await nativeProjectStore.readText(EDITOR_PROJECT_SETTINGS_PATH)
+      } else if (this.usesBrowserProjectStore()) {
+        if (!browserProjectStore.has(EDITOR_PROJECT_SETTINGS_PATH)) {
+          this.editorSettings = defaultEditorProjectSettings()
+          return
+        }
+        raw = await browserProjectStore.readText(EDITOR_PROJECT_SETTINGS_PATH)
+      } else {
+        this.editorSettings = defaultEditorProjectSettings()
+        return
+      }
+      this.editorSettings = EditorProjectSettingsSchema.parse(JSON.parse(raw))
+    } catch {
+      this.editorSettings = defaultEditorProjectSettings()
+    }
+  }
+
+  async saveEditorSettings(): Promise<void> {
+    const json = JSON.stringify(this.editorSettings, null, 2) + '\n'
+
+    if (this.storage === 'native') {
+      await nativeProjectStore.writeText(EDITOR_PROJECT_SETTINGS_PATH, json)
+      return
+    }
+
+    if (this.usesBrowserProjectStore()) {
+      browserProjectStore.writeText(EDITOR_PROJECT_SETTINGS_PATH, json)
+      if (this.storage === 'playground') {
+        await this.writePlaygroundFileToDisk(EDITOR_PROJECT_SETTINGS_PATH, json)
+      }
+    }
+  }
+
+  async persistSceneWorkspace(
+    scenePath: string,
+    editorCamera: SceneEditorState['editorCamera'],
+    activeTab: SceneEditorState['activeTab'],
+  ): Promise<void> {
+    this.updateSceneEditorState(scenePath, { editorCamera, activeTab })
+    await this.saveEditorSettings()
   }
 
   /** Upgrade legacy `assets/` manifest paths to on-disk `public/assets/`. */

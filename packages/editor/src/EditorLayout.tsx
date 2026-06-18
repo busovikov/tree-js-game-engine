@@ -3,9 +3,10 @@ import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { HierarchyPanel } from './panels/HierarchyPanel.js'
 import { HierarchyToolsPanel } from './panels/HierarchyToolsPanel.js'
 import { InspectorPanel } from './panels/InspectorPanel.js'
-import { ViewportPanel } from './panels/ViewportPanel.js'
+import { ViewportTabsShell } from './ViewportTabsShell.js'
 import { AssetBrowserPanel } from './panels/AssetBrowserPanel.js'
 import './editor-layout.css'
+import './viewport-tabs.css'
 
 const panelShell = 'haku-panel-shell'
 
@@ -33,7 +34,7 @@ export const EditorLayout = memo(function EditorLayout() {
         <Panel defaultSize={58} minSize={35} className={panelShell}>
           <PanelGroup direction="vertical" autoSaveId="haku-editor-panels-v">
             <Panel defaultSize={72} minSize={35} className={panelShell}>
-              <ViewportPanel />
+              <ViewportTabsShell />
             </Panel>
 
             <ResizeHandle direction="vertical" />

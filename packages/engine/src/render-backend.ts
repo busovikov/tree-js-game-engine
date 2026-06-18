@@ -2,7 +2,7 @@ import type { EntityId, IRenderBackend, IWorld, ViewportRenderOverrides } from '
 import { entityId, CameraComponent, RenderTextureComponent } from '@haku/core'
 import type { EngineFeatureFlags } from './engine.js'
 import type { PrefabDefinition, RenderSettings } from '@haku/schema'
-import { defaultRenderSettings, RenderSettingsSchema } from '@haku/schema'
+import { defaultRenderSettings, isFeatureActive, RenderSettingsSchema, resolveShadowSettings } from '@haku/schema'
 import * as THREE from 'three'
 import {
   setModelAssetResolver,
@@ -23,6 +23,8 @@ import {
 } from './render/apply-render-settings.js'
 import { resolveCameraLayerMask } from './render/layers/layer-resolver.js'
 
+export type ViewportMode = 'scene' | 'view'
+
 export { RenderSyncSystem } from './render-sync/render-sync-system.js'
 
 export class ThreeRenderBackend implements IRenderBackend {
@@ -34,8 +36,8 @@ export class ThreeRenderBackend implements IRenderBackend {
   private readonly renderGraph: RenderGraph
   private readonly ambientLight: THREE.AmbientLight
   private world: IWorld | null = null
-  private activeCamera: THREE.Camera
-  private viewportUsesEditorCamera = true
+  private activeSceneCameraEntityId: EntityId | null = null
+  private viewportMode: ViewportMode = 'scene'
   private renderSettings: RenderSettings = defaultRenderSettings()
   private viewportOverrides: ViewportRenderOverrides = {}
   private features: EngineFeatureFlags
@@ -47,11 +49,10 @@ export class ThreeRenderBackend implements IRenderBackend {
     this.syncSystem = new RenderSyncSystem(this.scene)
     this.editorCamera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000)
     this.editorCamera.position.set(0, 2, 5)
-    this.activeCamera = this.editorCamera
     this.ambientLight = new THREE.AmbientLight(0xffffff, 0.3)
     this.scene.add(this.ambientLight)
 
-    this.editorOutline = new EditorSelectionOutlinePass(this.scene, () => this.activeCamera)
+    this.editorOutline = new EditorSelectionOutlinePass(this.scene, () => this.getViewportCamera())
     this.renderGraph = new RenderGraph(this.renderer, this.renderSettings, {
       editorOutline: features.selectionOutline !== false ? this.editorOutline : undefined,
     })
@@ -72,57 +73,92 @@ export class ThreeRenderBackend implements IRenderBackend {
   }
 
   getActiveCamera(): THREE.Camera {
-    return this.activeCamera
+    return this.getViewportCamera()
   }
 
   getEditorCamera(): THREE.PerspectiveCamera {
     return this.editorCamera
   }
 
-  usesEditorViewportCamera(): boolean {
-    return this.viewportUsesEditorCamera
+  getViewportMode(): ViewportMode {
+    return this.viewportMode
   }
 
-  useEditorViewportCamera(): void {
-    this.viewportUsesEditorCamera = true
-    this.activeCamera = this.editorCamera
+  setViewportMode(mode: ViewportMode): void {
+    this.viewportMode = mode
+    this.renderGraph.setSkipEditorOutline(mode !== 'scene')
     this.applyCameraLayers()
   }
 
-  useSceneEntityCamera(entityId: EntityId): boolean {
-    const camera = this.syncSystem.getEntityCamera(entityId)
-    if (!camera) return false
+  getActiveSceneCameraEntityId(): EntityId | null {
+    return this.activeSceneCameraEntityId
+  }
 
-    this.viewportUsesEditorCamera = false
-    this.activeCamera = camera
-    const camData = this.world?.getComponent(entityId, CameraComponent)
+  getActiveSceneCamera(): THREE.Camera | null {
+    if (!this.activeSceneCameraEntityId) return null
+    return this.syncSystem.getEntityCamera(this.activeSceneCameraEntityId) ?? null
+  }
+
+  setActiveSceneCamera(activeId: EntityId | null): void {
+    this.activeSceneCameraEntityId = activeId
+    if (activeId) {
+      this.syncSceneCameraProjection(activeId)
+    }
+    this.applyCameraLayers()
+  }
+
+  /** @deprecated Use setActiveSceneCamera */
+  setActiveCamera(activeId: EntityId): void {
+    this.setActiveSceneCamera(activeId)
+  }
+
+  applyEditorCameraState(position: readonly [number, number, number], target: readonly [number, number, number]): void {
+    this.editorCamera.position.set(position[0], position[1], position[2])
+    this.editorCamera.lookAt(target[0], target[1], target[2])
+    this.editorCamera.updateMatrixWorld(true)
+  }
+
+  resolveShadowFollowCamera(): THREE.Camera | null {
+    if (!isFeatureActive(this.renderSettings, 'shadows')) return null
+    const shadows = resolveShadowSettings(this.renderSettings.shadows)
+    if (!shadows.enabled || !shadows.followCamera) return null
+    if (shadows.followEditorCamera) return this.editorCamera
+    return this.getActiveSceneCamera()
+  }
+
+  private getViewportCamera(): THREE.Camera {
+    if (this.viewportMode === 'view') {
+      return this.getActiveSceneCamera() ?? this.editorCamera
+    }
+    return this.editorCamera
+  }
+
+  private syncSceneCameraProjection(activeId: EntityId): void {
+    const camera = this.syncSystem.getEntityCamera(activeId)
+    if (!camera) return
+    const camData = this.world?.getComponent(activeId, CameraComponent)
     if (camera instanceof THREE.PerspectiveCamera && camData) {
       camera.fov = camData.fov
       camera.near = camData.near
       camera.far = camData.far
       camera.updateProjectionMatrix()
     }
-    this.applyCameraLayers()
-    return true
   }
 
   attach(world: IWorld): void {
     this.world = world
     this.syncSystem.attach(world)
     this.syncRenderTargetEntries()
-    if (this.viewportUsesEditorCamera) {
-      this.useEditorViewportCamera()
+    if (this.activeSceneCameraEntityId) {
+      this.syncSceneCameraProjection(this.activeSceneCameraEntityId)
     }
+    this.applyCameraLayers()
   }
 
   detach(): void {
     this.syncSystem.detach()
     this.world = null
     this.editorOutline.setTargets([])
-  }
-
-  setActiveCamera(entityId: EntityId): void {
-    this.useSceneEntityCamera(entityId)
   }
 
   setRenderSettings(settings: RenderSettings): void {
@@ -174,8 +210,10 @@ export class ThreeRenderBackend implements IRenderBackend {
 
   render(): void {
     this.syncRenderTargetEntries()
-    this.syncSystem.updateDirectionalShadowRigs(this.activeCamera)
-    this.renderGraph.render(this.scene, this.activeCamera)
+    this.syncSystem.updateDirectionalShadowRigs(this.resolveShadowFollowCamera())
+    const camera = this.getViewportCamera()
+    this.applyCameraLayers()
+    this.renderGraph.render(this.scene, camera)
   }
 
   resize(width: number, height: number): void {
@@ -194,12 +232,10 @@ export class ThreeRenderBackend implements IRenderBackend {
 
     this.syncSystem.updateCameraAspects(aspect)
 
-    if (
-      this.activeCamera !== this.editorCamera &&
-      this.activeCamera instanceof THREE.PerspectiveCamera
-    ) {
-      this.activeCamera.aspect = aspect
-      this.activeCamera.updateProjectionMatrix()
+    const activeSceneCamera = this.getActiveSceneCamera()
+    if (activeSceneCamera instanceof THREE.PerspectiveCamera) {
+      activeSceneCamera.aspect = aspect
+      activeSceneCamera.updateProjectionMatrix()
     }
   }
 
@@ -211,8 +247,7 @@ export class ThreeRenderBackend implements IRenderBackend {
     if (this.features.viewportPicking === false) {
       return { entityId: null, hitEditorOverlay: false }
     }
-    const camera = this.viewportUsesEditorCamera ? this.editorCamera : this.activeCamera
-    return this.syncSystem.pickEntityAt(clientX, clientY, canvas, camera)
+    return this.syncSystem.pickEntityAt(clientX, clientY, canvas, this.editorCamera)
   }
 
   pickEntitiesInRect(
@@ -223,14 +258,13 @@ export class ThreeRenderBackend implements IRenderBackend {
     canvas: HTMLCanvasElement,
   ): EntityId[] {
     if (this.features.viewportPicking === false) return []
-    const camera = this.viewportUsesEditorCamera ? this.editorCamera : this.activeCamera
     return this.syncSystem.pickEntitiesInRect(
       clientLeft,
       clientTop,
       clientRight,
       clientBottom,
       canvas,
-      camera,
+      this.editorCamera,
     )
   }
 
@@ -275,7 +309,14 @@ export class ThreeRenderBackend implements IRenderBackend {
 
   private applyCameraLayers(): void {
     const mask = resolveCameraLayerMask(this.renderSettings)
-    this.activeCamera.layers.mask = mask
+    this.editorCamera.layers.mask = mask
+    const activeSceneCamera = this.getActiveSceneCamera()
+    if (activeSceneCamera) {
+      activeSceneCamera.layers.mask = mask
+    }
+    if (this.viewportMode === 'view') {
+      this.getViewportCamera().layers.mask = mask
+    }
   }
 
   private syncRenderTargetEntries(): void {

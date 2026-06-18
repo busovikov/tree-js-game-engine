@@ -87,9 +87,15 @@ export const EditorApp = memo(function EditorApp() {
         '',
       )
       await projectService.seedVirtualAssetsFromManifest('/assets/manifest.json')
+      await projectService.loadEditorSettings()
       const { world, document } = await projectService.loadScene('public/assets/scenes/menu.scene.json')
       useEditorStore.getState().setProjectRoot('playground')
-      useEditorStore.getState().setScene('public/assets/scenes/menu.scene.json', document, world as import('@haku/core').World)
+      useEditorStore.getState().setScene(
+        'public/assets/scenes/menu.scene.json',
+        document,
+        world as import('@haku/core').World,
+        projectService.getSceneEditorState('public/assets/scenes/menu.scene.json').activeTab,
+      )
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to load demo scene')
     }

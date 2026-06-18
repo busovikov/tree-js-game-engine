@@ -187,7 +187,12 @@ export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
     if (!selectedPath || !selectedPath.endsWith('.scene.json')) return
     try {
       const { world: nextWorld, document } = await projectService.loadScene(selectedPath)
-      setScene(selectedPath, document, nextWorld as import('@haku/core').World)
+      setScene(
+        selectedPath,
+        document,
+        nextWorld as import('@haku/core').World,
+        projectService.getSceneEditorState(selectedPath).activeTab,
+      )
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to open scene')
     }

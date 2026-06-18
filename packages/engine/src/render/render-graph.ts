@@ -16,6 +16,7 @@ export class RenderGraph {
   private width = 1
   private height = 1
   private readonly editorOutline: EditorSelectionOutlinePass | undefined
+  private skipEditorOutline = false
 
   constructor(
     private readonly renderer: THREE.WebGLRenderer,
@@ -35,7 +36,12 @@ export class RenderGraph {
     this.passes.sort((a, b) => a.order - b.order)
   }
 
+  setSkipEditorOutline(skip: boolean): void {
+    this.skipEditorOutline = skip
+  }
+
   private editorOutlineEnabled(): boolean {
+    if (this.skipEditorOutline) return false
     return (this.editorOutline?.enabled(this.settings) ?? false) === true
   }
 

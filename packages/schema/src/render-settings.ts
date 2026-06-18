@@ -58,6 +58,11 @@ export const ShadowSettingsSchema = z.object({
    * world origin. Direction always comes from the light's rotation.
    */
   followCamera: z.boolean().default(true),
+  /**
+   * When followCamera is true, use the editor orbit camera for the shadow anchor
+   * instead of the active scene camera.
+   */
+  followEditorCamera: z.boolean().default(false),
   /** World Y of the ground plane used when followCamera computes the shadow anchor. */
   anchorGroundY: z.number().default(0),
   /** Max travel along the view ray as a multiple of cameraSize. */

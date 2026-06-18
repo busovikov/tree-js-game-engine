@@ -250,7 +250,17 @@ export const ShadowsTab = memo(function ShadowsTab({
             checked={shadows.followCamera}
             onChange={(e) => setShadows({ followCamera: e.target.checked })}
           />{' '}
-          Follow camera (sun tracks the view)
+          Follow camera (shadow volume follows view)
+        </label>
+
+        <label style={labelStyle}>
+          <input
+            type="checkbox"
+            checked={shadows.followEditorCamera}
+            disabled={!shadows.followCamera}
+            onChange={(e) => setShadows({ followEditorCamera: e.target.checked })}
+          />{' '}
+          Use editor camera (Scene tab orbit)
         </label>
 
         <label style={labelStyle}>

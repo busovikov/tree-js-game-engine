@@ -3,7 +3,8 @@ import * as THREE from 'three'
 import { Engine } from '@haku/engine'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js'
-import { TransformComponent, type EntityId } from '@haku/core'
+import { TransformComponent, entityId, type EntityId } from '@haku/core'
+import { resolveActiveCameraId } from '@haku/schema'
 import { projectService } from '../services/project-service.js'
 import { useEditorStore } from '../store/editor-store.js'
 import { commitMultiTransformChange, commitTransformChange, transformsEqual } from '../commands/scene-history.js'
@@ -52,13 +53,18 @@ function refreshGizmo(
   gizmo.attach(pivot.object)
 }
 
-function syncViewportCamera(engine: Engine): void {
-  const { viewportCameraEntityId } = useEditorStore.getState()
-  if (viewportCameraEntityId) {
-    engine.backend.useSceneEntityCamera(viewportCameraEntityId)
-  } else {
-    engine.backend.useEditorViewportCamera()
-  }
+function syncViewportEngine(engine: Engine): void {
+  const { activeViewportTab, sceneDocument } = useEditorStore.getState()
+  engine.backend.setViewportMode(activeViewportTab)
+  const activeId = sceneDocument ? resolveActiveCameraId(sceneDocument) : null
+  engine.backend.setActiveSceneCamera(activeId ? entityId(activeId) : null)
+}
+
+function applySceneWorkspace(engine: Engine, scenePath: string, orbit: OrbitControls): void {
+  const state = projectService.getSceneEditorState(scenePath)
+  engine.backend.applyEditorCameraState(state.editorCamera.position, state.editorCamera.target)
+  orbit.target.set(state.editorCamera.target[0], state.editorCamera.target[1], state.editorCamera.target[2])
+  orbit.update()
 }
 
 export const ViewportPanel = memo(function ViewportPanel() {
@@ -93,7 +99,8 @@ export const ViewportPanel = memo(function ViewportPanel() {
   const showAabb = useEditorStore((s) => s.showAabb)
   const mode = useEditorStore((s) => s.mode)
   const transformTool = useEditorStore((s) => s.transformTool)
-  const viewportCameraEntityId = useEditorStore((s) => s.viewportCameraEntityId)
+  const scenePath = useEditorStore((s) => s.scenePath)
+  const activeViewportTab = useEditorStore((s) => s.activeViewportTab)
   const focusSelectionRequest = useEditorStore((s) => s.focusSelectionRequest)
   const hierarchyFilterQuery = useEditorStore((s) => s.hierarchyFilterQuery)
   const hierarchyFilterMode = useEditorStore((s) => s.hierarchyFilterMode)
@@ -132,9 +139,9 @@ export const ViewportPanel = memo(function ViewportPanel() {
 
     cameraLookRef.current = attachCameraLookControls(canvas, editorCamera, orbit, {
       isEnabled: () => {
-        const { mode, viewportCameraEntityId } = useEditorStore.getState()
+        const { mode, activeViewportTab } = useEditorStore.getState()
         const activeOrbit = orbitRef.current
-        return mode === 'edit' && !viewportCameraEntityId && !!activeOrbit?.enabled
+        return mode === 'edit' && activeViewportTab === 'scene' && !!activeOrbit?.enabled
       },
     })
 
@@ -143,10 +150,10 @@ export const ViewportPanel = memo(function ViewportPanel() {
     gizmo.setMode('translate')
     applyEditorTransformGizmoLayout(gizmo)
     gizmo.addEventListener('dragging-changed', (event) => {
-      const { mode, viewportCameraEntityId: viewportId } = useEditorStore.getState()
+      const { mode, activeViewportTab } = useEditorStore.getState()
       const canOrbit =
         mode === 'edit' &&
-        !viewportId &&
+        activeViewportTab === 'scene' &&
         (useEditorStore.getState().transformTool === 'hand' || !(event.value as boolean))
       orbit.enabled = canOrbit
     })
@@ -162,6 +169,17 @@ export const ViewportPanel = memo(function ViewportPanel() {
     aabbGizmosRef.current = new SceneAabbGizmos()
     aabbGizmosRef.current.attach(engine.backend.threeScene)
     selectionOutlineRef.current = new SceneSelectionOutline()
+
+    orbit.addEventListener('end', () => {
+      const path = useEditorStore.getState().scenePath
+      const tab = useEditorStore.getState().activeViewportTab
+      if (!path) return
+      const cam = engine.backend.getEditorCamera()
+      void projectService.persistSceneWorkspace(path, {
+        position: [cam.position.x, cam.position.y, cam.position.z],
+        target: [orbit.target.x, orbit.target.y, orbit.target.z],
+      }, tab)
+    })
 
     const tick = () => {
       orbit.update()
@@ -213,14 +231,18 @@ export const ViewportPanel = memo(function ViewportPanel() {
       sceneDocument?.prototypes ?? {},
       sceneDocument?.prefabs ?? {},
       sceneDocument?.renderSettings,
+      sceneDocument ? resolveActiveCameraId(sceneDocument) : null,
     )
-    syncViewportCamera(engine)
+    syncViewportEngine(engine)
+    if (scenePath && orbitRef.current) {
+      applySceneWorkspace(engine, scenePath, orbitRef.current)
+    }
 
     const gizmo = gizmoRef.current
     const orbit = orbitRef.current
-    if (gizmo) gizmo.camera = engine.backend.getActiveCamera()
+    if (gizmo) gizmo.camera = engine.backend.getEditorCamera()
     if (orbit) orbit.object = engine.backend.getEditorCamera()
-  }, [world, sceneDocument])
+  }, [world, sceneDocument, scenePath])
 
   useEffect(() => {
     const engine = engineRef.current
@@ -230,15 +252,15 @@ export const ViewportPanel = memo(function ViewportPanel() {
 
   useEffect(() => {
     const engine = engineRef.current
+    const orbit = orbitRef.current
     if (!engine || !world) return
 
-    syncViewportCamera(engine)
+    syncViewportEngine(engine)
 
     const gizmo = gizmoRef.current
-    const orbit = orbitRef.current
-    if (gizmo) gizmo.camera = engine.backend.getActiveCamera()
+    if (gizmo) gizmo.camera = engine.backend.getEditorCamera()
     if (orbit) orbit.object = engine.backend.getEditorCamera()
-  }, [viewportCameraEntityId, world])
+  }, [activeViewportTab, world, sceneDocument])
 
   useLayoutEffect(() => {
     const engine = engineRef.current
@@ -265,12 +287,14 @@ export const ViewportPanel = memo(function ViewportPanel() {
       refreshGizmo(gizmo, selectedIds, selectionPivot, getObject3D)
     }
 
+    const activeCameraId = sceneDocument ? resolveActiveCameraId(sceneDocument) : null
+
     if (cameraGizmos) {
       cameraGizmos.sync(world, engine.backend.sync, {
-        visible: mode === 'edit',
+        visible: mode === 'edit' && activeViewportTab === 'scene',
         selectedId: primary?.value ?? null,
-        viewportCameraId: viewportCameraEntityId?.value ?? null,
-        hideActiveViewportFrustum: !!viewportCameraEntityId,
+        viewportCameraId: activeCameraId,
+        hideActiveViewportFrustum: activeViewportTab === 'view',
       })
     }
 
@@ -294,7 +318,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
         selectedIds: selectedIdSet,
       })
     }
-  }, [world, worldRevision, selectedIds, selectedIdSet, mode, viewportCameraEntityId, showAabb, primary])
+  }, [world, worldRevision, selectedIds, selectedIdSet, mode, activeViewportTab, showAabb, primary, sceneDocument])
 
   useEffect(() => {
     const engine = engineRef.current
@@ -318,18 +342,18 @@ export const ViewportPanel = memo(function ViewportPanel() {
     if (!engine || !gizmo || !orbit || !selectionPivot) return
 
     const isEdit = mode === 'edit'
-    const usesEditorCamera = !viewportCameraEntityId
+    const isSceneTab = activeViewportTab === 'scene'
     const isHandTool = transformTool === 'hand'
 
-    gizmo.getHelper().visible = isEdit && selectedIds.length > 0 && !isHandTool
-    orbit.enabled = isEdit && usesEditorCamera
+    gizmo.getHelper().visible = isEdit && isSceneTab && selectedIds.length > 0 && !isHandTool
+    orbit.enabled = isEdit && isSceneTab
 
     if (selectedIds.length > 0 && !isHandTool && !selectionPivot.isDragging()) {
       refreshGizmo(gizmo, selectedIds, selectionPivot, (id) => engine.backend.sync.getObject3D(id))
     } else if (!selectedIds.length || isHandTool) {
       gizmo.detach()
     }
-  }, [selectedIds, mode, world, transformTool, viewportCameraEntityId])
+  }, [selectedIds, mode, world, transformTool, activeViewportTab])
 
   useEffect(() => {
     const engine = engineRef.current
@@ -599,7 +623,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
     const onPointerDown = (event: PointerEvent) => {
       if (event.button !== 0) return
       const { mode, transformTool: tool } = useEditorStore.getState()
-      if (mode !== 'edit' || tool === 'hand') return
+      if (mode !== 'edit' || tool === 'hand' || useEditorStore.getState().activeViewportTab !== 'scene') return
 
       const gizmo = gizmoRef.current
       if (gizmo?.dragging || gizmo?.axis) return
@@ -644,7 +668,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
       }
 
       const { mode, transformTool: tool } = useEditorStore.getState()
-      if (mode !== 'edit' || tool === 'hand') return
+      if (mode !== 'edit' || tool === 'hand' || useEditorStore.getState().activeViewportTab !== 'scene') return
 
       const gizmo = gizmoRef.current
       if (gizmo?.dragging || gizmo?.axis || gizmoPointerRef.current) return

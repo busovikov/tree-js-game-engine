@@ -1,6 +1,8 @@
 import { memo, useCallback, useMemo, useState, type DragEvent } from 'react'
 import type { EntityId } from '@haku/core'
 import { CameraComponent, entityId } from '@haku/core'
+import { resolveActiveCameraId } from '@haku/schema'
+import { commitActiveSceneCamera } from '../commands/active-scene-camera.js'
 import { useEditorStore } from '../store/editor-store.js'
 import { EntityCreateMenu } from '../components/EntityCreateMenu.js'
 import { HierarchyFilterBar } from '../components/HierarchyFilterBar.js'
@@ -48,10 +50,10 @@ function EntityNode({
   const worldRevision = useEditorStore((s) => s.worldRevision)
   const world = useEditorStore((s) => s.world)
   const selected = useEditorStore((s) => isEntitySelected(s.selection, id))
-  const viewportCameraEntityId = useEditorStore((s) => s.viewportCameraEntityId)
+  const sceneDocument = useEditorStore((s) => s.sceneDocument)
+  const activeCameraId = sceneDocument ? resolveActiveCameraId(sceneDocument) : null
   const selectEntity = useEditorStore((s) => s.selectEntity)
   const selectEntityRange = useEditorStore((s) => s.selectEntityRange)
-  const setViewportCameraEntityId = useEditorStore((s) => s.setViewportCameraEntityId)
 
   if (!world) return null
   if (visibleIds && !visibleIds.has(id.value)) return null
@@ -60,7 +62,7 @@ function EntityNode({
   const name = world.getEntityName(id) ?? 'Entity'
   const children = world.getChildren(id)
   const isCamera = world.hasComponent(id, CameraComponent)
-  const isGameView = viewportCameraEntityId?.value === id.value
+  const isActiveCamera = isCamera && activeCameraId === id.value
   const isDragging = draggedId === id.value
   const isDropTarget = dropTarget?.id === id.value
   const dropMode = isDropTarget ? dropTarget.mode : null
@@ -150,20 +152,16 @@ function EntityNode({
         {isCamera && (
           <button
             type="button"
-            className={`haku-hierarchy-camera-switch${isGameView ? ' haku-hierarchy-camera-switch--game' : ''}`}
-            title={isGameView ? 'Viewport: game camera — click for scene camera' : 'Viewport: scene camera — click for game camera'}
-            aria-pressed={isGameView}
+            className={`haku-hierarchy-camera-active${isActiveCamera ? ' haku-hierarchy-camera-active--on' : ''}`}
+            title={isActiveCamera ? 'Active scene camera' : 'Set as active scene camera'}
+            aria-pressed={isActiveCamera}
             onClick={(event) => {
               event.stopPropagation()
-              setViewportCameraEntityId(isGameView ? null : id)
+              if (!isActiveCamera) commitActiveSceneCamera(id)
             }}
             onDragStart={(event) => event.stopPropagation()}
           >
-            <span className={!isGameView ? 'haku-hierarchy-camera-switch__label--active' : undefined}>Scene</span>
-            <span className="haku-hierarchy-camera-switch__track" aria-hidden="true">
-              <span className="haku-hierarchy-camera-switch__thumb" />
-            </span>
-            <span className={isGameView ? 'haku-hierarchy-camera-switch__label--active' : undefined}>Game</span>
+            ★
           </button>
         )}
       </div>
