@@ -26,6 +26,7 @@ import {
   loadModelTemplate,
 } from '../model-loader.js'
 import { syncMeshShadowFlags } from './sync-mesh-shadow.js'
+import { computeMeshWorldBounds, fitDirectionalShadowCamera } from './fit-directional-shadow.js'
 import { applyLayerMask, resolveEntityLayerMask } from '../render/layers/layer-resolver.js'
 
 const MODEL_ROOT_NAME = 'haku-model-root'
@@ -168,6 +169,23 @@ export class RenderSyncSystem implements ISystem {
 
     this.syncSceneHierarchy()
     this.applyHierarchyVisualWeight()
+    this.fitDirectionalShadowCameras()
+  }
+
+  private fitDirectionalShadowCameras(): void {
+    if (!isFeatureActive(this.renderSettings, 'shadows')) return
+    const shadows = resolveShadowSettings(this.renderSettings.shadows)
+    if (!shadows.enabled) return
+
+    this.scene.updateMatrixWorld(true)
+    const bounds = computeMeshWorldBounds(this.scene)
+
+    for (const state of this.entityStates.values()) {
+      const light = this.findLight(state.object3d)
+      if (light instanceof THREE.DirectionalLight && light.castShadow) {
+        fitDirectionalShadowCamera(light, bounds)
+      }
+    }
   }
 
   private syncSceneHierarchy(): void {
@@ -674,12 +692,6 @@ export class RenderSyncSystem implements ISystem {
       if ('shadowMapSize' in lightData && lightData.shadowMapSize) {
         light.shadow.mapSize.set(lightData.shadowMapSize, lightData.shadowMapSize)
       }
-      light.shadow.camera.near = 0.5
-      light.shadow.camera.far = 50
-      light.shadow.camera.left = -10
-      light.shadow.camera.right = 10
-      light.shadow.camera.top = 10
-      light.shadow.camera.bottom = -10
       this.shadowCasterCount++
     } else {
       light.castShadow = false
