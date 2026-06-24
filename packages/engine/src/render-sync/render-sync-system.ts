@@ -10,7 +10,7 @@ import {
   TransformComponent,
 } from '@haku/core'
 import type { Light, MeshRenderer, PrefabDefinition, RenderSettings, Transform } from '@haku/schema'
-import { LightSchema, defaultRenderSettings, meshRendererKey, resolveLightColor, resolveShadowSettings, spotToThreeCone, isFeatureActive } from '@haku/schema'
+import { LightSchema, defaultRenderSettings, isComponentEnabled, meshRendererKey, normalizeMeshRenderer, resolveLightColor, resolveShadowSettings, spotToThreeCone, isFeatureActive } from '@haku/schema'
 import * as THREE from 'three'
 import {
   createMeshFromRenderer,
@@ -251,6 +251,7 @@ export class RenderSyncSystem implements ISystem {
 
     if (this.world.hasComponent(id, CameraComponent)) {
       const camData = this.world.getComponent(id, CameraComponent)!
+      if (!isComponentEnabled(camData)) return new THREE.Group()
       const group = new THREE.Group()
       const camera = new THREE.PerspectiveCamera(camData.fov, 1, camData.near, camData.far)
       group.add(camera)
@@ -259,11 +260,12 @@ export class RenderSyncSystem implements ISystem {
 
     if (this.world.hasComponent(id, LightComponent)) {
       const light = this.getLightData(id)
-      if (light) return this.createLightEntity(light)
+      if (light && isComponentEnabled(light)) return this.createLightEntity(light)
     }
 
     if (this.world.hasComponent(id, MeshRendererComponent)) {
-      const meshRenderer = this.world.getComponent(id, MeshRendererComponent)!
+      const meshRenderer = normalizeMeshRenderer(this.world.getComponent(id, MeshRendererComponent)!)
+      if (!isComponentEnabled(meshRenderer)) return new THREE.Group()
       return createMeshFromRenderer(meshRenderer)
     }
 
@@ -333,7 +335,7 @@ export class RenderSyncSystem implements ISystem {
 
   private syncMeshVisual(id: EntityId, state: EntityRenderState): void {
     if (!this.world?.hasComponent(id, MeshRendererComponent)) return
-    const meshRenderer = this.world.getComponent(id, MeshRendererComponent)!
+    const meshRenderer = normalizeMeshRenderer(this.world.getComponent(id, MeshRendererComponent)!)
     const nextKey = meshRendererKey(meshRenderer)
 
     if (meshRenderer.geometryType === 'ModelGeometry') {
@@ -421,8 +423,9 @@ export class RenderSyncSystem implements ISystem {
 
         const currentRenderer = this.world.getComponent(id, MeshRendererComponent)
         if (currentRenderer) {
-          this.applyRendererMaterial(state.object3d, currentRenderer.material)
-          syncMeshShadowFlags(state.object3d, currentRenderer)
+          const normalized = normalizeMeshRenderer(currentRenderer)
+          this.applyRendererMaterial(state.object3d, normalized.material)
+          syncMeshShadowFlags(state.object3d, normalized)
         }
         this.tagPickable(state.object3d, id.value)
         this.applyHierarchyVisualWeight()
