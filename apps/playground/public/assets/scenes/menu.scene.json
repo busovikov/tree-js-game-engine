@@ -15,8 +15,8 @@
           "data": {
             "position": [
               0,
-              2,
-              5
+              0,
+              14.070270458441648
             ],
             "rotation": [
               0,
@@ -34,9 +34,10 @@
         {
           "type": "Camera",
           "data": {
-            "fov": 60,
+            "fov": 90,
             "near": 0.1,
-            "far": 1000
+            "far": 1000,
+            "enabled": true
           }
         }
       ]
@@ -50,15 +51,15 @@
           "type": "Transform",
           "data": {
             "position": [
-              7.099713869508907,
-              9.773516811048369,
-              -0.31023736195429774
+              -0.6926469463393854,
+              0.22383022175479717,
+              -2.2913724243816582
             ],
             "rotation": [
-              -0.3486038197484921,
-              0.09320626759865305,
-              -0.26032895475696516,
-              0.8955539089592737
+              0.4231237598191002,
+              0.4698607157159635,
+              -0.057224858935697884,
+              -0.7726076023591927
             ],
             "scale": [
               1,
@@ -71,12 +72,13 @@
           "type": "Light",
           "data": {
             "color": "#ffffff",
-            "intensity": 1,
+            "intensity": 1.2,
             "castShadow": false,
+            "enabled": true,
             "type": "directional",
             "localPosition": [
               0,
-              0,
+              0.4,
               0
             ],
             "targetPosition": [
@@ -134,7 +136,8 @@
               "roughness": 0.5
             },
             "castShadow": true,
-            "receiveShadow": true
+            "receiveShadow": true,
+            "enabled": true
           }
         }
       ]
@@ -184,7 +187,8 @@
               "roughness": 0.5
             },
             "castShadow": true,
-            "receiveShadow": true
+            "receiveShadow": true,
+            "enabled": true
           }
         }
       ]
@@ -231,7 +235,61 @@
               "roughness": 0.5
             },
             "castShadow": true,
-            "receiveShadow": true
+            "receiveShadow": true,
+            "enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "87288f51-6fa6-4784-ae4a-787c02943995",
+      "name": "New Entity",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              2.1883699828084726,
+              -2.1986594136424427,
+              1.0317381977510913
+            ],
+            "rotation": [
+              -0.4403203190994594,
+              -0.33040733953536944,
+              -0.7991407315899938,
+              0.24150175503113708
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "Light",
+          "data": {
+            "type": "spot",
+            "color": "#ccdcff",
+            "intensity": 2.1,
+            "colorTemperature": 9650,
+            "distance": 100,
+            "decay": 1.2,
+            "outerAngle": 30.8,
+            "innerAngle": 9.6,
+            "localPosition": [
+              0,
+              -0.1,
+              0.8
+            ],
+            "targetPosition": [
+              0,
+              0,
+              -1
+            ],
+            "castShadow": false,
+            "enabled": true
           }
         }
       ]
@@ -243,7 +301,7 @@
     "version": 1,
     "features": {
       "toneMapping": true,
-      "shadows": false,
+      "shadows": true,
       "postProcessing": false,
       "renderingLayers": false,
       "renderTargets": false,
@@ -259,7 +317,7 @@
       "color": "#1a1a2e"
     },
     "shadows": {
-      "enabled": false,
+      "enabled": true,
       "quality": "medium",
       "type": "pcf",
       "mapSize": 1024,
@@ -271,6 +329,7 @@
       "cameraSize": 40,
       "cameraDistance": 100,
       "followCamera": true,
+      "followEditorCamera": false,
       "anchorGroundY": 0,
       "anchorMaxDistanceFactor": 4,
       "anchorFallbackDistanceFactor": 0.5
