@@ -79,6 +79,15 @@ function SnapIcon() {
   )
 }
 
+function ShadowVolumeIcon() {
+  return (
+    <ToolIcon>
+      <path d="M4 18L12 6l8 12H4Z" stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round" />
+      <path d="M8 14h8" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeDasharray="2 2" />
+    </ToolIcon>
+  )
+}
+
 function AabbIcon() {
   return (
     <ToolIcon>
@@ -138,6 +147,8 @@ export const HierarchyToolsPanel = memo(function HierarchyToolsPanel() {
   const selection = useEditorStore((s) => s.selection)
   const showAabb = useEditorStore((s) => s.showAabb)
   const setShowAabb = useEditorStore((s) => s.setShowAabb)
+  const showShadowVolume = useEditorStore((s) => s.showShadowVolume)
+  const setShowShadowVolume = useEditorStore((s) => s.setShowShadowVolume)
   const world = useEditorStore((s) => s.world)
   const activeViewportTab = useEditorStore((s) => s.activeViewportTab)
   const transformTool = useEditorStore((s) => s.transformTool)
@@ -217,6 +228,15 @@ export const HierarchyToolsPanel = memo(function HierarchyToolsPanel() {
         onClick={() => setShowAabb(!showAabb)}
       >
         <AabbIcon />
+      </ToolButton>
+
+      <ToolButton
+        title="Show directional shadow map orthographic volume (debug)."
+        active={showShadowVolume}
+        disabled={!canEdit}
+        onClick={() => setShowShadowVolume(!showShadowVolume)}
+      >
+        <ShadowVolumeIcon />
       </ToolButton>
     </div>
   )

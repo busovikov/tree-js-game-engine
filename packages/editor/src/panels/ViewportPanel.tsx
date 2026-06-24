@@ -24,6 +24,7 @@ import { SceneLightGizmos } from '../viewport/scene-light-gizmos.js'
 import { primarySelection, mergeSelection } from '../selection/selection-utils.js'
 import { SceneAabbGizmos } from '../viewport/scene-aabb-gizmos.js'
 import { SceneSelectionOutline } from '../viewport/scene-selection-outline.js'
+import { SceneShadowVolumeGizmos } from '../viewport/shadow-volume-gizmos.js'
 
 function refreshGizmo(
   gizmo: TransformControls,
@@ -80,6 +81,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
   const lightGizmosRef = useRef<SceneLightGizmos | null>(null)
   const aabbGizmosRef = useRef<SceneAabbGizmos | null>(null)
   const selectionOutlineRef = useRef<SceneSelectionOutline | null>(null)
+  const shadowVolumeGizmosRef = useRef<SceneShadowVolumeGizmos | null>(null)
   const lastHandledFocusRequest = useRef(0)
   const dragStartTransform = useRef<ReturnType<typeof TransformComponent.schema.parse> | null>(null)
   const dragStartSnapshots = useRef<EntityDragSnapshot[]>([])
@@ -97,6 +99,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
   const primary = primarySelection(selectedIds)
   const selectedIdSet = useMemo(() => new Set(selectedIds.map((id) => id.value)), [selectedIds])
   const showAabb = useEditorStore((s) => s.showAabb)
+  const showShadowVolume = useEditorStore((s) => s.showShadowVolume)
   const mode = useEditorStore((s) => s.mode)
   const transformTool = useEditorStore((s) => s.transformTool)
   const scenePath = useEditorStore((s) => s.scenePath)
@@ -169,6 +172,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
     aabbGizmosRef.current = new SceneAabbGizmos()
     aabbGizmosRef.current.attach(engine.backend.threeScene)
     selectionOutlineRef.current = new SceneSelectionOutline()
+    shadowVolumeGizmosRef.current = new SceneShadowVolumeGizmos()
 
     orbit.addEventListener('end', () => {
       const path = useEditorStore.getState().scenePath
@@ -183,6 +187,11 @@ export const ViewportPanel = memo(function ViewportPanel() {
 
     const tick = () => {
       orbit.update()
+      const shadowGizmos = shadowVolumeGizmosRef.current
+      const activeEngine = engineRef.current
+      if (shadowGizmos && activeEngine && useEditorStore.getState().showShadowVolume) {
+        shadowGizmos.sync(activeEngine.backend.threeScene, true)
+      }
       requestAnimationFrame(tick)
     }
     tick()
@@ -214,6 +223,8 @@ export const ViewportPanel = memo(function ViewportPanel() {
       aabbGizmosRef.current = null
       selectionOutlineRef.current?.dispose(engine.backend)
       selectionOutlineRef.current = null
+      shadowVolumeGizmosRef.current?.dispose(engine.backend.threeScene)
+      shadowVolumeGizmosRef.current = null
       selectionPivotRef.current?.dispose()
       selectionPivotRef.current = null
       gizmo.dispose()
@@ -318,7 +329,12 @@ export const ViewportPanel = memo(function ViewportPanel() {
         selectedIds: selectedIdSet,
       })
     }
-  }, [world, worldRevision, selectedIds, selectedIdSet, mode, activeViewportTab, showAabb, primary, sceneDocument])
+
+    shadowVolumeGizmosRef.current?.sync(
+      engine.backend.threeScene,
+      mode === 'edit' && showShadowVolume,
+    )
+  }, [world, worldRevision, selectedIds, selectedIdSet, mode, activeViewportTab, showAabb, showShadowVolume, primary, sceneDocument])
 
   useEffect(() => {
     const engine = engineRef.current
