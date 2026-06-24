@@ -27,12 +27,15 @@ export const TransformSchema = z.object({
 })
 export type Transform = z.infer<typeof TransformSchema>
 
+export const ComponentEnabledSchema = z.boolean().default(true)
+
 export const CameraSchema = z.object({
   fov: z.number().default(60),
   near: z.number().default(0.1),
   far: z.number().default(1000),
   ortho: z.boolean().optional(),
   orthoSize: z.number().optional(),
+  enabled: ComponentEnabledSchema,
 })
 export type Camera = z.infer<typeof CameraSchema>
 
@@ -46,6 +49,7 @@ const LightBaseSchema = z.object({
   shadowMapSize: z.number().int().positive().optional(),
   shadowBias: z.number().optional(),
   shadowNormalBias: z.number().optional(),
+  enabled: ComponentEnabledSchema,
 })
 
 export const DirectionalLightDataSchema = LightBaseSchema.extend({
@@ -98,6 +102,7 @@ export const SpotLightDataSchema = LightBaseSchema.extend({
     shadowMapSize: data.shadowMapSize,
     shadowBias: data.shadowBias,
     shadowNormalBias: data.shadowNormalBias,
+    enabled: data.enabled,
   }
 })
 
@@ -192,6 +197,7 @@ export {
 
 export const ScriptRefSchema = z.object({
   path: z.string(),
+  enabled: ComponentEnabledSchema,
 })
 export type ScriptRef = z.infer<typeof ScriptRefSchema>
 
@@ -353,3 +359,5 @@ export const coreComponentSchemas = {
 export function validateSceneDocument(data: unknown): SceneDocument {
   return SceneDocumentSchema.parse(data)
 }
+
+export { isComponentEnabled, withComponentEnabled } from './component-enabled.js'

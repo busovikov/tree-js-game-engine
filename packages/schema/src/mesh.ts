@@ -104,6 +104,7 @@ const MeshRendererBaseSchema = z.object({
   material: MeshMaterialSchema.default({}),
   castShadow: z.boolean().default(true),
   receiveShadow: z.boolean().default(true),
+  enabled: z.boolean().default(true),
 })
 
 export const MeshRendererSchema = z.preprocess((input) => {
