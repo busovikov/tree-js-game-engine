@@ -17,12 +17,16 @@ const ROW_HINTS: Record<string, string> = {
   Position: 'World position of the entity.',
   Rotation: 'Rotation in degrees (Euler XYZ).',
   Scale: 'Local scale per axis.',
+  'Local Position': 'Light source offset in entity local space.',
+  'Target Position': 'Light aim point in entity local space.',
 }
 
 const AXIS_HINTS: Record<string, Record<string, string>> = {
   Position: { X: 'Position on the X axis.', Y: 'Position on the Y axis.', Z: 'Position on the Z axis.' },
   Rotation: { X: 'Pitch (X rotation) in degrees.', Y: 'Yaw (Y rotation) in degrees.', Z: 'Roll (Z rotation) in degrees.' },
   Scale: { X: 'Scale along X.', Y: 'Scale along Y.', Z: 'Scale along Z.' },
+  'Local Position': { X: 'Local X offset.', Y: 'Local Y offset.', Z: 'Local Z offset.' },
+  'Target Position': { X: 'Local target X.', Y: 'Local target Y.', Z: 'Local target Z.' },
 }
 
 const AXIS_CLASS: Record<string, string> = {
@@ -42,7 +46,7 @@ export function applyUniformScaleAxis(value: Vec3, axis: 0 | 1 | 2, nextValue: n
   return [value[0] * ratio, value[1] * ratio, value[2] * ratio]
 }
 
-function Vec3Row({
+export function TransformVec3Row({
   label,
   value,
   mixed,
@@ -279,7 +283,7 @@ export const TransformFields = memo(function TransformFields({
 
   return (
     <div className="haku-transform-fields">
-      <Vec3Row
+      <TransformVec3Row
         label="Position"
         value={value.position as Vec3}
         mixed={mixedPosition}
@@ -290,7 +294,7 @@ export const TransformFields = memo(function TransformFields({
         onAxisChange={onPositionAxisChange}
       />
 
-      <Vec3Row
+      <TransformVec3Row
         label="Rotation"
         value={rotationEuler}
         mixed={mixedRotation}

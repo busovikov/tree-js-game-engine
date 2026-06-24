@@ -1,9 +1,11 @@
 import { memo } from 'react'
-import { LightSchema, kelvinToHex, type Light, type Vec3 } from '@haku/schema'
+import { LightSchema, kelvinToHex, type Light } from '@haku/schema'
 import { AngleRangeSlider } from './AngleRangeSlider.js'
 import { LightTemperatureSlider, LIGHT_TEMPERATURE_DEFAULT } from './LightTemperatureSlider.js'
 import { NumberField } from './NumberField.js'
+import { TransformVec3Row } from './TransformFields.js'
 import './mesh-renderer-fields.css'
+import './transform-fields.css'
 
 const LIGHT_TYPES: Light['type'][] = ['directional', 'point', 'spot', 'hemisphere']
 
@@ -224,18 +226,24 @@ export const LightFields = memo(function LightFields({
             Direction = target − position in local space, then entity rotation is applied.
             Shadow volume tracks the view camera (Render Settings → Shadows).
           </p>
-          <Vec3Fields
-            label="Local Position"
-            value={value.localPosition}
-            disabled={disabled}
-            onChange={(localPosition) => patch({ localPosition })}
-          />
-          <Vec3Fields
-            label="Target Position"
-            value={value.targetPosition}
-            disabled={disabled}
-            onChange={(targetPosition) => patch({ targetPosition })}
-          />
+          <div className="haku-transform-fields">
+            <TransformVec3Row
+              label="Local Position"
+              value={value.localPosition}
+              disabled={disabled}
+              step={0.01}
+              scrubMultiplier={20}
+              onChange={(localPosition) => patch({ localPosition })}
+            />
+            <TransformVec3Row
+              label="Target Position"
+              value={value.targetPosition}
+              disabled={disabled}
+              step={0.01}
+              scrubMultiplier={20}
+              onChange={(targetPosition) => patch({ targetPosition })}
+            />
+          </div>
         </div>
       )}
 
@@ -341,18 +349,24 @@ export const LightFields = memo(function LightFields({
             hint="Physical light falloff exponent."
             onChange={(decay) => patch({ decay: Math.max(0, decay) })}
           />
-          <Vec3Fields
-            label="Local Position"
-            value={value.localPosition}
-            disabled={disabled}
-            onChange={(localPosition) => patch({ localPosition })}
-          />
-          <Vec3Fields
-            label="Target Position"
-            value={value.targetPosition}
-            disabled={disabled}
-            onChange={(targetPosition) => patch({ targetPosition })}
-          />
+          <div className="haku-transform-fields">
+            <TransformVec3Row
+              label="Local Position"
+              value={value.localPosition}
+              disabled={disabled}
+              step={0.01}
+              scrubMultiplier={20}
+              onChange={(localPosition) => patch({ localPosition })}
+            />
+            <TransformVec3Row
+              label="Target Position"
+              value={value.targetPosition}
+              disabled={disabled}
+              step={0.01}
+              scrubMultiplier={20}
+              onChange={(targetPosition) => patch({ targetPosition })}
+            />
+          </div>
           <p style={{ margin: 0, fontSize: 11, color: '#888', lineHeight: 1.4 }}>
             Gizmo shows a sphere sector. Green ring = inner/outer cone boundary. Direction: local -Z.
           </p>
@@ -361,36 +375,3 @@ export const LightFields = memo(function LightFields({
     </div>
   )
 })
-
-function Vec3Fields({
-  label,
-  value,
-  disabled,
-  onChange,
-}: {
-  label: string
-  value: Vec3
-  disabled?: boolean
-  onChange: (next: Vec3) => void
-}) {
-  const axes = ['X', 'Y', 'Z'] as const
-  return (
-    <div className="mesh-renderer-fields__subsection">
-      <div className="mesh-renderer-fields__heading">{label}</div>
-      {axes.map((axis, index) => (
-        <NumberField
-          key={`${label}-${axis}`}
-          label={axis}
-          value={value[index]}
-          step={0.1}
-          disabled={disabled}
-          onChange={(component) => {
-            const next: Vec3 = [...value]
-            next[index] = component
-            onChange(next)
-          }}
-        />
-      ))}
-    </div>
-  )
-}
