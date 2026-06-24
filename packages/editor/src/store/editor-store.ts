@@ -10,6 +10,11 @@ export type EditorMode = 'edit' | 'play'
 export type TransformTool = 'translate' | 'rotate' | 'scale' | 'hand'
 export type GizmoSpace = 'local' | 'world'
 
+export interface ComponentClipboard {
+  typeId: string
+  data: Record<string, unknown>
+}
+
 export function canActivateTransformTool(
   tool: TransformTool,
   state: Pick<EditorState, 'world' | 'mode' | 'activeViewportTab'>,
@@ -31,6 +36,7 @@ interface EditorState {
   transformTool: TransformTool
   snapEnabled: boolean
   showAabb: boolean
+  showShadowVolume: boolean
   uniformScaleLocked: boolean
   gizmoSpace: GizmoSpace
   activeViewportTab: ViewportTab
@@ -40,6 +46,7 @@ interface EditorState {
   commandRevision: number
   hierarchyFilterQuery: string
   hierarchyFilterMode: HierarchyFilterMode
+  componentClipboard: ComponentClipboard | null
 
   setProjectRoot: (root: string | null) => void
   setScene: (path: string, document: SceneDocument, world: World, viewportTab?: ViewportTab) => void
@@ -52,6 +59,7 @@ interface EditorState {
   setTransformTool: (tool: TransformTool) => void
   setSnapEnabled: (enabled: boolean) => void
   setShowAabb: (enabled: boolean) => void
+  setShowShadowVolume: (enabled: boolean) => void
   setUniformScaleLocked: (locked: boolean) => void
   setGizmoSpace: (space: GizmoSpace) => void
   setActiveViewportTab: (tab: ViewportTab) => void
@@ -61,6 +69,7 @@ interface EditorState {
   bumpCommands: () => void
   setHierarchyFilterQuery: (query: string) => void
   setHierarchyFilterMode: (mode: HierarchyFilterMode) => void
+  setComponentClipboard: (clipboard: ComponentClipboard | null) => void
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
@@ -75,6 +84,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   transformTool: 'translate',
   snapEnabled: false,
   showAabb: false,
+  showShadowVolume: false,
   uniformScaleLocked: false,
   gizmoSpace: 'local',
   activeViewportTab: 'scene',
@@ -84,6 +94,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   commandRevision: 0,
   hierarchyFilterQuery: '',
   hierarchyFilterMode: 'all',
+  componentClipboard: null,
 
   setProjectRoot: (root) => set({ projectRoot: root }),
   setScene: (path, document, world, viewportTab = 'scene') => {
@@ -120,6 +131,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
   setSnapEnabled: (enabled) => set({ snapEnabled: enabled }),
   setShowAabb: (enabled) => set({ showAabb: enabled }),
+  setShowShadowVolume: (enabled) => set({ showShadowVolume: enabled }),
   setUniformScaleLocked: (locked) => set({ uniformScaleLocked: locked }),
   setGizmoSpace: (space) => set({ gizmoSpace: space }),
   setActiveViewportTab: (tab) => set({ activeViewportTab: tab }),
@@ -161,6 +173,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   bumpCommands: () => set((s) => ({ commandRevision: s.commandRevision + 1 })),
   setHierarchyFilterQuery: (query) => set({ hierarchyFilterQuery: query }),
   setHierarchyFilterMode: (mode) => set({ hierarchyFilterMode: mode }),
+  setComponentClipboard: (clipboard) => set({ componentClipboard: clipboard }),
 }))
 
 globalCommandBus.subscribe(() => {
