@@ -78,8 +78,14 @@
 .haku-inspector__section-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   margin-bottom: 8px;
+}
+
+.haku-inspector__section-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 6px;
 }
 
 .haku-inspector__section-title {

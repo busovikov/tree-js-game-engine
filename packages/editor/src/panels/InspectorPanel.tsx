@@ -22,7 +22,8 @@ import { MeshRendererFields } from '../components/MeshRendererFields.js'
 import { buildMaterialMixedValues } from '../components/MaterialPropertiesPanel.js'
 import { TagFields } from '../components/TagFields.js'
 import { SchemaFields } from '../components/SchemaFields.js'
-import { normalizeMeshRenderer, normalizeMeshMaterial, defaultGeometryParams } from '@haku/schema'
+import { InspectorComponentSection } from '../components/InspectorComponentSection.js'
+import { normalizeMeshRenderer, normalizeMeshMaterial, defaultGeometryParams, isComponentEnabled, withComponentEnabled } from '@haku/schema'
 import { eulerAxisToQuat, quatToEulerDegrees } from '../transform/euler-degrees.js'
 import {
   commonComponentTypes,
@@ -65,6 +66,10 @@ export const InspectorPanel = memo(function InspectorPanel() {
   const worldRevision = useEditorStore((s) => s.worldRevision)
   const mode = useEditorStore((s) => s.mode)
   const sceneDocument = useEditorStore((s) => s.sceneDocument)
+  const componentClipboard = useEditorStore((s) => s.componentClipboard)
+  const setComponentClipboard = useEditorStore((s) => s.setComponentClipboard)
+
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({})
 
   void worldRevision
 
@@ -327,6 +332,57 @@ export const InspectorPanel = memo(function InspectorPanel() {
     [forEachSelected],
   )
 
+  const toggleSectionCollapsed = useCallback((sectionId: string) => {
+    setCollapsedSections((prev) => ({ ...prev, [sectionId]: !prev[sectionId] }))
+  }, [])
+
+  const copyComponentData = useCallback(
+    (typeId: string, data: Record<string, unknown>) => {
+      setComponentClipboard({ typeId, data: structuredClone(data) })
+    },
+    [setComponentClipboard],
+  )
+
+  const pasteComponentData = useCallback(
+    (typeId: string, component: ComponentType) => {
+      if (!componentClipboard || componentClipboard.typeId !== typeId) return
+      forEachSelected((id, draftWorld) => {
+        const parsed = component.schema.parse(componentClipboard.data)
+        draftWorld.addComponent(id, component, parsed)
+      })
+    },
+    [componentClipboard, forEachSelected],
+  )
+
+  const toggleComponentEnabled = useCallback(
+    (component: ComponentType, enabled: boolean) => {
+      forEachSelected((id, draftWorld) => {
+        if (!draftWorld.hasComponent(id, component)) return
+        const current = draftWorld.getComponent(id, component)
+        if (!current || typeof current !== 'object') return
+        draftWorld.addComponent(
+          id,
+          component,
+          withComponentEnabled(current as Record<string, unknown>, enabled),
+        )
+      })
+    },
+    [forEachSelected],
+  )
+
+  const mergeComponentEnabled = useCallback(
+    (component: ComponentType, targets: EntityId[]): MixedBool => {
+      if (!world || targets.length === 0) return null
+      return mergeBooleans(
+        targets.map((id) => {
+          const data = world.getComponent(id, component)
+          return data ? isComponentEnabled(data) : true
+        }),
+      )
+    },
+    [world, worldRevision],
+  )
+
   if (!world || selectedIds.length === 0) {
     return (
       <div className="haku-inspector haku-inspector--empty">
@@ -382,9 +438,18 @@ export const InspectorPanel = memo(function InspectorPanel() {
       <InspectorSeparator />
 
       {showTransform && (
-        <section className="haku-inspector__section">
-          <div className="haku-inspector__section-header">
-            <h4 className="haku-inspector__section-title">Transform</h4>
+        <InspectorComponentSection
+          title="Transform"
+          collapsed={collapsedSections.Transform === true}
+          canToggleEnabled={false}
+          canDelete={false}
+          disabled={mode === 'play'}
+          onToggleCollapsed={() => toggleSectionCollapsed('Transform')}
+          onCopy={() => copyComponentData('Transform', structuredClone(transformDisplay) as Record<string, unknown>)}
+          onPaste={() => pasteComponentData('Transform', TransformComponent)}
+          canPaste={componentClipboard?.typeId === 'Transform'}
+        >
+          <div className="haku-inspector__section-toolbar">
             <button
               type="button"
               className="haku-inspector__section-action"
@@ -409,7 +474,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
             }
             onUniformScaleAxisChange={(axis, value) => applyUniformScaleAxis(axis, value)}
           />
-        </section>
+        </InspectorComponentSection>
       )}
 
       <InspectorSeparator />
@@ -437,26 +502,27 @@ export const InspectorPanel = memo(function InspectorPanel() {
           targets.length === 1 &&
           resolveActiveCameraId(sceneDocument) === targets[0]!.value
 
-        return (
-          <section key={typeId} className="haku-inspector__section">
-            <div className="haku-inspector__section-header">
-              <h4 className="haku-inspector__section-title">
-                {typeId}
-                {isActiveCamera && (
-                  <span className="haku-inspector__active-camera-badge">Active</span>
-                )}
-              </h4>
-              <button
-                type="button"
-                className="haku-inspector__remove-btn"
-                disabled={!canEdit}
-                onClick={() => removeComponent(COMPONENT_MAP[key])}
-                title={`Remove ${typeId}`}
-              >
-                Remove
-              </button>
-            </div>
+        const enabledMixed = mergeComponentEnabled(component, targets)
 
+        return (
+          <InspectorComponentSection
+            key={typeId}
+            title={typeId}
+            badge={
+              isActiveCamera ? (
+                <span className="haku-inspector__active-camera-badge">Active</span>
+              ) : undefined
+            }
+            collapsed={collapsedSections[typeId] === true}
+            enabled={enabledMixed !== false}
+            disabled={!canEdit}
+            canPaste={componentClipboard?.typeId === typeId}
+            onToggleCollapsed={() => toggleSectionCollapsed(typeId)}
+            onToggleEnabled={() => toggleComponentEnabled(component, enabledMixed !== true)}
+            onCopy={() => copyComponentData(typeId, structuredClone(data) as Record<string, unknown>)}
+            onPaste={() => pasteComponentData(typeId, component)}
+            onDelete={() => removeComponent(component)}
+          >
             {key === 'Camera' ? (
               <>
                 <CameraFields
@@ -554,7 +620,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                 }
               />
             )}
-          </section>
+          </InspectorComponentSection>
         )
       })}
 
