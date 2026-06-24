@@ -97,20 +97,20 @@ function AabbIcon() {
   )
 }
 
-function LocalSpaceIcon() {
+function PlanetSpaceIcon({ space }: { space: 'local' | 'world' }) {
   return (
     <ToolIcon>
-      <rect x="8" y="8" width="8" height="8" rx="1" stroke="currentColor" strokeWidth="1.75" transform="rotate(20 12 12)" />
-      <path d="M12 4v4M12 16v4M4 12h4M16 12h4" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" transform="rotate(20 12 12)" />
-    </ToolIcon>
-  )
-}
-
-function WorldSpaceIcon() {
-  return (
-    <ToolIcon>
-      <path d="M12 4v16M4 12h16" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
-      <circle cx="12" cy="12" r="2" stroke="currentColor" strokeWidth="1.75" />
+      <circle cx="12" cy="12" r="7" stroke="currentColor" strokeWidth="1.6" />
+      <ellipse cx="12" cy="12" rx="7" ry="2.8" stroke="currentColor" strokeWidth="1.25" opacity="0.85" />
+      <path d="M12 5v14" stroke="currentColor" strokeWidth="1.25" opacity="0.85" />
+      {space === 'local' ? (
+        <>
+          <path d="M5.5 16.5l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          <path d="M5.5 16.5v-3.5h3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </>
+      ) : (
+        <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+      )}
     </ToolIcon>
   )
 }
@@ -170,6 +170,21 @@ export const HierarchyToolsPanel = memo(function HierarchyToolsPanel() {
 
   return (
     <div className="haku-hierarchy-tools" aria-label="Object tools">
+      <div className="haku-hierarchy-tools__space">
+        <ToolButton
+          title={
+            gizmoSpace === 'local'
+              ? `${formatToolTitle('Local space', GIZMO_SPACE_SHORTCUT)} — gizmo axes follow each object's rotation. Click for global (world) space.`
+              : `${formatToolTitle('Global (world) space', GIZMO_SPACE_SHORTCUT)} — gizmo axes stay aligned to world X/Y/Z. Click for local space.`
+          }
+          active={gizmoSpace === 'world'}
+          disabled={!canEdit}
+          onClick={() => setGizmoSpace(gizmoSpace === 'local' ? 'world' : 'local')}
+        >
+          <PlanetSpaceIcon space={gizmoSpace} />
+        </ToolButton>
+      </div>
+
       <ToolButton
         title={formatToolTitle('Focus selection', FOCUS_SELECTION_SHORTCUT)}
         disabled={!canEdit || selection.length === 0}
@@ -198,19 +213,6 @@ export const HierarchyToolsPanel = memo(function HierarchyToolsPanel() {
           {icon}
         </ToolButton>
       ))}
-
-      <ToolButton
-        title={
-          gizmoSpace === 'local'
-            ? `${formatToolTitle('Local space', GIZMO_SPACE_SHORTCUT)} — gizmo axes follow each object's rotation. Click for global (world) space.`
-            : `${formatToolTitle('Global (world) space', GIZMO_SPACE_SHORTCUT)} — gizmo axes stay aligned to world X/Y/Z. Click for local space.`
-        }
-        active={gizmoSpace === 'world'}
-        disabled={!canEdit}
-        onClick={() => setGizmoSpace(gizmoSpace === 'local' ? 'world' : 'local')}
-      >
-        {gizmoSpace === 'local' ? <LocalSpaceIcon /> : <WorldSpaceIcon />}
-      </ToolButton>
 
       <ToolButton
         title="Snap selected objects to nearby AABB edges while translating."

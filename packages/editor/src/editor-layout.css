@@ -59,6 +59,14 @@
   background: #22222c;
 }
 
+.haku-hierarchy-tools__space {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 4px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #333;
+}
+
 .haku-hierarchy-tool {
   display: flex;
   align-items: center;
