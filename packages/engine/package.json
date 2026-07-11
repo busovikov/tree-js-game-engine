@@ -20,10 +20,11 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
     "@haku/core": "file:../core",
+    "@haku/physics": "file:../physics",
     "@haku/schema": "file:../schema",
     "@haku/serializer": "file:../serializer",
     "three": "^0.171.0"

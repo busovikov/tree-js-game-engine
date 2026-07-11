@@ -127,10 +127,12 @@ Top-level shape (`packages/schema/src/index.ts`):
 
 ```
 tick(dt):
-  1. systems.update(world, dt)     // game logic (playground may add systems)
+  1. systems.update(world, dt)     // game logic (PhysicsWorldSystem @ order 50 when enabled)
   2. RenderSyncSystem.syncAll()    // mirror components → Three.js
   3. backend.render()              // forward pass + editor overlays
 ```
+
+**Physics (optional):** `Engine.setPhysicsBackend(backend)` registers `PhysicsWorldSystem` — fixed 60 Hz step via `@haku/physics`, dynamic body transforms written back to `Transform` components. Rapier wiring stays in playground/app factory (`@haku/physics-rapier`), not in engine core.
 
 - `Engine.start()` → `requestAnimationFrame`
 - Editor creates `Engine` once in `ViewportPanel` `useEffect`; scene edits call `engine.setWorld()` — do not recreate engine per edit

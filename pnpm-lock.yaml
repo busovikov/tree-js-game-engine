@@ -160,6 +160,9 @@ importers:
       '@haku/core':
         specifier: file:../core
         version: file:packages/core
+      '@haku/physics':
+        specifier: file:../physics
+        version: link:../physics
       '@haku/schema':
         specifier: file:../schema
         version: link:../schema

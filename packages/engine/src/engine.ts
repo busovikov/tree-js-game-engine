@@ -1,9 +1,14 @@
+import type { IPhysicsBackend } from '@haku/physics'
 import type { IWorld, ISystem } from '@haku/core'
 import { entityId } from '@haku/core'
 import { loadSceneDocument } from '@haku/serializer'
 import type { RenderPrototype, RenderSettings, SceneDocument, SceneMetadata } from '@haku/schema'
 import { defaultRenderSettings, resolveActiveCameraId, validateSceneDocument } from '@haku/schema'
 import { ThreeRenderBackend } from './render-backend.js'
+import {
+  PhysicsWorldSystem,
+  type PhysicsWorldSystemOptions,
+} from './systems/physics-world-system.js'
 
 export type { ViewportMode } from './render-backend.js'
 
@@ -31,6 +36,7 @@ export class Engine {
   readonly backend: ThreeRenderBackend
   private world: IWorld | null = null
   private systems: ISystem[] = []
+  private physicsSystem: PhysicsWorldSystem | null = null
   private running = false
   private lastTime = 0
   private rafId = 0
@@ -72,6 +78,26 @@ export class Engine {
     this.systems.sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
   }
 
+  /**
+   * Register a physics backend for play mode. Initializes the backend and adds
+   * {@link PhysicsWorldSystem} to the engine tick (order 50, before render sync).
+   */
+  setPhysicsBackend(
+    backend: IPhysicsBackend,
+    options?: PhysicsWorldSystemOptions,
+  ): PhysicsWorldSystem {
+    this.clearPhysicsSystem()
+    const system = new PhysicsWorldSystem(options)
+    system.setBackend(backend)
+    this.physicsSystem = system
+    this.addSystem(system)
+    return system
+  }
+
+  getPhysicsWorldSystem(): PhysicsWorldSystem | null {
+    return this.physicsSystem
+  }
+
   getWorld(): IWorld | null {
     return this.world
   }
@@ -107,7 +133,17 @@ export class Engine {
 
   dispose(): void {
     this.stop()
+    this.clearPhysicsSystem()
     this.backend.detach()
+  }
+
+  private clearPhysicsSystem(): void {
+    if (!this.physicsSystem) {
+      return
+    }
+    this.systems = this.systems.filter((system) => system !== this.physicsSystem)
+    this.physicsSystem.dispose()
+    this.physicsSystem = null
   }
 
   private setupResize(canvas: HTMLCanvasElement): void {
@@ -142,3 +178,4 @@ export class SceneLoader {
 }
 
 export { ThreeRenderBackend, RenderSyncSystem } from './render-backend.js'
+export { PhysicsWorldSystem, type PhysicsWorldSystemOptions } from './systems/physics-world-system.js'
