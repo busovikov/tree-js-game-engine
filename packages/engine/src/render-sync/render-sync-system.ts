@@ -8,6 +8,7 @@ import {
   RenderingLayersComponent,
   StaticComponent,
   TransformComponent,
+  VehicleComponent,
 } from '@haku/core'
 import type { Light, MeshRenderer, PrefabDefinition, RenderSettings, Transform } from '@haku/schema'
 import { LightSchema, defaultRenderSettings, isComponentEnabled, meshRendererKey, normalizeMeshRenderer, resolveLightColor, resolveShadowSettings, spotToThreeCone, isFeatureActive } from '@haku/schema'
@@ -27,6 +28,12 @@ import {
 } from '../model-loader.js'
 import { syncMeshShadowFlags } from './sync-mesh-shadow.js'
 import {
+  fitVehicleBodyModel,
+  fitVehicleWheelModel,
+  isVehicleBodyModelAsset,
+  isVehicleWheelModelAsset,
+} from '../vehicle-model-fit.js'
+import {
   computeCameraShadowAnchor,
   shadowAnchorConfigFromSettings,
   updateDirectionalShadowRig,
@@ -36,6 +43,7 @@ import {
   applySpotLightPose,
 } from './apply-directional-light.js'
 import { applyLayerMask, resolveEntityLayerMask } from '../render/layers/layer-resolver.js'
+import { RENDER_LAYER_DEFAULT, RENDER_LAYER_EDITOR_GIZMO } from '@haku/schema'
 
 const MODEL_ROOT_NAME = 'haku-model-root'
 
@@ -416,7 +424,7 @@ export class RenderSyncSystem implements ISystem {
 
         const wrapper = new THREE.Group()
         wrapper.name = MODEL_ROOT_NAME
-        wrapper.add(model)
+        wrapper.add(this.fitVehicleModelIfNeeded(id, modelAsset, model))
         state.object3d.add(wrapper)
         state.loadedModelAsset = modelAsset
         state.pendingModelAsset = undefined
@@ -444,6 +452,32 @@ export class RenderSyncSystem implements ISystem {
           state.pendingModelAsset = undefined
         }
       })
+  }
+
+  /** Reference-aligned auto-fit for vehicle body (`base.glb`) and wheel GLBs. */
+  private fitVehicleModelIfNeeded(
+    id: EntityId,
+    modelAsset: string,
+    model: THREE.Object3D,
+  ): THREE.Object3D {
+    if (!this.world) {
+      return model
+    }
+
+    if (this.world.hasComponent(id, VehicleComponent) && isVehicleBodyModelAsset(modelAsset)) {
+      return fitVehicleBodyModel(model)
+    }
+
+    const parentId = this.world.getParent(id)
+    if (
+      parentId &&
+      this.world.hasComponent(parentId, VehicleComponent) &&
+      isVehicleWheelModelAsset(modelAsset)
+    ) {
+      return fitVehicleWheelModel(model)
+    }
+
+    return model
   }
 
   private applyRendererMaterial(object3d: THREE.Object3D, material: MeshRenderer['material']): void {
@@ -591,6 +625,7 @@ export class RenderSyncSystem implements ISystem {
         -((clientY + offsetY - rect.top) / rect.height) * 2 + 1,
       )
       raycaster.setFromCamera(ndc, camera)
+      raycaster.layers.mask = RENDER_LAYER_DEFAULT | RENDER_LAYER_EDITOR_GIZMO
 
       const hits = raycaster.intersectObjects(pickRoots, true)
       for (const hit of hits) {

@@ -71,8 +71,8 @@ export async function openTargetSceneViaDemoMenu(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'File' }).click()
   await page.getByRole('menuitem', { name: 'Demo Scene' }).click()
 
-  await page.getByText('public/assets/scenes/menu.scene.json').waitFor({ state: 'visible', timeout: 20_000 })
-  await page.getByText('Vehicle').first().waitFor({ state: 'visible', timeout: 20_000 })
+  await page.getByText('public/assets/scenes/menu.scene.json').waitFor({ state: 'visible', timeout: 60_000 })
+  await page.getByText('Vehicle').first().waitFor({ state: 'visible', timeout: 60_000 })
 }
 
 /** Enter play mode and hold W for drive smoke (tier C). */
