@@ -25,9 +25,10 @@ scene assets (.scene.json)
     ↓
 @haku/core            → schema
     ↓
+@haku/physics         (abstract API — no Rapier/Three.js)
 @haku/serializer      → schema, core
     ↓
-@haku/engine          → core, schema, serializer, three
+@haku/engine          → core, schema, serializer, physics, three
     ↓
 @haku/editor          → engine, core, schema, serializer, react*, zustand
     ↓
