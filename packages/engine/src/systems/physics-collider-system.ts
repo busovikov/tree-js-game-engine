@@ -6,7 +6,7 @@ import {
   VehicleComponent,
   entityId,
 } from '@haku/core'
-import type { Collider } from '@haku/schema'
+import type { Collider, Vehicle } from '@haku/schema'
 import {
   createBodyWithShape,
   destroyBodyWithShape,
@@ -139,6 +139,41 @@ function resolveDynamicBodyParams(
   return { mass: 1 }
 }
 
+/** Implicit chassis box for {@link VehicleComponent} (AD-03 — no manual ColliderComponent). */
+export function vehicleChassisCollider(vehicle: Vehicle): Collider {
+  const [hx, hy, hz] = vehicle.chassis.halfExtents
+  return {
+    shape: 'box',
+    halfExtents: [hx, hy, hz],
+    isStatic: false,
+    offset: [0, vehicle.chassis.lift, 0],
+    rotation: [0, 0, 0, 1],
+  }
+}
+
+function resolveColliderForEntity(
+  world: IWorld,
+  id: EntityId,
+): { collider: Collider; bodyType: RigidBodyType } | null {
+  const vehicle = world.getComponent(id, VehicleComponent)
+  if (vehicle) {
+    return {
+      collider: vehicleChassisCollider(vehicle),
+      bodyType: 'dynamic',
+    }
+  }
+
+  const collider = world.getComponent(id, ColliderComponent)
+  if (!collider) {
+    return null
+  }
+
+  return {
+    collider,
+    bodyType: resolveBodyType(world, id, collider),
+  }
+}
+
 /**
  * Spawns Rapier bodies from {@link ColliderComponent} + {@link TransformComponent}
  * when play mode starts. Dynamic bodies are registered with {@link PhysicsWorldSystem}.
@@ -168,14 +203,18 @@ export class PhysicsColliderSystem implements ISystem {
       return
     }
 
-    for (const id of world.query(TransformComponent, ColliderComponent)) {
+    for (const id of world.query(TransformComponent)) {
       const transform = world.getComponent(id, TransformComponent)
-      const collider = world.getComponent(id, ColliderComponent)
-      if (!transform || !collider) {
+      if (!transform) {
         continue
       }
 
-      const bodyType = resolveBodyType(world, id, collider)
+      const resolved = resolveColliderForEntity(world, id)
+      if (!resolved) {
+        continue
+      }
+
+      const { collider, bodyType } = resolved
       const dynamicParams = resolveDynamicBodyParams(world, id, bodyType)
       const entityTransform: PhysicsTransform = {
         position: transform.position as Vec3,

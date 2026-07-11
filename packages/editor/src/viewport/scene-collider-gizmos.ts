@@ -1,6 +1,7 @@
 import type { EntityId, IWorld } from '@haku/core'
-import { ColliderComponent } from '@haku/core'
+import { ColliderComponent, VehicleComponent } from '@haku/core'
 import type { Collider } from '@haku/schema'
+import { vehicleChassisCollider } from '@haku/engine'
 import * as THREE from 'three'
 import { applyEditorLineMaterial, applyEditorOverlayObject } from './editor-overlay-style.js'
 
@@ -94,12 +95,16 @@ export class SceneColliderGizmos {
 
     for (const id of world.getAllEntities()) {
       if (!options.selectedIds.has(id.value)) continue
-      if (!world.hasComponent(id, ColliderComponent)) continue
+
+      const vehicle = world.getComponent(id, VehicleComponent)
+      const explicitCollider = world.getComponent(id, ColliderComponent)
+      const collider: Collider | null = vehicle
+        ? vehicleChassisCollider(vehicle)
+        : explicitCollider ?? null
+      if (!collider) continue
 
       const object3d = sync.getObject3D(id)
       if (!object3d) continue
-
-      const collider = world.getComponent(id, ColliderComponent) as Collider
       alive.add(id.value)
 
       const shapeKey = shapeGeometryKey(collider)

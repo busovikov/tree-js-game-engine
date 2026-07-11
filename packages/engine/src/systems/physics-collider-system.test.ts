@@ -91,6 +91,57 @@ describe('PhysicsColliderSystem', () => {
     physicsSystem.dispose()
   })
 
+  it('spawns implicit chassis body for VehicleComponent without ColliderComponent', async () => {
+    const backend = await createRapierPhysicsBackend()
+    const physicsSystem = new PhysicsWorldSystem({ fixedTimestep: 1 / 60, maxSubsteps: 120 })
+    physicsSystem.setBackend(backend)
+    const colliderSystem = new PhysicsColliderSystem(physicsSystem)
+
+    const world = new World()
+    const carId = world.createEntity('Car')
+    world.addComponent(carId, TransformComponent, {
+      position: [0, 1.05, 0],
+      rotation: [0, 0, 0, 1],
+      scale: [1, 1, 1],
+    })
+    world.addComponent(carId, VehicleComponent, VehicleSchema.parse({}))
+
+    colliderSystem.bootstrap(world)
+    expect(physicsSystem.getBodyHandle(carId)).not.toBeNull()
+
+    colliderSystem.dispose()
+    physicsSystem.dispose()
+  })
+
+  it('prefers VehicleComponent implicit chassis over manual ColliderComponent', async () => {
+    const backend = await createRapierPhysicsBackend()
+    const physicsSystem = new PhysicsWorldSystem({ fixedTimestep: 1 / 60, maxSubsteps: 120 })
+    physicsSystem.setBackend(backend)
+    const colliderSystem = new PhysicsColliderSystem(physicsSystem)
+
+    const world = new World()
+    const carId = world.createEntity('Car')
+    world.addComponent(carId, TransformComponent, {
+      position: [0, 1.05, 0],
+      rotation: [0, 0, 0, 1],
+      scale: [1, 1, 1],
+    })
+    world.addComponent(carId, ColliderComponent, {
+      shape: 'sphere',
+      radius: 0.2,
+      isStatic: false,
+      offset: [0, 0, 0],
+      rotation: [0, 0, 0, 1],
+    })
+    world.addComponent(carId, VehicleComponent, VehicleSchema.parse({}))
+
+    colliderSystem.bootstrap(world)
+    expect(physicsSystem.getBodyHandle(carId)).not.toBeNull()
+
+    colliderSystem.dispose()
+    physicsSystem.dispose()
+  })
+
   it('treats entity StaticComponent as static body even when collider is dynamic', async () => {
     const backend = await createRapierPhysicsBackend()
     const physicsSystem = new PhysicsWorldSystem({ fixedTimestep: 1 / 60, maxSubsteps: 60 })

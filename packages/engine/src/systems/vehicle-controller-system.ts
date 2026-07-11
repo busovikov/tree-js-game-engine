@@ -1,6 +1,5 @@
 import type { EntityId, IWorld, ISystem } from '@haku/core'
 import {
-  ColliderComponent,
   TransformComponent,
   VehicleComponent,
 } from '@haku/core'
@@ -334,7 +333,7 @@ export class VehicleControllerSystem implements ISystem {
       return
     }
 
-    for (const id of world.query(VehicleComponent, ColliderComponent, TransformComponent)) {
+    for (const id of world.query(VehicleComponent, TransformComponent)) {
       const vehicleData = world.getComponent(id, VehicleComponent)
       if (!vehicleData) {
         continue

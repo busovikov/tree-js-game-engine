@@ -111,7 +111,8 @@ export function stepRaycastVehicle(
       suspensionForce = clamp(suspensionForce, 0, maxForce)
 
       const suspForceVec = scaleVec3(suspDir, -suspensionForce)
-      const rollBlend = 1 - config.rollInfluence
+      // Bias suspension force toward chassis center — reduces suspension-driven yaw wobble.
+      const rollBlend = 1 - Math.max(config.rollInfluence, 0.12)
       const forcePoint = lerpVec3(center, hit.point, rollBlend)
       hooks.applyForceAtPoint(chassis, suspForceVec, forcePoint)
 

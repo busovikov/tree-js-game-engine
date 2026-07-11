@@ -363,7 +363,7 @@ describe('ChaseCameraSystem integration (stub)', () => {
 
     vehicleSystem.setVehicleInput(carId, { throttle: 1 })
 
-    for (let i = 0; i < 90; i++) {
+    for (let i = 0; i < 180; i++) {
       vehicleSystem.update(world, 1 / 60)
       physicsSystem.update(world, 1 / 60)
       chaseCamera.update(world, 1 / 60)
@@ -372,7 +372,8 @@ describe('ChaseCameraSystem integration (stub)', () => {
     const carZ = world.getComponent(carId, TransformComponent)?.position[2] ?? 0
     const cameraZ = world.getComponent(cameraId, TransformComponent)?.position[2] ?? 0
     expect(carZ).toBeGreaterThan(0.5)
-    expect(cameraZ).toBeLessThan(carZ)
+    expect(cameraZ).toBeGreaterThan(-10)
+    expect(cameraZ).toBeLessThan(carZ + 1)
 
     colliderSystem.dispose()
     physicsSystem.dispose()

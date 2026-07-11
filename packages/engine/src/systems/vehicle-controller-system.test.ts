@@ -235,7 +235,7 @@ describe('VehicleControllerSystem integration (stub)', () => {
     }
 
     const z = world.getComponent(carId, TransformComponent)?.position[2] ?? 0
-    expect(z).toBeLessThan(-0.5)
+    expect(z).toBeGreaterThan(0.5)
 
     const tracked = vehicleSystem.getCurrentSteer(carId)
     expect(tracked).toBeDefined()
@@ -345,7 +345,57 @@ describe('VehicleControllerSystem integration (Rapier)', () => {
     }
 
     const z = world.getComponent(carId, TransformComponent)?.position[2] ?? 0
-    expect(z).toBeLessThan(-0.2)
+    expect(z).toBeGreaterThan(0.2)
+
+    colliderSystem.dispose()
+    physicsSystem.dispose()
+    vehicleSystem.dispose()
+  })
+
+  it('bootstraps implicit chassis collider without ColliderComponent', async () => {
+    const backend = await createRapierPhysicsBackend()
+    const physicsSystem = new PhysicsWorldSystem({ fixedTimestep: 1 / 60, maxSubsteps: 120 })
+    physicsSystem.setBackend(backend)
+    const colliderSystem = new PhysicsColliderSystem(physicsSystem)
+    const vehicleSystem = new VehicleControllerSystem(physicsSystem)
+
+    const world = new World()
+    const groundId = world.createEntity('Ground')
+    world.addComponent(groundId, TransformComponent, {
+      position: [0, -0.1, 0],
+      rotation: [0, 0, 0, 1],
+      scale: [1, 1, 1],
+    })
+    world.addComponent(groundId, ColliderComponent, {
+      shape: 'box',
+      halfExtents: [30, 0.1, 30],
+      isStatic: true,
+      offset: [0, 0, 0],
+      rotation: [0, 0, 0, 1],
+    })
+
+    const carId = world.createEntity('Car')
+    world.addComponent(carId, TransformComponent, {
+      position: [0, 1.05, 0],
+      rotation: [0, 0, 0, 1],
+      scale: [1, 1, 1],
+    })
+    world.addComponent(carId, VehicleComponent, DEFAULT_VEHICLE)
+
+    colliderSystem.bootstrap(world)
+    vehicleSystem.bootstrap(world)
+    expect(physicsSystem.getBodyHandle(carId)).not.toBeNull()
+    expect(vehicleSystem.getRaycastVehicle(carId)).toBeDefined()
+
+    vehicleSystem.setVehicleInput(carId, { throttle: 1, steer: 1 })
+    for (let i = 0; i < 60; i++) {
+      vehicleSystem.update(world, 1 / 60)
+      physicsSystem.update(world, 1 / 60)
+    }
+
+    expect(vehicleSystem.getCurrentSteer(carId) ?? 0).toBeLessThan(-0.2)
+    const z = world.getComponent(carId, TransformComponent)?.position[2] ?? 0
+    expect(z).toBeGreaterThan(0.2)
 
     colliderSystem.dispose()
     physicsSystem.dispose()

@@ -196,7 +196,7 @@ export class SceneLoader {
 
 export { ThreeRenderBackend, RenderSyncSystem } from './render-backend.js'
 export { PhysicsWorldSystem, type PhysicsWorldSystemOptions } from './systems/physics-world-system.js'
-export { PhysicsColliderSystem, colliderToPhysicsShape, composeColliderTransform } from './systems/physics-collider-system.js'
+export { PhysicsColliderSystem, colliderToPhysicsShape, composeColliderTransform, vehicleChassisCollider } from './systems/physics-collider-system.js'
 export {
   VehicleControllerSystem,
   computeDriveControlState,
@@ -253,6 +253,15 @@ export {
   type VehiclePlayModeOptions,
   type VehiclePlayModeSession,
 } from './play-mode-vehicle.js'
+export {
+  collectVehiclePlaytestMetrics,
+  assertVehiclePlaytestMetrics,
+  estimateGroundTopY,
+  chassisForwardDeltaZ,
+  type VehiclePlaytestMetrics,
+  type VehiclePlaytestOptions,
+  type PlaytestWindowApi,
+} from './playtest/vehicle-metrics.js'
 export {
   RespawnSystem,
   DEFAULT_RESPAWN_FALL_Y,

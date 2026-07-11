@@ -31,6 +31,7 @@ export {
   CHASE_BOOST_FOV,
   colliderToPhysicsShape,
   composeColliderTransform,
+  vehicleChassisCollider,
   computeDriveControlState,
   computeWheelVisualTransform,
   vehicleWheelConfigs,
