@@ -75,3 +75,12 @@ export {
   type ModelLoadPreparer,
 } from './model-loader.js'
 export { modelLog, modelLogWarn, modelLogError, modelLogUrl, sceneLog, sceneLogWarn, sceneLogError, setHakuLogSink, type HakuLogSink, type HakuLogCategory, type HakuLogLevel } from './model-log.js'
+export {
+  collectVehiclePlaytestMetrics,
+  assertVehiclePlaytestMetrics,
+  estimateGroundTopY,
+  chassisForwardDeltaZ,
+  type VehiclePlaytestMetrics,
+  type VehiclePlaytestOptions,
+  type PlaytestWindowApi,
+} from './playtest/vehicle-metrics.js'

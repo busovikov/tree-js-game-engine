@@ -124,7 +124,8 @@ export function stepRaycastVehicle(
       hooks.applyForceAtPoint(chassis, scaleVec3(forwardDir, brakeForce), hit.point)
 
       if (wheel.engineForce !== 0) {
-        hooks.applyForceAtPoint(chassis, scaleVec3(forwardDir, wheel.engineForce), hit.point)
+        // cannon-es convention: negative engineForce drives forward along forwardDir
+        hooks.applyForceAtPoint(chassis, scaleVec3(forwardDir, -wheel.engineForce), hit.point)
       }
 
       if (config.radius > 0) {

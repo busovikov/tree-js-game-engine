@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { Engine } from '@haku/engine'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js'
-import { TransformComponent, entityId, type EntityId } from '@haku/core'
+import { TransformComponent, VehicleComponent, entityId, type EntityId } from '@haku/core'
 import { resolveActiveCameraId } from '@haku/schema'
 import { projectService } from '../services/project-service.js'
 import { useEditorStore } from '../store/editor-store.js'
@@ -27,6 +27,7 @@ import { SceneColliderGizmos } from '../viewport/scene-collider-gizmos.js'
 import { SceneSelectionOutline } from '../viewport/scene-selection-outline.js'
 import { SceneShadowVolumeGizmos } from '../viewport/shadow-volume-gizmos.js'
 import { startPlayModePhysics, type PlayModePhysicsSession } from '../viewport/play-mode-physics.js'
+import { installPlaytestHook } from '../viewport/playtest-hook.js'
 
 function refreshGizmo(
   gizmo: TransformControls,
@@ -203,6 +204,24 @@ export const ViewportPanel = memo(function ViewportPanel() {
 
     engine.start()
 
+    const removePlaytestHook = installPlaytestHook(engine, {
+      getWorld: () => useEditorStore.getState().world,
+      getRaycastVehicle: () => {
+        const session = playPhysicsRef.current?.vehicle
+        const activeWorld = useEditorStore.getState().world
+        if (!session || !activeWorld) {
+          return undefined
+        }
+        for (const id of activeWorld.query(VehicleComponent)) {
+          const vehicle = session.vehicleController.getRaycastVehicle(id)
+          if (vehicle) {
+            return vehicle
+          }
+        }
+        return undefined
+      },
+    })
+
     const resize = () => {
       const width = canvas.clientWidth
       const height = canvas.clientHeight
@@ -216,6 +235,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
     resize()
 
     return () => {
+      removePlaytestHook()
       unsubscribeWorld()
       observer.disconnect()
       cameraLookRef.current?.dispose()
