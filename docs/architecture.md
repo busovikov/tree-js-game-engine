@@ -134,6 +134,8 @@ tick(dt):
 
 **Physics (optional):** `Engine.setPhysicsBackend(backend)` registers `PhysicsWorldSystem` — fixed 60 Hz step via `@haku/physics`, dynamic body transforms written back to `Transform` components. Rapier wiring stays in playground/app factory (`@haku/physics-rapier`), not in engine core.
 
+**Primitive colliders (T01.4):** Box, sphere, and capsule shapes attach via `PhysicsShapeDescriptor` on `IPhysicsWorld.attachShape()`. Use `createBodyWithShape()` from `@haku/physics` to spawn static ground or dynamic bodies before `ColliderComponent` (T01.7). Static bodies need no entity registration; register dynamic bodies with `PhysicsWorldSystem.registerBody()` for transform sync.
+
 - `Engine.start()` → `requestAnimationFrame`
 - Editor creates `Engine` once in `ViewportPanel` `useEffect`; scene edits call `engine.setWorld()` — do not recreate engine per edit
 

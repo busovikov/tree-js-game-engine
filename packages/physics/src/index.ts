@@ -9,6 +9,11 @@ export {
   type PhysicsWheelHandle,
 } from './handles.js'
 export { PhysicsWorld } from './physics-world.js'
+export {
+  createBodyWithShape,
+  destroyBodyWithShape,
+  type BodyWithShape,
+} from './primitives.js'
 export type { IRaycastVehicle, WheelConfig, WheelState } from './raycast-vehicle.js'
 export { StubPhysicsBackend, resetStubPhysicsIds } from './stub-backend.js'
 export type {

@@ -30,6 +30,7 @@
     "three": "^0.171.0"
   },
   "devDependencies": {
+    "@haku/physics-rapier": "file:../physics-rapier",
     "@types/three": "^0.171.0",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"

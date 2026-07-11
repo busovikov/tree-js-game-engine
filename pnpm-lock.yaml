@@ -173,6 +173,9 @@ importers:
         specifier: ^0.171.0
         version: 0.171.0
     devDependencies:
+      '@haku/physics-rapier':
+        specifier: file:../physics-rapier
+        version: file:packages/physics-rapier
       '@types/three':
         specifier: ^0.171.0
         version: 0.171.0
@@ -662,6 +665,9 @@ packages:
 
   '@haku/core@file:packages/core':
     resolution: {directory: packages/core, type: directory}
+
+  '@haku/physics-rapier@file:packages/physics-rapier':
+    resolution: {directory: packages/physics-rapier, type: directory}
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -1953,6 +1959,11 @@ snapshots:
     dependencies:
       '@haku/schema': link:packages/schema
       zod: 3.25.76
+
+  '@haku/physics-rapier@file:packages/physics-rapier':
+    dependencies:
+      '@dimforge/rapier3d-compat': 0.19.3
+      '@haku/physics': link:packages/physics
 
   '@humanfs/core@0.19.2':
     dependencies:

@@ -89,10 +89,11 @@ Root scripts: `pnpm build`, `pnpm test`, `pnpm lint`, `pnpm typecheck`.
 
 **Key exports:**
 - `IPhysicsBackend`, `IPhysicsWorld`, `PhysicsWorld`
+- `createBodyWithShape()`, `destroyBodyWithShape()` — spawn primitive colliders on bodies
 - `StubPhysicsBackend` — no-op backend for unit tests without WASM
 - Shape descriptors: box, sphere, capsule
 
-**Tests:** `packages/physics/src/stub-backend.test.ts`
+**Tests:** `packages/physics/src/stub-backend.test.ts`, `packages/physics/src/primitives.test.ts`
 
 ---
 
