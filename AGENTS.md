@@ -10,9 +10,12 @@ Monorepo for the @haku browser game engine and editor.
 
 Full rules: [`docs/agent-workflow.md`](docs/agent-workflow.md)
 
+**Notion TODO:** [`docs/notion.md`](docs/notion.md) — execute task (separate subagent).  
+**Notion create ticket:** [`docs/notion-create-task.md`](docs/notion-create-task.md) — skill `@notion-create-task`.
+
 **Skills** (`.agents/skills/`) reference all `docs/` files — see `docs/README.md` § Agent skills.
 
-**Cursor rules** (`.cursor/rules/`) — auto-loaded: `haku-agent.mdc` (always), `haku-editor.mdc`, `haku-engine.mdc`.
+**Cursor rules** (`.cursor/rules/`) — auto-loaded: `haku-agent.mdc`, `haku-notion.mdc`, `haku-notion-create-task.mdc`, `haku-editor.mdc`, `haku-engine.mdc`.
 
 ## Source of truth
 

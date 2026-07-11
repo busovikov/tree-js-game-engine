@@ -8,6 +8,8 @@
 | Document | When to read |
 | -------- | ------------ |
 | **[agent-workflow.md](./agent-workflow.md)** | **Every new task** — context rules, search strategy, done criteria |
+| **[notion.md](./notion.md)** | **Notion TODO** — fixed board URLs, MCP, separate subagent |
+| **[notion-create-task.md](./notion-create-task.md)** | **Create ticket** — duplicate Feature Task Template, Epic, Type, To do |
 | [techstack.md](./techstack.md) | Choosing libraries, build tools, or package dependencies |
 | [architecture.md](./architecture.md) | System design, data flow, package boundaries |
 | [edge-cases.md](./edge-cases.md) | Failures, empty states, validation, security — **not happy-path only** |
@@ -20,6 +22,7 @@ Skills are updated to use `docs/` — load skill + relevant doc together:
 
 | Skill | Uses docs |
 | ----- | --------- |
+| `notion-create-task` | `notion-create-task.md`, `notion.md`, `agent-workflow`, `architecture`, `links` |
 | `context-engineering` | `agent-workflow`, `README`, doc routing |
 | `incremental-implementation` | `agent-workflow`, `architecture`, `ui-kit`, `RENDER_PLAN` |
 | `source-driven-development` | `links`, `techstack` |
@@ -34,6 +37,8 @@ Auto-loaded in Cursor (`.cursor/rules/`):
 
 | Rule | Scope |
 | ---- | ----- |
+| `haku-notion-create-task.mdc` | Always — create tickets, not implement |
+| `haku-notion.mdc` | Always — execute TODO, subagent |
 | `haku-agent.mdc` | Always — workflow, docs map, boundaries |
 | `haku-editor.mdc` | `packages/editor/**` |
 | `haku-engine.mdc` | engine, playground, core, schema |

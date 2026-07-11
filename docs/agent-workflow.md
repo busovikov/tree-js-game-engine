@@ -84,6 +84,8 @@ Copy this into the task prompt or follow as agent:
 | Undo / commands | `ui-kit.md`, `edge-cases.md` | `scene-history.ts`, `world-commands.ts` |
 | Project I/O | `edge-cases.md`, `links.md` | `project-service.ts` |
 | Bug fix | `edge-cases.md` + failing test file | Minimal repro path from grep |
+| **Notion TODO task** | `notion.md`, `agent-workflow.md` | MCP `notion-fetch` → subagent with task spec |
+| **Create Notion ticket** | `notion-create-task.md` | `@notion-create-task` — duplicate template → To do |
 | Dependency / version | `techstack.md` | Relevant `package.json` only |
 | External game / create | `architecture.md`, `links.md` | `packages/create/templates/` |
 
@@ -228,6 +230,19 @@ Ideal task message for a **new session**:
 
 ---
 
+## Notion TODO tasks
+
+When the user asks to **execute / build a task from todo** (Notion):
+
+1. Read **`docs/notion.md`** — fixed Project and Docs URLs (no workspace search).
+2. Fetch task via MCP `notion-fetch` (server: `plugin-notion-workspace-notion`).
+3. **Launch a separate subagent** — one Notion task = one agent context.
+4. Subagent: implement → test → update `docs/` if needed → Notion comment + status + artifacts in Docs board.
+
+Full workflow: [`notion.md`](./notion.md) · Rule: `.cursor/rules/haku-notion.mdc`
+
+---
+
 ## Agent skills
 
 Project skills in `.agents/skills/` — each references `docs/`:
@@ -245,6 +260,7 @@ Project skills in `.agents/skills/` — each references `docs/`:
 | Doc | Path |
 | --- | ---- |
 | Workflow (this file) | `docs/agent-workflow.md` |
+| Notion TODO | `docs/notion.md` |
 | Tech stack | `docs/techstack.md` |
 | Architecture | `docs/architecture.md` |
 | Edge cases | `docs/edge-cases.md` |

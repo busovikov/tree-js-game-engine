@@ -26,6 +26,8 @@
 | --- | ---- | -------- |
 | Index | [`README.md`](./README.md) | Start here |
 | **Agent workflow** | [`agent-workflow.md`](./agent-workflow.md) | **New task** — context rules, done criteria |
+| **Notion TODO** | [`notion.md`](./notion.md) | Fixed URLs, execute via subagent |
+| **Create Notion ticket** | [`notion-create-task.md`](./notion-create-task.md) | Skill `@notion-create-task` |
 | Tech stack | [`techstack.md`](./techstack.md) | Versions, deps, per-module tools |
 | Architecture | [`architecture.md`](./architecture.md) | Subsystems, data flow, folder rules |
 | Edge cases | [`edge-cases.md`](./edge-cases.md) | Failures, empty states, validation — not happy path |

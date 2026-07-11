@@ -1,0 +1,39 @@
+---
+description: Notion TODO workflow — fixed URLs, separate agent per task
+alwaysApply: true
+---
+
+# Notion Tasks
+
+**Full guide:** `docs/notion.md` — read it instead of searching Notion.
+
+## Fixed URLs (do not search)
+
+| Board | URL |
+| ----- | --- |
+| Project / TODO | https://app.notion.com/p/187bea824a66467caa3d7b75656a3d9b?v=8a0aff4dfc0e492cbe801afa236ec13d |
+| Docs | https://app.notion.com/p/4b9d6e2385114318803399f91bc1d539?v=bf7c4fca0df345d2abe99f034852517a |
+
+**Open task:** MCP `notion-fetch` with URL or page id from `docs/notion.md`.
+
+## User asks: create task / ticket / todo
+
+**Do not implement.** Read `docs/notion-create-task.md`.
+
+1. Study `docs/` + grep — minimal context
+2. **Duplicate** [Feature Task Template](https://app.notion.com/p/39a1402af56080349186fce071ae7c72) → fill spec → **📎 Docs**
+3. Create task card: **Select = To do**, correct **Epic** + **Type**
+4. AC in spec must list **git `docs/*.md`** files for implementer
+5. Return task URL + spec URL only
+
+## User asks: execute task from TODO
+
+1. Fetch task from Notion (Project board or task URL).
+2. **Launch separate subagent** — one task = one new agent context.
+3. Subagent prompt must include: task spec, `docs/agent-workflow.md`, done criteria.
+4. Subagent must: implement → **test** → update **`docs/`** if needed → **comment + status in Notion**.
+5. Artifacts (specs, notes) → attach/link in **Docs** board; reference in task comment.
+
+## MCP
+
+Server: `plugin-notion-workspace-notion`. Auth fail → `mcp_auth`, retry.

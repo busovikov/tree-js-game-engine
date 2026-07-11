@@ -16,6 +16,8 @@ alwaysApply: true
 | Task | Read |
 | ---- | ---- |
 | Any new task | `docs/agent-workflow.md` |
+| **Notion TODO task** | `docs/notion.md` — fixed URLs, separate subagent |
+| **Create Notion ticket** | `@notion-create-task` or `docs/notion-create-task.md` |
 | Versions / deps | `docs/techstack.md` |
 | Architecture / data flow | `docs/architecture.md` |
 | Errors / empty states | `docs/edge-cases.md` |
