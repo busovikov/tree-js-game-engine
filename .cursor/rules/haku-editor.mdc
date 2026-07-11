@@ -1,0 +1,39 @@
+---
+description: @haku editor UI — components, mutations, patterns
+globs: packages/editor/**/*
+alwaysApply: false
+---
+
+# @haku Editor UI
+
+Docs: `docs/ui-kit.md` · Failures: `docs/edge-cases.md`
+
+## Mutations
+
+All scene changes → `commitSceneEdit` in `commands/scene-history.ts`. Never mutate `world` / `sceneDocument` in store directly.
+
+## Reuse (do not rebuild)
+
+| Need | Component |
+| ---- | --------- |
+| Numbers | `NumberField` + `DraggableNumberLabel` |
+| Simple component | `SchemaFields` |
+| Material | `MaterialPropertiesPanel` |
+| Section wrapper | `InspectorComponentSection` |
+| Layout | `EditorLayout` + `react-resizable-panels` |
+| Dialog pattern | `RenderSettingsDialog`, `ModelPickerDialog` |
+
+## React / state
+
+- `memo()` on panels; narrow Zustand selectors
+- **Never** put Three.js objects in React state
+- `Engine` created once in `ViewportPanel` `useEffect`; edits → `engine.setWorld(world)`
+- Viewport gizmos: `packages/editor/src/viewport/` only
+
+## CSS
+
+Co-located `*.css` — classes `haku-*`, `mesh-field*`, `menu-bar*`. Match tokens in `docs/ui-kit.md`.
+
+## Empty states
+
+Every panel/dialog needs explicit empty copy (e.g. `Select an entity`, `No model assets in project`).

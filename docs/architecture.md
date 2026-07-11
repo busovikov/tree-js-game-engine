@@ -1,0 +1,257 @@
+# Architecture
+
+> System design for @haku — browser game engine + standalone editor.
+
+## Product split
+
+```
+Production game                    Development
+─────────────────                  ───────────
+@haku/engine                       @haku/editor
+@haku/schema                       apps/editor (Vite shell)
+@haku/core
+@haku/serializer
+scene assets (.scene.json)
+```
+
+**Rule:** shipped games never bundle editor code or React.
+
+---
+
+## Monorepo dependency graph
+
+```
+@haku/schema          (no deps)
+    ↓
+@haku/core            → schema
+    ↓
+@haku/serializer      → schema, core
+    ↓
+@haku/engine          → core, schema, serializer, three
+    ↓
+@haku/editor          → engine, core, schema, serializer, react*, zustand
+    ↓
+@haku/editor-app      → editor
+
+@haku/playground      → engine only
+@haku/create          → schema (templates)
+```
+
+---
+
+## Core principle: Simulation ≠ Presentation
+
+| Layer | Owns | Must NOT own |
+| ----- | ---- | ------------ |
+| **Simulation** | Entity graph, component data, game systems | Three.js objects, GPU state |
+| **Presentation** | Object3D tree, materials, lights, cameras | Source-of-truth component data |
+
+```
+SceneDocument (.scene.json)
+       │
+       ▼ loadSceneDocument (serializer)
+    IWorld (components: Transform, MeshRenderer, Light, Camera, …)
+       │
+       ▼ RenderSyncSystem.syncAll() each tick
+    THREE.Object3D tree
+       │
+       ▼ ThreeRenderBackend.render()
+    WebGL frame
+```
+
+**Implication for agents:** edit components in `IWorld` / `SceneDocument`; never put `THREE.Mesh` in component data.
+
+---
+
+## `IWorld` contract
+
+Stable API between editor, serializer, and engine. Scene-graph today; ECS-compatible shape for future.
+
+```typescript
+interface IWorld {
+  createEntity(name?: string): EntityId
+  destroyEntity(id: EntityId): void
+  addComponent<T>(id, type, data): void
+  getComponent<T>(id, type): T | undefined
+  setParent(child, parent): void
+  query(...types): Iterable<EntityId>
+}
+```
+
+- Entity IDs: **UUID v4** strings (not indices)
+- Components: **plain data** + Zod schema in `@haku/schema`
+- Hierarchy: `parent` field on entity (not inside Transform)
+
+Implementation: `World` class in `@haku/core`.
+
+---
+
+## Scene document (v1)
+
+Top-level shape (`packages/schema/src/index.ts`):
+
+```json
+{
+  "schemaVersion": 1,
+  "metadata": { "name": "Level01" },
+  "entities": [ /* EntityRecord[] */ ],
+  "prototypes": { /* RenderPrototype map */ },
+  "prefabs": { /* PrefabDefinition map */ },
+  "renderSettings": { /* optional, merged with defaults */ }
+}
+```
+
+**Entity record:**
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "MainCamera",
+  "parent": null,
+  "components": [
+    { "type": "Transform", "data": { "position": [0,2,5], "rotation": [0,0,0,1], "scale": [1,1,1] } }
+  ]
+}
+```
+
+**References:** `{ "$ref": "entity:uuid" }`, `{ "$ref": "asset:path" }`, `{ "$ref": "prefab:id" }`
+
+**Prefabs:** `PrefabInstance` component with `prefabId` + `overrides`; expanded at load time.
+
+---
+
+## Engine loop
+
+`packages/engine/src/engine.ts`:
+
+```
+tick(dt):
+  1. systems.update(world, dt)     // game logic (playground may add systems)
+  2. RenderSyncSystem.syncAll()    // mirror components → Three.js
+  3. backend.render()              // forward pass + editor overlays
+```
+
+- `Engine.start()` → `requestAnimationFrame`
+- Editor creates `Engine` once in `ViewportPanel` `useEffect`; scene edits call `engine.setWorld()` — do not recreate engine per edit
+
+---
+
+## Render pipeline (current)
+
+`ThreeRenderBackend`:
+- Single `THREE.Scene`, one `WebGLRenderer`, one active camera
+- Editor: internal orbit camera OR scene entity camera
+- Selection outline: `OutlinePass` (editor-only, when targets set)
+
+`RenderSyncSystem` per entity:
+1. Create/rebuild Object3D when visual key changes
+2. Sync mesh (primitives or async glTF)
+3. Apply transform (respects `StaticComponent`)
+4. Sync light/camera params
+5. Reparent to match world hierarchy
+
+**Roadmap:** `RenderGraph`, `RenderSettings`, shadows, post FX — see `RENDER_PLAN.md` and partial implementation in `packages/engine/src/render/`.
+
+---
+
+## Editor architecture
+
+```
+EditorApp (React)
+├── MenuBar                    — File, Edit, View (Render Settings)
+├── EditorLayout               — react-resizable-panels
+│   ├── HierarchyPanel         — entity tree, drag-reparent
+│   ├── HierarchyToolsPanel    — transform tools, gizmo space
+│   ├── ViewportTabsShell      — Scene / Game tabs
+│   ├── AssetBrowserPanel      — project assets
+│   └── InspectorPanel         — component fields
+├── useEditorStore (Zustand)   — world, selection, mode, tools
+├── commitSceneEdit            — undo/redo via SceneEditCommand
+├── globalCommandBus           — Command pattern
+└── projectService             — open/save project, asset I/O
+```
+
+### Data flow (edit)
+
+```
+User action (inspector / gizmo / hierarchy)
+    → commitSceneEdit(draft => { mutate draft.world + draft.sceneDocument })
+    → SceneEditCommand pushed to CommandBus
+    → store: world, sceneDocument, worldRevision++
+    → ViewportPanel effect: engine.setWorld(world)
+    → RenderSyncSystem syncs to viewport
+```
+
+### Edit vs Play mode
+
+| | Edit | Play |
+| - | ---- | ---- |
+| Gizmos | ✅ | ❌ |
+| Undo | ✅ | ❌ |
+| World | live | snapshot → run → restore on stop |
+
+Play snapshot: `cloneWorld()` stored in `playSnapshot`; restored in `exitPlayMode()`.
+
+---
+
+## Project layout (game project)
+
+External games and `apps/playground` share this layout:
+
+```
+my-game/
+├── haku.project.json       # name, entryScene, assetsDir
+├── package.json            # @haku/engine only
+├── src/main.ts             # Engine bootstrap
+├── assets/
+│   ├── scenes/*.scene.json
+│   ├── models/
+│   └── textures/
+└── scripts/                # ScriptRef targets (future)
+```
+
+Editor opens folder containing `haku.project.json`; reads/writes scenes under project root.
+
+---
+
+## Render buckets (design, partial impl)
+
+Entities reference `RenderPrototype` (`mode: mesh | instanced | batched | sprite-atlas`).
+
+- Today: **mesh mode** fully wired for primitives + glTF
+- Instancing/batching: stub hooks on backend — extend `RenderSyncSystem`, do not bypass it
+
+---
+
+## Extension points
+
+| Need | Where |
+| ---- | ----- |
+| New component type | `@haku/schema` Zod + `@haku/core` registry + serializer + inspector fields + render sync |
+| New material type | `material.ts` schema + `mesh-factory.ts` factory + inspector auto-lists from registry |
+| New render feature | `render-settings.ts` feature flag + engine pass + Render Settings UI |
+| Custom game logic | `apps/playground/src/main.ts` — add `ISystem` to engine |
+| Editor command | `commands/*.ts` — implement `Command`, use `commitSceneEdit` for scene mutations |
+
+---
+
+## Key files index
+
+```
+packages/schema/src/          Scene + component schemas, materials, render settings
+packages/core/src/            IWorld, World, components, types
+packages/serializer/src/      loadSceneDocument, saveSceneDocument
+packages/engine/src/
+  engine.ts                   Engine loop
+  render-backend.ts           ThreeRenderBackend
+  render-sync/                Entity → Object3D sync
+  render/                     RenderGraph, passes, apply helpers
+  mesh-factory.ts             Material factories
+packages/editor/src/
+  store/editor-store.ts       Zustand state
+  commands/scene-history.ts   commitSceneEdit, undo
+  panels/ViewportPanel.tsx      Engine lifecycle + gizmos
+  panels/InspectorPanel.tsx   Component editing
+  services/project-service.ts Project I/O
+apps/playground/src/main.ts   Minimal runtime bootstrap
+apps/editor/                  Vite shell
+```

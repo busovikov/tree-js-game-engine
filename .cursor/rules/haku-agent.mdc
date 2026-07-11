@@ -1,0 +1,52 @@
+---
+description: @haku agent workflow, documentation map, package boundaries
+alwaysApply: true
+---
+
+# @haku Agent Rules
+
+## Session & context
+
+- **One task = one new chat** — do not continue unrelated work in a long old session.
+- **Do not load the whole repo.** Grep → read **3–10 files** relevant to the task.
+- Define **done criteria** before coding. Full workflow: `docs/agent-workflow.md`.
+
+## Documentation (pick 1–3 by task, not all)
+
+| Task | Read |
+| ---- | ---- |
+| Any new task | `docs/agent-workflow.md` |
+| Versions / deps | `docs/techstack.md` |
+| Architecture / data flow | `docs/architecture.md` |
+| Errors / empty states | `docs/edge-cases.md` |
+| Editor UI | `docs/ui-kit.md` |
+| API / official lib URLs | `docs/links.md` |
+| Locked decisions | `IMPLEMENTATION_PLAN.md` §2 only |
+
+Index: `docs/README.md` · Short map: `AGENTS.md`
+
+**Do not invent `@haku/*` APIs** — check `docs/links.md` § Internal API, then source `index.ts`.
+
+## Package boundaries
+
+- `@haku/engine` / `apps/playground`: **no** React, **no** `@haku/editor`
+- `@haku/core` / `@haku/schema`: **no** Three.js
+- Component data in `IWorld` only — Three.js via `RenderSyncSystem`, never in components
+- Editor mutations: **`commitSceneEdit`** (not direct store writes)
+- Entity IDs: UUID v4 · rotation in JSON: quaternion `[x,y,z,w]`
+
+## Editor UI
+
+- Reuse components from `docs/ui-kit.md` (`NumberField`, `InspectorComponentSection`, …)
+- **Forbidden:** MUI, Tailwind, R3F, custom number inputs, new UI package outside `packages/editor/`
+- Preview: `pnpm --filter @haku/editor-app dev` (no Storybook)
+
+## Implementation & tests
+
+- Incremental slices: schema → serializer → engine → editor (`docs/architecture.md`)
+- Test **failure paths**, not happy path only (`docs/edge-cases.md`)
+- Verify: `pnpm test`, `pnpm build`; CI-style: `./scripts/check.sh`
+
+## Commits
+
+Only when the user explicitly asks. Format: short first line + summary paragraph. No Co-authored-by Cursor.

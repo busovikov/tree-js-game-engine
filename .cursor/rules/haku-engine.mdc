@@ -1,0 +1,37 @@
+---
+description: @haku engine & playground — render, Three.js, no React
+globs: "{packages/engine/**/*,apps/playground/**/*,packages/core/**/*,packages/schema/**/*}"
+alwaysApply: false
+---
+
+# @haku Engine & Runtime
+
+Docs: `docs/architecture.md` · API: `docs/links.md` · Render roadmap: `RENDER_PLAN.md`
+
+## Boundaries
+
+- **No** `react`, `react-dom`, `@haku/editor` in engine or playground
+- **No** `three` in `@haku/core` or `@haku/schema`
+- Shipped games use `@haku/engine/runtime` entry only
+
+## Render model
+
+Simulation (`IWorld` components) ≠ Presentation (`RenderSyncSystem` → Three.js).
+
+Key files: `engine.ts`, `render-sync/render-sync-system.ts`, `mesh-factory.ts`, `model-loader.ts`
+
+## Async glTF
+
+Respect `modelLoadId` — ignore stale loader callbacks (`docs/edge-cases.md`).
+
+## Render features
+
+Use `RenderSettings.features.*` — off by default; test flag-off path. Incremental phases in `RENDER_PLAN.md`.
+
+## Verify
+
+```bash
+pnpm --filter @haku/engine test
+pnpm --filter @haku/playground dev
+./scripts/check.sh   # bundle must not contain react-dom / editor strings
+```

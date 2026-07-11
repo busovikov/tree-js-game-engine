@@ -2,9 +2,22 @@
 
 Monorepo for the @haku browser game engine and editor.
 
+## Agent workflow (read first on every new task)
+
+- **One task = one new chat** — do not pile unrelated work into an old session.
+- **Do not load the whole project** — grep/read only files the task needs (see `docs/agent-workflow.md`).
+- **Context:** relevant docs + source files + acceptance criteria only.
+
+Full rules: [`docs/agent-workflow.md`](docs/agent-workflow.md)
+
+**Skills** (`.agents/skills/`) reference all `docs/` files — see `docs/README.md` § Agent skills.
+
+**Cursor rules** (`.cursor/rules/`) — auto-loaded: `haku-agent.mdc` (always), `haku-editor.mdc`, `haku-engine.mdc`.
+
 ## Source of truth
 
-- Architecture and phases: `IMPLEMENTATION_PLAN.md` (copy from project docs)
+- **Agent docs:** `docs/README.md` — index (`agent-workflow`, `techstack`, `architecture`, `edge-cases`, `ui-kit`, `links`)
+- Architecture and phases: `IMPLEMENTATION_PLAN.md`
 - Rendering stack roadmap: `RENDER_PLAN.md` (RenderSettings, RenderGraph, materials, shadows, post FX)
 - Package boundaries: engine/playground never depend on editor or React
 
