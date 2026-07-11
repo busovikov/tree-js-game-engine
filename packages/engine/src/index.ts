@@ -7,6 +7,7 @@ export {
   PhysicsColliderSystem,
   VehicleControllerSystem,
   VehicleVisualSyncSystem,
+  InputManager,
   colliderToPhysicsShape,
   composeColliderTransform,
   computeDriveControlState,
@@ -16,6 +17,13 @@ export {
 export type { EngineOptions, EngineFeatureFlags, LoadedScene } from './engine.js'
 export type { PhysicsWorldSystemOptions } from './systems/physics-world-system.js'
 export type { VehicleInput, DriveControlContext, DriveControlState } from './systems/vehicle-controller-system.js'
+export type {
+  InputActions,
+  InputManagerOptions,
+  PointerCaptureTarget,
+  DirectionalKeyAction,
+} from './input/index.js'
+export { DEFAULT_INPUT_ACTIONS, KEY_BINDINGS } from './input/index.js'
 export type { WheelVisualTransform } from './systems/vehicle-visual-sync-system.js'
 export type { EditorRenderExtensions } from '@haku/core'
 export {

@@ -210,3 +210,11 @@ export {
   computeWheelVisualTransform,
   type WheelVisualTransform,
 } from './systems/vehicle-visual-sync-system.js'
+export {
+  InputManager,
+  DEFAULT_INPUT_ACTIONS,
+  KEY_BINDINGS,
+  type InputActions,
+  type InputManagerOptions,
+  type PointerCaptureTarget,
+} from './input/index.js'
