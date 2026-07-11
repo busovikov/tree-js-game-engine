@@ -197,3 +197,11 @@ export class SceneLoader {
 export { ThreeRenderBackend, RenderSyncSystem } from './render-backend.js'
 export { PhysicsWorldSystem, type PhysicsWorldSystemOptions } from './systems/physics-world-system.js'
 export { PhysicsColliderSystem, colliderToPhysicsShape, composeColliderTransform } from './systems/physics-collider-system.js'
+export {
+  VehicleControllerSystem,
+  computeDriveControlState,
+  vehicleWheelConfigs,
+  type VehicleInput,
+  type DriveControlContext,
+  type DriveControlState,
+} from './systems/vehicle-controller-system.js'

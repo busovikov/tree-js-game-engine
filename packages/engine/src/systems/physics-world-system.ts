@@ -1,6 +1,12 @@
 import type { EntityId, IWorld, ISystem } from '@haku/core'
 import { entityId, TransformComponent } from '@haku/core'
-import type { IPhysicsBackend, IPhysicsWorld, PhysicsBodyHandle, RigidBodyType } from '@haku/physics'
+import type {
+  IPhysicsBackend,
+  IPhysicsWorld,
+  PhysicsBodyHandle,
+  RigidBodyType,
+  Vec3,
+} from '@haku/physics'
 import { PhysicsWorld } from '@haku/physics'
 
 export interface PhysicsWorldSystemOptions {
@@ -55,6 +61,29 @@ export class PhysicsWorldSystem implements ISystem {
 
   getPhysicsWorld(): IPhysicsWorld | null {
     return this.physicsWorld
+  }
+
+  /** Returns the physics body handle registered for an entity, if any. */
+  getBodyHandle(id: EntityId): PhysicsBodyHandle | null {
+    return this.trackedBodies.get(id.value)?.handle ?? null
+  }
+
+  /** Linear velocity of a registered entity body in m/s, or null if not tracked. */
+  getBodyLinearVelocity(id: EntityId): Vec3 | null {
+    const handle = this.getBodyHandle(id)
+    if (!handle || !this.physicsWorld) {
+      return null
+    }
+    return [...this.physicsWorld.getBodyLinearVelocity(handle)] as Vec3
+  }
+
+  /** Set linear velocity on a registered dynamic body (e.g. jump minimum upward speed). */
+  setBodyLinearVelocity(id: EntityId, velocity: Vec3): void {
+    const handle = this.getBodyHandle(id)
+    if (!handle || !this.backend) {
+      return
+    }
+    this.backend.setBodyLinearVelocity(handle, velocity)
   }
 
   /**

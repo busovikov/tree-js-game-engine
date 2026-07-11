@@ -54,6 +54,11 @@ export class PhysicsWorld implements IPhysicsWorld {
     return this.backend.getBodyTransform(body)
   }
 
+  getBodyLinearVelocity(body: PhysicsBodyHandle): Vec3 {
+    this.assertBackendReady()
+    return this.backend.getBodyLinearVelocity(body)
+  }
+
   applyImpulse(body: PhysicsBodyHandle, impulse: Vec3, worldPoint?: Vec3): void {
     this.assertBackendReady()
     this.backend.applyImpulse(body, impulse, worldPoint)

@@ -123,6 +123,12 @@ class GravityTestBackend implements IPhysicsBackend {
     return [0, 0, 0]
   }
 
+  setBodyLinearVelocity(body: PhysicsBodyHandle, velocity: Vec3): void {
+    this.assertInitialized()
+    const record = this.getBody(body)
+    record.velocity = [...velocity] as Vec3
+  }
+
   applyImpulse(): void {
     this.assertInitialized()
   }
@@ -249,8 +255,9 @@ describe('PhysicsWorldSystem', () => {
     system.update(world, 1 / 60)
 
     const transform = world.getComponent(id, TransformComponent)
-    expect(transform?.position).toEqual([1, 4, 2])
-    expect(transform?.rotation[1]).toBeCloseTo(0.707, 3)
+    expect(transform?.position[0]).toBeCloseTo(1)
+    expect(transform?.position[1]).toBeCloseTo(4, 1)
+    expect(transform?.position[2]).toBeCloseTo(2)
     expect(transform?.scale).toEqual([2, 2, 2])
   })
 

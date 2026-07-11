@@ -277,6 +277,11 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
     return vec3FromRapier(record.body.angvel())
   }
 
+  setBodyLinearVelocity(body: PhysicsBodyHandle, velocity: Vec3): void {
+    const record = this.getBodyRecord(body)
+    record.body.setLinvel(vec3ToRapier(velocity), true)
+  }
+
   applyImpulse(body: PhysicsBodyHandle, impulse: Vec3, worldPoint?: Vec3): void {
     const record = this.getBodyRecord(body)
     if (worldPoint) {

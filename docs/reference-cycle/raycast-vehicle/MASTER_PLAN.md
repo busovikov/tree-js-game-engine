@@ -181,6 +181,8 @@ flowchart TD
 
 **T01.12 delivery (physics):** `stepRaycastVehicle` shared solver in `@haku/physics`; `WheelConfig` aligned with schema (`dampingRelaxation` / `dampingCompression`); stub + Rapier backends apply suspension/friction/engine forces; flat-ground integration tests (4 wheels, 120 steps). VehicleControllerSystem (T01.13), visual wheel sync (T01.14), arcade assists (T01.15) out of scope.
 
+**T01.13 delivery (controller):** `VehicleControllerSystem` in `@haku/engine` (order 48) — RWD engine force, steer smoothing, coast/service/handbrake, boost cap, jump with grounded check; reads `VehicleComponent` params each frame; `setVehicleInput()` programmatic API. Unit + stub/Rapier integration tests. Input binding (T01.18), visual sync (T01.14), arcade assists (T01.15) out of scope.
+
 ---
 
 ### E04 — Runtime input

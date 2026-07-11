@@ -37,6 +37,7 @@ export interface IPhysicsBackend {
 
   getBodyLinearVelocity(body: PhysicsBodyHandle): Vec3
   getBodyAngularVelocity(body: PhysicsBodyHandle): Vec3
+  setBodyLinearVelocity(body: PhysicsBodyHandle, velocity: Vec3): void
 
   raycast(query: RaycastQuery): RaycastHit | null
 

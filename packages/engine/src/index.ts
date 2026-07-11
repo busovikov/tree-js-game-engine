@@ -5,11 +5,15 @@ export {
   RenderSyncSystem,
   PhysicsWorldSystem,
   PhysicsColliderSystem,
+  VehicleControllerSystem,
   colliderToPhysicsShape,
   composeColliderTransform,
+  computeDriveControlState,
+  vehicleWheelConfigs,
 } from './engine.js'
 export type { EngineOptions, EngineFeatureFlags, LoadedScene } from './engine.js'
 export type { PhysicsWorldSystemOptions } from './systems/physics-world-system.js'
+export type { VehicleInput, DriveControlContext, DriveControlState } from './systems/vehicle-controller-system.js'
 export type { EditorRenderExtensions } from '@haku/core'
 export {
   createGeometry,

@@ -24,6 +24,7 @@ export interface IPhysicsWorld {
 
   setBodyTransform(body: PhysicsBodyHandle, transform: PhysicsTransform): void
   getBodyTransform(body: PhysicsBodyHandle): PhysicsTransform
+  getBodyLinearVelocity(body: PhysicsBodyHandle): Vec3
 
   applyImpulse(body: PhysicsBodyHandle, impulse: Vec3, worldPoint?: Vec3): void
   applyForce(body: PhysicsBodyHandle, force: Vec3, worldPoint?: Vec3): void
