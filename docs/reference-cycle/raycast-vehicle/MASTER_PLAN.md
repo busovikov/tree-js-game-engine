@@ -261,7 +261,7 @@ flowchart TD
 | ---- | ----- | ---- | ---- | --------- |
 | T01.37 | Scaffold target via `@haku/create` → `~/work/tmp-js-game-project` | Task | — | M1 |
 | T01.38 | Import reference GLBs + reflection env into target assets | Task | T01.37 | M1 |
-| T01.39 | **M1 scene** — level mesh, manual colliders, lights, camera, vehicle prefab spawn (**via Playwright agent workflow**) | Task | T01.9, T01.14, T01.19, T01.38 | M1 |
+| T01.39 | **M1 scene** — level mesh, manual colliders, lights, camera, vehicle prefab spawn (**via Playwright agent workflow**). **Iteration 2:** chase cam orbit + respawn + shadow follow; Playwright tier B/C extended. | Task | T01.9, T01.14, T01.19, T01.38 | M1 |
 | T01.40 | **M2 scene** — transporter markers, HUD wiring, tuning panel hooks | Task | T01.22, T01.24, T01.25, T01.39 | M2 |
 | T01.41 | **M3 scene** — post-FX profile match reference demo | Task | T01.28, T01.40 | M3 |
 

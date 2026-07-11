@@ -28,13 +28,16 @@
 │   └── target-project.ts   # route target assets + demo scene / drive smoke
 ├── tests/
 │   ├── add-collider.spec.ts
+│   ├── t01-9-collider-authoring.spec.ts
+│   ├── t01-19-chase-camera.spec.ts
+│   ├── t01-21-respawn.spec.ts
 │   └── t01-39-vehicle-smoke.spec.ts
 └── README.md
 ```
 
 Optional: root `pnpm` script `editor:pw` that delegates to this folder.
 
-**T01.39 tier B/C:** `helpers/target-project.ts` intercepts `/assets/*` so **File → Demo Scene** loads the target `playground.scene.json` + GLBs from `HAKU_TARGET_PATH`. Play mode smoke uses **▶ Play** + `keyboard.down('w')`.
+**T01.39 tier B/C:** `helpers/target-project.ts` intercepts `/assets/*` so **File → Demo Scene** loads the target `playground.scene.json` + GLBs from `HAKU_TARGET_PATH`. Play mode smoke uses **▶ Play** + `keyboard.down('w')`. Iteration 2 adds chase-camera orbit (`mouse.down/move/up` on canvas) and respawn (`w` drive off edge + `r` manual reset).
 
 **Bootstrap:** First `TARGET_BUILD` subagent (or orchestrator once) scaffolds this folder if missing. No Notion task — part of agent pass setup.
 
@@ -110,6 +113,9 @@ HAKU_TARGET_PATH=~/work/tmp-js-game-project pnpm exec playwright test tests/t01-
 | Select vehicle | `.haku-hierarchy-row` with text `Vehicle` |
 | Play mode | `getByRole('button', { name: /Play/ })` |
 | Drive smoke | `keyboard.down('w')` × 3s |
+| Chase orbit | `mouse.move` canvas center → `mouse.down` → `mouse.move` +120/−40 → `mouse.up` |
+| Fall respawn | `keyboard.down('w')` × 4.5s (drive off edge) |
+| Manual respawn | `keyboard.press('r')` |
 
 ---
 
