@@ -253,3 +253,9 @@ export {
   type VehiclePlayModeOptions,
   type VehiclePlayModeSession,
 } from './play-mode-vehicle.js'
+export {
+  RespawnSystem,
+  DEFAULT_RESPAWN_FALL_Y,
+  type RespawnSystemOptions,
+  type SpawnPose,
+} from './systems/respawn-system.js'

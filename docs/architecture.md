@@ -144,7 +144,9 @@ tick(dt):
 
 **Vehicle controller (T01.13):** `VehicleControllerSystem` in `@haku/engine` (order 48, before `PhysicsWorldSystem`) — creates `IRaycastVehicle` per entity with `VehicleComponent` + collider body; reads component params each frame. RWD engine force, smoothed steering, coast/service/handbrake, boost speed cap, jump with grounded check. Programmatic input via `setVehicleInput(entityId, { throttle, steer, boost, jump, brake })`.
 
-**Input binding (T01.18):** `InputBindingSystem` in `@haku/engine` (order 47) — reads `InputManager` actions each frame and calls `setVehicleInput` on the controlled vehicle entity (explicit or first enabled `VehicleComponent`). `onRespawn` callback fires on R pulse (respawn logic in T01.21). Clears jump/respawn pulses each frame; orbit/zoom deltas consumed by `ChaseCameraSystem`.
+**Input binding (T01.18):** `InputBindingSystem` in `@haku/engine` (order 47) — reads `InputManager` actions each frame and calls `setVehicleInput` on the controlled vehicle entity (explicit or first enabled `VehicleComponent`). R pulse queues respawn via `RespawnSystem` (T01.21). Clears jump/respawn pulses each frame; orbit/zoom deltas consumed by `ChaseCameraSystem`.
+
+**Respawn (T01.21):** `RespawnSystem` in `@haku/engine` (order 49) — captures spawn pose from initial vehicle transform; auto-respawns when chassis Y &lt; fall threshold (default −20, reference-aligned); manual reset on R via `InputBindingSystem` → `requestRespawn`. Resets physics body transform + linear/angular velocity and vehicle steer/jump/brake state. Wired in `startVehiclePlayMode()`.
 
 **Chase camera (T01.19):** `ChaseCameraSystem` in `@haku/engine` (order 91, after vehicle visual sync) — follows controlled vehicle with offset + exponential lerp; mouse orbit from `InputManager` (`cameraOrbitDelta`, `cameraZoomDelta`) with pitch clamp; airborne blend when wheels leave ground; boost FOV widen (lerp scene camera `fov` → 72). Updates scene camera entity `Transform` + `Camera` each frame. Registered by `startVehiclePlayMode()` alongside controller, input binding, and visual sync. Post-FX FOV blend (T01.31) out of scope.
 

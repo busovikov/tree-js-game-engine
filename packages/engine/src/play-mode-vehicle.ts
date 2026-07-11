@@ -5,6 +5,7 @@ import { InputManager, type InputManagerOptions } from './input/index.js'
 import { ChaseCameraSystem } from './systems/chase-camera-system.js'
 import { InputBindingSystem } from './systems/input-binding-system.js'
 import type { PhysicsWorldSystem } from './systems/physics-world-system.js'
+import { RespawnSystem } from './systems/respawn-system.js'
 import { VehicleControllerSystem } from './systems/vehicle-controller-system.js'
 import { VehicleVisualSyncSystem } from './systems/vehicle-visual-sync-system.js'
 
@@ -15,7 +16,9 @@ export interface VehiclePlayModeOptions {
   cameraEntityId?: EntityId | string
   /** DOM targets for {@link InputManager.attach}. */
   input?: InputManagerOptions
-  /** Respawn pulse callback (T01.21 implements logic). */
+  /** Y threshold for automatic fall respawn. Default: -20. */
+  respawnFallThresholdY?: number
+  /** Optional hook after built-in respawn runs. */
   onRespawn?: (entityId: EntityId) => void
 }
 
@@ -25,6 +28,7 @@ export interface VehiclePlayModeSession {
   vehicleVisualSync: VehicleVisualSyncSystem
   inputBinding: InputBindingSystem
   chaseCamera: ChaseCameraSystem
+  respawnSystem: RespawnSystem
   dispose(): void
 }
 
@@ -56,9 +60,16 @@ export function startVehiclePlayMode(
         : options.cameraEntityId
       : null
 
+  const respawnSystem = new RespawnSystem(physicsSystem, vehicleController, {
+    controlledEntity,
+    fallThresholdY: options.respawnFallThresholdY,
+  })
   const inputBinding = new InputBindingSystem(inputManager, vehicleController, {
     controlledEntity,
-    onRespawn: options.onRespawn,
+    onRespawn: (id) => {
+      respawnSystem.requestRespawn(id)
+      options.onRespawn?.(id)
+    },
   })
   const chaseCamera = new ChaseCameraSystem(inputManager, physicsSystem, vehicleController, {
     controlledEntity,
@@ -67,6 +78,7 @@ export function startVehiclePlayMode(
 
   engine.addSystem(vehicleController)
   engine.addSystem(inputBinding)
+  engine.addSystem(respawnSystem)
   engine.addSystem(vehicleVisualSync)
   engine.addSystem(chaseCamera)
 
@@ -76,14 +88,17 @@ export function startVehiclePlayMode(
     vehicleVisualSync,
     inputBinding,
     chaseCamera,
+    respawnSystem,
     dispose() {
       inputManager.disable()
       inputManager.detach()
       engine.removeSystem(chaseCamera)
-      engine.removeSystem(inputBinding)
       engine.removeSystem(vehicleVisualSync)
+      engine.removeSystem(respawnSystem)
+      engine.removeSystem(inputBinding)
       engine.removeSystem(vehicleController)
       chaseCamera.dispose()
+      respawnSystem.dispose()
       inputBinding.dispose()
       vehicleVisualSync.dispose()
       vehicleController.dispose()

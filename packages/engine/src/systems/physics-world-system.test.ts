@@ -129,6 +129,10 @@ class GravityTestBackend implements IPhysicsBackend {
     record.velocity = [...velocity] as Vec3
   }
 
+  setBodyAngularVelocity(): void {
+    this.assertInitialized()
+  }
+
   applyImpulse(): void {
     this.assertInitialized()
   }

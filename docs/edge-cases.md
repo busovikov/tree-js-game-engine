@@ -119,6 +119,8 @@ Test these explicitly — users will do them.
 | **Switch model asset mid-load** | Stale callback ignored (`modelLoadId`) | `render-sync-system.ts` |
 | **Select deleted entity** | Filtered out: `world?.hasEntity(id)` | `InspectorPanel` |
 | **Edit in play mode** | Inspector/transform disabled (`mode !== 'edit'`) | `InspectorPanel.canEdit` |
+| **R respawn in play mode** | Vehicle teleports to spawn pose; physics + steer/jump state cleared | `RespawnSystem` (T01.21) |
+| **Drive off level (Y below -20)** | Auto-respawn to captured spawn transform | `RespawnSystem` (T01.21) |
 | **Keyboard shortcut while typing in input** | Shortcuts should not fire (check `event.target`) | `EditorApp` keydown |
 | **Open project in Safari/Firefox** | No File System Access → fallback folder picker or error message | `isFileSystemAccessSupported()` |
 | **Double-click scene in asset browser** | Loads scene; errors → alert | `AssetBrowserPanel` |

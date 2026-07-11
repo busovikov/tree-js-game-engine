@@ -227,6 +227,26 @@ export class VehicleControllerSystem implements ISystem {
     return this.tracked.get(id.value)?.vehicle
   }
 
+  /** Clear drive input and internal steer/jump state after respawn. */
+  resetVehicleState(id: EntityId): void {
+    this.clearVehicleInput(id)
+    const tracked = this.tracked.get(id.value)
+    if (!tracked) {
+      return
+    }
+    tracked.currentSteer = 0
+    tracked.jumpCooldown = 0
+    tracked.jumpBuffer = 0
+    const [fl, fr, bl, br] = tracked.wheels
+    tracked.vehicle.setSteering(fl, 0)
+    tracked.vehicle.setSteering(fr, 0)
+    tracked.vehicle.applyEngineForce(bl, 0)
+    tracked.vehicle.applyEngineForce(br, 0)
+    for (const wheel of tracked.wheels) {
+      tracked.vehicle.setBrake(wheel, 0)
+    }
+  }
+
   update(world: IWorld, dt: number): void {
     if (!this.bootstrapped) {
       this.bootstrap(world)

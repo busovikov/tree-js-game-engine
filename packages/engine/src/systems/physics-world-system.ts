@@ -4,6 +4,7 @@ import type {
   IPhysicsBackend,
   IPhysicsWorld,
   PhysicsBodyHandle,
+  PhysicsTransform,
   RigidBodyType,
   Vec3,
 } from '@haku/physics'
@@ -84,6 +85,49 @@ export class PhysicsWorldSystem implements ISystem {
       return
     }
     this.backend.setBodyLinearVelocity(handle, velocity)
+  }
+
+  /** Set angular velocity on a registered dynamic body (e.g. respawn reset). */
+  setBodyAngularVelocity(id: EntityId, velocity: Vec3): void {
+    const handle = this.getBodyHandle(id)
+    if (!handle || !this.backend) {
+      return
+    }
+    this.backend.setBodyAngularVelocity(handle, velocity)
+  }
+
+  /** Current physics transform for a registered body, or null if not tracked. */
+  getBodyTransform(id: EntityId): PhysicsTransform | null {
+    const handle = this.getBodyHandle(id)
+    if (!handle || !this.physicsWorld) {
+      return null
+    }
+    return this.physicsWorld.getBodyTransform(handle)
+  }
+
+  /**
+   * Teleport a dynamic body, zero velocities, and sync entity {@link TransformComponent}.
+   */
+  resetBodyState(id: EntityId, transform: PhysicsTransform, world?: IWorld): void {
+    const handle = this.getBodyHandle(id)
+    if (!handle || !this.physicsWorld) {
+      return
+    }
+
+    this.physicsWorld.setBodyTransform(handle, transform)
+    this.setBodyLinearVelocity(id, [0, 0, 0])
+    this.setBodyAngularVelocity(id, [0, 0, 0])
+
+    if (world) {
+      const entityTransform = world.getComponent(id, TransformComponent)
+      if (entityTransform) {
+        world.addComponent(id, TransformComponent, {
+          position: [...transform.position] as Vec3,
+          rotation: [...transform.rotation],
+          scale: [...entityTransform.scale] as Vec3,
+        })
+      }
+    }
   }
 
   /**

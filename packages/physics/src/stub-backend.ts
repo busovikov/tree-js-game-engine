@@ -273,6 +273,15 @@ export class StubPhysicsBackend implements IPhysicsBackend {
     record.linearVelocity = [...velocity] as Vec3
   }
 
+  setBodyAngularVelocity(body: PhysicsBodyHandle, velocity: Vec3): void {
+    this.assertInitialized()
+    const record = this.getBody(body)
+    if (record.descriptor.type !== 'dynamic') {
+      return
+    }
+    record.angularVelocity = [...velocity] as Vec3
+  }
+
   applyImpulse(body: PhysicsBodyHandle, impulse: Vec3, worldPoint?: Vec3): void {
     this.assertInitialized()
     const record = this.getBody(body)

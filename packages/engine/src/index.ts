@@ -12,6 +12,8 @@ export {
   inputActionsToVehicleInput,
   startVehiclePlayMode,
   ChaseCameraSystem,
+  RespawnSystem,
+  DEFAULT_RESPAWN_FALL_Y,
   createChaseCameraRuntimeState,
   computeChaseCameraStep,
   computeChaseCameraDesiredPose,
@@ -52,6 +54,7 @@ export type {
   ChaseCameraSystemOptions,
 } from './systems/chase-camera-system.js'
 export type { VehiclePlayModeOptions, VehiclePlayModeSession } from './play-mode-vehicle.js'
+export type { RespawnSystemOptions, SpawnPose } from './systems/respawn-system.js'
 export { DEFAULT_INPUT_ACTIONS, KEY_BINDINGS } from './input/index.js'
 export type { WheelVisualTransform } from './systems/vehicle-visual-sync-system.js'
 export type { EditorRenderExtensions } from '@haku/core'
