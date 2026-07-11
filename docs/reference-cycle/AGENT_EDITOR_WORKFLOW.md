@@ -22,20 +22,34 @@
 
 ```
 .agents/tools/editor-playwright/
-├── package.json          # @playwright/test (dev only)
+├── package.json
 ├── playwright.config.ts
-├── scripts/
-│   ├── open-project.ts   # launch editor-app + open target path
-│   ├── import-assets.ts
-│   ├── assemble-scene.ts # place entities, save scene JSON
-│   ├── enter-play-mode.ts
-│   └── drive-smoke.ts    # keyboard simulation
-└── README.md             # selectors, env vars, troubleshooting
+├── helpers/
+│   └── target-project.ts   # route target assets + demo scene / drive smoke
+├── tests/
+│   ├── add-collider.spec.ts
+│   └── t01-39-vehicle-smoke.spec.ts
+└── README.md
 ```
 
 Optional: root `pnpm` script `editor:pw` that delegates to this folder.
 
+**T01.39 tier B/C:** `helpers/target-project.ts` intercepts `/assets/*` so **File → Demo Scene** loads the target `playground.scene.json` + GLBs from `HAKU_TARGET_PATH`. Play mode smoke uses **▶ Play** + `keyboard.down('w')`.
+
 **Bootstrap:** First `TARGET_BUILD` subagent (or orchestrator once) scaffolds this folder if missing. No Notion task — part of agent pass setup.
+
+### Review screenshots (mandatory for editor-visible work)
+
+Before moving a task to **Review**, if the user can verify in editor:
+
+1. Extend e2e test (or add `tests/review-<task-id>.spec.ts`) with `page.screenshot()` at key steps
+2. Save PNGs to `review-artifacts/<TASK_ID>/` (e.g. `01-inspector-collider.png`, `02-play-mode.png`)
+3. **Attach screenshots to the Notion task** (comment drag-drop or page embed)
+4. List artifact paths + screenshot filenames in Review handoff comment
+
+```typescript
+await page.screenshot({ path: 'review-artifacts/T01.4/01-collider-inspector.png', fullPage: false })
+```
 
 ---
 
@@ -82,6 +96,20 @@ pnpm exec playwright test -c .agents/tools/editor-playwright/playwright.config.t
 First test: `tests/add-collider.spec.ts` — File → Demo Scene → select entity → Add Collider → Save.
 
 Set `HAKU_SKIP_WEB_SERVER=1` when the dev server is already running.
+
+**T01.39 smoke:**
+
+```bash
+cd .agents/tools/editor-playwright
+HAKU_TARGET_PATH=~/work/tmp-js-game-project pnpm exec playwright test tests/t01-39-vehicle-smoke.spec.ts
+```
+
+| Step | Selector / action |
+| ---- | ----------------- |
+| Load M1 scene (via routed assets) | File → Demo Scene |
+| Select vehicle | `.haku-hierarchy-row` with text `Vehicle` |
+| Play mode | `getByRole('button', { name: /Play/ })` |
+| Drive smoke | `keyboard.down('w')` × 3s |
 
 ---
 
