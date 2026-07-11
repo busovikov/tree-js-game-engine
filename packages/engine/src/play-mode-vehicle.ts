@@ -2,6 +2,7 @@ import type { EntityId } from '@haku/core'
 import { entityId } from '@haku/core'
 import type { Engine } from './engine.js'
 import { InputManager, type InputManagerOptions } from './input/index.js'
+import { ChaseCameraSystem } from './systems/chase-camera-system.js'
 import { InputBindingSystem } from './systems/input-binding-system.js'
 import type { PhysicsWorldSystem } from './systems/physics-world-system.js'
 import { VehicleControllerSystem } from './systems/vehicle-controller-system.js'
@@ -10,6 +11,8 @@ import { VehicleVisualSyncSystem } from './systems/vehicle-visual-sync-system.js
 export interface VehiclePlayModeOptions {
   /** Explicit vehicle entity; otherwise first enabled VehicleComponent is used. */
   controlledEntityId?: EntityId | string
+  /** Scene camera entity; otherwise first enabled CameraComponent is used. */
+  cameraEntityId?: EntityId | string
   /** DOM targets for {@link InputManager.attach}. */
   input?: InputManagerOptions
   /** Respawn pulse callback (T01.21 implements logic). */
@@ -21,6 +24,7 @@ export interface VehiclePlayModeSession {
   vehicleController: VehicleControllerSystem
   vehicleVisualSync: VehicleVisualSyncSystem
   inputBinding: InputBindingSystem
+  chaseCamera: ChaseCameraSystem
   dispose(): void
 }
 
@@ -45,27 +49,41 @@ export function startVehiclePlayMode(
         ? entityId(options.controlledEntityId)
         : options.controlledEntityId
       : null
+  const cameraEntity =
+    options.cameraEntityId != null
+      ? typeof options.cameraEntityId === 'string'
+        ? entityId(options.cameraEntityId)
+        : options.cameraEntityId
+      : null
 
   const inputBinding = new InputBindingSystem(inputManager, vehicleController, {
     controlledEntity,
     onRespawn: options.onRespawn,
   })
+  const chaseCamera = new ChaseCameraSystem(inputManager, physicsSystem, vehicleController, {
+    controlledEntity,
+    cameraEntityId: cameraEntity,
+  })
 
   engine.addSystem(vehicleController)
   engine.addSystem(inputBinding)
   engine.addSystem(vehicleVisualSync)
+  engine.addSystem(chaseCamera)
 
   return {
     inputManager,
     vehicleController,
     vehicleVisualSync,
     inputBinding,
+    chaseCamera,
     dispose() {
       inputManager.disable()
       inputManager.detach()
+      engine.removeSystem(chaseCamera)
       engine.removeSystem(inputBinding)
       engine.removeSystem(vehicleVisualSync)
       engine.removeSystem(vehicleController)
+      chaseCamera.dispose()
       inputBinding.dispose()
       vehicleVisualSync.dispose()
       vehicleController.dispose()

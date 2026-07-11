@@ -224,6 +224,31 @@ export {
   type InputBindingSystemOptions,
 } from './systems/input-binding-system.js'
 export {
+  ChaseCameraSystem,
+  createChaseCameraRuntimeState,
+  computeChaseCameraStep,
+  computeChaseCameraDesiredPose,
+  applyChaseOrbitInput,
+  applyChaseZoomInput,
+  updateChaseOrbitSmoothing,
+  resetChaseOrbitOnAccelerate,
+  updateChaseAirborneBlend,
+  updateChaseBoostBlend,
+  lookAtQuaternion,
+  normalizeAngleRadians,
+  CHASE_CAMERA_OFFSET,
+  CHASE_PITCH_MIN,
+  CHASE_PITCH_MAX,
+  CHASE_BOOST_FOV,
+  type ChaseCameraOrbitState,
+  type ChaseCameraRuntimeState,
+  type ChaseCameraInput,
+  type ChaseCameraVehicleState,
+  type ChaseCameraPose,
+  type ChaseCameraSystemOptions,
+} from './systems/chase-camera-system.js'
+
+export {
   startVehiclePlayMode,
   type VehiclePlayModeOptions,
   type VehiclePlayModeSession,

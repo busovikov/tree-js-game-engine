@@ -11,6 +11,22 @@ export {
   InputBindingSystem,
   inputActionsToVehicleInput,
   startVehiclePlayMode,
+  ChaseCameraSystem,
+  createChaseCameraRuntimeState,
+  computeChaseCameraStep,
+  computeChaseCameraDesiredPose,
+  applyChaseOrbitInput,
+  applyChaseZoomInput,
+  updateChaseOrbitSmoothing,
+  resetChaseOrbitOnAccelerate,
+  updateChaseAirborneBlend,
+  updateChaseBoostBlend,
+  lookAtQuaternion,
+  normalizeAngleRadians,
+  CHASE_CAMERA_OFFSET,
+  CHASE_PITCH_MIN,
+  CHASE_PITCH_MAX,
+  CHASE_BOOST_FOV,
   colliderToPhysicsShape,
   composeColliderTransform,
   computeDriveControlState,
@@ -27,6 +43,14 @@ export type {
   DirectionalKeyAction,
 } from './input/index.js'
 export type { InputBindingSystemOptions } from './systems/input-binding-system.js'
+export type {
+  ChaseCameraOrbitState,
+  ChaseCameraRuntimeState,
+  ChaseCameraInput,
+  ChaseCameraVehicleState,
+  ChaseCameraPose,
+  ChaseCameraSystemOptions,
+} from './systems/chase-camera-system.js'
 export type { VehiclePlayModeOptions, VehiclePlayModeSession } from './play-mode-vehicle.js'
 export { DEFAULT_INPUT_ACTIONS, KEY_BINDINGS } from './input/index.js'
 export type { WheelVisualTransform } from './systems/vehicle-visual-sync-system.js'

@@ -55,7 +55,7 @@ export class InputBindingSystem implements ISystem {
   update(world: IWorld, _dt: number): void {
     const entity = this.resolveControlledEntity(world)
     if (!entity) {
-      this.inputManager.endFrame()
+      this.inputManager.clearFramePulses()
       return
     }
 
@@ -66,7 +66,7 @@ export class InputBindingSystem implements ISystem {
       this.onRespawn?.(entity)
     }
 
-    this.inputManager.endFrame()
+    this.inputManager.clearFramePulses()
   }
 
   dispose(): void {

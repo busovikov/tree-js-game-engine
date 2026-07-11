@@ -102,6 +102,10 @@ export class InputManager {
     return this.enabled
   }
 
+  get isPointerDragging(): boolean {
+    return this.dragging
+  }
+
   /** Register DOM listeners. Idempotent. */
   attach(options: InputManagerOptions = {}): void {
     if (this.attached) return
@@ -194,10 +198,15 @@ export class InputManager {
     }
   }
 
-  /** Clear per-frame pulses and pointer deltas; call once per simulation frame. */
-  endFrame(): void {
+  /** Clear jump/respawn pulses only; orbit/zoom cleared by {@link endFrame}. */
+  clearFramePulses(): void {
     this.jumpPulse = false
     this.respawnPulse = false
+  }
+
+  /** Clear per-frame pulses and pointer deltas; call once per simulation frame. */
+  endFrame(): void {
+    this.clearFramePulses()
     this.orbitDx = 0
     this.orbitDy = 0
     this.zoomDelta = 0
