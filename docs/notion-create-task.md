@@ -259,4 +259,4 @@ Creating a ticket does **not** replace updating local `docs/` after implementati
 
 1. Return to user: task URL, Epic, Type, linked Docs URL
 2. Do **not** start implementation in the same session unless user asks
-3. Suggest: "Run task via separate agent" → [`notion.md`](./notion.md)
+3. Suggest: "Run task via separate agent" → [`notion.md`](./notion.md) (lands in **Review**, not Done)

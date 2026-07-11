@@ -293,6 +293,34 @@
           }
         }
       ]
+    },
+    {
+      "id": "a2e1f535-bef5-4cff-a3f0-e2c628d2541d",
+      "name": "New Entity 2",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              9,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        }
+      ]
     }
   ],
   "prototypes": {},

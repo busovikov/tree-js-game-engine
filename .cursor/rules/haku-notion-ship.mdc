@@ -1,0 +1,58 @@
+---
+description: On commit/ship/закоммить — MUST finish Notion task (comment + Done). Works in any chat.
+alwaysApply: true
+---
+
+# Notion Ship (on commit request)
+
+**Triggers:** user says commit, ship, закоммить, запуш, push (after commit), savepoint.
+
+**Read:** `docs/notion.md` § Ship wrap-up · § Ship in another chat
+
+---
+
+## Before `git commit` — resolve task (mandatory)
+
+If `NOTION_TASK_URL` is not in this chat:
+
+1. Check user message for Notion URL
+2. If missing → **Ask user for Notion task URL** (do not commit yet)
+3. Optional: `notion-query-data-sources` on Tasks board — tasks in **Review** or **In progress**
+
+Set anchor, then echo:
+
+```markdown
+**Notion:** [title](URL) · **Status:** Review → shipping
+```
+
+---
+
+## Ship checklist (run every commit request)
+
+```
+- [ ] NOTION_TASK_URL resolved
+- [ ] Final summary written
+- [ ] docs/*.md updated (if task AC or behavior changed)
+- [ ] git add + git commit (user format)
+- [ ] notion-create-comment — Shipped + commit hash + files
+- [ ] notion-update-page → Select: Done
+- [ ] Reply: **Notion:** [title](URL) · **Status:** Done
+```
+
+**Never** end a commit request without Notion **Done** when task URL is known or provided.
+
+---
+
+## MCP
+
+```
+notion-create-comment
+  page_id: "<NOTION_TASK_PAGE_ID>"
+  markdown: "**Shipped** — <summary>. Commit: `<hash>` — <message>"
+
+notion-update-page
+  page_id: "<NOTION_TASK_PAGE_ID>"
+  properties: { "Select": "Done" }
+```
+
+Server: `plugin-notion-workspace-notion` · Auth fail → `mcp_auth`

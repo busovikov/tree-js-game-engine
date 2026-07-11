@@ -27,6 +27,10 @@ In progress → **Review** each pass → **Done** only after user says commit.
 
 **Never:** edit files without anchored URL · skip comments · skip status update
 
+## Ship (commit — any chat)
+
+`@notion-ship-task` / `haku-notion-ship.mdc` — resolve task URL → commit → comment → **Done**.
+
 ## MCP
 
 `plugin-notion-workspace-notion` · Auth fail → `mcp_auth`
