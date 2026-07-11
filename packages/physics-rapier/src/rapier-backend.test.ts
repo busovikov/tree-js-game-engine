@@ -82,6 +82,7 @@ describe('@haku/physics-rapier RapierPhysicsBackend', () => {
       transform: { position: [0, 0, 0], rotation: [0, 0, 0, 1] },
     })
     backend.attachShape(ground, { type: 'box', halfExtents: [10, 0.1, 10] })
+    backend.prepareSceneQueries()
 
     const hit = backend.raycast({
       origin: [0, 5, 0],

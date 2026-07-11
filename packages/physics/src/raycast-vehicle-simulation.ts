@@ -14,6 +14,8 @@ import {
 const DOWN_LOCAL: Vec3 = [0, -1, 0]
 const FORWARD_LOCAL: Vec3 = [0, 0, 1]
 const DEFAULT_MAX_SUSPENSION_FORCE = 100_000
+/** Reject wall/ceiling hits during downward suspension rays. */
+const MIN_GROUND_NORMAL_Y = 0.3
 
 /** Mutable per-wheel runtime used by the shared sketchbook-style solver. */
 export interface WheelRuntime {
@@ -75,12 +77,14 @@ export function stepRaycastVehicle(
     const forwardDir = rotateVec3ByQuat(FORWARD_LOCAL, wheelBasis)
 
     const rayLength = config.suspensionRestLength + config.maxSuspensionTravel
-    const hit = hooks.raycast({
+    const rawHit = hooks.raycast({
       origin: connectionWorld,
       direction: suspDir,
       maxDistance: rayLength + config.radius,
       excludeBody: chassis,
     })
+    const hit =
+      rawHit && isValidSuspensionHit(rawHit, connectionWorld, config.radius) ? rawHit : null
 
     wheel.inContact = hit !== null
     wheel.contactPoint = hit?.point ?? null
@@ -144,6 +148,16 @@ export function stepRaycastVehicle(
   }
 
   return results
+}
+
+function isValidSuspensionHit(hit: RaycastHit, connectionWorld: Vec3, radius: number): boolean {
+  if (hit.normal[1] < MIN_GROUND_NORMAL_Y) {
+    return false
+  }
+  if (hit.point[1] > connectionWorld[1] + radius * 0.5) {
+    return false
+  }
+  return true
 }
 
 function lerpVec3(a: Vec3, b: Vec3, t: number): Vec3 {

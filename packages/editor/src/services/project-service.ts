@@ -29,7 +29,7 @@ export interface ProjectFileEntry {
   isDirectory: boolean
 }
 
-type ProjectStorage = 'memory' | 'native' | 'playground'
+type ProjectStorage = 'memory' | 'native' | 'playground' | 'dev-target'
 
 const PROJECT_LOG_PATH = 'logs/haku.log'
 
@@ -50,11 +50,11 @@ export class ProjectService {
   }
 
   isVirtualFs(): boolean {
-    return this.storage === 'memory' || this.storage === 'playground'
+    return this.storage === 'memory' || this.storage === 'playground' || this.storage === 'dev-target'
   }
 
   private usesBrowserProjectStore(): boolean {
-    return this.storage === 'memory' || this.storage === 'playground'
+    return this.storage === 'memory' || this.storage === 'playground' || this.storage === 'dev-target'
   }
 
   canSyncAssetsToDisk(): boolean {
@@ -166,6 +166,55 @@ export class ProjectService {
     return manifest
   }
 
+  /**
+   * Open the dev-server target project (HAKU_TARGET_PATH on editor vite).
+   * Used by Playwright and `?hakuOpenTarget=1` — not for production.
+   */
+  async openFromDevPath(): Promise<HakuProject> {
+    const infoRes = await fetch('/__haku/dev/info')
+    if (!infoRes.ok) {
+      throw new Error(
+        'Dev target project unavailable — set HAKU_TARGET_PATH when starting editor-app dev',
+      )
+    }
+    const info = (await infoRes.json()) as { rootName: string }
+
+    const manifestRes = await fetch('/__haku/dev/project.json')
+    if (!manifestRes.ok) {
+      throw new Error('Failed to load target haku.project.json')
+    }
+    const manifest = await this.normalizeManifest(
+      HakuProjectSchema.parse(await manifestRes.json()),
+    )
+
+    this.root = info.rootName
+    this.manifest = manifest
+    this.assetBaseUrl = '/__haku/dev/assets'
+    this.storage = 'dev-target'
+    this.clearModelAssetCache()
+
+    await this.seedVirtualAssetsFromManifest('/__haku/dev/assets/manifest.json')
+    await this.loadEditorSettings()
+
+    sceneLog('project.open', {
+      source: 'dev-target',
+      root: info.rootName,
+      entryScene: manifest.entryScene,
+    })
+
+    const { world, document } = await this.loadScene(manifest.entryScene)
+    const { useEditorStore } = await import('../store/editor-store.js')
+    useEditorStore.getState().setProjectRoot(info.rootName)
+    useEditorStore.getState().setScene(
+      manifest.entryScene,
+      document,
+      world as World,
+      this.getSceneEditorState(manifest.entryScene).activeTab,
+    )
+
+    return manifest
+  }
+
   getRoot(): string | null {
     return this.root
   }
@@ -188,7 +237,11 @@ export class ProjectService {
         const raw = await nativeProjectStore.readText(relativePath)
         sceneLog('load.read', { path: relativePath, source: 'native', bytes: raw.length })
         document = validateSceneDocument(JSON.parse(raw))
-      } else if (this.storage === 'memory' || this.storage === 'playground') {
+      } else if (
+        this.storage === 'memory' ||
+        this.storage === 'playground' ||
+        this.storage === 'dev-target'
+      ) {
         const raw = await browserProjectStore.readText(relativePath)
         sceneLog('load.read', { path: relativePath, source: 'browser-store', bytes: raw.length })
         document = validateSceneDocument(JSON.parse(raw))
@@ -333,7 +386,6 @@ export class ProjectService {
 
   async seedVirtualAssetsFromManifest(manifestUrl: string, assetsDir?: string): Promise<void> {
     const root = assetsDir ?? this.getAssetsRoot()
-    this.storage = 'playground'
     browserProjectStore.clear()
 
     sceneLog('assets.seed.start', { manifestUrl, assetsRoot: root })
@@ -362,10 +414,12 @@ export class ProjectService {
   }
 
   async resyncVirtualAssetsFromManifest(manifestUrl = '/assets/manifest.json', assetsDir?: string): Promise<void> {
-    if (this.storage !== 'playground') return
+    if (this.storage !== 'playground' && this.storage !== 'dev-target') return
     const root = assetsDir ?? this.getAssetsRoot()
     browserProjectStore.removeUnderPrefix(root)
-    await this.seedVirtualAssetsFromManifest(manifestUrl, root)
+    const url =
+      this.storage === 'dev-target' ? '/__haku/dev/assets/manifest.json' : manifestUrl
+    await this.seedVirtualAssetsFromManifest(url, root)
   }
 
   async importAsset(relativePath: string, file: File): Promise<void> {

@@ -102,6 +102,23 @@ Mobile, gamepad, touch deferred to later milestone (not blocking full-clone tuni
 
 ---
 
+## AD-09 — Target-only content (cycle verification)
+
+**Decision:** All reference-cycle **scene, asset, and level content changes** live in the **target project** only. The monorepo playground demo scene is never modified for cycle verification.
+
+| Rule | Detail |
+| ---- | ------ |
+| Scene/assets/config | **Only** in `~/work/tmp-js-game-project` (`TARGET_PATH`) |
+| Monorepo playground | **Never** modify `apps/playground` scenes for cycle verification |
+| Editor verification | **File → Open Project** → target path, or dev `?hakuOpenTarget=1` |
+| Playwright | Open target via `openTargetProject()` + `HAKU_TARGET_PATH` dev plugin — **no** Demo Scene asset interception |
+
+**Rejected:** `routeTargetAssetsForDemoScene`, mapping `menu.scene.json` → target scene in Playwright helpers.
+
+**Updated:** 2026-07-11 — user feedback iteration 3 (T01.12 rework).
+
+---
+
 ## Session constants
 
 | Key | Value |

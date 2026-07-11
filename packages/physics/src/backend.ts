@@ -23,6 +23,9 @@ export interface IPhysicsBackend {
   /** Advance simulation by `dt` seconds (fixed timestep expected from caller). */
   step(dt: number): void
 
+  /** Sync scene queries after bulk collider spawn (Rapier needs one step). */
+  prepareSceneQueries(): void
+
   createBody(descriptor: RigidBodyDescriptor): PhysicsBodyHandle
   destroyBody(handle: PhysicsBodyHandle): void
 

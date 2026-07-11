@@ -71,6 +71,8 @@ export async function createRapierPhysicsBackend(
 interface BodyRecord {
   body: RAPIER.RigidBody
   colliderHandles: Set<string>
+  /** When set, collider density is zero and this mass drives the body. */
+  explicitMass?: number
 }
 
 interface ShapeRecord {
@@ -200,9 +202,14 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
     return this.initialized
   }
 
+  prepareSceneQueries(): void {
+    this.refreshQueries()
+  }
+
   step(dt: number): void {
     const world = this.getWorld()
     world.timestep = dt
+    this.syncColliders()
     for (const vehicle of this.vehicles.values()) {
       vehicle.simulate(dt)
     }
@@ -214,7 +221,11 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
     const bodyDesc = this.createRigidBodyDesc(descriptor)
     const body = world.createRigidBody(bodyDesc)
     const handle = physicsBodyHandle(createId('body'))
-    this.bodies.set(handle.value, { body, colliderHandles: new Set() })
+    this.bodies.set(handle.value, {
+      body,
+      colliderHandles: new Set(),
+      explicitMass: descriptor.type === 'dynamic' ? descriptor.mass : undefined,
+    })
     return handle
   }
 
@@ -233,6 +244,9 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
     const world = this.getWorld()
     const bodyRecord = this.getBodyRecord(body)
     const colliderDesc = this.createColliderDesc(shape)
+    if (bodyRecord.explicitMass !== undefined) {
+      colliderDesc.setDensity(0)
+    }
     const collider = world.createCollider(colliderDesc, bodyRecord.body)
     const handle = physicsShapeHandle(createId('shape'))
     bodyRecord.colliderHandles.add(handle.value)
@@ -312,7 +326,6 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
 
   raycast(query: RaycastQuery): RaycastHit | null {
     const world = this.getWorld()
-    this.refreshQueries()
     const direction = normalizeDirection(query.direction)
     const ray = new RAPIER.Ray(vec3ToRapier(query.origin), vec3ToRapier(direction))
 
@@ -402,22 +415,38 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
       bodyDesc.setAdditionalMass(descriptor.mass)
     }
 
+    if (descriptor.type === 'dynamic' && descriptor.angularDamping !== undefined) {
+      bodyDesc.setAngularDamping(descriptor.angularDamping)
+    }
+
     return bodyDesc
   }
 
   private createColliderDesc(shape: PhysicsShapeDescriptor): RAPIER.ColliderDesc {
+    let colliderDesc: RAPIER.ColliderDesc
     switch (shape.type) {
       case 'box':
-        return RAPIER.ColliderDesc.cuboid(
+        colliderDesc = RAPIER.ColliderDesc.cuboid(
           shape.halfExtents[0],
           shape.halfExtents[1],
           shape.halfExtents[2],
         )
+        break
       case 'sphere':
-        return RAPIER.ColliderDesc.ball(shape.radius)
+        colliderDesc = RAPIER.ColliderDesc.ball(shape.radius)
+        break
       case 'capsule':
-        return RAPIER.ColliderDesc.capsule(shape.halfHeight, shape.radius)
+        colliderDesc = RAPIER.ColliderDesc.capsule(shape.halfHeight, shape.radius)
+        break
     }
+
+    const local = shape.localTransform
+    if (local) {
+      colliderDesc.setTranslation(local.position[0], local.position[1], local.position[2])
+      colliderDesc.setRotation(quatToRapier(local.rotation))
+    }
+
+    return colliderDesc
   }
 
   private getWorld(): RAPIER.World {

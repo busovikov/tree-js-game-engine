@@ -64,6 +64,11 @@ export class PhysicsWorldSystem implements ISystem {
     return this.physicsWorld
   }
 
+  /** Sync Rapier scene queries after bulk collider spawn. */
+  prepareSceneQueries(): void {
+    this.physicsWorld?.prepareSceneQueries()
+  }
+
   /** Returns the physics body handle registered for an entity, if any. */
   getBodyHandle(id: EntityId): PhysicsBodyHandle | null {
     return this.trackedBodies.get(id.value)?.handle ?? null

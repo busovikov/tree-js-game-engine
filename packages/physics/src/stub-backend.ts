@@ -154,6 +154,10 @@ export class StubPhysicsBackend implements IPhysicsBackend {
     return this.initialized
   }
 
+  prepareSceneQueries(): void {
+    // Stub raycasts work immediately after attachShape.
+  }
+
   step(dt: number): void {
     this.assertInitialized()
     this.clearForces()

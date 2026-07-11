@@ -24,6 +24,11 @@ export class PhysicsWorld implements IPhysicsWorld {
     this.backend.step(dt)
   }
 
+  prepareSceneQueries(): void {
+    this.assertBackendReady()
+    this.backend.prepareSceneQueries()
+  }
+
   createBody(descriptor: RigidBodyDescriptor): PhysicsBodyHandle {
     this.assertBackendReady()
     return this.backend.createBody(descriptor)

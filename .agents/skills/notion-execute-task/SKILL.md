@@ -42,7 +42,8 @@ If URL unknown → fetch board or ask user. **Do not code without anchor.**
 - [ ] notion-update-page → In progress
 - [ ] notion-create-comment — "Started iteration N"
 - [ ] Implement + test
-- [ ] notion-create-comment — summary, files, tests
+- [ ] notion-create-comment — **Review handoff** (mandatory template below)
+- [ ] Update task card body with "Last iteration" block (same content)
 - [ ] notion-update-page → Review
 - [ ] Echo Notion link · Status: Review
 ```
@@ -50,6 +51,49 @@ If URL unknown → fetch board or ask user. **Do not code without anchor.**
 Increment `ITERATION` each pass. **Small user tweaks use the same flow.**
 
 If status was **Review** and user asks a fix → **In progress** → edits → comment → **Review**.
+
+**Rework scope:** user comment may mention missing behavior that is **planned in another Notion task**. Do **not** expand current task scope — post `notion-create-comment`: «Out of scope for this task → **[Txx.x title](URL)**» and link the board card. Implement only what the current task AC covers.
+
+---
+
+## Review handoff comment (mandatory — user reviews from this)
+
+Every pass ending in **Review** must post `notion-create-comment` **and** update the task card with:
+
+```markdown
+**Iteration N — ready for review**
+
+## What was done
+- Bullet list of concrete changes (packages, systems, UI, scenes)
+
+## Files changed
+- `path/to/file.ts` — one-line why
+
+## Tests run
+```bash
+pnpm --filter @haku/<pkg> test  # N pass
+pnpm build                        # pass
+```
+
+## Commit
+`<hash>` — first line of commit message
+
+## How to review
+- Steps to verify (run commands, open editor, play mode actions)
+- **Target project** play mode — not monorepo Demo Scene (AD-09)
+- What is **not** visible yet (if applicable)
+
+## Editor screenshots (mandatory when UI/editor-visible)
+
+Attach **2–4 PNG screenshots** to the Notion task (comment upload or page embed) when the change is visible in editor/play mode:
+
+1. Inspector / panel with new UI
+2. Play mode demonstrating behavior (if applicable)
+
+Capture via Playwright in `.agents/tools/editor-playwright/tests/` → save under `review-artifacts/<TASK_ID>/`. Link artifact paths in the comment.
+```
+
+**Without this comment the user cannot review.** Do not move to Review with only "done" or empty summary.
 
 ---
 
@@ -83,3 +127,4 @@ Parent passes anchor block in prompt. Subagent:
 - End a pass without comment + status
 - Set Done without user commit request
 - Skip Notion sync on "small" fixes
+- Implement rework feedback that belongs to another planned task — comment + link instead

@@ -3,8 +3,7 @@ import { mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
-  openTargetSceneViaDemoMenu,
-  routeTargetAssetsForDemoScene,
+  openTargetProject,
   targetAssetExists,
   targetProjectPath,
 } from '../helpers/target-project.js'
@@ -12,17 +11,13 @@ import {
 const artifactsDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'review-artifacts', 'T01.19')
 
 test.describe('T01.19 Chase camera system', () => {
-  test.beforeEach(async ({ page }) => {
-    await routeTargetAssetsForDemoScene(page)
-  })
-
   test('play mode chase camera orbit and boost FOV', async ({ page }) => {
     mkdirSync(artifactsDir, { recursive: true })
     const shot = (name: string) => join(artifactsDir, name)
 
     expect(targetAssetExists('scenes/playground.scene.json')).toBe(true)
 
-    await openTargetSceneViaDemoMenu(page)
+    await openTargetProject(page)
 
     await page.getByRole('button', { name: /Play/ }).click()
     await page.waitForTimeout(800)

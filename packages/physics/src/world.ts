@@ -15,6 +15,7 @@ import type {
  */
 export interface IPhysicsWorld {
   step(dt: number): void
+  prepareSceneQueries(): void
 
   createBody(descriptor: RigidBodyDescriptor): PhysicsBodyHandle
   destroyBody(handle: PhysicsBodyHandle): void

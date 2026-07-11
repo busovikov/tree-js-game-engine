@@ -112,6 +112,7 @@ export function vehicleWheelConfigs(vehicle: Vehicle): WheelConfig[] {
   return vehicleWheelLocalPositions(wheels).map((localPosition) => ({
     ...base,
     localPosition,
+    maxSuspensionForce: vehicle.chassis.mass * 50,
   }))
 }
 

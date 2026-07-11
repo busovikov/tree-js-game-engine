@@ -1,6 +1,6 @@
 import { readFileSync, statSync } from 'node:fs'
-import { join, extname } from 'node:path'
-import type { Page, Route } from '@playwright/test'
+import { join } from 'node:path'
+import type { Page } from '@playwright/test'
 
 const DEFAULT_TARGET = '/Users/pavel/work/tmp-js-game-project'
 
@@ -8,71 +8,25 @@ export function targetProjectPath(): string {
   return process.env.HAKU_TARGET_PATH ?? DEFAULT_TARGET
 }
 
-const MIME: Record<string, string> = {
-  '.json': 'application/json',
-  '.glb': 'model/gltf-binary',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.png': 'image/png',
-}
-
-function fulfillFromTarget(route: Route, targetPath: string, assetsRelative: string): boolean {
-  const filePath = join(targetPath, 'public/assets', assetsRelative)
-  try {
-    if (!statSync(filePath).isFile()) return false
-    const body = readFileSync(filePath)
-    const ext = extname(filePath).toLowerCase()
-    void route.fulfill({
-      status: 200,
-      contentType: MIME[ext] ?? 'application/octet-stream',
-      body,
-    })
-    return true
-  } catch {
-    return false
-  }
-}
-
-/**
- * Intercept `/assets/*` fetches so Demo Scene loads the target M1 scene + GLBs.
- * Maps demo entry `menu.scene.json` → target `playground.scene.json`.
- */
-export async function routeTargetAssetsForDemoScene(page: Page, targetPath = targetProjectPath()): Promise<void> {
-  await page.route('**/assets/**', async (route) => {
-    const url = new URL(route.request().url())
-    const pathname = url.pathname
-
-    if (pathname === '/assets/manifest.json') {
-      const manifest = readFileSync(join(targetPath, 'public/assets/manifest.json'))
-      await route.fulfill({ status: 200, contentType: 'application/json', body: manifest })
-      return
-    }
-
-    if (pathname === '/assets/scenes/menu.scene.json') {
-      const scene = readFileSync(join(targetPath, 'public/assets/scenes/playground.scene.json'))
-      await route.fulfill({ status: 200, contentType: 'application/json', body: scene })
-      return
-    }
-
-    const assetsRelative = pathname.replace(/^\/assets\//, '')
-    if (assetsRelative && fulfillFromTarget(route, targetPath, assetsRelative)) {
-      return
-    }
-
-    await route.continue()
-  })
-}
-
-/** File → Demo Scene with target assets routed (tier B assemble). */
-export async function openTargetSceneViaDemoMenu(page: Page): Promise<void> {
-  await page.goto('/')
+/** Open target project via dev-server flow (AD-09 — no Demo Scene hack). */
+export async function openTargetProject(page: Page): Promise<void> {
+  await page.goto('/?hakuOpenTarget=1')
   await page.getByText('@haku Editor').waitFor({ state: 'visible' })
 
-  await page.getByRole('button', { name: 'File' }).click()
-  await page.getByRole('menuitem', { name: 'Demo Scene' }).click()
-
-  await page.getByText('public/assets/scenes/menu.scene.json').waitFor({ state: 'visible', timeout: 60_000 })
+  await page
+    .getByText('public/assets/scenes/playground.scene.json')
+    .waitFor({ state: 'visible', timeout: 60_000 })
   await page.getByText('Vehicle').first().waitFor({ state: 'visible', timeout: 60_000 })
+}
+
+/** @deprecated Use openTargetProject — Demo Scene asset interception removed (AD-09). */
+export async function routeTargetAssetsForDemoScene(_page: Page, _targetPath?: string): Promise<void> {
+  // No-op: target project is opened via HAKU_TARGET_PATH dev server plugin.
+}
+
+/** @deprecated Use openTargetProject — Demo Scene asset interception removed (AD-09). */
+export async function openTargetSceneViaDemoMenu(page: Page): Promise<void> {
+  await openTargetProject(page)
 }
 
 /** Enter play mode and hold W for drive smoke (tier C). */
@@ -92,4 +46,12 @@ export function targetAssetExists(relativePath: string, targetPath = targetProje
   } catch {
     return false
   }
+}
+
+/** Read target entry scene JSON from disk (Playwright assertions). */
+export function readTargetEntryScenePath(targetPath = targetProjectPath()): string {
+  const manifest = JSON.parse(
+    readFileSync(join(targetPath, 'haku.project.json'), 'utf8'),
+  ) as { entryScene: string }
+  return manifest.entryScene
 }

@@ -51,6 +51,8 @@ class GravityTestBackend implements IPhysicsBackend {
     return this.initialized
   }
 
+  prepareSceneQueries(): void {}
+
   step(dt: number): void {
     this.assertInitialized()
     this.stepCount += 1

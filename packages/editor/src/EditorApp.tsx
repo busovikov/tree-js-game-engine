@@ -49,6 +49,17 @@ export const EditorApp = memo(function EditorApp() {
     return () => setHakuLogSink(null)
   }, [])
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('hakuOpenTarget') !== '1' && !params.has('hakuOpenProject')) {
+      return
+    }
+
+    void projectService.openFromDevPath().catch((err) => {
+      alert(err instanceof Error ? err.message : 'Failed to open dev target project')
+    })
+  }, [])
+
   const onOpenProject = useCallback(async () => {
     try {
       if (projectService.isFileSystemAccessSupported()) {

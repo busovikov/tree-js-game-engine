@@ -18,12 +18,18 @@ export interface RigidBodyDescriptor {
   transform: PhysicsTransform
   /** Mass in kg; ignored for static bodies. */
   mass?: number
+  /** Angular velocity damping; ignored for static bodies. */
+  angularDamping?: number
 }
 
-export type PhysicsShapeDescriptor =
+export type PhysicsShapeDescriptor = (
   | { type: 'box'; halfExtents: Vec3 }
   | { type: 'sphere'; radius: number }
   | { type: 'capsule'; radius: number; halfHeight: number }
+) & {
+  /** Collider pose relative to the rigid-body origin (Rapier collider translation). */
+  localTransform?: PhysicsTransform
+}
 
 export interface RaycastQuery {
   origin: Vec3

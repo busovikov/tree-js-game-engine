@@ -3,9 +3,11 @@ import {
   ColliderComponent,
   StaticComponent,
   TransformComponent,
+  VehicleComponent,
   World,
 } from '@haku/core'
 import { createRapierPhysicsBackend, resetRapierPhysicsIds } from '@haku/physics-rapier'
+import { VehicleSchema } from '@haku/schema'
 import { PhysicsColliderSystem } from './physics-collider-system.js'
 import { PhysicsWorldSystem } from './physics-world-system.js'
 
@@ -55,6 +57,35 @@ describe('PhysicsColliderSystem', () => {
     const finalY = world.getComponent(sphereId, TransformComponent)?.position[1] ?? 5
     expect(finalY).toBeGreaterThan(0)
     expect(finalY).toBeLessThan(1.5)
+
+    colliderSystem.dispose()
+    physicsSystem.dispose()
+  })
+
+  it('spawns vehicle dynamic body with VehicleComponent mass', async () => {
+    const backend = await createRapierPhysicsBackend()
+    const physicsSystem = new PhysicsWorldSystem({ fixedTimestep: 1 / 60, maxSubsteps: 120 })
+    physicsSystem.setBackend(backend)
+    const colliderSystem = new PhysicsColliderSystem(physicsSystem)
+
+    const world = new World()
+    const carId = world.createEntity('Car')
+    world.addComponent(carId, TransformComponent, {
+      position: [0, 1.05, 0],
+      rotation: [0, 0, 0, 1],
+      scale: [1, 1, 1],
+    })
+    world.addComponent(carId, ColliderComponent, {
+      shape: 'box',
+      halfExtents: [0.9, 0.3, 1.55],
+      isStatic: false,
+      offset: [0, 0.5, 0],
+      rotation: [0, 0, 0, 1],
+    })
+    world.addComponent(carId, VehicleComponent, VehicleSchema.parse({}))
+
+    colliderSystem.bootstrap(world)
+    expect(physicsSystem.getBodyHandle(carId)).not.toBeNull()
 
     colliderSystem.dispose()
     physicsSystem.dispose()

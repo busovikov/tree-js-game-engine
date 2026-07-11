@@ -4,8 +4,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   driveSmoke,
-  openTargetSceneViaDemoMenu,
-  routeTargetAssetsForDemoScene,
+  openTargetProject,
   targetAssetExists,
   targetProjectPath,
 } from '../helpers/target-project.js'
@@ -29,10 +28,6 @@ async function orbitChaseCamera(page: import('@playwright/test').Page): Promise<
 }
 
 test.describe('T01.39 M1 vehicle smoke scene', () => {
-  test.beforeEach(async ({ page }) => {
-    await routeTargetAssetsForDemoScene(page)
-  })
-
   test('loads target scene, enters play mode, WASD drive smoke', async ({ page }) => {
     mkdirSync(artifactsDir, { recursive: true })
     const shot = (name: string) => join(artifactsDir, name)
@@ -41,7 +36,7 @@ test.describe('T01.39 M1 vehicle smoke scene', () => {
     expect(targetAssetExists('models/base.glb')).toBe(true)
     expect(targetAssetExists('scenes/playground.scene.json')).toBe(true)
 
-    await openTargetSceneViaDemoMenu(page)
+    await openTargetProject(page)
 
     await page.locator('.haku-hierarchy-row', { hasText: 'Vehicle' }).click()
     await expect(page.getByText('Vehicle', { exact: true }).first()).toBeVisible()
@@ -57,7 +52,7 @@ test.describe('T01.39 M1 vehicle smoke scene', () => {
     mkdirSync(artifactsDir, { recursive: true })
     const shot = (name: string) => join(artifactsDir, name)
 
-    await openTargetSceneViaDemoMenu(page)
+    await openTargetProject(page)
     await page.getByRole('button', { name: /Play/ }).click()
     await page.waitForTimeout(800)
 
@@ -77,7 +72,7 @@ test.describe('T01.39 M1 vehicle smoke scene', () => {
     mkdirSync(artifactsDir, { recursive: true })
     const shot = (name: string) => join(artifactsDir, name)
 
-    await openTargetSceneViaDemoMenu(page)
+    await openTargetProject(page)
     await page.getByRole('button', { name: /Play/ }).click()
     await page.waitForTimeout(800)
 

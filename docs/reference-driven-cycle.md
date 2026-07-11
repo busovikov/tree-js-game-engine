@@ -48,6 +48,12 @@ cd /path/to/tree-js-projects
 git checkout -b feat/reference-<short-name>
 ```
 
+### Agent editor workflow (Playwright)
+
+Subagents **must use Playwright** to operate the editor during `TARGET_BUILD` — import assets, place entities, save scenes, enter play mode. Playwright is **agent tooling** (`.agents/tools/editor-playwright/`), **not** a platform feature or Notion epic.
+
+See [`reference-cycle/AGENT_EDITOR_WORKFLOW.md`](./reference-cycle/AGENT_EDITOR_WORKFLOW.md).
+
 ### Cycle artifacts (on disk)
 
 Store under target project or a dedicated folder:
@@ -99,6 +105,12 @@ No Select ──(orchestrator groom)──► To do ──(subagent)──► In
 
 ### Create discovered task
 
+**Every task needs a filled 📎 Docs spec** — same workflow as [`notion-create-task.md`](./notion-create-task.md):
+
+1. `notion-duplicate-page` → Feature Task Template `39a1402af56080349186fce071ae7c72`
+2. Fill all spec sections (Objective … Out of Scope)
+3. Create/update board card with **📎 Docs** relation — never publish empty `# To Do / - [ ] ...` only
+
 ```text
 notion-create-pages
   parent: { data_source_id: "86f1402a-f560-826a-8ea0-07594e7d6759" }
@@ -107,6 +119,7 @@ notion-create-pages
     Name: "<title>"
     Type: "Feature" | "Task" | "Bug"
     Epic: "Engine" | "Editor" | "Physics" | "UI system" | …
+    "📎 Docs": "[\"<spec page URL>\"]"
     # Do NOT set Select → lands in No Select
 ```
 
@@ -232,8 +245,10 @@ NOTION_BOARD: https://app.notion.com/p/39a1402af56080458673d2afa6c1cdc5
 
 ### Constraints
 - Platform: <monorepo path>, branch feat/reference-<name>
-- Target: ~/work/<name> (TARGET_BUILD only)
+- Target: ~/work/<name> (TARGET_BUILD only) — **AD-09:** scene/assets only in target; never patch `apps/playground` for verification
 - Reference: <path> (read-only)
+- Editor verification: open target project (`?hakuOpenTarget=1` or File → Open Project)
+- Playwright: `openTargetProject()` — no Demo Scene hack
 - Editor mutations: commitSceneEdit
 - …
 

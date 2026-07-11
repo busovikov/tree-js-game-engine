@@ -3,6 +3,7 @@ import {
   ColliderComponent,
   StaticComponent,
   TransformComponent,
+  VehicleComponent,
   entityId,
 } from '@haku/core'
 import type { Collider } from '@haku/schema'
@@ -13,6 +14,7 @@ import {
   type PhysicsShapeDescriptor,
   type PhysicsTransform,
   type Quat,
+  type RigidBodyDescriptor,
   type RigidBodyType,
   type Vec3,
 } from '@haku/physics'
@@ -74,6 +76,22 @@ export function colliderToPhysicsShape(collider: Collider, scale: Vec3): Physics
   }
 }
 
+export function composeColliderLocalTransform(
+  scale: Vec3,
+  collider: Collider,
+): PhysicsTransform {
+  const scaledOffset: Vec3 = [
+    collider.offset[0] * scale[0],
+    collider.offset[1] * scale[1],
+    collider.offset[2] * scale[2],
+  ]
+  return {
+    position: scaledOffset,
+    rotation: collider.rotation as Quat,
+  }
+}
+
+/** World-space physics transform with collider offset baked into body origin. */
 export function composeColliderTransform(
   position: Vec3,
   rotation: Quat,
@@ -101,6 +119,24 @@ function resolveBodyType(world: IWorld, id: EntityId, collider: Collider): Rigid
     return 'static'
   }
   return 'dynamic'
+}
+
+function resolveDynamicBodyParams(
+  world: IWorld,
+  id: EntityId,
+  bodyType: RigidBodyType,
+): Pick<RigidBodyDescriptor, 'mass' | 'angularDamping'> {
+  if (bodyType !== 'dynamic') {
+    return {}
+  }
+  const vehicle = world.getComponent(id, VehicleComponent)
+  if (vehicle) {
+    return {
+      mass: vehicle.chassis.mass,
+      angularDamping: vehicle.chassis.angularDamping,
+    }
+  }
+  return { mass: 1 }
 }
 
 /**
@@ -140,21 +176,24 @@ export class PhysicsColliderSystem implements ISystem {
       }
 
       const bodyType = resolveBodyType(world, id, collider)
-      const physicsTransform = composeColliderTransform(
-        transform.position as Vec3,
-        transform.rotation as Quat,
-        transform.scale as Vec3,
-        collider,
-      )
+      const dynamicParams = resolveDynamicBodyParams(world, id, bodyType)
+      const entityTransform: PhysicsTransform = {
+        position: transform.position as Vec3,
+        rotation: transform.rotation as Quat,
+      }
+      const shape = {
+        ...colliderToPhysicsShape(collider, transform.scale as Vec3),
+        localTransform: composeColliderLocalTransform(transform.scale as Vec3, collider),
+      }
 
       const bodyWithShape = createBodyWithShape(
         physicsWorld,
         {
           type: bodyType,
-          transform: physicsTransform,
-          mass: bodyType === 'dynamic' ? 1 : undefined,
+          transform: entityTransform,
+          ...dynamicParams,
         },
-        colliderToPhysicsShape(collider, transform.scale as Vec3),
+        shape,
       )
 
       this.trackedBodies.set(id.value, { bodyWithShape, type: bodyType })
@@ -163,6 +202,8 @@ export class PhysicsColliderSystem implements ISystem {
         this.physicsSystem.registerBody(id, bodyWithShape.body, bodyType, world)
       }
     }
+
+    this.physicsSystem.prepareSceneQueries()
   }
 
   dispose(): void {

@@ -39,7 +39,8 @@ If `NOTION_TASK_URL` missing → stop and return `RESULT: blocked`.
 - [ ] notion-create-comment — "Started iteration <ITERATION>"
 - [ ] Read only files listed in Context Packet
 - [ ] Work per mode rules below
-- [ ] notion-create-comment — iteration summary
+- [ ] notion-create-comment — **Review handoff** (mandatory — user reviews from this; see template below)
+- [ ] notion-update-page → task **card content**: append/update "Last iteration" section with same summary
 - [ ] notion-update-page → Select: "Review" (unless blocked mid-pass)
 - [ ] Last message: **Notion:** … · **Status:** Review + structured return
 ```
@@ -63,11 +64,51 @@ EOF
 - `PLATFORM_SLICE` / platform `REWORK` → commit in **tree-js-projects** (`PLATFORM_BRANCH`)
 - `TARGET_BUILD` / target `REWORK` → commit in **TARGET_PATH**
 
-**Notion comment must include:** `**Commit:** \`<hash>\` — <first line>`
+**Notion comment must include:** full **Review handoff** template (see below) — not just commit hash.
 
 If commit or tests fail → stay **In progress**, comment reason, return `RESULT: blocked`.
 
 **Do not** set **Done** — user approves on board.
+
+### Review handoff (mandatory before Review)
+
+Post `notion-create-comment` **and** update task card body with:
+
+```markdown
+**Iteration N — ready for review**
+
+## What was done
+- …
+
+## Files changed
+- …
+
+## Tests run
+```bash
+…
+```
+
+## Commit
+`<hash>` — message first line
+
+## How to review
+- …
+
+## Editor screenshots (mandatory when UI/editor-visible)
+
+If the change is demonstrable in editor/play mode, attach **2–4 PNG screenshots** to the Notion task before Review:
+
+| When | Capture |
+| ---- | ------- |
+| Inspector / new component | Entity selected, new UI visible |
+| Play mode | Simulation running (if applicable) |
+| Saved scene | Optional — scene path or JSON proof |
+
+**How to capture:** Playwright `page.screenshot()` in `.agents/tools/editor-playwright/tests/` or manual capture → attach via Notion comment (drag-drop) or `notion-create-attachment` when URL available.
+
+Store copies in `.agents/tools/editor-playwright/review-artifacts/<TASK_ID>/` for git traceability; link paths in Notion comment.
+
+```
 
 ---
 
@@ -98,14 +139,34 @@ Return `RESULT: needs_clarification` until orchestrator confirms user answered.
 4. Draft `MASTER_PLAN.md` with epics E01… and tasks Txx.y
 5. **AD-xx** architectural decisions (draft)
 6. Second question round: epic order, first milestone
-7. Create tasks in Notion → **No Select** via:
+7. **Create Notion tasks with full specs** — follow `@notion-create-task` / `docs/notion-create-task.md` **for every task**:
+
+**Per task (mandatory — never empty card only):**
 
 ```text
-notion-create-pages
-  parent: { data_source_id: "86f1402a-f560-826a-8ea0-07594e7d6759" }
-  template_id: "7291402a-f560-82f8-bb89-81649141037a"
-  properties: { Name, Type, Epic }  # no Select
+Step A — Spec in 📎 Docs:
+  notion-duplicate-page → page_id: "39a1402af56080349186fce071ae7c72"
+  wait → notion-fetch new URL
+  notion-update-page → fill ALL Feature Task Template sections (Objective … Out of Scope)
+  Name: "<Txx.y title> — Spec"
+
+Step B — Task card on Iterative board:
+  notion-create-pages
+    parent: { data_source_id: "86f1402a-f560-826a-8ea0-07594e7d6759" }
+    template_id: "7291402a-f560-82f8-bb89-81649141037a"
+    properties: {
+      Name: "<Txx.y — title>",
+      Type, Epic,
+      "📎 Docs": "[\"<spec page URL>\"]"
+      # no Select → No Select
+    }
 ```
+
+**Card body:** replace placeholder `# To Do / - [ ] ...` with short summary + link to spec (or leave minimal — **spec is in 📎 Docs**).
+
+**Quality gate:** every task has 📎 Docs relation + filled spec; AC lists git `docs/` updates; **Testing + Validation sections** explicit; Out of Scope explicit.
+
+**Notion ↔ git sync:** update local `docs/reference-cycle/` and Notion spec in the same pass — see `docs/reference-cycle/NOTION_SYNC.md`.
 
 Return `QUESTIONS_FOR_USER` for unconfirmed AD-xx.
 
@@ -144,14 +205,17 @@ If new dependency discovered → Notion task **No Select** + `DISCOVERED_TASKS`.
 
 **Code in target project only — no `packages/*` edits.**
 
-1. `pnpm --filter @haku/editor-app dev`
-2. Open Project → TARGET_PATH
-3. Build content via editor (entities, scenes, assets)
-4. Save scenes under target `public/assets/scenes/`
-5. Play mode verification vs acceptance criteria
-6. **Commit in TARGET_PATH** before Review
+1. Read `docs/reference-cycle/AGENT_EDITOR_WORKFLOW.md` — **use Playwright** to drive the editor (AD-08)
+2. Bootstrap `.agents/tools/editor-playwright/` in monorepo if missing (scoped commit on platform branch OK)
+3. `pnpm --filter @haku/editor-app dev` (or Playwright fixture starts it)
+4. Open target project via Playwright `openTargetProject()` (AD-09 — not Demo Scene)
+5. Build content via editor automation (import assets, place entities, colliders, save scenes)
+6. Play mode verification in **target project** vs acceptance criteria (keyboard smoke via Playwright when applicable)
+7. **Commit in TARGET_PATH** before Review
 
-If blocker → stop, return `BLOCKERS`, create Notion task No Select — do not hack platform in target `main.ts`.
+**Playwright is agent workflow tooling — not a platform deliverable.** Do not create Notion tasks for Playwright harness work.
+
+If blocker → stop, return `BLOCKERS`, create Notion task No Select — do not hack platform in target `main.ts`. Fallback to direct scene JSON only with documented reason.
 
 ---
 
@@ -161,7 +225,8 @@ Same rules as PLATFORM_SLICE or TARGET_BUILD depending on task Epic.
 
 - Read user feedback from orchestrator Context Packet
 - `ITERATION` incremented
-- Minimal fix scope
+- Minimal fix scope — **only current task AC**
+- If feedback matches another task on the board (MASTER_PLAN / 📎 Docs): **do not implement**; `notion-create-comment` with link to that task («will be done in Txx.x»)
 - **Commit before Review**
 
 ---

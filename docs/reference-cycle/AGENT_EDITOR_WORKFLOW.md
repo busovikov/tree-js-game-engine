@@ -37,7 +37,7 @@
 
 Optional: root `pnpm` script `editor:pw` that delegates to this folder.
 
-**T01.39 tier B/C:** `helpers/target-project.ts` intercepts `/assets/*` so **File → Demo Scene** loads the target `playground.scene.json` + GLBs from `HAKU_TARGET_PATH`. Play mode smoke uses **▶ Play** + `keyboard.down('w')`. Iteration 2 adds chase-camera orbit (`mouse.down/move/up` on canvas) and respawn (`w` drive off edge + `r` manual reset).
+**T01.39 tier B/C (AD-09):** `helpers/target-project.ts` → `openTargetProject(page)` opens the real target via `/?hakuOpenTarget=1` when editor dev server has `HAKU_TARGET_PATH` set. **Do not** use File → Demo Scene or route `menu.scene.json` to target assets. Play mode smoke uses **▶ Play** + `keyboard.down('w')`.
 
 **Bootstrap:** First `TARGET_BUILD` subagent (or orchestrator once) scaffolds this folder if missing. No Notion task — part of agent pass setup.
 
@@ -82,11 +82,17 @@ Subagents use these flows when building target content (T01.37–T01.41):
 
 | Variable | Purpose |
 | -------- | ------- |
-| `HAKU_TARGET_PATH` | Absolute path to target project |
+| `HAKU_TARGET_PATH` | Absolute path to target project (required for Playwright vehicle tests) |
 | `HAKU_EDITOR_URL` | Default `http://localhost:5174` (editor-app dev) |
 | `HAKU_PLATFORM_ROOT` | Monorepo root |
 
-Editor must be running (`pnpm --filter @haku/editor-app dev`) or started by Playwright fixture.
+Editor must be running with target path configured:
+
+```bash
+HAKU_TARGET_PATH=~/work/tmp-js-game-project pnpm --filter @haku/editor-app dev
+```
+
+Or let Playwright start the webServer (passes `HAKU_TARGET_PATH` automatically).
 
 ### Bootstrap status
 
@@ -109,7 +115,7 @@ HAKU_TARGET_PATH=~/work/tmp-js-game-project pnpm exec playwright test tests/t01-
 
 | Step | Selector / action |
 | ---- | ----------------- |
-| Load M1 scene (via routed assets) | File → Demo Scene |
+| Load M1 scene | `openTargetProject(page)` → `/?hakuOpenTarget=1` |
 | Select vehicle | `.haku-hierarchy-row` with text `Vehicle` |
 | Play mode | `getByRole('button', { name: /Play/ })` |
 | Drive smoke | `keyboard.down('w')` × 3s |

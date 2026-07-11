@@ -18,8 +18,13 @@ export default defineConfig({
         command: 'pnpm --filter @haku/editor-app dev',
         cwd: '../../..',
         url: editorUrl,
-        reuseExistingServer: !process.env.CI,
+        reuseExistingServer: !process.env.CI && !process.env.HAKU_TARGET_PATH,
         timeout: 120_000,
+        env: {
+          ...process.env,
+          HAKU_TARGET_PATH:
+            process.env.HAKU_TARGET_PATH ?? '/Users/pavel/work/tmp-js-game-project',
+        },
       },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
 })

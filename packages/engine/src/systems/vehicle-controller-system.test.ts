@@ -235,7 +235,7 @@ describe('VehicleControllerSystem integration (stub)', () => {
     }
 
     const z = world.getComponent(carId, TransformComponent)?.position[2] ?? 0
-    expect(z).toBeGreaterThan(0.5)
+    expect(z).toBeLessThan(-0.5)
 
     const tracked = vehicleSystem.getCurrentSteer(carId)
     expect(tracked).toBeDefined()
@@ -345,7 +345,7 @@ describe('VehicleControllerSystem integration (Rapier)', () => {
     }
 
     const z = world.getComponent(carId, TransformComponent)?.position[2] ?? 0
-    expect(z).toBeGreaterThan(0.2)
+    expect(z).toBeLessThan(-0.2)
 
     colliderSystem.dispose()
     physicsSystem.dispose()
