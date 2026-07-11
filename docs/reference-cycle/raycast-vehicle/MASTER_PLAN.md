@@ -123,14 +123,15 @@ flowchart TD
 
 **Recommended execution order (orchestrator groom):**
 
-1. E01 → E02 → E03 (platform physics + vehicle)
-2. E04 + E07 (parallel after T01.11)
-3. E05 (after E03 + E04)
-4. **T01.37** (target scaffold) — **done**; next groom: **T01.38 → T01.39** (asset import + M1 scene via Playwright)
-5. E06 + E07 tuning UI
-6. E10 M2 content (T01.40)
-7. E08 post-FX
-8. E01 A/C collider modes (M3)
+1. **T01.37 → T01.38** (target scaffold + assets) — **before** any vehicle/platform task goes to Review with manual AC
+2. E01 → E02 core (T01.1–T01.4, T01.7–T01.8) — unit tests only until target exists
+3. E03 vehicle platform (T01.11–T01.14) + E04 input (T01.17–T01.18) — **Review gate:** target + smoke scene (T01.39) must exist for play-mode AC
+4. **T01.39** M1 smoke scene — unblocks rework/Review of T01.11–T01.18
+5. E05 camera/respawn (T01.19, T01.21) + E02 collider polish (T01.9)
+6. E06 + E07 tuning UI (M2)
+7. E10 M2 content (T01.40)
+8. E08 post-FX (M3)
+9. E01 A/C collider modes (M3)
 
 ---
 
@@ -157,10 +158,12 @@ flowchart TD
 | ---- | ----- | ---- | ---- | --------- |
 | T01.7 | Collider component schema + `@haku/core` registry ✅ | Feature | T01.4 | M1 |
 | T01.8 | Serializer load/save collider components | Task | T01.7 | M1 |
-| T01.9 | Editor — manual primitive collider authoring UI (mode B) | Feature | T01.8 | M1 |
+| T01.9 | Editor — manual primitive collider authoring UI (mode B) ✅ | Feature | T01.8 | M1 |
 | T01.10 | Physics debug wireframe + suspension ray overlay | Feature | T01.3, T01.9 | M3 |
 
 **Acceptance:** Editor places box colliders on level entities; play mode collides with vehicle; **this project** uses manual ramps/boxes approximating `rc-level.glb` (AD-03).
+
+**T01.9 delivery (editor):** `ColliderFields` inspector (box/sphere/capsule + static) via `commitSceneEdit`; `SceneColliderGizmos` green wireframe on selected entity; unit tests in `packages/editor/src/inspector/collider-section.test.tsx`; Playwright T01.9 against target `playground.scene.json`. Trimesh modes A/C (T01.5/6) and physics debug overlay (T01.10) out of scope.
 
 ---
 
@@ -270,25 +273,25 @@ flowchart TD
 
 | Order | Task | Epic | Milestone |
 | ----- | ---- | ---- | --------- |
-| 1 | T01.1 | E01 | M1 |
-| 2 | T01.2 | E01 | M1 |
-| 3 | T01.3 | E01 | M1 |
-| 4 | T01.4 | E01 | M1 |
-| 5 | T01.7 | E02 | M1 |
-| 6 | T01.8 | E02 | M1 |
-| 7 | T01.11 | E03 | M1 |
-| 8 | T01.12 | E03 | M1 |
-| 9 | T01.13 | E03 | M1 |
-| 10 | T01.14 | E03 | M1 |
-| 11 | T01.17 | E04 | M1 |
-| 12 | T01.18 | E04 | M1 |
-| 13 | T01.19 | E05 | M1 |
-| 14 | T01.21 | E05 | M1 |
-| 15 | T01.26 | E07 | M2 |
-| 16 | T01.9 | E02 | M1 |
-| 17 | T01.37 | E10 | M1 |
-| 18 | T01.38 | E10 | M1 |
-| 19 | T01.39 | E10 | M1 |
+| 1 | T01.37 | E10 | M1 |
+| 2 | T01.38 | E10 | M1 |
+| 3 | T01.1 | E01 | M1 |
+| 4 | T01.2 | E01 | M1 |
+| 5 | T01.3 | E01 | M1 |
+| 6 | T01.4 | E01 | M1 |
+| 7 | T01.7 | E02 | M1 |
+| 8 | T01.8 | E02 | M1 |
+| 9 | T01.11 | E03 | M1 |
+| 10 | T01.12 | E03 | M1 |
+| 11 | T01.13 | E03 | M1 |
+| 12 | T01.14 | E03 | M1 |
+| 13 | T01.17 | E04 | M1 |
+| 14 | T01.18 | E04 | M1 |
+| 15 | T01.39 | E10 | M1 |
+| 16 | T01.19 | E05 | M1 |
+| 17 | T01.21 | E05 | M1 |
+| 18 | T01.9 | E02 | M1 |
+| 19 | T01.26 | E07 | M2 |
 | 20 | T01.15 | E03 | M2 |
 | 21 | T01.16 | E03 | M2 |
 | 22 | T01.20 | E05 | M2 |

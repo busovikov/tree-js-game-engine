@@ -23,6 +23,7 @@ import { SceneCameraGizmos } from '../viewport/scene-camera-gizmos.js'
 import { SceneLightGizmos } from '../viewport/scene-light-gizmos.js'
 import { primarySelection, mergeSelection } from '../selection/selection-utils.js'
 import { SceneAabbGizmos } from '../viewport/scene-aabb-gizmos.js'
+import { SceneColliderGizmos } from '../viewport/scene-collider-gizmos.js'
 import { SceneSelectionOutline } from '../viewport/scene-selection-outline.js'
 import { SceneShadowVolumeGizmos } from '../viewport/shadow-volume-gizmos.js'
 import { startPlayModePhysics, type PlayModePhysicsSession } from '../viewport/play-mode-physics.js'
@@ -81,6 +82,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
   const cameraGizmosRef = useRef<SceneCameraGizmos | null>(null)
   const lightGizmosRef = useRef<SceneLightGizmos | null>(null)
   const aabbGizmosRef = useRef<SceneAabbGizmos | null>(null)
+  const colliderGizmosRef = useRef<SceneColliderGizmos | null>(null)
   const selectionOutlineRef = useRef<SceneSelectionOutline | null>(null)
   const shadowVolumeGizmosRef = useRef<SceneShadowVolumeGizmos | null>(null)
   const playPhysicsRef = useRef<PlayModePhysicsSession | null>(null)
@@ -173,6 +175,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
     lightGizmosRef.current = new SceneLightGizmos()
     aabbGizmosRef.current = new SceneAabbGizmos()
     aabbGizmosRef.current.attach(engine.backend.threeScene)
+    colliderGizmosRef.current = new SceneColliderGizmos()
     selectionOutlineRef.current = new SceneSelectionOutline()
     shadowVolumeGizmosRef.current = new SceneShadowVolumeGizmos()
 
@@ -223,6 +226,8 @@ export const ViewportPanel = memo(function ViewportPanel() {
       lightGizmosRef.current = null
       aabbGizmosRef.current?.dispose()
       aabbGizmosRef.current = null
+      colliderGizmosRef.current?.dispose()
+      colliderGizmosRef.current = null
       selectionOutlineRef.current?.dispose(engine.backend)
       selectionOutlineRef.current = null
       shadowVolumeGizmosRef.current?.dispose(engine.backend.threeScene)
@@ -317,6 +322,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
     const cameraGizmos = cameraGizmosRef.current
     const lightGizmos = lightGizmosRef.current
     const aabbGizmos = aabbGizmosRef.current
+    const colliderGizmos = colliderGizmosRef.current
     const selectionOutline = selectionOutlineRef.current
     const selectionPivot = selectionPivotRef.current
     if (!engine || !world || !gizmo || !selectionPivot) return
@@ -351,6 +357,13 @@ export const ViewportPanel = memo(function ViewportPanel() {
     if (aabbGizmos) {
       aabbGizmos.sync(world, engine.backend.sync, {
         visible: mode === 'edit' && showAabb,
+        selectedIds: selectedIdSet,
+      })
+    }
+
+    if (colliderGizmos) {
+      colliderGizmos.sync(world, engine.backend.sync, {
+        visible: mode === 'edit' && activeViewportTab === 'scene',
         selectedIds: selectedIdSet,
       })
     }

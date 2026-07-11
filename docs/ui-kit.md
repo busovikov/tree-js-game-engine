@@ -15,6 +15,7 @@
 | Co-located styles | `*.css` next to each component/panel |
 | Multi-edit helpers | `packages/editor/src/inspector/` |
 | Viewport gizmos (not React) | `packages/editor/src/viewport/` |
+| Collider wireframe preview | `viewport/scene-collider-gizmos.ts` — green wireframe on selected entity with `Collider` |
 | Dev shell (mount point) | `apps/editor/src/main.tsx` |
 
 **There is no separate `@haku/ui` package** — editor UI lives inside `@haku/editor`.
@@ -77,6 +78,7 @@ Open the editor in browser — all components render in context (Hierarchy, Insp
 | `MeshRendererFields` | `components/MeshRendererFields.tsx` | Mesh geometry + asset |
 | `MaterialPropertiesPanel` | `components/MaterialPropertiesPanel.tsx` | Material registry fields |
 | `TagFields` | `components/TagFields.tsx` | Tag component |
+| `ColliderFields` | `components/ColliderFields.tsx` | Collider shape, size, static toggle |
 | `InspectorComponentSection` | `components/InspectorComponentSection.tsx` | Collapsible component block wrapper |
 | `AngleRangeSlider` | `components/AngleRangeSlider.tsx` | Spot light angles |
 
@@ -126,6 +128,7 @@ When building editor UI, **start from these** — do not rebuild equivalents:
 | Dropdown menu | `MenuBar` pattern (`menu-bar__*`) |
 | Modal dialog | `RenderSettingsDialog` / `ModelPickerDialog` as reference |
 | Entity creation | `EntityCreateMenu` + `world-commands.ts` |
+| Collider authoring | `ColliderFields` + `commitSceneEdit`; viewport preview via `SceneColliderGizmos` |
 | Empty state copy | Match existing: `Select an entity`, `No entities — click +` |
 
 ---
@@ -456,6 +459,13 @@ Import CSS in the component file: `import './inspector-panel.css'`
 ---
 
 ## Task recipes
+
+### Add collider to entity (mode B)
+
+1. Select entity → Inspector → **Add Component** → **Collider**
+2. Edit shape/size/static in `ColliderFields` (mutates via `commitSceneEdit`)
+3. Viewport shows green wireframe bounds on selected entity (`SceneColliderGizmos`)
+4. Save scene — verify `Collider` block in scene JSON; play mode uses Rapier sync (T01.8+)
 
 ### Add inspector field to existing component
 
