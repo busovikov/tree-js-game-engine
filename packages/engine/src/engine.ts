@@ -205,3 +205,8 @@ export {
   type DriveControlContext,
   type DriveControlState,
 } from './systems/vehicle-controller-system.js'
+export {
+  VehicleVisualSyncSystem,
+  computeWheelVisualTransform,
+  type WheelVisualTransform,
+} from './systems/vehicle-visual-sync-system.js'

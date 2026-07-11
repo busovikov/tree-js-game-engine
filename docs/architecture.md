@@ -144,6 +144,8 @@ tick(dt):
 
 **Vehicle controller (T01.13):** `VehicleControllerSystem` in `@haku/engine` (order 48, before `PhysicsWorldSystem`) — creates `IRaycastVehicle` per entity with `VehicleComponent` + collider body; reads component params each frame. RWD engine force, smoothed steering, coast/service/handbrake, boost speed cap, jump with grounded check. Programmatic input via `setVehicleInput(entityId, { throttle, steer, boost, jump, brake })` — keyboard binding deferred to T01.18.
 
+**Vehicle visual sync (T01.14):** `VehicleVisualSyncSystem` in `@haku/engine` (order 90, after physics, before `RenderSyncSystem`) — writes chassis `Transform` from physics body pose and four wheel child entity transforms from `IRaycastVehicle` wheel state (contact, suspension length, steering, spin). Wheel meshes: child entities with `MeshRenderer`, named `frontLeft` / `frontRight` / `backLeft` / `backRight` (or first four mesh children in FL→FR→BL→BR order). Tire marks (T01.16) out of scope.
+
 - `Engine.start()` → `requestAnimationFrame`
 - Editor creates `Engine` once in `ViewportPanel` `useEffect`; scene edits call `engine.setWorld()` — do not recreate engine per edit
 

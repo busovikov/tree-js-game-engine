@@ -222,6 +222,11 @@ export class VehicleControllerSystem implements ISystem {
     return this.tracked.get(id.value)?.currentSteer
   }
 
+  /** Raycast vehicle instance for visual sync (T01.14) and debug. */
+  getRaycastVehicle(id: EntityId): IRaycastVehicle | undefined {
+    return this.tracked.get(id.value)?.vehicle
+  }
+
   update(world: IWorld, dt: number): void {
     if (!this.bootstrapped) {
       this.bootstrap(world)
