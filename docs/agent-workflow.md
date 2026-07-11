@@ -86,6 +86,7 @@ Copy this into the task prompt or follow as agent:
 | Bug fix | `edge-cases.md` + failing test file | Minimal repro path from grep |
 | **Notion TODO task** | `notion.md`, `agent-workflow.md` | Anchor URL in chat; comment+status every pass |
 | **Create Notion ticket** | `notion-create-task.md` | `@notion-create-task` — duplicate template → To do |
+| **Build from reference** | `reference-driven-cycle.md` | `@reference-driven-cycle` — orchestrator + iterative Notion board |
 | Dependency / version | `techstack.md` | Relevant `package.json` only |
 | External game / create | `architecture.md`, `links.md` | `packages/create/templates/` |
 
@@ -254,6 +255,8 @@ Project skills in `.agents/skills/` — each references `docs/`:
 - `test-driven-development` — `edge-cases.md`, vitest commands
 - `ci-cd-and-automation` — `./scripts/check.sh`
 - `git-workflow-and-versioning` — commit format
+- `reference-driven-cycle` — orchestrator: build target from reference repo
+- `reference-driven-subagent` — single task in reference cycle (Task handoff)
 - `three-best-practices`, `threejs-*` — engine paths + `RENDER_PLAN.md`
 
 ## Quick links

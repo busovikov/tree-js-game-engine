@@ -10,6 +10,7 @@
 | Board | URL | Use for |
 | ----- | --- | ------- |
 | **Project / TODO** | https://app.notion.com/p/187bea824a66467caa3d7b75656a3d9b?v=8a0aff4dfc0e492cbe801afa236ec13d | Tasks, backlog, status |
+| **Iterative development** | https://app.notion.com/p/39a1402af56080458673d2afa6c1cdc5?v=7011402af5608398a5fe88954b3e9a8e | Reference-driven cycle (orchestrator) |
 | **Docs** | https://app.notion.com/p/4b9d6e2385114318803399f91bc1d539?v=bf7c4fca0df345d2abe99f034852517a | Artifacts, specs, attachments |
 | **Feature Task Template** | https://app.notion.com/p/Feature-Task-Template-39a1402af56080349186fce071ae7c72?v=bf7c4fca0df345d2abe99f034852517a | Duplicate → fill spec → link via 📎 Docs |
 
@@ -20,8 +21,12 @@ Project:              187bea82-4a66-467c-aa3d-7b75656a3d9b
 Docs:                 4b9d6e23-8511-4318-8033-99f91bc1d539
 Feature Task Template: 39a1402a-f560-8034-9186-fce071ae7c72
 Tasks data source:    114a0724-5da5-4611-967b-e8def615d996
+Iterative data source: 86f1402a-f560-826a-8ea0-07594e7d6759
 Docs data source:     73ffe0c3-80da-4bc2-939e-a92e4fb08cb4
+Iterative task template (New Task): 7291402a-f560-82f8-bb89-81649141037a
 ```
+
+**Reference-driven cycle** uses the **Iterative development** board — full workflow in [`reference-driven-cycle.md`](./reference-driven-cycle.md). Status `Select`: empty = No Select column; orchestrator grooms → To do; subagent → In progress → Review (+ commit for code); user → Done or To do.
 
 ---
 
@@ -271,6 +276,40 @@ If commit fails or user cancels → stay in **Review**, comment why.
 
 ---
 
+## Ship in another chat (commit without code session)
+
+Commit often happens in a **new chat** without `NOTION_TASK_URL`. Agent **must** still complete Notion ship.
+
+### Resolve task URL (before `git commit`)
+
+| Priority | Action |
+| -------- | ------ |
+| 1 | User pasted URL in commit message → use it |
+| 2 | User says "commit task X" → `notion-search` on Haku@editor board |
+| 3 | Unknown → **Ask user:** "Notion task URL?" — **wait** before commit |
+| 4 | Optional hint | Query board: `Select` in (`Review`, `In progress`) — confirm with user |
+
+**Do not** run `git commit` until URL is resolved or user explicitly says "skip Notion".
+
+### Ship checklist (same as § Ship wrap-up)
+
+1. `notion-fetch` task + linked 📎 Docs
+2. Final `docs/*.md` update
+3. `git commit`
+4. `notion-create-comment` — Shipped + hash
+5. `notion-update-page` → **Done**
+6. Reply with `**Notion:** [title](URL) · **Status:** Done`
+
+### User tip (paste into commit chat)
+
+```
+Закоммить. Notion: https://app.notion.com/p/<task-id>
+```
+
+Cursor rule `haku-notion-ship.mdc` applies even without prior coding in this chat.
+
+---
+
 ## When to update repo `docs/` vs Notion Docs
 
 | Change | Where |
@@ -283,7 +322,7 @@ If commit fails or user cancels → stay in **Review**, comment why.
 
 ## Quick reference for rules & skills
 
-- Cursor rules: `.cursor/rules/haku-notion.mdc`, `haku-notion-create-task.mdc`
+- Cursor rules: `.cursor/rules/haku-notion.mdc`, `haku-notion-ship.mdc`, `haku-notion-create-task.mdc`
 - **Create ticket:** [`notion-create-task.md`](./notion-create-task.md) — do not implement
 - **Execute ticket:** this file § Execute task from TODO
 - Agent workflow: `docs/agent-workflow.md`

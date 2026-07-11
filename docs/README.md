@@ -10,6 +10,7 @@
 | **[agent-workflow.md](./agent-workflow.md)** | **Every new task** — context rules, search strategy, done criteria |
 | **[notion.md](./notion.md)** | **Execute task** — anchor URL in chat, Notion sync every pass |
 | **[notion-create-task.md](./notion-create-task.md)** | **Create ticket** — duplicate Feature Task Template, Epic, Type, To do |
+| **[reference-driven-cycle.md](./reference-driven-cycle.md)** | **Build game from reference** — orchestrator, subagents, iterative board |
 | [techstack.md](./techstack.md) | Choosing libraries, build tools, or package dependencies |
 | [architecture.md](./architecture.md) | System design, data flow, package boundaries |
 | [edge-cases.md](./edge-cases.md) | Failures, empty states, validation, security — **not happy-path only** |
@@ -22,8 +23,11 @@ Skills are updated to use `docs/` — load skill + relevant doc together:
 
 | Skill | Uses docs |
 | ----- | --------- |
+| `notion-ship-task` | `notion.md` — commit in any chat → Done |
 | `notion-execute-task` | `notion.md`, `agent-workflow`, task-specific docs |
 | `notion-create-task` | `notion-create-task.md`, `notion.md`, `agent-workflow`, `architecture`, `links` |
+| `reference-driven-cycle` | `reference-driven-cycle.md` — orchestrator; subagent: `reference-driven-subagent` |
+| `reference-driven-subagent` | `reference-driven-cycle.md`, `notion-execute-task`, `incremental-implementation` |
 | `context-engineering` | `agent-workflow`, `README`, doc routing |
 | `incremental-implementation` | `agent-workflow`, `architecture`, `ui-kit`, `RENDER_PLAN` |
 | `source-driven-development` | `links`, `techstack` |
@@ -38,9 +42,11 @@ Auto-loaded in Cursor (`.cursor/rules/`):
 
 | Rule | Scope |
 | ---- | ----- |
+| `haku-notion-ship.mdc` | Always — on commit: Notion Done + comment |
 | `haku-notion-create-task.mdc` | Always — create tickets, not implement |
 | `haku-notion.mdc` | Always — execute TODO, subagent |
 | `haku-agent.mdc` | Always — workflow, docs map, boundaries |
+| `haku-reference-driven.mdc` | Always — reference-driven orchestrator trigger |
 | `haku-editor.mdc` | `packages/editor/**` |
 | `haku-engine.mdc` | engine, playground, core, schema |
 

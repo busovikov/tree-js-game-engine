@@ -1,0 +1,42 @@
+---
+description: Reference-driven cycle — build target project from reference via orchestrator + subagents
+alwaysApply: true
+---
+
+# Reference-Driven Development
+
+**Trigger:** user asks to build/create a project **from a reference**, replicate a reference game, «по референсу», «возьми референс», reference-driven cycle, or CONTINUE/REWORK/ESCALATE in an orchestrator session.
+
+**Skill:** `.agents/skills/reference-driven-cycle/SKILL.md` — **orchestrator** (parent chat, no production code)  
+**Playbook:** `docs/reference-driven-cycle.md`  
+**Subagents:** `.agents/skills/reference-driven-subagent/SKILL.md` via Task tool
+
+## On trigger
+
+1. Read `reference-driven-cycle` skill + `docs/reference-driven-cycle.md`
+2. Act as **ORCHESTRATOR** — delegate to subagents, do not implement features yourself
+3. Notion board: https://app.notion.com/p/39a1402af56080458673d2afa6c1cdc5 (data source `86f1402a-f560-826a-8ea0-07594e7d6759`)
+4. Phase 0: analysis + **clarifying questions** before plan
+5. Phase 1: master plan + **architectural questions** (physics, UI, scripts)
+6. Phase 2: GATE → PLATFORM_SLICE | TARGET_BUILD per task
+
+## Notion status (this cycle)
+
+| Column | Who |
+| ------ | --- |
+| No Select (empty) | New/discovered tasks |
+| To do | Orchestrator grooms next work |
+| In progress → Review | Subagent (+ **commit before Review** for code) |
+| Done / back to To do | **User** on board |
+
+## Do not confuse with
+
+- `@notion-create-task` — single ticket authoring, not full cycle
+- `@notion-execute-task` — single Notion task, not orchestrator
+- `@notion-ship-task` — commit ship when user says закоммить
+
+## Orchestrator reply header
+
+```markdown
+**Cycle:** <phase> · **Active:** <task> · **Board:** [Iterative dev](https://app.notion.com/p/39a1402af56080458673d2afa6c1cdc5)
+```

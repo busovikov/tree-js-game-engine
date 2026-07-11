@@ -5,7 +5,9 @@ dist
 coverage
 .turbo
 .pnpm-store
-.agents
+.agents/*
+!.agents/skills/
+!.agents/skills/**
 package-lock.json
 apps/*/dist
 packages/*/dist
