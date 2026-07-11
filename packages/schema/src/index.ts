@@ -153,12 +153,25 @@ export {
 
 import { MeshRendererSchema } from './mesh.js'
 import { StaticSchema } from './static.js'
+import { ColliderSchema } from './collider.js'
 import { TagSchema } from './tag.js'
 import { RenderingLayersSchema } from './rendering-layers.js'
 import { RenderTextureSchema } from './render-texture.js'
 
 export { TagSchema, type Tag } from './tag.js'
 export { StaticSchema, type Static } from './static.js'
+export {
+  BoxColliderSchema,
+  CapsuleColliderSchema,
+  ColliderSchema,
+  ColliderShapeSchema,
+  SphereColliderSchema,
+  type BoxCollider,
+  type CapsuleCollider,
+  type Collider,
+  type ColliderShape,
+  type SphereCollider,
+} from './collider.js'
 
 export {
   GEOMETRY_PARAM_SPECS,
@@ -337,6 +350,7 @@ export const CORE_COMPONENT_IDS = [
   'PrefabInstance',
   'Tag',
   'Static',
+  'Collider',
   'RenderingLayers',
   'RenderTexture',
 ] as const
@@ -352,6 +366,7 @@ export const coreComponentSchemas = {
   PrefabInstance: PrefabInstanceSchema,
   Tag: TagSchema,
   Static: StaticSchema,
+  Collider: ColliderSchema,
   RenderingLayers: RenderingLayersSchema,
   RenderTexture: RenderTextureSchema,
 } as const

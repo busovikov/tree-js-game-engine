@@ -155,7 +155,7 @@ flowchart TD
 
 | Task | Title | Type | Deps | Milestone |
 | ---- | ----- | ---- | ---- | --------- |
-| T01.7 | Collider component schema + `@haku/core` registry | Feature | T01.4 | M1 |
+| T01.7 | Collider component schema + `@haku/core` registry ✅ | Feature | T01.4 | M1 |
 | T01.8 | Serializer load/save collider components | Task | T01.7 | M1 |
 | T01.9 | Editor — manual primitive collider authoring UI (mode B) | Feature | T01.8 | M1 |
 | T01.10 | Physics debug wireframe + suspension ray overlay | Feature | T01.3, T01.9 | M3 |

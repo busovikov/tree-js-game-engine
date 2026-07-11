@@ -6,6 +6,7 @@ import {
   ScriptRefSchema,
   StaticSchema,
   TagSchema,
+  ColliderSchema,
   TransformSchema,
   type Camera,
   type Light,
@@ -14,6 +15,7 @@ import {
   type ScriptRef,
   type Static,
   type Tag,
+  type Collider,
   type Transform,
   RenderingLayersSchema,
   RenderTextureSchema,
@@ -69,6 +71,12 @@ export const StaticComponent = {
   defaults: () => StaticSchema.parse({}),
 } satisfies ComponentType<Static>
 
+export const ColliderComponent = {
+  id: 'Collider',
+  schema: ColliderSchema,
+  defaults: () => ColliderSchema.parse({ shape: 'box' }),
+} satisfies ComponentType<Collider>
+
 export const RenderingLayersComponent = {
   id: 'RenderingLayers',
   schema: RenderingLayersSchema,
@@ -89,6 +97,7 @@ export const coreComponents = [
   PrefabInstanceComponent,
   TagComponent,
   StaticComponent,
+  ColliderComponent,
   RenderingLayersComponent,
   RenderTextureComponent,
 ] as const
