@@ -7,10 +7,15 @@ export interface WheelConfig {
   radius: number
   suspensionRestLength: number
   suspensionStiffness: number
-  suspensionDamping: number
+  /** Damper when suspension extends (rebound). */
+  dampingRelaxation: number
+  /** Damper when suspension compresses. */
+  dampingCompression: number
   maxSuspensionTravel: number
   frictionSlip: number
   rollInfluence: number
+  /** Optional cap on per-wheel suspension force (default 100000). */
+  maxSuspensionForce?: number
 }
 
 /** Runtime state of a single raycast wheel after a simulation step. */

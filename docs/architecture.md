@@ -140,6 +140,8 @@ tick(dt):
 
 **Vehicle component (T01.11):** `Vehicle` in `@haku/schema` / `@haku/core` — grouped tunable params for chassis (mass, halfExtents, lift, damping, inertia), four-wheel connection pattern (radius, halfWidth, height, halfLength), suspension (stiffness, rest length, travel, friction, damping), engine/steering/brakes, jump, and arcade assists. Fields align with `@haku/physics` `WheelConfig` where applicable; optional runtime `physicsVehicleHandle` for raycast vehicle sync (T01.12). Serializer round-trip via generic component path; editor inspector deferred to T01.27.
 
+**Raycast vehicle (T01.12):** Shared sketchbook-style solver in `@haku/physics` (`stepRaycastVehicle`) — per-wheel suspension raycasts, spring-damper (compression/relaxation), lateral friction, engine/brake/steering via `IRaycastVehicle`. `StubPhysicsBackend` and `RapierPhysicsBackend` call the solver in `step()` before integration; Rapier types stay in `@haku/physics-rapier` only. Wheel state: `inContact`, `suspensionLength`, `rotation`, `steering`, `engineForce`. Controller (T01.13) and visual sync (T01.14) out of scope.
+
 - `Engine.start()` → `requestAnimationFrame`
 - Editor creates `Engine` once in `ViewportPanel` `useEffect`; scene edits call `engine.setWorld()` — do not recreate engine per edit
 

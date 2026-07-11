@@ -27,7 +27,7 @@ Legend: ✅ exists · 🟡 partial · ❌ missing
 | - | -------------------- | ----------- | --- | ---- |
 | G1 | Physics world (fixed step) | ❌ | **Blocker** | E01 |
 | G2 | Abstract swappable physics API | ❌ | **Blocker** (AD-02) | E01 |
-| G3 | RaycastVehicle (4-wheel suspension) | ❌ | **Blocker** | E03 |
+| G3 | RaycastVehicle (4-wheel suspension) | ✅ | T01.12 | E03 |
 | G4 | Static colliders (trimesh in ref) | ❌ | **Blocker** — platform A+B+C; project uses B | E01, E02 |
 | G5 | Vehicle tunable params (~30) | ❌ | **Blocker** | E03, E07 |
 | G6 | Keyboard drive + mouse camera | ❌ | **Blocker** (AD-07 v1) | E04 |
@@ -178,6 +178,8 @@ flowchart TD
 **Acceptance (M1):** Rear-wheel drive, steering, coast brake, boost cap, jump with grounded check; visuals match wheel contact points.
 
 **T01.11 delivery (schema):** `@haku/schema` `VehicleSchema` with grouped chassis/wheels/suspension/engine/steering/brakes/jump/assists (~40 tunable fields); `@haku/core` `VehicleComponent` registry entry; defaults from reference `DEFAULT_PARAMS` order-of-magnitude. Raycast sync (T01.12), controller (T01.13), editor inspector (T01.27) out of scope.
+
+**T01.12 delivery (physics):** `stepRaycastVehicle` shared solver in `@haku/physics`; `WheelConfig` aligned with schema (`dampingRelaxation` / `dampingCompression`); stub + Rapier backends apply suspension/friction/engine forces; flat-ground integration tests (4 wheels, 120 steps). VehicleControllerSystem (T01.13), visual wheel sync (T01.14), arcade assists (T01.15) out of scope.
 
 ---
 

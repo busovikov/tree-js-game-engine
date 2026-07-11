@@ -112,6 +112,17 @@ class GravityTestBackend implements IPhysicsBackend {
     return cloneTransform(this.getBody(body).transform)
   }
 
+  getBodyLinearVelocity(body: PhysicsBodyHandle): Vec3 {
+    this.assertInitialized()
+    const record = this.getBody(body)
+    return [...record.velocity] as Vec3
+  }
+
+  getBodyAngularVelocity(_body: PhysicsBodyHandle): Vec3 {
+    this.assertInitialized()
+    return [0, 0, 0]
+  }
+
   applyImpulse(): void {
     this.assertInitialized()
   }

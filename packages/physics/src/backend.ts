@@ -35,6 +35,9 @@ export interface IPhysicsBackend {
   applyImpulse(body: PhysicsBodyHandle, impulse: Vec3, worldPoint?: Vec3): void
   applyForce(body: PhysicsBodyHandle, force: Vec3, worldPoint?: Vec3): void
 
+  getBodyLinearVelocity(body: PhysicsBodyHandle): Vec3
+  getBodyAngularVelocity(body: PhysicsBodyHandle): Vec3
+
   raycast(query: RaycastQuery): RaycastHit | null
 
   createRaycastVehicle(chassis: PhysicsBodyHandle): IRaycastVehicle

@@ -15,6 +15,12 @@ export {
   type BodyWithShape,
 } from './primitives.js'
 export type { IRaycastVehicle, WheelConfig, WheelState } from './raycast-vehicle.js'
+export {
+  defaultFourWheelConfigs,
+  stepRaycastVehicle,
+  type RaycastVehicleSimulationHooks,
+  type WheelRuntime,
+} from './raycast-vehicle-simulation.js'
 export { StubPhysicsBackend, resetStubPhysicsIds } from './stub-backend.js'
 export type {
   PhysicsShapeDescriptor,

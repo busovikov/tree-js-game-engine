@@ -53,19 +53,29 @@ describe('@haku/physics StubPhysicsBackend', () => {
       radius: 0.4,
       suspensionRestLength: 0.3,
       suspensionStiffness: 30,
-      suspensionDamping: 2.3,
+      dampingRelaxation: 2.3,
+      dampingCompression: 2.3,
       maxSuspensionTravel: 0.3,
       frictionSlip: 1.4,
       rollInfluence: 0.01,
     })
 
     vehicle.applyEngineForce(wheel, 1500)
-    backend.step(1 / 60)
+
+    const ground = backend.createBody({
+      type: 'static',
+      transform: { position: [0, -0.1, 0], rotation: [0, 0, 0, 1] },
+    })
+    backend.attachShape(ground, { type: 'box', halfExtents: [20, 0.1, 20] })
+
+    for (let i = 0; i < 10; i++) {
+      backend.step(1 / 60)
+    }
 
     const states = vehicle.getWheelStates()
     expect(states).toHaveLength(1)
     expect(states[0]?.engineForce).toBe(1500)
-    expect(states[0]?.rotation).toBeGreaterThan(0)
+    expect(states[0]?.inContact).toBe(true)
   })
 })
 

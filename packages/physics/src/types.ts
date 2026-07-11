@@ -29,6 +29,8 @@ export interface RaycastQuery {
   origin: Vec3
   direction: Vec3
   maxDistance: number
+  /** Optional body to ignore (e.g. chassis self-hit during wheel raycasts). */
+  excludeBody?: PhysicsBodyHandle
 }
 
 export interface RaycastHit {

@@ -11,6 +11,11 @@ import {
   type PhysicsWheelHandle,
 } from '@haku/physics'
 import type { IRaycastVehicle, WheelConfig, WheelState } from '@haku/physics'
+import {
+  stepRaycastVehicle,
+  type RaycastVehicleSimulationHooks,
+  type WheelRuntime,
+} from '@haku/physics'
 import type {
   PhysicsShapeDescriptor,
   PhysicsTransform,
@@ -73,13 +78,7 @@ interface ShapeRecord {
   bodyHandle: PhysicsBodyHandle
 }
 
-interface WheelRecord {
-  config: WheelConfig
-  steering: number
-  engineForce: number
-  brake: number
-  rotation: number
-}
+interface WheelRecord extends WheelRuntime {}
 
 class RapierRaycastVehicle implements IRaycastVehicle {
   private readonly wheels = new Map<string, WheelRecord>()
@@ -97,6 +96,10 @@ class RapierRaycastVehicle implements IRaycastVehicle {
       engineForce: 0,
       brake: 0,
       rotation: 0,
+      inContact: false,
+      contactPoint: null,
+      suspensionLength: config.suspensionRestLength,
+      prevSuspensionLength: config.suspensionRestLength,
     })
     return handle
   }
@@ -120,43 +123,26 @@ class RapierRaycastVehicle implements IRaycastVehicle {
   }
 
   getWheelStates(): readonly WheelState[] {
-    const chassisTransform = this.backend.getBodyTransform(this.chassis)
-    const states: WheelState[] = []
-
-    for (const [value, record] of this.wheels) {
-      const worldOrigin = this.backend.transformLocalPoint(
-        chassisTransform,
-        record.config.localPosition,
-      )
-      const rayLength = record.config.suspensionRestLength + record.config.maxSuspensionTravel
-      const hit = this.backend.raycast({
-        origin: worldOrigin,
-        direction: [0, -1, 0],
-        maxDistance: rayLength + record.config.radius,
-      })
-
-      states.push({
-        wheel: physicsWheelHandle(value),
-        inContact: hit !== null,
-        contactPoint: hit?.point ?? null,
-        suspensionLength: hit
-          ? hit.distance - record.config.radius
-          : record.config.suspensionRestLength + record.config.maxSuspensionTravel,
-        rotation: record.rotation,
-        steering: record.steering,
-        engineForce: record.engineForce,
-      })
-    }
-
-    return states
+    return [...this.wheels.entries()].map(([value, wheel]) => ({
+      wheel: physicsWheelHandle(value),
+      inContact: wheel.inContact,
+      contactPoint: wheel.contactPoint,
+      suspensionLength: wheel.suspensionLength,
+      rotation: wheel.rotation,
+      steering: wheel.steering,
+      engineForce: wheel.engineForce,
+    }))
   }
 
-  advance(dt: number): void {
-    for (const record of this.wheels.values()) {
-      if (record.engineForce !== 0) {
-        record.rotation += record.engineForce * dt * 0.001
-      }
+  simulate(dt: number): void {
+    const hooks: RaycastVehicleSimulationHooks = {
+      raycast: (query) => this.backend.raycast(query),
+      getChassisTransform: (body) => this.backend.getBodyTransform(body),
+      getChassisLinearVelocity: (body) => this.backend.getBodyLinearVelocity(body),
+      getChassisAngularVelocity: (body) => this.backend.getBodyAngularVelocity(body),
+      applyForceAtPoint: (body, force, point) => this.backend.applyForceAtPoint(body, force, point),
     }
+    stepRaycastVehicle(this.chassis, this.wheels, hooks, dt)
   }
 
   private getWheel(wheel: PhysicsWheelHandle): WheelRecord {
@@ -217,10 +203,10 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
   step(dt: number): void {
     const world = this.getWorld()
     world.timestep = dt
-    world.step()
     for (const vehicle of this.vehicles.values()) {
-      vehicle.advance(dt)
+      vehicle.simulate(dt)
     }
+    world.step()
   }
 
   createBody(descriptor: RigidBodyDescriptor): PhysicsBodyHandle {
@@ -281,6 +267,16 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
     }
   }
 
+  getBodyLinearVelocity(body: PhysicsBodyHandle): Vec3 {
+    const record = this.getBodyRecord(body)
+    return vec3FromRapier(record.body.linvel())
+  }
+
+  getBodyAngularVelocity(body: PhysicsBodyHandle): Vec3 {
+    const record = this.getBodyRecord(body)
+    return vec3FromRapier(record.body.angvel())
+  }
+
   applyImpulse(body: PhysicsBodyHandle, impulse: Vec3, worldPoint?: Vec3): void {
     const record = this.getBodyRecord(body)
     if (worldPoint) {
@@ -291,12 +287,17 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
   }
 
   applyForce(body: PhysicsBodyHandle, force: Vec3, worldPoint?: Vec3): void {
-    const record = this.getBodyRecord(body)
     if (worldPoint) {
-      record.body.addForceAtPoint(vec3ToRapier(force), vec3ToRapier(worldPoint), true)
+      this.applyForceAtPoint(body, force, worldPoint)
       return
     }
+    const record = this.getBodyRecord(body)
     record.body.addForce(vec3ToRapier(force), true)
+  }
+
+  applyForceAtPoint(body: PhysicsBodyHandle, force: Vec3, worldPoint: Vec3): void {
+    const record = this.getBodyRecord(body)
+    record.body.addForceAtPoint(vec3ToRapier(force), vec3ToRapier(worldPoint), true)
   }
 
   raycast(query: RaycastQuery): RaycastHit | null {
@@ -304,7 +305,20 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
     this.refreshQueries()
     const direction = normalizeDirection(query.direction)
     const ray = new RAPIER.Ray(vec3ToRapier(query.origin), vec3ToRapier(direction))
-    const hit = world.castRayAndGetNormal(ray, query.maxDistance, true)
+
+    const excludeRigidBody = query.excludeBody
+      ? this.getBodyRecord(query.excludeBody).body
+      : undefined
+
+    const hit = world.castRayAndGetNormal(
+      ray,
+      query.maxDistance,
+      true,
+      undefined,
+      undefined,
+      undefined,
+      excludeRigidBody,
+    )
     if (!hit) {
       return null
     }
