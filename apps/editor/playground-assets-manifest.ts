@@ -1,4 +1,5 @@
 import { appendFile, mkdir, readdir, writeFile } from 'node:fs/promises'
+import { spawn } from 'node:child_process'
 import { dirname, join, normalize, relative, resolve } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Plugin } from 'vite'
@@ -65,6 +66,123 @@ async function handleAssetImport(
   res.end(JSON.stringify({ path: assetPath, bytes: body.byteLength }))
 }
 
+async function readJsonBody(req: IncomingMessage): Promise<{ path?: string }> {
+  const body = await readRequestBody(req)
+  if (body.byteLength === 0) return {}
+  return JSON.parse(body.toString('utf8')) as { path?: string }
+}
+
+function resolveProjectPath(projectRoot: string, relativePath: string): string | null {
+  const normalized = relativePath.replace(/^\/+/, '').replace(/\\/g, '/')
+  if (normalized.includes('..')) return null
+  const fullPath = normalize(resolve(projectRoot, normalized))
+  const root = normalize(resolve(projectRoot))
+  if (!fullPath.startsWith(root)) return null
+  return fullPath
+}
+
+function revealInFileManager(fullPath: string): Promise<void> {
+  return new Promise((resolvePromise, reject) => {
+    if (process.platform === 'darwin') {
+      spawn('open', ['-R', fullPath]).on('exit', (code) => {
+        if (code === 0) resolvePromise()
+        else reject(new Error(`open -R failed with code ${code}`))
+      })
+      return
+    }
+
+    if (process.platform === 'win32') {
+      spawn('explorer', [`/select,${fullPath}`]).on('exit', (code) => {
+        if (code === 0) resolvePromise()
+        else reject(new Error(`explorer failed with code ${code}`))
+      })
+      return
+    }
+
+    spawn('xdg-open', [dirname(fullPath)]).on('exit', (code) => {
+      if (code === 0) resolvePromise()
+      else reject(new Error(`xdg-open failed with code ${code}`))
+    })
+  })
+}
+
+function openTerminalAt(fullPath: string): Promise<void> {
+  return new Promise((resolvePromise, reject) => {
+    if (process.platform === 'darwin') {
+      spawn('open', ['-a', 'Terminal', fullPath]).on('exit', (code) => {
+        if (code === 0) resolvePromise()
+        else reject(new Error(`Terminal open failed with code ${code}`))
+      })
+      return
+    }
+
+    if (process.platform === 'win32') {
+      spawn('cmd', ['/c', 'start', 'cmd', '/K', `cd /d "${fullPath}"`]).on('exit', (code) => {
+        if (code === 0) resolvePromise()
+        else reject(new Error(`cmd failed with code ${code}`))
+      })
+      return
+    }
+
+    spawn('xdg-open', [fullPath]).on('exit', (code) => {
+      if (code === 0) resolvePromise()
+      else reject(new Error(`xdg-open failed with code ${code}`))
+    })
+  })
+}
+
+async function handleShellReveal(projectRoot: string, req: IncomingMessage, res: ServerResponse): Promise<void> {
+  if (req.method !== 'POST') {
+    res.statusCode = 405
+    res.end('Method Not Allowed')
+    return
+  }
+
+  const body = await readJsonBody(req)
+  if (typeof body.path !== 'string' || !body.path) {
+    res.statusCode = 400
+    res.end('Missing path')
+    return
+  }
+
+  const fullPath = resolveProjectPath(projectRoot, body.path)
+  if (!fullPath) {
+    res.statusCode = 400
+    res.end('Invalid path')
+    return
+  }
+
+  await revealInFileManager(fullPath)
+  res.statusCode = 204
+  res.end()
+}
+
+async function handleShellTerminal(projectRoot: string, req: IncomingMessage, res: ServerResponse): Promise<void> {
+  if (req.method !== 'POST') {
+    res.statusCode = 405
+    res.end('Method Not Allowed')
+    return
+  }
+
+  const body = await readJsonBody(req)
+  if (typeof body.path !== 'string' || !body.path) {
+    res.statusCode = 400
+    res.end('Missing path')
+    return
+  }
+
+  const fullPath = resolveProjectPath(projectRoot, body.path)
+  if (!fullPath) {
+    res.statusCode = 400
+    res.end('Invalid path')
+    return
+  }
+
+  await openTerminalAt(fullPath)
+  res.statusCode = 204
+  res.end()
+}
+
 export async function scanPlaygroundAssets(assetsRoot: string): Promise<string[]> {
   const files: string[] = []
 
@@ -113,6 +231,26 @@ export function playgroundAssetsManifestPlugin(assetsRoot: string): Plugin {
           } catch (error) {
             res.statusCode = 500
             res.end(error instanceof Error ? error.message : 'Import failed')
+          }
+          return
+        }
+
+        if (pathname === '/__haku/shell/reveal') {
+          try {
+            await handleShellReveal(playgroundRoot, req, res)
+          } catch (error) {
+            res.statusCode = 500
+            res.end(error instanceof Error ? error.message : 'Reveal failed')
+          }
+          return
+        }
+
+        if (pathname === '/__haku/shell/terminal') {
+          try {
+            await handleShellTerminal(playgroundRoot, req, res)
+          } catch (error) {
+            res.statusCode = 500
+            res.end(error instanceof Error ? error.message : 'Terminal open failed')
           }
           return
         }

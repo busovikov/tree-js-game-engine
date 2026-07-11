@@ -92,6 +92,59 @@ class NativeProjectStore {
     await this.getDirectoryHandle(dirPath, true)
   }
 
+  async copyFile(sourcePath: string, destPath: string): Promise<void> {
+    await this.ensureWritePermission()
+    const file = await this.getFile(sourcePath)
+    await this.writeFile(destPath, file)
+  }
+
+  async renamePath(oldPath: string, newPath: string): Promise<void> {
+    await this.ensureWritePermission()
+    const normalizedOld = normalizePath(oldPath)
+    const normalizedNew = normalizePath(newPath)
+    if (normalizedOld === normalizedNew) return
+
+    try {
+      await this.getFileHandleAtPath(normalizedNew)
+      throw new Error(`Path already exists: ${newPath}`)
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith('Path already exists')) {
+        throw error
+      }
+    }
+
+    const sourceHandle = await this.getFileHandleAtPath(normalizedOld)
+    const file = await sourceHandle.getFile()
+    await this.writeFile(normalizedNew, file)
+
+    const sourceDirParts = splitPath(normalizedOld)
+    const sourceName = sourceDirParts.pop()!
+    const sourceDir =
+      sourceDirParts.length > 0
+        ? await this.getDirectoryHandle(sourceDirParts.join('/'))
+        : this.rootHandle!
+    await sourceDir.removeEntry(sourceName)
+  }
+
+  async listAllFilesUnder(dirPath: string): Promise<DirectoryEntry[]> {
+    const dir = normalizePath(dirPath)
+    const results: DirectoryEntry[] = []
+    await this.collectFilesRecursive(dir, results)
+    results.sort((a, b) => a.path.localeCompare(b.path))
+    return results
+  }
+
+  private async collectFilesRecursive(dirPath: string, results: DirectoryEntry[]): Promise<void> {
+    const entries = await this.listDirectoryAt(dirPath)
+    for (const entry of entries) {
+      if (entry.isDirectory) {
+        await this.collectFilesRecursive(entry.path, results)
+      } else {
+        results.push(entry)
+      }
+    }
+  }
+
   async listDirectory(dirPath: string): Promise<DirectoryEntry[]> {
     return this.listDirectoryAt(dirPath)
   }

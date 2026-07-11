@@ -16,7 +16,7 @@ alwaysApply: true
 | Task | Read |
 | ---- | ---- |
 | Any new task | `docs/agent-workflow.md` |
-| **Notion TODO task** | `docs/notion.md` — fixed URLs, separate subagent |
+| **Notion TODO task** | `@notion-execute-task` — anchor URL in every reply; sync Notion each pass |
 | **Create Notion ticket** | `@notion-create-task` or `docs/notion-create-task.md` |
 | Versions / deps | `docs/techstack.md` |
 | Architecture / data flow | `docs/architecture.md` |

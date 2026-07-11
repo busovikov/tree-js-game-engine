@@ -10,7 +10,7 @@ Monorepo for the @haku browser game engine and editor.
 
 Full rules: [`docs/agent-workflow.md`](docs/agent-workflow.md)
 
-**Notion TODO:** [`docs/notion.md`](docs/notion.md) — execute task (separate subagent).  
+**Notion TODO:** [`docs/notion.md`](docs/notion.md) — anchor task URL in chat; comment + status every pass; Done after commit.  
 **Notion create ticket:** [`docs/notion-create-task.md`](docs/notion-create-task.md) — skill `@notion-create-task`.
 
 **Skills** (`.agents/skills/`) reference all `docs/` files — see `docs/README.md` § Agent skills.

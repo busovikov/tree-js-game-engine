@@ -34,4 +34,40 @@ describe('browserProjectStore.listDirectory', () => {
     expect(folderEntries).toHaveLength(0)
     expect(browserProjectStore.has('public/assets/new-folder/.gitkeep')).toBe(true)
   })
+
+  it('copies files to a new path', () => {
+    browserProjectStore.clear()
+    browserProjectStore.registerFile('public/assets/models/box.glb', { isBinary: true })
+
+    browserProjectStore.copyFile('public/assets/models/box.glb', 'public/assets/models/box copy.glb')
+
+    expect(browserProjectStore.has('public/assets/models/box copy.glb')).toBe(true)
+    expect(browserProjectStore.getFile('public/assets/models/box copy.glb')?.isBinary).toBe(true)
+  })
+
+  it('lists all files recursively under a directory', () => {
+    browserProjectStore.clear()
+    browserProjectStore.registerFile('public/assets/models/box.glb', { isBinary: true })
+    browserProjectStore.registerFile('public/assets/scenes/menu.scene.json', { content: '{}' })
+
+    const files = browserProjectStore.listAllFilesUnder('public/assets')
+    expect(files.map((entry) => entry.path).sort()).toEqual([
+      'public/assets/models/box.glb',
+      'public/assets/scenes/menu.scene.json',
+    ])
+  })
+
+  it('renames files and folders', () => {
+    browserProjectStore.clear()
+    browserProjectStore.registerFile('public/assets/models/box.glb', { isBinary: true })
+    browserProjectStore.createDirectory('public/assets/archive')
+    browserProjectStore.registerFile('public/assets/archive/old.glb', { isBinary: true })
+
+    browserProjectStore.renamePath('public/assets/models/box.glb', 'public/assets/models/crate.glb')
+    browserProjectStore.renamePath('public/assets/archive', 'public/assets/backup')
+
+    expect(browserProjectStore.has('public/assets/models/crate.glb')).toBe(true)
+    expect(browserProjectStore.has('public/assets/backup/old.glb')).toBe(true)
+    expect(browserProjectStore.has('public/assets/archive')).toBe(false)
+  })
 })

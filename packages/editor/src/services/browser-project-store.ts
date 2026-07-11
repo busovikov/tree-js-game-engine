@@ -165,6 +165,85 @@ class BrowserProjectStore {
       }
     }
   }
+
+  copyFile(sourcePath: string, destPath: string): void {
+    const source = this.files.get(normalizePath(sourcePath))
+    if (!source) throw new Error(`File not found: ${sourcePath}`)
+
+    const normalizedDest = normalizePath(destPath)
+    if (this.files.has(normalizedDest)) {
+      throw new Error(`File already exists: ${destPath}`)
+    }
+
+    this.files.set(normalizedDest, {
+      path: normalizedDest,
+      content: source.content,
+      file: source.file,
+      isBinary: source.isBinary,
+    })
+  }
+
+  /** All non-directory asset paths under a directory prefix (recursive). */
+  listAllFilesUnder(dirPath: string): DirectoryEntry[] {
+    const dir = normalizePath(dirPath)
+    const prefix = `${dir}/`
+    const results: DirectoryEntry[] = []
+
+    for (const path of this.files.keys()) {
+      if (!path.startsWith(prefix)) continue
+      const name = path.slice(path.lastIndexOf('/') + 1)
+      if (name === DIRECTORY_PLACEHOLDER) continue
+      results.push({ path, name, isDirectory: false })
+    }
+
+    results.sort((a, b) => a.path.localeCompare(b.path))
+    return results
+  }
+
+  renamePath(oldPath: string, newPath: string): void {
+    const normalizedOld = normalizePath(oldPath)
+    const normalizedNew = normalizePath(newPath)
+    if (normalizedOld === normalizedNew) return
+    if (this.files.has(normalizedNew)) {
+      throw new Error(`Path already exists: ${newPath}`)
+    }
+
+    const oldPrefix = `${normalizedOld}/`
+    const newPrefix = `${normalizedNew}/`
+    const moves: Array<[string, VirtualFile]> = []
+
+    for (const [path, entry] of this.files.entries()) {
+      if (path === normalizedOld) {
+        moves.push([normalizedNew, { ...entry, path: normalizedNew }])
+        continue
+      }
+      if (path.startsWith(oldPrefix)) {
+        const suffix = path.slice(oldPrefix.length)
+        const nextPath = `${newPrefix}${suffix}`
+        moves.push([nextPath, { ...entry, path: nextPath }])
+      }
+    }
+
+    if (moves.length === 0) {
+      throw new Error(`Path not found: ${oldPath}`)
+    }
+
+    for (const [path] of moves) {
+      if (this.files.has(path) && !path.startsWith(oldPrefix) && path !== normalizedOld) {
+        throw new Error(`Path already exists: ${path}`)
+      }
+    }
+
+    for (const [path] of [...this.files.keys()]) {
+      if (path === normalizedOld || path.startsWith(oldPrefix)) {
+        this.files.delete(path)
+      }
+    }
+
+    for (const [path, entry] of moves) {
+      this.files.set(path, entry)
+    }
+  }
 }
 
 function normalizePath(path: string): string {

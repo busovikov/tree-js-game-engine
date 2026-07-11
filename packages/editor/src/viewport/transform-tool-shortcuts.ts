@@ -59,6 +59,11 @@ export function handleDuplicateShortcut(event: KeyboardEvent): boolean {
   if (event.code !== 'KeyD') return false
   if (isEditableTarget(event.target)) return false
 
+  const target = event.target
+  if (target instanceof HTMLElement && target.closest('[data-haku-asset-browser]')) {
+    return false
+  }
+
   const { world, selection } = useEditorStore.getState()
   if (!world || selection.length === 0) return false
   if (!selection.some((id) => world.hasEntity(id))) return false

@@ -390,11 +390,33 @@ Engine exposes `pickEntityAt` / `pickEntitiesInRect`. Viewport handles click + m
 
 ## Asset browser
 
-`AssetBrowserPanel.tsx` — lists project assets via `projectService`.
+`AssetBrowserPanel.tsx` — three-column project asset explorer via `projectService`.
 
-- Import: copy into project assets dir
-- Assign model: opens `ModelPickerDialog.tsx`
-- Drag to scene: creates entity with `MeshRenderer` + model asset
+| Column | Role |
+| ------ | ---- |
+| **Tree (left)** | Lazy-loaded folder tree from `assetsRoot`; click to navigate |
+| **Quick actions (middle)** | Narrow icon strip (same pattern as `HierarchyToolsPanel`); context pictograms for selected file/folder |
+| **File list (right)** | Files and folders in the current directory |
+
+**Layout (top → bottom):** search bar (project-wide file search) → resizable columns (tree toolbar + tree | fixed quick-action icons | file list + path footer).
+
+**Search:** matches file names across the whole project. Tree shows only folders that contain matches (ancestors expanded). File list shows matching **files** in the selected folder only. If the selected folder has no matches, selection jumps to the first folder that does.
+
+**Tree toolbar:** `+` menu (New Folder, Import), Go Up, Refresh — pictogram buttons above the folder tree.
+
+**Quick actions:** Rename, Duplicate, type-specific actions, shell actions — narrow icon strip (fixed width; tree/files columns resize via handles on both sides).
+
+**File list footer:** editable path + copy pictogram at the bottom of the file column.
+
+**Quick actions by type:**
+- All files / folders → Rename, Duplicate (button + ⌘D when panel focused)
+- Model / prefab → Assign to Entity (requires hierarchy selection)
+- Scene (`.scene.json`) → Open Scene
+- Native/playground → Show in Finder, Open in Terminal (disabled for in-memory projects; playground dev server required for shell integration)
+
+**Keyboard:** ⌘D duplicates the selected asset when the asset panel is focused — entity duplicate is suppressed in that context.
+
+**CSS:** `asset-browser-panel.css` (`haku-asset-browser__*`)
 
 ---
 

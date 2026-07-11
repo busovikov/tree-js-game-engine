@@ -84,7 +84,7 @@ Copy this into the task prompt or follow as agent:
 | Undo / commands | `ui-kit.md`, `edge-cases.md` | `scene-history.ts`, `world-commands.ts` |
 | Project I/O | `edge-cases.md`, `links.md` | `project-service.ts` |
 | Bug fix | `edge-cases.md` + failing test file | Minimal repro path from grep |
-| **Notion TODO task** | `notion.md`, `agent-workflow.md` | MCP `notion-fetch` → subagent with task spec |
+| **Notion TODO task** | `notion.md`, `agent-workflow.md` | Anchor URL in chat; comment+status every pass |
 | **Create Notion ticket** | `notion-create-task.md` | `@notion-create-task` — duplicate template → To do |
 | Dependency / version | `techstack.md` | Relevant `package.json` only |
 | External game / create | `architecture.md`, `links.md` | `packages/create/templates/` |
@@ -234,12 +234,13 @@ Ideal task message for a **new session**:
 
 When the user asks to **execute / build a task from todo** (Notion):
 
-1. Read **`docs/notion.md`** — fixed Project and Docs URLs (no workspace search).
-2. Fetch task via MCP `notion-fetch` (server: `plugin-notion-workspace-notion`).
-3. **Launch a separate subagent** — one Notion task = one agent context.
-4. Subagent: implement → test → update `docs/` if needed → Notion comment + status + artifacts in Docs board.
+1. Read **`docs/notion.md`** — § **Task anchor in chat** (mandatory).
+2. Set `NOTION_TASK_URL` — show link in **every** assistant reply.
+3. **Every code pass** (incl. small fixes): comment + status **In progress** → **Review**.
+4. Subagent prompt must include `NOTION_TASK_URL`, `NOTION_TASK_PAGE_ID`, `ITERATION`.
+5. **Ship (user says commit):** docs → commit → comment → **Done**.
 
-Full workflow: [`notion.md`](./notion.md) · Rule: `.cursor/rules/haku-notion.mdc`
+Skills: `@notion-execute-task` · Rule: `.cursor/rules/haku-notion.mdc`
 
 ---
 

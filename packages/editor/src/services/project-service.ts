@@ -313,6 +313,17 @@ export class ProjectService {
     return browserProjectStore.listDirectory(dir)
   }
 
+  async listAllAssetFiles(): Promise<ProjectFileEntry[]> {
+    if (!this.manifest) return []
+
+    const assetsRoot = this.getAssetsRoot()
+    if (this.storage === 'native') {
+      return nativeProjectStore.listAllFilesUnder(assetsRoot)
+    }
+
+    return browserProjectStore.listAllFilesUnder(assetsRoot)
+  }
+
   async seedVirtualAssets(entries: Array<{ path: string; url: string }>): Promise<void> {
     this.storage = 'playground'
     for (const entry of entries) {
@@ -368,6 +379,137 @@ export class ProjectService {
     if (this.storage !== 'playground') return
 
     await this.writePlaygroundFileToDisk(relativePath, file)
+  }
+
+  supportsShellActions(): boolean {
+    return this.storage === 'native' || this.storage === 'playground'
+  }
+
+  canUseShellActions(): boolean {
+    return this.storage === 'playground'
+  }
+
+  async revealInFileManager(relativePath: string): Promise<void> {
+    if (!this.supportsShellActions()) {
+      throw new Error('Show in Finder is not available for in-memory projects')
+    }
+
+    if (this.storage === 'playground') {
+      const res = await fetch('/__haku/shell/reveal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: relativePath }),
+      })
+      if (!res.ok) {
+        throw new Error((await res.text()) || 'Failed to reveal in file manager')
+      }
+      return
+    }
+
+    throw new Error('Show in Finder is not available for browser-native projects')
+  }
+
+  async openInTerminal(relativeDir: string): Promise<void> {
+    if (!this.supportsShellActions()) {
+      throw new Error('Open in Terminal is not available for in-memory projects')
+    }
+
+    if (this.storage === 'playground') {
+      const res = await fetch('/__haku/shell/terminal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: relativeDir }),
+      })
+      if (!res.ok) {
+        throw new Error((await res.text()) || 'Failed to open terminal')
+      }
+      return
+    }
+
+    throw new Error('Open in Terminal is not available for browser-native projects')
+  }
+
+  async duplicateAsset(sourcePath: string): Promise<string> {
+    if (!this.manifest) throw new Error('No project open')
+
+    const assetsRoot = this.getAssetsRoot()
+    const normalized = sourcePath.replace(/^\/+/, '')
+    if (normalized !== assetsRoot && !normalized.startsWith(`${assetsRoot}/`)) {
+      throw new Error(`Asset must be under ${assetsRoot}/`)
+    }
+
+    const parentDir = normalized.includes('/')
+      ? normalized.slice(0, normalized.lastIndexOf('/'))
+      : assetsRoot
+    const fileName = normalized.slice(normalized.lastIndexOf('/') + 1)
+    const siblings = await this.listDirectory(parentDir)
+    const existingNames = new Set(siblings.map((entry) => entry.name))
+    const duplicateName = suggestDuplicateAssetName(fileName, existingNames)
+    const destPath = `${parentDir}/${duplicateName}`
+
+    if (this.storage === 'native') {
+      await nativeProjectStore.copyFile(normalized, destPath)
+      return destPath
+    }
+
+    browserProjectStore.copyFile(normalized, destPath)
+
+    if (this.storage === 'playground') {
+      const blob = await browserProjectStore.getBlob(normalized)
+      await this.writePlaygroundFileToDisk(destPath, blob)
+    }
+
+    return destPath
+  }
+
+  async renameAsset(sourcePath: string, newName: string): Promise<string> {
+    if (!this.manifest) throw new Error('No project open')
+
+    const assetsRoot = this.getAssetsRoot()
+    const normalized = sourcePath.replace(/^\/+/, '')
+    if (normalized !== assetsRoot && !normalized.startsWith(`${assetsRoot}/`)) {
+      throw new Error(`Asset must be under ${assetsRoot}/`)
+    }
+
+    const trimmedName = newName.trim()
+    if (!trimmedName) throw new Error('Name is required')
+    if (trimmedName.includes('/') || trimmedName.includes('\\')) {
+      throw new Error('Name cannot contain slashes')
+    }
+
+    const parentDir = normalized.includes('/')
+      ? normalized.slice(0, normalized.lastIndexOf('/'))
+      : assetsRoot
+    const destPath = `${parentDir}/${trimmedName}`
+    if (destPath === normalized) return destPath
+
+    const siblings = await this.listDirectory(parentDir)
+    if (siblings.some((entry) => entry.name === trimmedName && entry.path !== normalized)) {
+      throw new Error(`An item named “${trimmedName}” already exists in this folder`)
+    }
+
+    const sourceEntry = siblings.find((entry) => entry.path === normalized)
+    if (this.storage === 'native' && sourceEntry?.isDirectory) {
+      throw new Error('Renaming folders is not supported for native disk projects yet')
+    }
+
+    if (this.storage === 'native') {
+      await nativeProjectStore.renamePath(normalized, destPath)
+      return destPath
+    }
+
+    browserProjectStore.renamePath(normalized, destPath)
+
+    if (this.storage === 'playground') {
+      try {
+        const blob = await browserProjectStore.getBlob(destPath)
+        await this.writePlaygroundFileToDisk(destPath, blob)
+      } catch {
+        // Best-effort disk sync for renamed virtual assets.
+      }
+    }
+
+    return destPath
   }
 
   async createDirectory(relativePath: string): Promise<void> {
@@ -781,6 +923,22 @@ export class ProjectService {
 function isBinaryFile(name: string): boolean {
   const ext = name.split('.').pop()?.toLowerCase()
   return ext === 'glb' || ext === 'bin' || ext === 'png' || ext === 'jpg' || ext === 'jpeg' || ext === 'webp'
+}
+
+function suggestDuplicateAssetName(originalName: string, existingNames: Set<string>): string {
+  const dot = originalName.lastIndexOf('.')
+  const base = dot > 0 ? originalName.slice(0, dot) : originalName
+  const ext = dot > 0 ? originalName.slice(dot) : ''
+
+  let candidate = `${base} copy${ext}`
+  if (!existingNames.has(candidate)) return candidate
+
+  for (let i = 2; i < 1000; i++) {
+    candidate = `${base} copy ${i}${ext}`
+    if (!existingNames.has(candidate)) return candidate
+  }
+
+  return `${base} copy ${Date.now()}${ext}`
 }
 
 export const projectService = new ProjectService()

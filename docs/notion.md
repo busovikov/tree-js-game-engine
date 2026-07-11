@@ -51,12 +51,116 @@ cursor-ide-browser: browser_navigate → Project or Docs URL
 | ---- | ---- |
 | `notion-fetch` | Read task page, board, docs, Feature Task Template |
 | `notion-duplicate-page` | Copy Feature Task Template → new spec |
-| `notion-update-page` | Status → In progress / Done |
-| `notion-create-comment` | Progress, summary, links to artifacts |
+| `notion-update-page` | Status → In progress / Review / Done |
+| `notion-create-comment` | **Every iteration** + final summary on commit |
 | `notion-create-pages` | New doc page under Docs board |
 | `notion-search` | Only to find a **named task** inside known boards — not to find boards |
 
 If MCP returns auth error → call `mcp_auth` for `plugin-notion-workspace-notion`, retry.
+
+---
+
+## Task status lifecycle
+
+| Status | When |
+| ------ | ---- |
+| **To do** | New ticket (create flow) |
+| **In progress** | Agent started work on this iteration |
+| **Review** | Implementation iteration complete — **user reviews and may request changes** |
+| **Done** | User approved + asked to commit + commit created |
+
+**Never skip Review.** After each implementation pass → **Review**, not Done.
+
+```
+To do → In progress → Review → (user feedback) → In progress → Review → … → Done
+                                                              ↑ only after commit
+```
+
+---
+
+## Task anchor in chat (mandatory)
+
+Every session working on a Notion task must **pin the task URL** and **sync Notion on every code pass** — including small user fixes and subagent sessions.
+
+### Session variables
+
+Establish once at task start (from user URL, board pick, or `notion-fetch`):
+
+```
+NOTION_TASK_URL:     https://app.notion.com/p/<page-id>
+NOTION_TASK_PAGE_ID: <page-id>   # for notion-create-comment page_id
+NOTION_TASK_TITLE:   <from fetch>
+ITERATION:           1            # increment each implementation pass
+```
+
+If the user did not give a URL → **fetch board or ask** before editing files.
+
+### Visible in every assistant message
+
+While `NOTION_TASK_URL` is set, **every** user-facing reply must start with:
+
+```markdown
+**Notion:** [Task title](NOTION_TASK_URL) · **Status:** In progress | Review | Done
+```
+
+Subagents **must** echo the same line in their **first and last** message.
+
+### Notion sync — required on every code pass
+
+Applies to full implementations **and** small tweaks (“поправь”, “ещё раз”, one-line fixes).
+
+| When | MCP action |
+| ---- | ---------- |
+| **Start pass** (before file edits) | `notion-update-page` → **In progress** |
+| **Start pass** | `notion-create-comment` — "Started iteration N" |
+| **End pass** (after edits + tests) | `notion-create-comment` — iteration summary |
+| **End pass** | `notion-update-page` → **Review** |
+| **User says commit** | comment + **Done** (see Ship wrap-up) |
+
+**Rule:** no file edits for a Notion task without an anchored `NOTION_TASK_URL`.  
+**Rule:** no code pass ends without `notion-create-comment` + status update.
+
+### Subagent handoff (parent → Task tool)
+
+Parent **must** include in subagent prompt:
+
+```markdown
+## Notion anchor (mandatory)
+NOTION_TASK_URL: <full URL>
+NOTION_TASK_PAGE_ID: <id>
+NOTION_TASK_TITLE: <title>
+ITERATION: <n>
+
+Follow docs/notion.md § Task anchor in chat.
+First action: echo task link in reply → notion-fetch → In progress → start comment.
+Last action: iteration comment → Review → echo task link.
+```
+
+Parent's first reply after launch must also show **Notion:** link.
+
+### Small fixes in same chat
+
+When user requests tweaks while task is already anchored:
+
+1. Re-use `NOTION_TASK_URL` from session (do not drop the link)
+2. If status is **Review** → set **In progress** before edits
+3. Apply file changes
+4. `notion-create-comment` — short summary of tweak
+5. **Review** again
+
+Increment `ITERATION` on each pass.
+
+### MCP examples
+
+```
+notion-create-comment
+  page_id: "<NOTION_TASK_PAGE_ID>"
+  markdown: "**Iteration 2** — Fixed validation in AssetBrowserPanel. Tests pass."
+
+notion-update-page
+  page_id: "<NOTION_TASK_PAGE_ID>"
+  properties: { "Select": "Review" }
+```
 
 ---
 
@@ -66,54 +170,104 @@ When the user asks to **run / execute / build a task from todo** (or gives a Not
 
 ### Parent agent (this chat)
 
-1. **Do not implement in the same long session** if other work is present.
-2. Fetch task from Notion Project URL (or user-provided task URL).
-3. **Launch a new subagent** (`Task` tool) with a **fresh prompt** containing:
-   - Task title + description + acceptance criteria from Notion
-   - Links: `docs/agent-workflow.md`, relevant `docs/*.md` for task type
-   - Done criteria (test, docs update, Notion update)
-4. Optionally set parent task status in Notion → In progress before subagent starts.
+1. Resolve task URL → set **NOTION_TASK_URL** (see § Task anchor in chat).
+2. **First reply:** show `**Notion:** [title](URL)` + `notion-fetch`.
+3. **Launch subagent** with anchor block (URL, page_id, title, iteration) in prompt.
+4. Subagent must sync Notion; parent keeps link visible when summarizing subagent result.
 
 ### Subagent (one task = one context)
 
 ```
-1. Read docs/agent-workflow.md + task-specific docs (1–3 files)
-2. notion-fetch task page → confirm scope and done criteria
-3. notion-update-page → Status: In progress
-4. Implement minimal diff in repo (grep → 3–10 files)
-5. Test: pnpm test / pnpm build / ./scripts/check.sh (as needed)
-6. Update repo docs if behavior/architecture changed (docs/*.md)
-7. Notion wrap-up (see below)
-8. Report back to user with summary + commit hash if committed
+0. Echo **Notion:** [title](NOTION_TASK_URL) in first message
+1. notion-fetch NOTION_TASK_URL → confirm scope
+2. notion-update-page → In progress + start comment
+3. Read docs/ (1–3 files) + grep → implement
+4. Test
+5. notion-create-comment (iteration) → Review
+6. Echo **Notion:** link in final message
 ```
 
-**Rule:** one Notion task = **one subagent session**. No multi-task batching in one agent.
+**Rule:** one Notion task = one subagent per iteration. Anchor survives parent ↔ subagent handoff.
 
 ---
 
-## After implementation (Notion wrap-up)
+## Iteration wrap-up (after each implementation pass)
+
+User reviews in **Review** before Done. Run after every coding pass:
 
 | Step | Action |
 | ---- | ------ |
 | 1. Test | Run targeted tests + build; note commands in comment |
-| 2. Repo docs | Update `docs/` if API, UI, edge cases, or workflow changed |
-| 3. Task comment | `notion-create-comment` on task page: summary, files changed, test results |
-| 4. Artifacts | If spec/design/decision doc created → attach under **Docs** board (`notion-create-pages` or link in comment) |
-| 5. Status | `notion-update-page` → Done (or Blocked + comment if failed) |
+| 2. Comment | `notion-create-comment` — **required every iteration** (see template) |
+| 3. Status | `notion-update-page` → **Review** |
 
-### Comment template (task page)
+**Do not** on iteration wrap-up:
+- Move to **Done**
+- `git commit` (unless user explicitly asks)
+- Final `docs/` sweep (draft notes in comment only; full doc update at ship)
+
+### Comment template (start pass)
 
 ```markdown
-## Done
-
-**Summary:** <1–2 sentences>
-
-**Changed:** `path/a.ts`, `docs/edge-cases.md`
-
-**Tests:** `pnpm --filter @haku/engine test` — pass
-
-**Docs artifact:** <Notion Docs page URL if created>
+**Started iteration <n>** — <one line: what this pass will do>
 ```
+
+### Comment template (iteration)
+
+```markdown
+## Iteration <n>
+
+**Summary:** <what was implemented this pass>
+
+**Changed:** `path/a.ts`, `path/b.ts`
+
+**Tests:** `pnpm --filter @haku/<pkg> test` — pass / fail
+
+**Docs (pending ship):** `docs/edge-cases.md` — planned update
+
+**Ready for review:** yes / blocked — <reason>
+```
+
+### Comment template (small fix)
+
+```markdown
+**Tweak iteration <n>:** <what user asked> — <files changed>. Tests: pass/fail.
+```
+
+---
+
+## Ship wrap-up (only when user says commit)
+
+When the user explicitly asks to **commit** / **закоммить** / ship:
+
+| Step | Action |
+| ---- | ------ |
+| 1. Summary | Final summary of all work across iterations |
+| 2. Repo docs | Update `docs/*.md` listed in task AC (final pass) |
+| 3. Commit | `git commit` per user format — only now |
+| 4. Comment | `notion-create-comment` — final summary + commit hash |
+| 5. Status | `notion-update-page` → **Done** |
+| 6. Artifacts | Link Notion Docs pages if created |
+
+### Comment template (ship / Done)
+
+```markdown
+## Shipped
+
+**Summary:** <1–3 sentences — full feature outcome>
+
+**Commit:** `<hash>` — `<first line of commit message>`
+
+**Changed:** `path/a.ts`, `docs/edge-cases.md`, …
+
+**Tests:** `pnpm test`, `pnpm build`, `./scripts/check.sh` — pass
+
+**Docs updated:** `docs/edge-cases.md`, `docs/ui-kit.md`
+
+**Docs artifact:** <Notion Docs page URL if any>
+```
+
+If commit fails or user cancels → stay in **Review**, comment why.
 
 ---
 

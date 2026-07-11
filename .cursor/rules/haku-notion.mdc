@@ -1,39 +1,32 @@
 ---
-description: Notion TODO workflow — fixed URLs, separate agent per task
+description: Notion TODO — anchor task URL in chat, sync status+comments every pass (incl. subagents)
 alwaysApply: true
 ---
 
 # Notion Tasks
 
-**Full guide:** `docs/notion.md` — read it instead of searching Notion.
+**Full guide:** `docs/notion.md` § Task anchor in chat · Execute: `@notion-execute-task`
 
-## Fixed URLs (do not search)
+## Task anchor (mandatory while working on TODO)
 
-| Board | URL |
-| ----- | --- |
-| Project / TODO | https://app.notion.com/p/187bea824a66467caa3d7b75656a3d9b?v=8a0aff4dfc0e492cbe801afa236ec13d |
-| Docs | https://app.notion.com/p/4b9d6e2385114318803399f91bc1d539?v=bf7c4fca0df345d2abe99f034852517a |
+1. Set `NOTION_TASK_URL` from user link or `notion-fetch` — **before any file edits**
+2. **Every reply** starts with: `**Notion:** [title](URL) · **Status:** …`
+3. **Every code pass** (incl. small fixes):
+   - Start → `In progress` + `notion-create-comment`
+   - End → comment summary + `Review`
+4. **Subagent prompt** must include `NOTION_TASK_URL`, `NOTION_TASK_PAGE_ID`, `ITERATION`
+5. Subagent first/last message echoes the Notion link
 
-**Open task:** MCP `notion-fetch` with URL or page id from `docs/notion.md`.
+## Create task
 
-## User asks: create task / ticket / todo
+`docs/notion-create-task.md` or `@notion-create-task` — do not implement.
 
-**Do not implement.** Read `docs/notion-create-task.md`.
+## Execute task
 
-1. Study `docs/` + grep — minimal context
-2. **Duplicate** [Feature Task Template](https://app.notion.com/p/39a1402af56080349186fce071ae7c72) → fill spec → **📎 Docs**
-3. Create task card: **Select = To do**, correct **Epic** + **Type**
-4. AC in spec must list **git `docs/*.md`** files for implementer
-5. Return task URL + spec URL only
+In progress → **Review** each pass → **Done** only after user says commit.
 
-## User asks: execute task from TODO
-
-1. Fetch task from Notion (Project board or task URL).
-2. **Launch separate subagent** — one task = one new agent context.
-3. Subagent prompt must include: task spec, `docs/agent-workflow.md`, done criteria.
-4. Subagent must: implement → **test** → update **`docs/`** if needed → **comment + status in Notion**.
-5. Artifacts (specs, notes) → attach/link in **Docs** board; reference in task comment.
+**Never:** edit files without anchored URL · skip comments · skip status update
 
 ## MCP
 
-Server: `plugin-notion-workspace-notion`. Auth fail → `mcp_auth`, retry.
+`plugin-notion-workspace-notion` · Auth fail → `mcp_auth`

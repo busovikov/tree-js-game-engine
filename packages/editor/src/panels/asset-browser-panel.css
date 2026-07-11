@@ -1,0 +1,411 @@
+.haku-asset-browser {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: #252530;
+  color: #eee;
+}
+
+.haku-asset-browser--empty {
+  padding: 12px;
+  color: #888;
+  background: #252530;
+  height: 100%;
+}
+
+.haku-asset-browser__search-row {
+  flex-shrink: 0;
+  padding: 6px 8px;
+  border-bottom: 1px solid #333;
+}
+
+.haku-asset-browser__search {
+  width: 100%;
+  padding: 4px 8px;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: #1e1e28;
+  color: #eee;
+  font-size: 12px;
+  outline: none;
+}
+
+.haku-asset-browser__search::placeholder {
+  color: #777;
+}
+
+.haku-asset-browser__toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: #2a2a35;
+  color: #eee;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.haku-asset-browser__toolbar-btn:hover:not(:disabled) {
+  background: #333340;
+}
+
+.haku-asset-browser__toolbar-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.haku-asset-browser__add-menu {
+  position: relative;
+}
+
+.haku-asset-browser__dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 20;
+  min-width: 140px;
+  padding: 4px 0;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: #1e1e28;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.haku-asset-browser__dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  color: #ccc;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.haku-asset-browser__dropdown-item:hover {
+  background: #383848;
+  color: #fff;
+}
+
+.haku-asset-browser__path-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.haku-asset-browser__path {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: #1e1e28;
+  color: #eee;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: text;
+  text-align: left;
+}
+
+.haku-asset-browser__path:focus {
+  outline: none;
+  border-color: #3d5afe;
+}
+
+.haku-asset-browser__path-copy {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: #c8c8d0;
+  cursor: pointer;
+}
+
+.haku-asset-browser__path-copy:hover {
+  color: #fff;
+  background: #323240;
+}
+
+.haku-asset-browser__copy-feedback {
+  font-size: 10px;
+  color: #8ab4ff;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.haku-asset-browser__new-folder {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 4px 4px;
+  padding: 8px;
+  background: #1e1e28;
+  border-radius: 4px;
+  border: 1px solid #444;
+}
+
+.haku-asset-browser__new-folder-label {
+  font-size: 11px;
+  color: #aaa;
+}
+
+.haku-asset-browser__new-folder-input {
+  flex: 1;
+  min-width: 120px;
+  padding: 4px 6px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #252530;
+  color: #eee;
+  font-size: 12px;
+}
+
+.haku-asset-browser__error {
+  width: 100%;
+  font-size: 11px;
+  color: #f88;
+}
+
+.haku-asset-browser__body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.haku-asset-browser__panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.haku-asset-browser__panel--actions {
+  flex: 0 0 auto;
+  min-width: 36px;
+  max-width: 36px;
+}
+
+.haku-asset-browser__tree-column {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.haku-asset-browser__tree-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  padding: 4px;
+  border-bottom: 1px solid #333;
+  background: #22222c;
+}
+
+.haku-asset-browser__tree-tool {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: #c8c8d0;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.haku-asset-browser__tree-tool:hover:not(:disabled) {
+  background: #323240;
+  color: #fff;
+}
+
+.haku-asset-browser__tree-tool:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.haku-asset-browser__tree-tool-plus {
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 300;
+}
+
+.haku-asset-browser__tree {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 4px 0;
+}
+
+.haku-asset-browser__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 36px;
+  height: 100%;
+  padding: 8px 4px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: #22222c;
+}
+
+.haku-asset-browser__files-column {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.haku-asset-browser__rename-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 6px 8px;
+  border-bottom: 1px solid #333;
+  background: #1e1e28;
+}
+
+.haku-asset-browser__files {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 4px 0;
+}
+
+.haku-asset-browser__files-footer {
+  flex-shrink: 0;
+  padding: 6px 8px;
+  border-top: 1px solid #333;
+  background: #22222c;
+}
+
+.haku-asset-browser__tree-node {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 3px 6px;
+  border: none;
+  background: transparent;
+  color: #ccc;
+  cursor: pointer;
+  font-size: 11px;
+  text-align: left;
+}
+
+.haku-asset-browser__tree-node:hover {
+  background: #2a2a38;
+  color: #eee;
+}
+
+.haku-asset-browser__tree-node--current {
+  background: #3d5afe22;
+  color: #eee;
+}
+
+.haku-asset-browser__tree-node--match {
+  color: #8ab4ff;
+}
+
+.haku-asset-browser__tree-toggle {
+  display: inline-flex;
+  width: 14px;
+  flex-shrink: 0;
+  justify-content: center;
+  font-size: 9px;
+  color: #666;
+}
+
+.haku-asset-browser__tree-toggle--leaf {
+  visibility: hidden;
+}
+
+.haku-asset-browser__file-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border: none;
+  background: transparent;
+  color: #eee;
+  cursor: pointer;
+  text-align: left;
+  font-size: 12px;
+}
+
+.haku-asset-browser__file-row:hover {
+  background: #2a2a38;
+}
+
+.haku-asset-browser__file-row--selected {
+  background: #3d5afe33;
+}
+
+.haku-asset-browser__file-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.haku-asset-browser__tool {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: #c8c8d0;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.haku-asset-browser__tool:hover:not(:disabled) {
+  background: #323240;
+  color: #fff;
+}
+
+.haku-asset-browser__tool:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.haku-asset-browser__loading,
+.haku-asset-browser__empty-folder {
+  padding: 12px;
+  color: #888;
+  font-size: 12px;
+}

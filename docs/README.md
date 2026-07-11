@@ -8,7 +8,7 @@
 | Document | When to read |
 | -------- | ------------ |
 | **[agent-workflow.md](./agent-workflow.md)** | **Every new task** — context rules, search strategy, done criteria |
-| **[notion.md](./notion.md)** | **Notion TODO** — fixed board URLs, MCP, separate subagent |
+| **[notion.md](./notion.md)** | **Execute task** — anchor URL in chat, Notion sync every pass |
 | **[notion-create-task.md](./notion-create-task.md)** | **Create ticket** — duplicate Feature Task Template, Epic, Type, To do |
 | [techstack.md](./techstack.md) | Choosing libraries, build tools, or package dependencies |
 | [architecture.md](./architecture.md) | System design, data flow, package boundaries |
@@ -22,6 +22,7 @@ Skills are updated to use `docs/` — load skill + relevant doc together:
 
 | Skill | Uses docs |
 | ----- | --------- |
+| `notion-execute-task` | `notion.md`, `agent-workflow`, task-specific docs |
 | `notion-create-task` | `notion-create-task.md`, `notion.md`, `agent-workflow`, `architecture`, `links` |
 | `context-engineering` | `agent-workflow`, `README`, doc routing |
 | `incremental-implementation` | `agent-workflow`, `architecture`, `ui-kit`, `RENDER_PLAN` |
