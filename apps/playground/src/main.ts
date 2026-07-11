@@ -1,4 +1,10 @@
-import { Engine, SceneLoader, PhysicsColliderSystem, projectPathToUrl } from '@haku/engine/runtime'
+import {
+  Engine,
+  SceneLoader,
+  PhysicsColliderSystem,
+  startVehiclePlayMode,
+  projectPathToUrl,
+} from '@haku/engine/runtime'
 import { createRapierPhysicsBackend } from '@haku/physics-rapier'
 import project from '../haku.project.json'
 
@@ -18,6 +24,9 @@ async function main() {
   const backend = await createRapierPhysicsBackend()
   const physicsSystem = engine.setPhysicsBackend(backend)
   engine.addSystem(new PhysicsColliderSystem(physicsSystem))
+  startVehiclePlayMode(engine, physicsSystem, {
+    input: { pointerTarget: canvas },
+  })
 
   engine.start()
 }

@@ -80,7 +80,7 @@ Ship order: physics + drive + camera first → then color grade, vignette, chrom
 
 Mobile, gamepad, touch deferred to later milestone (not blocking full-clone tuning/HUD scope for other features).
 
-**Implementation (T01.17):** `@haku/engine` `InputManager` — WASD/arrows → throttle/steer; Shift boost; Space jump + handbrake; R respawn; mouse drag orbit + wheel zoom. Play-mode `enable`/`disable`; vehicle binding in T01.18.
+**Implementation (T01.17):** `@haku/engine` `InputManager` — WASD/arrows → throttle/steer; Shift boost; Space jump + handbrake; R respawn; mouse drag orbit + wheel zoom. Play-mode `enable`/`disable`; vehicle binding in T01.18 (`InputBindingSystem` + `startVehiclePlayMode`).
 
 ---
 

@@ -194,6 +194,8 @@ flowchart TD
 
 **Scope (AD-07):** WASD/arrows, Shift boost, Space jump/handbrake, R respawn, mouse orbit/zoom → camera. Touch/gamepad deferred.
 
+**T01.18 delivery (input binding):** `InputBindingSystem` in `@haku/engine` (order 47) — each frame reads `InputManager.getActions()` → `VehicleControllerSystem.setVehicleInput()` for the controlled vehicle (explicit entity or first enabled `VehicleComponent`). Maps throttle/steer/brake/boost/jump; `onRespawn` callback for R pulse (stub until T01.21). `startVehiclePlayMode()` bootstrap wires controller + visual sync + input for playground and editor play mode. Unit + integration tests in `input-binding-system.test.ts`. Camera binding (T01.19) out of scope.
+
 ---
 
 ### E05 — Gameplay systems

@@ -218,3 +218,13 @@ export {
   type InputManagerOptions,
   type PointerCaptureTarget,
 } from './input/index.js'
+export {
+  InputBindingSystem,
+  inputActionsToVehicleInput,
+  type InputBindingSystemOptions,
+} from './systems/input-binding-system.js'
+export {
+  startVehiclePlayMode,
+  type VehiclePlayModeOptions,
+  type VehiclePlayModeSession,
+} from './play-mode-vehicle.js'

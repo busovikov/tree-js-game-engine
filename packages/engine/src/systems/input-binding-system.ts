@@ -1,0 +1,94 @@
+import type { EntityId, IWorld, ISystem } from '@haku/core'
+import { VehicleComponent } from '@haku/core'
+import type { InputActions } from '../input/input-actions.js'
+import type { InputManager } from '../input/input-manager.js'
+import type { VehicleControllerSystem, VehicleInput } from './vehicle-controller-system.js'
+
+export interface InputBindingSystemOptions {
+  /** Entity to drive; when omitted, first enabled {@link VehicleComponent} is used. */
+  controlledEntity?: EntityId | null
+  /** Fired once per R keydown while input is enabled (T01.21 implements respawn). */
+  onRespawn?: (entityId: EntityId) => void
+}
+
+/** Map {@link InputActions} to {@link VehicleInput} for {@link VehicleControllerSystem}. */
+export function inputActionsToVehicleInput(actions: InputActions): VehicleInput {
+  return {
+    throttle: actions.throttle,
+    steer: actions.steer,
+    brake: actions.brake,
+    boost: actions.boost,
+    jump: actions.jump,
+  }
+}
+
+/**
+ * Each frame: read {@link InputManager} actions → {@link VehicleControllerSystem.setVehicleInput}.
+ * Runs before {@link VehicleControllerSystem} (order 47).
+ */
+export class InputBindingSystem implements ISystem {
+  readonly order = 47
+
+  private controlledEntity: EntityId | null
+  private readonly onRespawn?: (entityId: EntityId) => void
+
+  constructor(
+    private readonly inputManager: InputManager,
+    private readonly vehicleController: VehicleControllerSystem,
+    options: InputBindingSystemOptions = {},
+  ) {
+    this.controlledEntity = options.controlledEntity ?? null
+    this.onRespawn = options.onRespawn
+  }
+
+  setControlledEntity(id: EntityId | null): void {
+    if (this.controlledEntity) {
+      this.vehicleController.clearVehicleInput(this.controlledEntity)
+    }
+    this.controlledEntity = id
+  }
+
+  getControlledEntity(): EntityId | null {
+    return this.controlledEntity
+  }
+
+  update(world: IWorld, _dt: number): void {
+    const entity = this.resolveControlledEntity(world)
+    if (!entity) {
+      this.inputManager.endFrame()
+      return
+    }
+
+    const actions = this.inputManager.getActions()
+    this.vehicleController.setVehicleInput(entity, inputActionsToVehicleInput(actions))
+
+    if (actions.respawn) {
+      this.onRespawn?.(entity)
+    }
+
+    this.inputManager.endFrame()
+  }
+
+  dispose(): void {
+    if (this.controlledEntity) {
+      this.vehicleController.clearVehicleInput(this.controlledEntity)
+    }
+    this.controlledEntity = null
+  }
+
+  private resolveControlledEntity(world: IWorld): EntityId | null {
+    if (this.controlledEntity && world.hasEntity(this.controlledEntity)) {
+      return this.controlledEntity
+    }
+
+    for (const id of world.query(VehicleComponent)) {
+      const vehicle = world.getComponent(id, VehicleComponent)
+      if (vehicle?.enabled !== false) {
+        this.controlledEntity = id
+        return id
+      }
+    }
+
+    return null
+  }
+}

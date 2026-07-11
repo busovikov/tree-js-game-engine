@@ -8,6 +8,9 @@ export {
   VehicleControllerSystem,
   VehicleVisualSyncSystem,
   InputManager,
+  InputBindingSystem,
+  inputActionsToVehicleInput,
+  startVehiclePlayMode,
   colliderToPhysicsShape,
   composeColliderTransform,
   computeDriveControlState,
@@ -23,6 +26,8 @@ export type {
   PointerCaptureTarget,
   DirectionalKeyAction,
 } from './input/index.js'
+export type { InputBindingSystemOptions } from './systems/input-binding-system.js'
+export type { VehiclePlayModeOptions, VehiclePlayModeSession } from './play-mode-vehicle.js'
 export { DEFAULT_INPUT_ACTIONS, KEY_BINDINGS } from './input/index.js'
 export type { WheelVisualTransform } from './systems/vehicle-visual-sync-system.js'
 export type { EditorRenderExtensions } from '@haku/core'

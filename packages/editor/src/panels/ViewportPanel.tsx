@@ -247,7 +247,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
     }
 
     let cancelled = false
-    void startPlayModePhysics(engine, world)
+    void startPlayModePhysics(engine, world, canvasRef.current ?? undefined)
       .then((session) => {
         if (cancelled) {
           session.dispose()
