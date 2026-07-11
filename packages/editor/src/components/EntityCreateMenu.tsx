@@ -1,8 +1,11 @@
-import { memo, useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
+import { memo, useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import type { Light } from '@haku/schema'
 import { MESH_GEOMETRY_TYPE_LABELS, MESH_PRIMITIVE_GEOMETRY_TYPES } from '@haku/schema'
 import {
+  createCameraEntity,
   createEmptyEntity,
+  createLightEntity,
   createMeshPrimitive,
   createModelEntity,
 } from '../commands/world-commands.js'
@@ -15,12 +18,39 @@ const MESH_PRIMITIVES = MESH_PRIMITIVE_GEOMETRY_TYPES.map((geometryType) => ({
   label: MESH_GEOMETRY_TYPE_LABELS[geometryType],
 }))
 
+const LIGHT_TYPES: Array<{ type: Light['type']; label: string }> = [
+  { type: 'directional', label: 'Directional' },
+  { type: 'point', label: 'Point' },
+  { type: 'spot', label: 'Spot' },
+  { type: 'hemisphere', label: 'Hemisphere' },
+]
+
 function menuPosition(trigger: HTMLElement): CSSProperties {
   const rect = trigger.getBoundingClientRect()
   return {
     top: rect.bottom + 4,
     left: rect.left,
   }
+}
+
+function EntityCreateSubmenu({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="haku-entity-menu__submenu">
+      <button
+        type="button"
+        className="haku-entity-menu__item haku-entity-menu__item--submenu"
+        aria-haspopup="menu"
+      >
+        <span>{label}</span>
+        <span className="haku-entity-menu__arrow" aria-hidden="true">
+          ›
+        </span>
+      </button>
+      <div className="haku-entity-menu__flyout" role="menu">
+        {children}
+      </div>
+    </div>
+  )
 }
 
 export const EntityCreateMenu = memo(function EntityCreateMenu({
@@ -150,40 +180,51 @@ export const EntityCreateMenu = memo(function EntityCreateMenu({
 
             <div className="haku-entity-menu__separator" role="separator" />
 
-            <div className="haku-entity-menu__submenu">
-              <button
-                type="button"
-                className="haku-entity-menu__item haku-entity-menu__item--submenu"
-                aria-haspopup="menu"
-              >
-                <span>3D Object</span>
-                <span className="haku-entity-menu__arrow" aria-hidden="true">
-                  ›
-                </span>
-              </button>
-              <div className="haku-entity-menu__flyout" role="menu">
-                {MESH_PRIMITIVES.map(({ geometryType, label }) => (
-                  <button
-                    key={geometryType}
-                    type="button"
-                    className="haku-entity-menu__item"
-                    role="menuitem"
-                    onClick={() => run(() => createMeshPrimitive(geometryType))}
-                  >
-                    {label}
-                  </button>
-                ))}
-                <div className="haku-entity-menu__separator" role="separator" />
+            <button
+              type="button"
+              className="haku-entity-menu__item"
+              role="menuitem"
+              onClick={() => run(() => createCameraEntity())}
+            >
+              Camera
+            </button>
+
+            <EntityCreateSubmenu label="Light">
+              {LIGHT_TYPES.map(({ type, label }) => (
                 <button
+                  key={type}
                   type="button"
                   className="haku-entity-menu__item"
                   role="menuitem"
-                  onClick={openModelPicker}
+                  onClick={() => run(() => createLightEntity(type))}
                 >
-                  Model…
+                  {label}
                 </button>
-              </div>
-            </div>
+              ))}
+            </EntityCreateSubmenu>
+
+            <EntityCreateSubmenu label="3D Object">
+              {MESH_PRIMITIVES.map(({ geometryType, label }) => (
+                <button
+                  key={geometryType}
+                  type="button"
+                  className="haku-entity-menu__item"
+                  role="menuitem"
+                  onClick={() => run(() => createMeshPrimitive(geometryType))}
+                >
+                  {label}
+                </button>
+              ))}
+              <div className="haku-entity-menu__separator" role="separator" />
+              <button
+                type="button"
+                className="haku-entity-menu__item"
+                role="menuitem"
+                onClick={openModelPicker}
+              >
+                Model…
+              </button>
+            </EntityCreateSubmenu>
           </div>,
           document.body,
         )}
@@ -192,7 +233,10 @@ export const EntityCreateMenu = memo(function EntityCreateMenu({
         open={modelPickerOpen}
         assets={modelAssets}
         selected=""
-        onSelect={(modelAsset) => createModelEntity(modelAsset)}
+        onSelect={(modelAsset) => {
+          createModelEntity(modelAsset)
+          setModelPickerOpen(false)
+        }}
         onClose={() => setModelPickerOpen(false)}
       />
     </div>

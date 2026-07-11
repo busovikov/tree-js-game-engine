@@ -1,12 +1,14 @@
 import type { EntityId } from '@haku/core'
 import {
+  CameraComponent,
+  LightComponent,
   MeshRendererComponent,
   PrefabInstanceComponent,
   TransformComponent,
   getCoreComponent,
 } from '@haku/core'
-import type { MeshGeometryType } from '@haku/schema'
-import { MESH_GEOMETRY_TYPE_LABELS, defaultGeometryParams } from '@haku/schema'
+import type { Light, MeshGeometryType } from '@haku/schema'
+import { LightSchema, MESH_GEOMETRY_TYPE_LABELS, defaultGeometryParams } from '@haku/schema'
 import type { Command } from './command-bus.js'
 import { globalCommandBus } from './command-bus.js'
 import { commitSceneEdit } from './scene-history.js'
@@ -22,6 +24,13 @@ import {
 } from './entity-placement.js'
 
 export const MESH_PRIMITIVE_LABELS = MESH_GEOMETRY_TYPE_LABELS
+
+const LIGHT_ENTITY_NAMES: Record<Light['type'], string> = {
+  directional: 'Directional Light',
+  point: 'Point Light',
+  spot: 'Spot Light',
+  hemisphere: 'Hemisphere Light',
+}
 
 export function createEmptyEntity(placement: EntityPlacement = 'root'): void {
   const selected = primarySelection(useEditorStore.getState().selection)
@@ -65,6 +74,28 @@ export function createModelEntity(modelAsset: string, placement: EntityPlacement
       geometryParams: {},
       modelAsset,
     })
+    return [id]
+  })
+}
+
+export function createCameraEntity(placement: EntityPlacement = 'root'): void {
+  const selected = primarySelection(useEditorStore.getState().selection)
+
+  commitSceneEdit((draft) => {
+    const name = uniqueEntityName(draft.world, 'Camera')
+    const id = createEntityWithPlacement(draft.world, name, placement, selected)
+    draft.world.addComponent(id, CameraComponent, CameraComponent.defaults!())
+    return [id]
+  })
+}
+
+export function createLightEntity(lightType: Light['type'], placement: EntityPlacement = 'root'): void {
+  const selected = primarySelection(useEditorStore.getState().selection)
+
+  commitSceneEdit((draft) => {
+    const name = uniqueEntityName(draft.world, LIGHT_ENTITY_NAMES[lightType])
+    const id = createEntityWithPlacement(draft.world, name, placement, selected)
+    draft.world.addComponent(id, LightComponent, LightSchema.parse({ type: lightType }))
     return [id]
   })
 }
