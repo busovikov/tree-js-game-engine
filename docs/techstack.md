@@ -77,6 +77,43 @@ Root scripts: `pnpm build`, `pnpm test`, `pnpm lint`, `pnpm typecheck`.
 
 ---
 
+## `@haku/physics`
+
+**Role:** Backend-agnostic physics simulation API — rigid bodies, colliders, raycasts, raycast vehicle interface. No Rapier, no Three.js.
+
+| Dependency | Purpose |
+| ---------- | ------- |
+| *(none)* | Pure TypeScript interfaces + stub backend for CI |
+
+**Build:** `tsc` → `dist/`
+
+**Key exports:**
+- `IPhysicsBackend`, `IPhysicsWorld`, `PhysicsWorld`
+- `StubPhysicsBackend` — no-op backend for unit tests without WASM
+- Shape descriptors: box, sphere, capsule
+
+**Tests:** `packages/physics/src/stub-backend.test.ts`
+
+---
+
+## `@haku/physics-rapier`
+
+**Role:** Rapier WASM adapter implementing `IPhysicsBackend` (AD-02). All `@dimforge/rapier3d-compat` imports confined to this package.
+
+| Dependency | Purpose |
+| ---------- | ------- |
+| `@haku/physics` | Abstract backend contract |
+| `@dimforge/rapier3d-compat` ^0.19.3 | WASM physics engine |
+
+**Build:** `tsc` → `dist/`
+
+**Key exports:**
+- `RapierPhysicsBackend`, `createRapierPhysicsBackend()`, `ensureRapierWasmLoaded()`
+
+**Tests:** `packages/physics-rapier/src/rapier-backend.test.ts` (WASM init, bodies, colliders, raycast, vehicle hooks)
+
+---
+
 ## `@haku/engine`
 
 **Role:** Three.js runtime — game loop, render backend, asset loading, render sync.

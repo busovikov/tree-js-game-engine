@@ -26,6 +26,7 @@ scene assets (.scene.json)
 @haku/core            → schema
     ↓
 @haku/physics         (abstract API — no Rapier/Three.js)
+@haku/physics-rapier  → physics, @dimforge/rapier3d-compat (adapter only)
 @haku/serializer      → schema, core
     ↓
 @haku/engine          → core, schema, serializer, physics, three
