@@ -136,7 +136,7 @@ tick(dt):
 
 **Primitive colliders (T01.4):** Box, sphere, and capsule shapes attach via `PhysicsShapeDescriptor` on `IPhysicsWorld.attachShape()`. Use `createBodyWithShape()` from `@haku/physics` to spawn static ground or dynamic bodies. Static bodies need no entity registration; register dynamic bodies with `PhysicsWorldSystem.registerBody()` for transform sync.
 
-**Collider component (T01.7):** `Collider` in `@haku/schema` / `@haku/core` — discriminated union on `shape` (`box` \| `sphere` \| `capsule`) with size fields aligned to `PhysicsShapeDescriptor`, local `offset` + `rotation`, `isStatic` body flag, and optional runtime `physicsBodyHandle`. Serializer (T01.8) and editor UI (T01.9) consume this; engine sync spawns bodies from component data.
+**Collider component (T01.7):** `Collider` in `@haku/schema` / `@haku/core` — discriminated union on `shape` (`box` \| `sphere` \| `capsule`) with size fields aligned to `PhysicsShapeDescriptor`, local `offset` + `rotation`, `isStatic` body flag, and optional runtime `physicsBodyHandle`. `@haku/serializer` load/save round-trips collider fields via the generic component path (T01.8); editor UI (T01.9) and engine sync spawn bodies from component data.
 
 - `Engine.start()` → `requestAnimationFrame`
 - Editor creates `Engine` once in `ViewportPanel` `useEffect`; scene edits call `engine.setWorld()` — do not recreate engine per edit
