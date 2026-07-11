@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import {
   CameraComponent,
+  ColliderComponent,
   LightComponent,
   MeshRendererComponent,
   ScriptRefComponent,
@@ -10,7 +11,7 @@ import {
   getCoreComponent,
 } from '@haku/core'
 import type { ComponentType, EntityId } from '@haku/core'
-import type { Camera, Light, MeshMaterial, MeshRenderer, Transform } from '@haku/schema'
+import type { Camera, Collider, Light, MeshMaterial, MeshRenderer, Transform } from '@haku/schema'
 import { resolveActiveCameraId } from '@haku/schema'
 import { commitActiveSceneCamera } from '../commands/active-scene-camera.js'
 import { useEditorStore } from '../store/editor-store.js'
@@ -21,6 +22,7 @@ import { TransformFields } from '../components/TransformFields.js'
 import { MeshRendererFields } from '../components/MeshRendererFields.js'
 import { buildMaterialMixedValues } from '../components/MaterialPropertiesPanel.js'
 import { TagFields } from '../components/TagFields.js'
+import { ColliderFields, normalizeCollider } from '../components/ColliderFields.js'
 import { SchemaFields } from '../components/SchemaFields.js'
 import { InspectorComponentSection } from '../components/InspectorComponentSection.js'
 import { normalizeMeshRenderer, normalizeMeshMaterial, defaultGeometryParams, isComponentEnabled, withComponentEnabled } from '@haku/schema'
@@ -46,6 +48,7 @@ const COMPONENT_MAP = {
   Light: LightComponent,
   MeshRenderer: MeshRendererComponent,
   ScriptRef: ScriptRefComponent,
+  Collider: ColliderComponent,
 } as const
 
 const HIDDEN_COMPONENTS = new Set(['Tag', 'Static', 'Transform'])
@@ -54,6 +57,7 @@ const ADDABLE_COMPONENTS = [
   { id: 'Camera' as const, component: CameraComponent, label: 'Camera' },
   { id: 'Light' as const, component: LightComponent, label: 'Light' },
   { id: 'MeshRenderer' as const, component: MeshRendererComponent, label: 'Mesh Renderer' },
+  { id: 'Collider' as const, component: ColliderComponent, label: 'Collider' },
 ]
 
 function InspectorSeparator() {
@@ -268,6 +272,17 @@ export const InspectorPanel = memo(function InspectorPanel() {
       forEachSelected((id, draftWorld) => {
         if (draftWorld.hasComponent(id, MeshRendererComponent)) {
           draftWorld.addComponent(id, MeshRendererComponent, after)
+        }
+      })
+    },
+    [forEachSelected],
+  )
+
+  const updateCollider = useCallback(
+    (after: Collider) => {
+      forEachSelected((id, draftWorld) => {
+        if (draftWorld.hasComponent(id, ColliderComponent)) {
+          draftWorld.addComponent(id, ColliderComponent, after)
         }
       })
     },
@@ -608,6 +623,12 @@ export const InspectorPanel = memo(function InspectorPanel() {
                     : undefined
                 }
               />
+            ) : key === 'Collider' ? (
+              <ColliderFields
+                value={normalizeCollider(data)}
+                disabled={mode === 'play'}
+                onChange={isMulti ? undefined : updateCollider}
+              />
             ) : (
               <SchemaFields
                 componentId={key}
@@ -635,6 +656,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                   key={id}
                   type="button"
                   disabled={allHave}
+                  data-testid={`add-component-${id.toLowerCase()}`}
                   className={`haku-inspector__add-btn${allHave ? ' haku-inspector__add-btn--present' : ''}`}
                   onClick={() => addComponent(component)}
                 >

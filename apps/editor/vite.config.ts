@@ -15,6 +15,8 @@ export default defineConfig({
       '@haku/core': resolve(__dirname, '../../packages/core/src'),
       '@haku/schema': resolve(__dirname, '../../packages/schema/src'),
       '@haku/serializer': resolve(__dirname, '../../packages/serializer/src'),
+      '@haku/physics': resolve(__dirname, '../../packages/physics/src'),
+      '@haku/physics-rapier': resolve(__dirname, '../../packages/physics-rapier/src'),
     },
   },
   server: {

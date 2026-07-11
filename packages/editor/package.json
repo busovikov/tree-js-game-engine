@@ -20,6 +20,7 @@
   "dependencies": {
     "@haku/core": "file:../core",
     "@haku/engine": "file:../engine",
+    "@haku/physics-rapier": "file:../physics-rapier",
     "@haku/schema": "file:../schema",
     "@haku/serializer": "file:../serializer",
     "react-resizable-panels": "^2.1.9",

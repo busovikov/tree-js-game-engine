@@ -1,4 +1,13 @@
-export { Engine, SceneLoader, ThreeRenderBackend, RenderSyncSystem, PhysicsWorldSystem } from './engine.js'
+export {
+  Engine,
+  SceneLoader,
+  ThreeRenderBackend,
+  RenderSyncSystem,
+  PhysicsWorldSystem,
+  PhysicsColliderSystem,
+  colliderToPhysicsShape,
+  composeColliderTransform,
+} from './engine.js'
 export type { EngineOptions, EngineFeatureFlags, LoadedScene } from './engine.js'
 export type { PhysicsWorldSystemOptions } from './systems/physics-world-system.js'
 export type { EditorRenderExtensions } from '@haku/core'

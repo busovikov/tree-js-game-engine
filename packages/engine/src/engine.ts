@@ -98,6 +98,23 @@ export class Engine {
     return this.physicsSystem
   }
 
+  /** Remove a registered system from the engine tick. */
+  removeSystem(system: ISystem): void {
+    const index = this.systems.indexOf(system)
+    if (index >= 0) {
+      this.systems.splice(index, 1)
+    }
+    if (system === this.physicsSystem) {
+      this.physicsSystem.dispose()
+      this.physicsSystem = null
+    }
+  }
+
+  /** Tear down physics backend and {@link PhysicsWorldSystem}. */
+  clearPhysicsBackend(): void {
+    this.clearPhysicsSystem()
+  }
+
   getWorld(): IWorld | null {
     return this.world
   }
@@ -179,3 +196,4 @@ export class SceneLoader {
 
 export { ThreeRenderBackend, RenderSyncSystem } from './render-backend.js'
 export { PhysicsWorldSystem, type PhysicsWorldSystemOptions } from './systems/physics-world-system.js'
+export { PhysicsColliderSystem, colliderToPhysicsShape, composeColliderTransform } from './systems/physics-collider-system.js'

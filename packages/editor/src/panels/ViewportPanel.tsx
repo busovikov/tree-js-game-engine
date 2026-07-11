@@ -25,6 +25,7 @@ import { primarySelection, mergeSelection } from '../selection/selection-utils.j
 import { SceneAabbGizmos } from '../viewport/scene-aabb-gizmos.js'
 import { SceneSelectionOutline } from '../viewport/scene-selection-outline.js'
 import { SceneShadowVolumeGizmos } from '../viewport/shadow-volume-gizmos.js'
+import { startPlayModePhysics, type PlayModePhysicsSession } from '../viewport/play-mode-physics.js'
 
 function refreshGizmo(
   gizmo: TransformControls,
@@ -82,6 +83,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
   const aabbGizmosRef = useRef<SceneAabbGizmos | null>(null)
   const selectionOutlineRef = useRef<SceneSelectionOutline | null>(null)
   const shadowVolumeGizmosRef = useRef<SceneShadowVolumeGizmos | null>(null)
+  const playPhysicsRef = useRef<PlayModePhysicsSession | null>(null)
   const lastHandledFocusRequest = useRef(0)
   const dragStartTransform = useRef<ReturnType<typeof TransformComponent.schema.parse> | null>(null)
   const dragStartSnapshots = useRef<EntityDragSnapshot[]>([])
@@ -233,6 +235,36 @@ export const ViewportPanel = memo(function ViewportPanel() {
       engineRef.current = null
     }
   }, [])
+
+  useEffect(() => {
+    const engine = engineRef.current
+    if (!engine || !world) return
+
+    if (mode !== 'play') {
+      playPhysicsRef.current?.dispose()
+      playPhysicsRef.current = null
+      return
+    }
+
+    let cancelled = false
+    void startPlayModePhysics(engine, world)
+      .then((session) => {
+        if (cancelled) {
+          session.dispose()
+          return
+        }
+        playPhysicsRef.current = session
+      })
+      .catch((error: unknown) => {
+        console.error('Failed to start play-mode physics', error)
+      })
+
+    return () => {
+      cancelled = true
+      playPhysicsRef.current?.dispose()
+      playPhysicsRef.current = null
+    }
+  }, [mode, world, worldRevision])
 
   useEffect(() => {
     const engine = engineRef.current

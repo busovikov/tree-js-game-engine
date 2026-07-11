@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@haku/engine": "workspace:*"
+    "@haku/engine": "workspace:*",
+    "@haku/physics-rapier": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.2",

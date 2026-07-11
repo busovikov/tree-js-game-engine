@@ -8,6 +8,10 @@ coverage
 .agents/*
 !.agents/skills/
 !.agents/skills/**
+!.agents/tools/
+!.agents/tools/**
+.agents/tools/**/test-results/
+.agents/tools/**/node_modules/
 package-lock.json
 apps/*/dist
 packages/*/dist

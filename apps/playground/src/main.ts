@@ -1,4 +1,5 @@
-import { Engine, SceneLoader, projectPathToUrl } from '@haku/engine/runtime'
+import { Engine, SceneLoader, PhysicsColliderSystem, projectPathToUrl } from '@haku/engine/runtime'
+import { createRapierPhysicsBackend } from '@haku/physics-rapier'
 import project from '../haku.project.json'
 
 async function main() {
@@ -13,6 +14,11 @@ async function main() {
     loaded.renderSettings,
     loaded.activeCameraId,
   )
+
+  const backend = await createRapierPhysicsBackend()
+  const physicsSystem = engine.setPhysicsBackend(backend)
+  engine.addSystem(new PhysicsColliderSystem(physicsSystem))
+
   engine.start()
 }
 
