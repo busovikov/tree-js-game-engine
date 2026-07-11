@@ -138,6 +138,8 @@ tick(dt):
 
 **Collider component (T01.7):** `Collider` in `@haku/schema` / `@haku/core` — discriminated union on `shape` (`box` \| `sphere` \| `capsule`) with size fields aligned to `PhysicsShapeDescriptor`, local `offset` + `rotation`, `isStatic` body flag, and optional runtime `physicsBodyHandle`. `@haku/serializer` load/save round-trips collider fields via the generic component path (T01.8); editor UI (T01.9) and engine sync spawn bodies from component data.
 
+**Vehicle component (T01.11):** `Vehicle` in `@haku/schema` / `@haku/core` — grouped tunable params for chassis (mass, halfExtents, lift, damping, inertia), four-wheel connection pattern (radius, halfWidth, height, halfLength), suspension (stiffness, rest length, travel, friction, damping), engine/steering/brakes, jump, and arcade assists. Fields align with `@haku/physics` `WheelConfig` where applicable; optional runtime `physicsVehicleHandle` for raycast vehicle sync (T01.12). Serializer round-trip via generic component path; editor inspector deferred to T01.27.
+
 - `Engine.start()` → `requestAnimationFrame`
 - Editor creates `Engine` once in `ViewportPanel` `useEffect`; scene edits call `engine.setWorld()` — do not recreate engine per edit
 

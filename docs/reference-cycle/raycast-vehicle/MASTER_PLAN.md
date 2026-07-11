@@ -177,6 +177,8 @@ flowchart TD
 
 **Acceptance (M1):** Rear-wheel drive, steering, coast brake, boost cap, jump with grounded check; visuals match wheel contact points.
 
+**T01.11 delivery (schema):** `@haku/schema` `VehicleSchema` with grouped chassis/wheels/suspension/engine/steering/brakes/jump/assists (~40 tunable fields); `@haku/core` `VehicleComponent` registry entry; defaults from reference `DEFAULT_PARAMS` order-of-magnitude. Raycast sync (T01.12), controller (T01.13), editor inspector (T01.27) out of scope.
+
 ---
 
 ### E04 — Runtime input

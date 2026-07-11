@@ -120,11 +120,15 @@ export const LightSchema = z.union([
 ])
 export type Light = z.infer<typeof LightSchema>
 
+/** Editor gizmo radius cap — large light ranges must not fill the viewport with arcs. */
+export const EDITOR_LIGHT_GIZMO_MAX_DISTANCE = 15
+
 /** Editor/range visualization when distance is 0 (infinite in Three.js). */
 export function lightDisplayDistance(light: Light): number {
   if (light.type === 'directional' || light.type === 'hemisphere') return 2
   const distance = light.distance ?? 0
-  return distance > 0 ? distance : 5
+  const raw = distance > 0 ? distance : 5
+  return Math.min(raw, EDITOR_LIGHT_GIZMO_MAX_DISTANCE)
 }
 
 export type SpotLight = Extract<Light, { type: 'spot' }>
@@ -154,6 +158,7 @@ export {
 import { MeshRendererSchema } from './mesh.js'
 import { StaticSchema } from './static.js'
 import { ColliderSchema } from './collider.js'
+import { VehicleSchema } from './vehicle.js'
 import { TagSchema } from './tag.js'
 import { RenderingLayersSchema } from './rendering-layers.js'
 import { RenderTextureSchema } from './render-texture.js'
@@ -172,6 +177,30 @@ export {
   type ColliderShape,
   type SphereCollider,
 } from './collider.js'
+
+export {
+  VehicleAssistsSchema,
+  VehicleBrakesSchema,
+  VehicleChassisSchema,
+  VehicleEngineSchema,
+  VehicleJumpSchema,
+  VehicleSchema,
+  VehicleSteeringSchema,
+  VehicleSuspensionSchema,
+  VehicleWheelsSchema,
+  VEHICLE_WHEEL_ORDER,
+  vehicleWheelLocalPositions,
+  type Vehicle,
+  type VehicleAssists,
+  type VehicleBrakes,
+  type VehicleChassis,
+  type VehicleEngine,
+  type VehicleJump,
+  type VehicleSteering,
+  type VehicleSuspension,
+  type VehicleWheelSlot,
+  type VehicleWheels,
+} from './vehicle.js'
 
 export {
   GEOMETRY_PARAM_SPECS,
@@ -351,6 +380,7 @@ export const CORE_COMPONENT_IDS = [
   'Tag',
   'Static',
   'Collider',
+  'Vehicle',
   'RenderingLayers',
   'RenderTexture',
 ] as const
@@ -367,6 +397,7 @@ export const coreComponentSchemas = {
   Tag: TagSchema,
   Static: StaticSchema,
   Collider: ColliderSchema,
+  Vehicle: VehicleSchema,
   RenderingLayers: RenderingLayersSchema,
   RenderTexture: RenderTextureSchema,
 } as const

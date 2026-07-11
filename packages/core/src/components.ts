@@ -7,6 +7,7 @@ import {
   StaticSchema,
   TagSchema,
   ColliderSchema,
+  VehicleSchema,
   TransformSchema,
   type Camera,
   type Light,
@@ -16,6 +17,7 @@ import {
   type Static,
   type Tag,
   type Collider,
+  type Vehicle,
   type Transform,
   RenderingLayersSchema,
   RenderTextureSchema,
@@ -77,6 +79,12 @@ export const ColliderComponent = {
   defaults: () => ColliderSchema.parse({ shape: 'box' }),
 } satisfies ComponentType<Collider>
 
+export const VehicleComponent = {
+  id: 'Vehicle',
+  schema: VehicleSchema,
+  defaults: () => VehicleSchema.parse({}),
+} satisfies ComponentType<Vehicle>
+
 export const RenderingLayersComponent = {
   id: 'RenderingLayers',
   schema: RenderingLayersSchema,
@@ -98,6 +106,7 @@ export const coreComponents = [
   TagComponent,
   StaticComponent,
   ColliderComponent,
+  VehicleComponent,
   RenderingLayersComponent,
   RenderTextureComponent,
 ] as const
