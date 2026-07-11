@@ -34,6 +34,22 @@ function isNonEmpty(dir: string): boolean {
   return existsSync(dir) && readdirSync(dir).length > 0
 }
 
+const MONOREPO_HAKU_PACKAGES = ['schema', 'core', 'serializer', 'physics', 'physics-rapier', 'engine'] as const
+
+/** When engine is a file: link into the monorepo, wire all @haku/* deps for standalone install. */
+function resolveMonorepoPackageLinks(engineVersion: string): Record<string, string> | null {
+  if (!engineVersion.startsWith('file:')) return null
+  const enginePath = engineVersion.slice('file:'.length).replace(/\/$/, '')
+  const packagesDir = dirname(enginePath)
+  if (!enginePath.endsWith('/engine') && !enginePath.endsWith('\\engine')) return null
+
+  const links: Record<string, string> = {}
+  for (const pkg of MONOREPO_HAKU_PACKAGES) {
+    links[`@haku/${pkg}`] = `file:${join(packagesDir, pkg)}`
+  }
+  return links
+}
+
 export async function createHakuProject(options: CreateProjectOptions): Promise<CreateProjectResult> {
   const name = options.name ?? 'my-game'
   const projectDir = join(options.targetDir, name)
@@ -52,7 +68,19 @@ export async function createHakuProject(options: CreateProjectOptions): Promise<
   const pkgPath = join(projectDir, 'package.json')
   const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'))
   pkg.name = name
-  pkg.dependencies['@haku/engine'] = engineVersion
+
+  const monorepoLinks = resolveMonorepoPackageLinks(engineVersion)
+  if (monorepoLinks) {
+    for (const [dep, link] of Object.entries(monorepoLinks)) {
+      if (dep === '@haku/engine' || dep === '@haku/schema' || dep === '@haku/core' || dep === '@haku/serializer') {
+        pkg.dependencies[dep] = link
+      }
+    }
+    pkg.pnpm = { overrides: monorepoLinks }
+  } else {
+    pkg.dependencies['@haku/engine'] = engineVersion
+  }
+
   writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n')
 
   const manifestPath = join(projectDir, 'haku.project.json')

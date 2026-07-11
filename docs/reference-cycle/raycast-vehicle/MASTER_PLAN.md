@@ -2,7 +2,7 @@
 
 **Phase:** 1 · **Mode:** MASTER_PLAN · **Iteration:** 1  
 **Platform branch:** `feat/reference-raycast-vehicle`  
-**Target:** `~/work/tmp-js-game-project` (scaffold in T01.37)  
+**Target:** `~/work/tmp-js-game-project` (scaffolded — T01.37 ✅)  
 **Reference:** `~/work/reference-raycast-vehicle` (read-only)
 
 **Confirmed decisions:** [DECISIONS_LOG.md](./DECISIONS_LOG.md) (AD-01 … AD-08)
@@ -44,7 +44,7 @@ Legend: ✅ exists · 🟡 partial · ❌ missing
 | G17 | Post-FX (grade, CA, wind, GTAO) | 🟡 bloom, vignette | Medium — **defer** (AD-06) | E08 |
 | G18 | Agent editor automation (Playwright) | ❌ tooling | **Agent workflow** (AD-08) — not platform |
 | G19 | ScriptRef runtime behaviors | 🟡 schema only | Medium — systems first | E05 |
-| G20 | Target project scaffold | ❌ not created | First TARGET_BUILD prereq | E10 |
+| G20 | Target project scaffold | ✅ `~/work/tmp-js-game-project` | T01.37 done — unblocks T01.38+ | E10 |
 
 ---
 
@@ -126,9 +126,9 @@ flowchart TD
 1. E01 → E02 → E03 (platform physics + vehicle)
 2. E04 + E07 (parallel after T01.11)
 3. E05 (after E03 + E04)
-4. E10 M1 content (TARGET_BUILD — subagent uses Playwright per AD-08)
+4. **T01.37** (target scaffold) — **done**; next groom: **T01.38 → T01.39** (asset import + M1 scene via Playwright)
 5. E06 + E07 tuning UI
-6. E10 M2 content
+6. E10 M2 content (T01.40)
 7. E08 post-FX
 8. E01 A/C collider modes (M3)
 
