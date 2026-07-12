@@ -33,6 +33,9 @@ function EntityNode({
   onDragLeave,
   onDrop,
   orderedVisibleIds,
+  collapsedIds,
+  onToggleCollapse,
+  forceExpanded,
 }: {
   id: EntityId
   depth: number
@@ -46,6 +49,9 @@ function EntityNode({
   onDragLeave: (id: string) => void
   onDrop: (targetId: string, mode: HierarchyDropMode) => void
   orderedVisibleIds: EntityId[]
+  collapsedIds: ReadonlySet<string>
+  onToggleCollapse: (id: string) => void
+  forceExpanded: boolean
 }) {
   const worldRevision = useEditorStore((s) => s.worldRevision)
   const world = useEditorStore((s) => s.world)
@@ -61,6 +67,8 @@ function EntityNode({
   void worldRevision
   const name = world.getEntityName(id) ?? 'Entity'
   const children = world.getChildren(id)
+  const hasChildren = children.length > 0
+  const isCollapsed = hasChildren && !forceExpanded && collapsedIds.has(id.value)
   const isCamera = world.hasComponent(id, CameraComponent)
   const isActiveCamera = isCamera && activeCameraId === id.value
   const isDragging = draggedId === id.value
@@ -123,7 +131,7 @@ function EntityNode({
     <div>
       <div
         className={rowClass}
-        style={{ paddingLeft: 8 + depth * 12 }}
+        style={{ paddingLeft: 4 + depth * 12 }}
         draggable={canDrag}
         onDragStart={handleDragStart}
         onDragEnd={onDragEnd}
@@ -131,6 +139,20 @@ function EntityNode({
         onDragLeave={() => onDragLeave(id.value)}
         onDrop={handleDrop}
       >
+        <button
+          type="button"
+          className="haku-hierarchy-row__toggle"
+          tabIndex={hasChildren ? 0 : -1}
+          aria-hidden={!hasChildren}
+          aria-expanded={hasChildren ? !isCollapsed : undefined}
+          onClick={(event) => {
+            event.stopPropagation()
+            if (hasChildren) onToggleCollapse(id.value)
+          }}
+          onDragStart={(event) => event.stopPropagation()}
+        >
+          {hasChildren ? (isCollapsed ? '▶' : '▼') : ''}
+        </button>
         <button
           type="button"
           className="haku-hierarchy-row__name"
@@ -165,23 +187,27 @@ function EntityNode({
           </button>
         )}
       </div>
-      {children.map((child) => (
-        <EntityNode
-          key={child.value}
-          id={child}
-          depth={depth + 1}
-          visibleIds={visibleIds}
-          canDrag={canDrag}
-          draggedId={draggedId}
-          dropTarget={dropTarget}
-          onDragStart={onDragStart}
-          onDragEnd={onDragEnd}
-          onDragOver={onDragOver}
-          onDragLeave={onDragLeave}
-          onDrop={onDrop}
-          orderedVisibleIds={orderedVisibleIds}
-        />
-      ))}
+      {!isCollapsed &&
+        children.map((child) => (
+          <EntityNode
+            key={child.value}
+            id={child}
+            depth={depth + 1}
+            visibleIds={visibleIds}
+            canDrag={canDrag}
+            draggedId={draggedId}
+            dropTarget={dropTarget}
+            onDragStart={onDragStart}
+            onDragEnd={onDragEnd}
+            onDragOver={onDragOver}
+            onDragLeave={onDragLeave}
+            onDrop={onDrop}
+            orderedVisibleIds={orderedVisibleIds}
+            collapsedIds={collapsedIds}
+            onToggleCollapse={onToggleCollapse}
+            forceExpanded={forceExpanded}
+          />
+        ))}
     </div>
   )
 }
@@ -196,6 +222,7 @@ export const HierarchyPanel = memo(function HierarchyPanel() {
 
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null)
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() => new Set())
 
   void worldRevision
 
@@ -212,8 +239,8 @@ export const HierarchyPanel = memo(function HierarchyPanel() {
 
   const orderedVisibleIds = useMemo(() => {
     if (!world) return []
-    return flattenVisibleHierarchy(world, world.getRootEntities(), visibleIds)
-  }, [world, worldRevision, visibleIds])
+    return flattenVisibleHierarchy(world, world.getRootEntities(), visibleIds, collapsedIds)
+  }, [world, worldRevision, visibleIds, collapsedIds])
 
   const canEdit = !!world && mode === 'edit'
 
@@ -248,6 +275,18 @@ export const HierarchyPanel = memo(function HierarchyPanel() {
     [draggedId],
   )
 
+  const handleToggleCollapse = useCallback((id: string) => {
+    setCollapsedIds((current) => {
+      const next = new Set(current)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }, [])
+
   const setSelection = useEditorStore((s) => s.setSelection)
 
   const handleListBackgroundPointerDown = useCallback(
@@ -265,7 +304,10 @@ export const HierarchyPanel = memo(function HierarchyPanel() {
         <EntityCreateMenu disabled={!canEdit} hasSelection={selection.length > 0} />
         <HierarchyFilterBar />
       </div>
-      <div style={{ flex: 1, overflow: 'auto' }} onPointerDown={handleListBackgroundPointerDown}>
+      <div
+        style={{ flex: 1, overflow: 'auto' }}
+        onPointerDown={handleListBackgroundPointerDown}
+      >
         {!world ? (
           <div style={{ padding: 12, color: '#888', fontSize: 12 }}>Load a scene to edit hierarchy</div>
         ) : roots.length === 0 ? (
@@ -288,6 +330,9 @@ export const HierarchyPanel = memo(function HierarchyPanel() {
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
               orderedVisibleIds={orderedVisibleIds}
+              collapsedIds={collapsedIds}
+              onToggleCollapse={handleToggleCollapse}
+              forceExpanded={!!visibleIds}
             />
           ))
         )}

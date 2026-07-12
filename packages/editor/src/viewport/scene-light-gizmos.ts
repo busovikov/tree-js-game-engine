@@ -149,7 +149,44 @@ function ensureOverlay(root: THREE.Object3D): Omit<LightGizmoEntry, 'lightType'>
   }
 }
 
+const _gizmoDir = new THREE.Vector3()
+const _gizmoQuat = new THREE.Quaternion()
+const _gizmoForward = new THREE.Vector3(0, 0, -1)
+
+/**
+ * The gizmo cone/arrow geometry is always authored pointing along local -Z from
+ * the origin (see light-gizmo-geometry.ts). Directional/spot lights aim using
+ * their own `localPosition` -> `targetPosition` pair instead of the entity's
+ * rotation, so the overlay must be re-oriented to match that pair or it will
+ * visually diverge from where the light actually shines.
+ */
+function applyDirectedGizmoPose(entry: LightGizmoEntry, light: Light): void {
+  if (light.type !== 'spot' && light.type !== 'directional') {
+    entry.settings.position.set(0, 0, 0)
+    entry.settings.quaternion.identity()
+    entry.settingsInner.position.set(0, 0, 0)
+    entry.settingsInner.quaternion.identity()
+    return
+  }
+
+  const [lx, ly, lz] = light.localPosition
+  const [tx, ty, tz] = light.targetPosition
+  _gizmoDir.set(tx - lx, ty - ly, tz - lz)
+  if (_gizmoDir.lengthSq() < 1e-10) {
+    _gizmoQuat.identity()
+  } else {
+    _gizmoQuat.setFromUnitVectors(_gizmoForward, _gizmoDir.normalize())
+  }
+
+  entry.settings.position.set(lx, ly, lz)
+  entry.settings.quaternion.copy(_gizmoQuat)
+  entry.settingsInner.position.set(lx, ly, lz)
+  entry.settingsInner.quaternion.copy(_gizmoQuat)
+}
+
 function updateSettingsGeometry(entry: LightGizmoEntry, light: Light): void {
+  applyDirectedGizmoPose(entry, light)
+
   if (light.type === 'spot') {
     const { outer, inner } = buildSpotLightGizmoGeometry(light)
     setLinePositions(entry.settings, outer)
