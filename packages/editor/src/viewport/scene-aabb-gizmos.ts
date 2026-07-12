@@ -1,6 +1,7 @@
 import type { EntityId, IWorld } from '@haku/core'
 import { MeshRendererComponent } from '@haku/core'
 import * as THREE from 'three'
+import { applyEditorLineMaterial, applyEditorOverlayObject } from './editor-overlay-style.js'
 
 const OVERLAY_NAME = 'haku-aabb-overlay'
 
@@ -17,6 +18,12 @@ function createBoxHelper(): THREE.Box3Helper {
   const box = new THREE.Box3()
   const helper = new THREE.Box3Helper(box, 0x3d5afe)
   helper.name = OVERLAY_NAME
+  helper.userData.hakuEditorOverlay = true
+  applyEditorOverlayObject(helper)
+  applyEditorLineMaterial(helper.material as THREE.LineBasicMaterial, {
+    transparent: true,
+    opacity: 0.75,
+  })
   return helper
 }
 
@@ -27,6 +34,7 @@ export class SceneAabbGizmos {
 
   constructor() {
     this.root.name = 'haku-aabb-gizmos'
+    applyEditorOverlayObject(this.root)
   }
 
   attach(scene: THREE.Scene): void {

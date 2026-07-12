@@ -1,9 +1,9 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { Engine } from '@haku/engine'
+import { Engine, createDynamicRaycastWheelRestPoseResolver } from '@haku/engine'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js'
-import { TransformComponent, VehicleComponent, entityId, type EntityId } from '@haku/core'
+import { TransformComponent, PhysicsControllerComponent, entityId, type EntityId } from '@haku/core'
 import { resolveActiveCameraId } from '@haku/schema'
 import { projectService } from '../services/project-service.js'
 import { useEditorStore } from '../store/editor-store.js'
@@ -28,6 +28,7 @@ import { SceneSelectionOutline } from '../viewport/scene-selection-outline.js'
 import { SceneShadowVolumeGizmos } from '../viewport/shadow-volume-gizmos.js'
 import { startPlayModePhysics, type PlayModePhysicsSession } from '../viewport/play-mode-physics.js'
 import { installPlaytestHook } from '../viewport/playtest-hook.js'
+import { installVehicleDebugHook } from '../viewport/vehicle-debug-hook.js'
 
 function refreshGizmo(
   gizmo: TransformControls,
@@ -212,14 +213,20 @@ export const ViewportPanel = memo(function ViewportPanel() {
         if (!session || !activeWorld) {
           return undefined
         }
-        for (const id of activeWorld.query(VehicleComponent)) {
-          const vehicle = session.vehicleController.getRaycastVehicle(id)
+        for (const id of activeWorld.query(PhysicsControllerComponent)) {
+          const vehicle = session.controllerSystem.getRaycastVehicle(id)
           if (vehicle) {
             return vehicle
           }
         }
         return undefined
       },
+    })
+
+    const removeVehicleDebugHook = installVehicleDebugHook({
+      getWorld: () => useEditorStore.getState().world,
+      getEngine: () => engineRef.current,
+      getVehicleSession: () => playPhysicsRef.current?.vehicle,
     })
 
     const resize = () => {
@@ -236,6 +243,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
 
     return () => {
       removePlaytestHook()
+      removeVehicleDebugHook()
       unsubscribeWorld()
       observer.disconnect()
       cameraLookRef.current?.dispose()
@@ -279,6 +287,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
           return
         }
         playPhysicsRef.current = session
+        window.__HAKU_VEHICLE_DEBUG?.startLog({ intervalMs: 250 })
       })
       .catch((error: unknown) => {
         console.error('Failed to start play-mode physics', error)
@@ -286,6 +295,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
 
     return () => {
       cancelled = true
+      window.__HAKU_VEHICLE_DEBUG?.stopLog()
       playPhysicsRef.current?.dispose()
       playPhysicsRef.current = null
     }
@@ -335,6 +345,18 @@ export const ViewportPanel = memo(function ViewportPanel() {
     if (!engine || !world) return
     engine.setWorld(world)
   }, [world, worldRevision])
+
+  useEffect(() => {
+    const engine = engineRef.current
+    if (!engine || !world || mode === 'play') return
+    engine.backend.sync.setPresentationTransformResolver(
+      createDynamicRaycastWheelRestPoseResolver(world),
+    )
+    engine.setWorld(world)
+    return () => {
+      engine.backend.sync.setPresentationTransformResolver(null)
+    }
+  }, [world, worldRevision, mode])
 
   useEffect(() => {
     const engine = engineRef.current

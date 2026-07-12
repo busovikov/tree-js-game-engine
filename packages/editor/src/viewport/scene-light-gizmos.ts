@@ -4,6 +4,7 @@ import type { Light } from '@haku/schema'
 import { LightSchema } from '@haku/schema'
 import * as THREE from 'three'
 import { buildLightGizmoPositions, buildSpotLightGizmoGeometry } from './light-gizmo-geometry.js'
+import { applyEditorOverlayObject } from './editor-overlay-style.js'
 
 const OVERLAY_NAME = 'haku-light-overlay'
 
@@ -135,6 +136,7 @@ function ensureOverlay(root: THREE.Object3D): Omit<LightGizmoEntry, 'lightType'>
   overlay.add(pickMesh)
 
   root.add(overlay)
+  applyEditorOverlayObject(overlay)
   return {
     overlay,
     icon,

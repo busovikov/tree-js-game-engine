@@ -103,3 +103,10 @@
   color: #ffd866;
   font-weight: 600;
 }
+
+.haku-inspector__implicit-collider-badge {
+  margin-left: 8px;
+  font-size: 11px;
+  color: #ffab00;
+  font-weight: 600;
+}

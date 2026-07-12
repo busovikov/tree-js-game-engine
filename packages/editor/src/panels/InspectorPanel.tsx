@@ -8,11 +8,13 @@ import {
   StaticComponent,
   TagComponent,
   TransformComponent,
+  PhysicsControllerComponent,
   getCoreComponent,
 } from '@haku/core'
 import type { ComponentType, EntityId } from '@haku/core'
-import type { Camera, Collider, Light, MeshMaterial, MeshRenderer, Transform } from '@haku/schema'
+import type { Camera, Collider, Light, MeshMaterial, MeshRenderer, PhysicsController, Transform } from '@haku/schema'
 import { resolveActiveCameraId } from '@haku/schema'
+import { sanitizeComponentDataForPersistence } from '@haku/serializer'
 import { commitActiveSceneCamera } from '../commands/active-scene-camera.js'
 import { useEditorStore } from '../store/editor-store.js'
 import { commitSceneEdit } from '../commands/scene-history.js'
@@ -23,6 +25,7 @@ import { MeshRendererFields } from '../components/MeshRendererFields.js'
 import { buildMaterialMixedValues } from '../components/MaterialPropertiesPanel.js'
 import { TagFields } from '../components/TagFields.js'
 import { ColliderFields, normalizeCollider } from '../components/ColliderFields.js'
+import { PhysicsControllerFields, normalizePhysicsController } from '../components/PhysicsControllerFields.js'
 import { SchemaFields } from '../components/SchemaFields.js'
 import { InspectorComponentSection } from '../components/InspectorComponentSection.js'
 import { normalizeMeshRenderer, normalizeMeshMaterial, defaultGeometryParams, isComponentEnabled, withComponentEnabled } from '@haku/schema'
@@ -49,6 +52,7 @@ const COMPONENT_MAP = {
   MeshRenderer: MeshRendererComponent,
   ScriptRef: ScriptRefComponent,
   Collider: ColliderComponent,
+  PhysicsController: PhysicsControllerComponent,
 } as const
 
 const HIDDEN_COMPONENTS = new Set(['Tag', 'Static', 'Transform'])
@@ -58,6 +62,7 @@ const ADDABLE_COMPONENTS = [
   { id: 'Light' as const, component: LightComponent, label: 'Light' },
   { id: 'MeshRenderer' as const, component: MeshRendererComponent, label: 'Mesh Renderer' },
   { id: 'Collider' as const, component: ColliderComponent, label: 'Collider' },
+  { id: 'PhysicsController' as const, component: PhysicsControllerComponent, label: 'Physics Controller' },
 ]
 
 function InspectorSeparator() {
@@ -289,6 +294,17 @@ export const InspectorPanel = memo(function InspectorPanel() {
     [forEachSelected],
   )
 
+  const updatePhysicsController = useCallback(
+    (after: PhysicsController) => {
+      forEachSelected((id, draftWorld) => {
+        if (draftWorld.hasComponent(id, PhysicsControllerComponent)) {
+          draftWorld.addComponent(id, PhysicsControllerComponent, after)
+        }
+      })
+    },
+    [forEachSelected],
+  )
+
   const patchMeshRenderer = useCallback(
     (patch: (current: MeshRenderer) => MeshRenderer) => {
       forEachSelected((id, draftWorld) => {
@@ -353,7 +369,8 @@ export const InspectorPanel = memo(function InspectorPanel() {
 
   const copyComponentData = useCallback(
     (typeId: string, data: Record<string, unknown>) => {
-      setComponentClipboard({ typeId, data: structuredClone(data) })
+      const persistentData = sanitizeComponentDataForPersistence(typeId, data)
+      setComponentClipboard({ typeId, data: structuredClone(persistentData) })
     },
     [setComponentClipboard],
   )
@@ -519,6 +536,8 @@ export const InspectorPanel = memo(function InspectorPanel() {
 
         const enabledMixed = mergeComponentEnabled(component, targets)
 
+        const isPhysicsController = key === 'PhysicsController'
+
         return (
           <InspectorComponentSection
             key={typeId}
@@ -526,6 +545,10 @@ export const InspectorPanel = memo(function InspectorPanel() {
             badge={
               isActiveCamera ? (
                 <span className="haku-inspector__active-camera-badge">Active</span>
+              ) : isPhysicsController ? (
+                <span className="haku-inspector__implicit-collider-badge" title="Physics chassis box is built into Physics Controller">
+                  Chassis
+                </span>
               ) : undefined
             }
             collapsed={collapsedSections[typeId] === true}
@@ -628,6 +651,12 @@ export const InspectorPanel = memo(function InspectorPanel() {
                 value={normalizeCollider(data)}
                 disabled={mode === 'play'}
                 onChange={isMulti ? undefined : updateCollider}
+              />
+            ) : key === 'PhysicsController' ? (
+              <PhysicsControllerFields
+                value={normalizePhysicsController(data)}
+                disabled={mode === 'play'}
+                onChange={isMulti ? undefined : updatePhysicsController}
               />
             ) : (
               <SchemaFields

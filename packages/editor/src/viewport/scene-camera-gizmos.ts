@@ -2,6 +2,7 @@ import type { EntityId, IWorld } from '@haku/core'
 import { CameraComponent, TransformComponent } from '@haku/core'
 import * as THREE from 'three'
 import { EditorCameraFrustumHelper } from './camera-frustum-helper.js'
+import { applyEditorOverlayObject } from './editor-overlay-style.js'
 
 const OVERLAY_NAME = 'haku-camera-overlay'
 
@@ -99,6 +100,7 @@ function ensureOverlay(root: THREE.Object3D): Omit<CameraGizmoEntry, 'frustum'> 
   overlay.add(pickMesh)
 
   root.add(overlay)
+  applyEditorOverlayObject(overlay)
   return { overlay, icon, pickMesh, pickMaterial }
 }
 

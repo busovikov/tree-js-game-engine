@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { applyEditorOverlayObject } from './editor-overlay-style.js'
 
 /** Editor overlay: wireframe of each directional light's orthographic shadow camera. */
 export class SceneShadowVolumeGizmos {
@@ -26,7 +27,7 @@ export class SceneShadowVolumeGizmos {
       if (!helper) {
         helper = new THREE.CameraHelper(light.shadow.camera)
         helper.userData.hakuEditorOverlay = true
-        helper.renderOrder = 1001
+        applyEditorOverlayObject(helper, 1001)
         scene.add(helper)
         this.helpers.set(light, helper)
       }

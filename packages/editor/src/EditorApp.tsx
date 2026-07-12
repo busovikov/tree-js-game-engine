@@ -6,6 +6,7 @@ import { RenderSettingsDialog } from './components/RenderSettingsDialog.js'
 import { commitSceneEdit } from './commands/scene-history.js'
 import { useEditorStore } from './store/editor-store.js'
 import { projectService } from './services/project-service.js'
+import { PLAYGROUND_DEMO_SCENES } from './services/playground-demos.js'
 import { projectLogSink } from './services/project-log-sink.js'
 import { globalCommandBus } from './commands/command-bus.js'
 import {
@@ -85,28 +86,9 @@ export const EditorApp = memo(function EditorApp() {
     }
   }, [])
 
-  const onLoadPlayground = useCallback(async () => {
+  const onLoadPlaygroundDemo = useCallback(async (scenePath: string) => {
     try {
-      projectService.openFromManifest(
-        'playground',
-        {
-          name: 'playground',
-          entryScene: 'public/assets/scenes/menu.scene.json',
-          assetsDir: 'public/assets',
-          scriptsDir: 'scripts',
-        },
-        '',
-      )
-      await projectService.seedVirtualAssetsFromManifest('/assets/manifest.json')
-      await projectService.loadEditorSettings()
-      const { world, document } = await projectService.loadScene('public/assets/scenes/menu.scene.json')
-      useEditorStore.getState().setProjectRoot('playground')
-      useEditorStore.getState().setScene(
-        'public/assets/scenes/menu.scene.json',
-        document,
-        world as import('@haku/core').World,
-        projectService.getSceneEditorState('public/assets/scenes/menu.scene.json').activeTab,
-      )
+      await projectService.openPlaygroundDemo(scenePath)
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to load demo scene')
     }
@@ -200,8 +182,16 @@ export const EditorApp = memo(function EditorApp() {
           },
           { id: 'open', label: 'Open…', onClick: onOpenProject },
           { id: 'save', label: 'Save', disabled: !scenePath || mode === 'play', onClick: onSave },
-          { id: 'demo', label: 'Demo Scene', onClick: onLoadPlayground },
         ],
+      },
+      {
+        id: 'demos',
+        label: 'Demos',
+        items: PLAYGROUND_DEMO_SCENES.map((demo) => ({
+          id: demo.id,
+          label: demo.label,
+          onClick: () => onLoadPlaygroundDemo(demo.scenePath),
+        })),
       },
       {
         id: 'view',
@@ -216,7 +206,7 @@ export const EditorApp = memo(function EditorApp() {
         ],
       },
     ],
-    [mode, onCreateProject, onLoadPlayground, onOpenProject, onRenderSettings, onSave, sceneDocument, scenePath],
+    [mode, onCreateProject, onLoadPlaygroundDemo, onOpenProject, onRenderSettings, onSave, sceneDocument, scenePath],
   )
 
   return (

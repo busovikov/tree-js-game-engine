@@ -127,6 +127,18 @@ export const InspectorComponentSection = memo(function InspectorComponentSection
               <span className="haku-inspector__section-enable-dot" aria-hidden="true" />
             </button>
           )}
+          {canDelete && onDelete && (
+            <button
+              type="button"
+              className="haku-inspector__section-delete"
+              disabled={disabled}
+              title="Delete component"
+              aria-label="Delete component"
+              onClick={onDelete}
+            >
+              ×
+            </button>
+          )}
         </div>
       </div>
 

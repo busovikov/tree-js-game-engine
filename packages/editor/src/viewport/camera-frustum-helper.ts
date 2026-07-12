@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { applyEditorOverlayObject } from './editor-overlay-style.js'
 
 /** Cap far plane for editor visualization — avoids depth clipping and z-fighting on long lines. */
 export function frustumDisplayDistance(near: number, far: number): number {
@@ -93,6 +94,7 @@ export class EditorCameraFrustumHelper extends THREE.LineSegments {
     this.frustumCulled = false
     this.renderOrder = 1000
     this.userData.hakuEditorOverlay = true
+    applyEditorOverlayObject(this)
 
     camera.add(this)
     this.updateGeometry()

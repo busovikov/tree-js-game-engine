@@ -22,6 +22,7 @@ import { clearModelCache, modelLog, modelLogError, modelLogUrl, sceneLog, sceneL
 import { browserProjectStore } from './browser-project-store.js'
 import { isFileSystemAccessSupported, nativeProjectStore } from './native-project-store.js'
 import { loadPersonalizedProjectTemplate } from './project-template.js'
+import { PLAYGROUND_PROJECT } from './playground-demos.js'
 
 export interface ProjectFileEntry {
   path: string
@@ -164,6 +165,33 @@ export class ProjectService {
     this.clearModelAssetCache()
     sceneLog('project.open', { source: rootPath === 'playground' ? 'playground' : 'manifest', root: rootPath, entryScene: manifest.entryScene })
     return manifest
+  }
+
+  /**
+   * Open a built-in playground demo scene (virtual FS + `/assets/manifest.json`).
+   * Idempotent when the playground project is already active.
+   */
+  async openPlaygroundDemo(scenePath: string): Promise<{ world: IWorld; document: SceneDocument }> {
+    const playgroundActive = this.storage === 'playground' && this.root === 'playground'
+
+    if (!playgroundActive) {
+      this.openFromManifest('playground', PLAYGROUND_PROJECT, '')
+      await this.seedVirtualAssetsFromManifest('/assets/manifest.json')
+      await this.loadEditorSettings()
+    } else {
+      await this.resyncVirtualAssetsFromManifest('/assets/manifest.json')
+    }
+
+    const { world, document } = await this.loadScene(scenePath)
+    const { useEditorStore } = await import('../store/editor-store.js')
+    useEditorStore.getState().setProjectRoot('playground')
+    useEditorStore.getState().setScene(
+      scenePath,
+      document,
+      world as World,
+      this.getSceneEditorState(scenePath).activeTab,
+    )
+    return { world, document }
   }
 
   /**

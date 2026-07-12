@@ -24,7 +24,7 @@ function addSphereLatitudeCircle(
   out: number[],
   radius: number,
   fullAngleDeg: number,
-  segments = 36,
+  segments = 24,
 ): void {
   for (let i = 0; i < segments; i++) {
     const phi0 = (i / segments) * Math.PI * 2
@@ -76,7 +76,7 @@ export function buildDirectionalGizmoPositions(length: number): Float32Array {
 }
 
 /** Three orthogonal circles approximating range. */
-export function buildPointGizmoPositions(radius: number, segments = 20): Float32Array {
+export function buildPointGizmoPositions(radius: number, segments = 16): Float32Array {
   const out: number[] = []
 
   const addCircle = (axis: 'x' | 'y' | 'z') => {
@@ -119,7 +119,7 @@ export function buildSpotGizmoGeometry(
   addSphereSectorMeridians(outer, radius, innerAngleDeg, outerAngleDeg)
 
   if (innerAngleDeg > 0.5) {
-    addSphereLatitudeCircle(inner, radius, innerAngleDeg, 40)
+    addSphereLatitudeCircle(inner, radius, innerAngleDeg, 24)
   }
 
   return {

@@ -1,7 +1,7 @@
 import type { EntityId, IWorld } from '@haku/core'
-import { ColliderComponent, VehicleComponent } from '@haku/core'
+import { ColliderComponent, PhysicsControllerComponent } from '@haku/core'
+import { resolveColliderDescriptor } from '@haku/engine'
 import type { Collider } from '@haku/schema'
-import { vehicleChassisCollider } from '@haku/engine'
 import * as THREE from 'three'
 import { applyEditorLineMaterial, applyEditorOverlayObject } from './editor-overlay-style.js'
 
@@ -51,13 +51,15 @@ function createWireframeGeometry(collider: Collider): THREE.BufferGeometry {
   }
 }
 
-function createColliderWireframe(collider: Collider): THREE.LineSegments {
+function createColliderWireframe(collider: Collider, implicit = false): THREE.LineSegments {
   const geometry = createWireframeGeometry(collider)
-  const material = new THREE.LineBasicMaterial({ color: 0x00e676 })
-  applyEditorLineMaterial(material, { transparent: true, opacity: 0.95 })
+  const material = new THREE.LineBasicMaterial({ color: implicit ? 0xffab00 : 0x00e676 })
+  applyEditorLineMaterial(material, { transparent: true, opacity: implicit ? 0.85 : 0.95 })
   const lines = new THREE.LineSegments(geometry, material)
   lines.name = OVERLAY_NAME
   lines.userData.hakuEditorOverlay = true
+  lines.userData.hakuImplicitChassis = implicit
+  lines.userData.hakuImplicitCollider = implicit
   applyEditorOverlayObject(lines)
   return lines
 }
@@ -96,25 +98,25 @@ export class SceneColliderGizmos {
     for (const id of world.getAllEntities()) {
       if (!options.selectedIds.has(id.value)) continue
 
-      const vehicle = world.getComponent(id, VehicleComponent)
+      const vehicle = world.getComponent(id, PhysicsControllerComponent)
       const explicitCollider = world.getComponent(id, ColliderComponent)
-      const collider: Collider | null = vehicle
-        ? vehicleChassisCollider(vehicle)
-        : explicitCollider ?? null
-      if (!collider) continue
+      const resolved = resolveColliderDescriptor(vehicle, explicitCollider)
+      if (!resolved) continue
+      const { collider } = resolved
+      const implicitCollider = resolved.source === 'implicit-controller'
 
       const object3d = sync.getObject3D(id)
       if (!object3d) continue
       alive.add(id.value)
 
-      const shapeKey = shapeGeometryKey(collider)
+      const shapeKey = `${implicitCollider ? 'implicit:' : 'explicit:'}${shapeGeometryKey(collider)}`
       let entry = this.entries.get(id.value)
       if (!entry || entry.shapeKey !== shapeKey) {
         if (entry) {
           entry.lines.removeFromParent()
           disposeLineSegments(entry.lines)
         }
-        const lines = createColliderWireframe(collider)
+        const lines = createColliderWireframe(collider, implicitCollider)
         object3d.add(lines)
         entry = { lines, shapeKey }
         this.entries.set(id.value, entry)
