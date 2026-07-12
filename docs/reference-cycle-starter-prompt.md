@@ -12,9 +12,7 @@ Copy into a **new chat** to start the orchestrator:
 Запусти reference-driven cycle (@reference-driven-cycle):
 1. Фаза 0 — анализ референса + уточняющие вопросы
 2. Фаза 1 — план + архитектурные вопросы (физика, UI, скрипты)
-3. Цикл разработки через Notion board Iterative development
-
-Notion: https://app.notion.com/p/39a1402af56080458673d2afa6c1cdc5
+3. Цикл разработки по MASTER_PLAN.md
 ```
 
 After setup, resume with:
@@ -23,14 +21,14 @@ After setup, resume with:
 CONTINUE cycle
 ```
 
-After reviewing a task on the board:
+After reviewing a task:
 
 ```markdown
-CONTINUE — T02.3 переведена в Done.
+CONTINUE — T02.3 approved.
 ```
 
 or
 
 ```markdown
-REWORK T02.3 — <что исправить>. Вернул в To do.
+REWORK T02.3 — <что исправить>.
 ```

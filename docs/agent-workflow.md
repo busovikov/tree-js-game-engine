@@ -84,9 +84,7 @@ Copy this into the task prompt or follow as agent:
 | Undo / commands | `ui-kit.md`, `edge-cases.md` | `scene-history.ts`, `world-commands.ts` |
 | Project I/O | `edge-cases.md`, `links.md` | `project-service.ts` |
 | Bug fix | `edge-cases.md` + failing test file | Minimal repro path from grep |
-| **Notion TODO task** | `notion.md`, `agent-workflow.md` | Anchor URL in chat; comment+status every pass |
-| **Create Notion ticket** | `notion-create-task.md` | `@notion-create-task` — duplicate template → To do |
-| **Build from reference** | `reference-driven-cycle.md` | `@reference-driven-cycle` — orchestrator + iterative Notion board |
+| **Build from reference** | `reference-driven-cycle.md` | `@reference-driven-cycle` — orchestrator |
 | Dependency / version | `techstack.md` | Relevant `package.json` only |
 | External game / create | `architecture.md`, `links.md` | `packages/create/templates/` |
 
@@ -231,29 +229,12 @@ Ideal task message for a **new session**:
 
 ---
 
-## Notion TODO tasks
-
-When the user asks to **execute / build a task from todo** (Notion):
-
-1. Read **`docs/notion.md`** — § **Task anchor in chat** (mandatory).
-2. Set `NOTION_TASK_URL` — show link in **every** assistant reply.
-3. **Every code pass** (incl. small fixes): comment + status **In progress** → **Review**.
-4. Subagent prompt must include `NOTION_TASK_URL`, `NOTION_TASK_PAGE_ID`, `ITERATION`.
-5. **Ship (user says commit):** docs → commit → comment → **Done**.
-
-Skills: `@notion-execute-task` · Rule: `.cursor/rules/haku-notion.mdc`
-
----
-
 ## Agent skills
 
 Project skills in `.agents/skills/` — each references `docs/`:
 
-- `context-engineering` — context budget, doc map
-- `incremental-implementation` — slice order schema→engine→editor
 - `source-driven-development` — `links.md` + official docs
 - `test-driven-development` — `edge-cases.md`, vitest commands
-- `ci-cd-and-automation` — `./scripts/check.sh`
 - `git-workflow-and-versioning` — commit format
 - `reference-driven-cycle` — orchestrator: build target from reference repo
 - `reference-driven-subagent` — single task in reference cycle (Task handoff)
@@ -264,7 +245,6 @@ Project skills in `.agents/skills/` — each references `docs/`:
 | Doc | Path |
 | --- | ---- |
 | Workflow (this file) | `docs/agent-workflow.md` |
-| Notion TODO | `docs/notion.md` |
 | Tech stack | `docs/techstack.md` |
 | Architecture | `docs/architecture.md` |
 | Edge cases | `docs/edge-cases.md` |

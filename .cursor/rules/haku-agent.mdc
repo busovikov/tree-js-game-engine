@@ -16,8 +16,6 @@ alwaysApply: true
 | Task | Read |
 | ---- | ---- |
 | Any new task | `docs/agent-workflow.md` |
-| **Notion TODO task** | `@notion-execute-task` — anchor URL in every reply; sync Notion each pass |
-| **Create Notion ticket** | `@notion-create-task` or `docs/notion-create-task.md` |
 | **Build from reference** | `@reference-driven-cycle` or `docs/reference-driven-cycle.md` |
 | Versions / deps | `docs/techstack.md` |
 | Architecture / data flow | `docs/architecture.md` |
@@ -46,13 +44,10 @@ Index: `docs/README.md` · Short map: `AGENTS.md`
 
 ## Implementation & tests
 
-- Incremental slices: schema → serializer → engine → editor (`docs/architecture.md`)
+- Small slices: schema → serializer → engine → editor (`docs/architecture.md`)
 - Test **failure paths**, not happy path only (`docs/edge-cases.md`)
 - Verify: `pnpm test`, `pnpm build`; CI-style: `./scripts/check.sh`
 
 ## Commits
 
 Only when the user explicitly asks. Format: short first line + summary paragraph. No Co-authored-by Cursor.
-
-**Notion task (any chat):** On commit request → read `docs/notion.md` § Ship · rule `haku-notion-ship.mdc`.  
-Resolve `NOTION_TASK_URL` (ask if missing) → commit → **Notion comment + Done**. Never commit-and-forget.

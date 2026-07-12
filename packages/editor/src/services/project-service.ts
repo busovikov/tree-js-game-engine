@@ -196,7 +196,7 @@ export class ProjectService {
 
   /**
    * Open the dev-server target project (HAKU_TARGET_PATH on editor vite).
-   * Used by Playwright and `?hakuOpenTarget=1` — not for production.
+   * Used by `?hakuOpenTarget=1` dev flow — not for production.
    */
   async openFromDevPath(): Promise<HakuProject> {
     const infoRes = await fetch('/__haku/dev/info')

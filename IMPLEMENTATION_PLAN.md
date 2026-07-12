@@ -88,11 +88,8 @@ echo "Installing Tier 1 + React agent skills into .cursor/skills/ …"
 
 # --- Tier 1: Engineering workflow ---
 npx skills add addyosmani/agent-skills --skill source-driven-development -y
-npx skills add addyosmani/agent-skills --skill incremental-implementation -y
 npx skills add addyosmani/agent-skills --skill test-driven-development -y
-npx skills add addyosmani/agent-skills --skill ci-cd-and-automation -y
 npx skills add addyosmani/agent-skills --skill git-workflow-and-versioning -y
-npx skills add addyosmani/agent-skills --skill context-engineering -y
 
 # --- Tier 1: Three.js (engine) ---
 npx skills add emalorenzo/three-agent-skills --skill three-best-practices -y
@@ -119,11 +116,8 @@ echo "Done. Verify: npx skills list"
 | Skill                         | Repo                          | Use in @haku                                           |
 | ----------------------------- | ----------------------------- | ------------------------------------------------------ |
 | `source-driven-development`   | addyosmani/agent-skills       | Three.js / Vite / React — verify against official docs |
-| `incremental-implementation`  | addyosmani/agent-skills       | Small slices per phase; avoid big-bang PRs             |
 | `test-driven-development`     | addyosmani/agent-skills       | serializer roundtrip, core unit tests                  |
-| `ci-cd-and-automation`        | addyosmani/agent-skills       | pnpm CI: lint, tsc, vitest, build                      |
 | `git-workflow-and-versioning` | addyosmani/agent-skills       | Atomic commits per phase milestone                     |
-| `context-engineering`         | addyosmani/agent-skills       | AGENTS.md, project map for monorepo                    |
 | `three-best-practices`        | emalorenzo/three-agent-skills | Engine: dispose, render loop, GLTF, instancing         |
 | `threejs-fundamentals`        | cloudai-x/threejs-skills      | Scene graph, camera, renderer                          |
 | `threejs-loaders`             | cloudai-x/threejs-skills      | Asset pipeline, GLTF                                   |
@@ -646,7 +640,7 @@ Execute **in order**. Each phase ends with verifiable deliverables. Do not skip 
 
 1. Create `scripts/install-agent-skills.sh` (contents in §2.1).
 2. Run `./scripts/install-agent-skills.sh`.
-3. Optionally add `AGENTS.md` at repo root pointing to `IMPLEMENTATION_PLAN.md` and monorepo map (use `context-engineering` skill).
+3. Optionally add `AGENTS.md` at repo root pointing to `IMPLEMENTATION_PLAN.md` and monorepo map.
 4. Read this plan end-to-end before Phase 1.
 
 **Deliverables:**

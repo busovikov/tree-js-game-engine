@@ -10,15 +10,11 @@ Monorepo for the @haku browser game engine and editor.
 
 Full rules: [`docs/agent-workflow.md`](docs/agent-workflow.md)
 
-**Notion TODO:** [`docs/notion.md`](docs/notion.md) — anchor task URL in chat; comment + status every pass; Done after commit.  
-**Notion create ticket:** [`docs/notion-create-task.md`](docs/notion-create-task.md) — skill `@notion-create-task`.  
 **Reference-driven cycle:** [`docs/reference-driven-cycle.md`](docs/reference-driven-cycle.md) — skill `@reference-driven-cycle` (orchestrator builds target project from reference repo).
 
 **Skills** (`.agents/skills/`) reference all `docs/` files — see `docs/README.md` § Agent skills.
 
-**Cursor rules** (`.cursor/rules/`) — auto-loaded: `haku-agent.mdc`, `haku-notion.mdc`, `haku-notion-ship.mdc`, `haku-notion-create-task.mdc`, `haku-reference-driven.mdc`, `haku-editor.mdc`, `haku-engine.mdc`.
-
-**On commit:** `haku-notion-ship.mdc` → Notion comment + **Done** (ask task URL if new chat).
+**Cursor rules** (`.cursor/rules/`) — auto-loaded: `haku-agent.mdc`, `haku-reference-driven.mdc`, `haku-editor.mdc`, `haku-engine.mdc`.
 
 ## Source of truth
 

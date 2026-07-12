@@ -30,16 +30,6 @@ pnpm test          # or filtered package if small change
 pnpm build         # if types/exports changed
 ```
 
-### Notion ship (mandatory on commit request)
-
-If work came from a Notion TODO task — **any chat**, including commit-only:
-
-1. Read `docs/notion.md` § Ship in another chat · `@notion-ship-task`
-2. Resolve `NOTION_TASK_URL` (ask user if missing)
-3. After `git commit`: `notion-create-comment` + status **Done**
-
-Rule: `.cursor/rules/haku-notion-ship.mdc` (always apply).
-
 **Context for commits:** note which `docs/` informed the change if architectural.
 
 **Skills:** `docs/agent-workflow.md` — one task per session; commit at end of increment if user requested.

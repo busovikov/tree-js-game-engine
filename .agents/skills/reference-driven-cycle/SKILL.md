@@ -2,7 +2,7 @@
 name: reference-driven-cycle
 description: >-
   Orchestrates reference-driven development for @haku: analyze a reference repo,
-  ask clarifying questions, plan in Notion, delegate subagents to build a target
+  ask clarifying questions, plan in git docs, delegate subagents to build a target
   project via the editor while iteratively extending engine/editor. Use when the user
   asks to build/create a project from a reference, replicate a reference game,
   reference-driven cycle, по референсу, возьми референс, or iterative engine+editor
@@ -14,8 +14,7 @@ description: >-
 **You are the ORCHESTRATOR.** You manage the full cycle. **You do not write production code.**
 
 **Full playbook:** [`docs/reference-driven-cycle.md`](../../../docs/reference-driven-cycle.md)  
-**Subagent handoff:** [`reference-driven-subagent`](../reference-driven-subagent/SKILL.md)  
-**MCP:** `plugin-notion-workspace-notion`
+**Subagent handoff:** [`reference-driven-subagent`](../reference-driven-subagent/SKILL.md)
 
 ---
 
@@ -35,19 +34,8 @@ Progress:
 **Every reply starts with:**
 
 ```markdown
-**Cycle:** <phase> · **Active:** <task or —> · **Board:** [Iterative dev](https://app.notion.com/p/39a1402af56080458673d2afa6c1cdc5)
+**Cycle:** <phase> · **Active:** <task or —>
 ```
-
----
-
-## Fixed Notion IDs (iterative board)
-
-| Resource | ID / URL |
-| -------- | -------- |
-| Board | https://app.notion.com/p/39a1402af56080458673d2afa6c1cdc5 |
-| Data source | `86f1402a-f560-826a-8ea0-07594e7d6759` |
-| New Task template | `7291402a-f560-82f8-bb89-81649141037a` |
-| Docs data source | `73ffe0c3-80da-4bc2-939e-a92e4fb08cb4` |
 
 ---
 
@@ -58,10 +46,10 @@ REFERENCE_PATH:     <url or ~/work/reference-game>
 TARGET_PATH:        <~/work/my-game-target>
 PLATFORM_REPO:      <tree-js-projects path>
 PLATFORM_BRANCH:    feat/reference-<name>
-PHASE:              PHASE_0 | PHASE_1 | EXECUTE | WAIT | ESCALATION | GROOM
+PHASE:              PHASE_0 | PHASE_1 | EXECUTE | WAIT | ESCALATION
 TASK_STREAK:        { "T02.3": 0, ... }
-BLOCKED_BY:         { "T02.3": null | "ESCALATION-url" }
-MASTER_PLAN:        path to docs/reference-cycle/MASTER_PLAN.md
+BLOCKED_BY:         { "T02.3": null | "ESCALATION-id" }
+MASTER_PLAN:        path to <TARGET_PATH>/docs/MASTER_PLAN.md
 ```
 
 ---
@@ -73,7 +61,7 @@ MASTER_PLAN:        path to docs/reference-cycle/MASTER_PLAN.md
 1. Launch **Task** subagent, `Mode: REFERENCE_ANALYSIS`
 2. Subagent returns `QUESTIONS_FOR_USER` → **present questions to user**
 3. **Stop** until user answers blocking questions
-4. Update `REFERENCE_INTERPRETATION.md` / Notion epics (No Select)
+4. Update `REFERENCE_INTERPRETATION.md` / MASTER_PLAN draft
 5. When interpretation confirmed → **PHASE_1**
 
 ### PHASE_1 — Master plan
@@ -81,37 +69,33 @@ MASTER_PLAN:        path to docs/reference-cycle/MASTER_PLAN.md
 1. Launch subagent `Mode: MASTER_PLAN` (include Phase 0 answers in Context Packet)
 2. Subagent returns architectural questions (physics, UI, scripts, …)
 3. **Stop** until user confirms **AD-xx** decisions
-4. Subagent/orchestrator creates tasks in Notion → **No Select**
-5. **GROOM:** move first epic tasks → **To do**
-6. → **EXECUTE**
+4. Subagent/orchestrator writes tasks in `MASTER_PLAN.md`
+5. → **EXECUTE**
 
 ### EXECUTE — Main loop
 
 ```text
-1. notion-query-data-sources: Select = 'To do'
-2. If empty → GROOM from No Select (MASTER_PLAN order)
-3. Pick one task T
-4. Decide subagent mode:
+1. Pick next task from MASTER_PLAN (dependency order)
+2. Decide subagent mode:
    - Planning/analysis task → direct mode from task spec
    - Content task → GATE_CHECK first
    - GATE=PLATFORM_FIRST → PLATFORM_SLICE, then re-GATE
    - GATE=BUILD_NOW → TARGET_BUILD
-   - Platform task in To do → PLATFORM_SLICE
-5. Build Context Packet → launch Task subagent
-6. → WAIT
+   - Platform task → PLATFORM_SLICE
+3. Build Context Packet → launch Task subagent
+4. → WAIT
 ```
 
-### WAIT — After subagent Review
+### WAIT — After subagent handoff
 
 Tell user:
 
 ```markdown
-**<TASK>** в Review. Проверьте результат (commit в комментарии).
-На доске: **Done** если OK, **To do** с комментарием если доработка.
+**<TASK>** готов к проверке (commit в handoff).
 Напишите: `CONTINUE` или `REWORK <id> — <причина>`.
 ```
 
-Do **not** launch next task until user acts on board (or sends CONTINUE/REWORK).
+Do **not** launch next task until user sends CONTINUE/REWORK.
 
 ### User: REWORK
 
@@ -124,21 +108,12 @@ else → launch REWORK subagent, ITERATION+1
 ### ESCALATION (streak >= 3)
 
 ```text
-1. Create Notion task: Name "[ESCALATION] <T> — architecture review"
-   → No Select → move to To do
-2. BLOCKED_BY[T] = escalation URL
+1. Create escalation spec in target project docs/
+2. BLOCKED_BY[T] = escalation id
 3. Launch ARCHITECTURE_REVIEW subagent
 4. Present questions to user → AD-ESCALATION-xx
-5. Escalation → Done; original T → To do; streak[T] = 0
+5. Original T retry; streak[T] = 0
 6. Resume EXECUTE with updated Context Packet (include AD-ESCALATION)
-```
-
-### GROOM
-
-```text
-Query No Select (Select IS NULL or empty)
-Order by MASTER_PLAN dependencies
-Move ready tasks → To do (not all at once — keep WIP small)
 ```
 
 ---
@@ -163,7 +138,7 @@ SUMMARY: …
 COMMIT_HASH: <hash> | none
 FILES_CHANGED: …
 TESTS: …
-DISCOVERED_TASKS: [notion urls] | none
+DISCOVERED_TASKS: [task ids] | none
 BLOCKERS: … | none
 QUESTIONS_FOR_USER: … | none
 ```
@@ -194,26 +169,6 @@ Always include relevant **AD-xx** and **Parent facts** only.
 
 ---
 
-## Notion: orchestrator responsibilities
-
-| Action | Who |
-| ------ | --- |
-| Create epics / plan tasks | Subagent or orchestrator → **No Select** |
-| **Task specs (📎 Docs)** | **Mandatory** — duplicate Feature Task Template `39a1402af56080349186fce071ae7c72`, fill all sections, link on card. See `docs/notion-create-task.md` |
-| No Select → **To do** | **Orchestrator** (GROOM) |
-| **In progress** / **Review** / comments | **Subagent** |
-| **Done** / reject → **To do** | **User** on board |
-| Discovered tasks during work | **Subagent** → No Select + parent comment |
-
-Query example:
-
-```sql
-SELECT url, Name, Select, Epic FROM "collection://86f1402a-f560-826a-8ea0-07594e7d6759"
-WHERE Select = 'To do' ORDER BY "Date Created" ASC
-```
-
----
-
 ## Trigger phrases → this skill
 
 - возьми референс / по референсу / создай проект по референсу
@@ -221,25 +176,22 @@ WHERE Select = 'To do' ORDER BY "Date Created" ASC
 - доработай движок и редактор пока не соберём [game]
 - CONTINUE / REWORK / ESCALATE (resume orchestrator in same chat)
 
-If user only wants a **single** Notion task executed → use `@notion-execute-task`, not this skill.
-
 ---
 
 ## Do not
 
-- Write production code in orchestrator chat (docs/reference-cycle/*.md notes OK)
+- Write production code in orchestrator chat (target project docs notes OK)
 - Run multiple tasks in one subagent
 - Skip Phase 0/1 clarification gates
-- Move tasks to **Done** (user only)
-- Launch next task while previous is in **Review** without user CONTINUE
-- Skip commit-before-Review policy for code subagents
+- Launch next task while previous awaits user review without CONTINUE
+- Skip commit-before-handoff policy for code subagents
 - Load entire monorepo into context
 
 ---
 
 ## Cycle complete
 
-When all MASTER_PLAN tasks are **Done** on board:
+When all MASTER_PLAN tasks are approved:
 
 ```markdown
 **Cycle:** COMPLETE
