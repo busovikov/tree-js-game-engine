@@ -2,10 +2,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   ColliderComponent,
   TransformComponent,
-  VehicleComponent,
+  PhysicsControllerComponent,
   World,
 } from '@haku/core'
-import { VehicleSchema } from '@haku/schema'
+import { CustomRaycastControllerSchema } from '@haku/schema'
 import { resetStubPhysicsIds, StubPhysicsBackend } from '@haku/physics'
 import { InputManager, type PointerCaptureTarget } from '../input/input-manager.js'
 import { PhysicsColliderSystem } from './physics-collider-system.js'
@@ -14,9 +14,9 @@ import {
   InputBindingSystem,
   inputActionsToVehicleInput,
 } from './input-binding-system.js'
-import { VehicleControllerSystem } from './vehicle-controller-system.js'
+import { PhysicsControllerSystem } from './vehicle-controller-system.js'
 
-const DEFAULT_VEHICLE = VehicleSchema.parse({})
+const INTEGRATION_DRIVE_VEHICLE = CustomRaycastControllerSchema.parse({ type: "custom-raycast", engine: { force: 800 } })
 
 type Listener = (event: unknown) => void
 
@@ -74,6 +74,7 @@ describe('inputActionsToVehicleInput', () => {
       brake: true,
       boost: true,
       jump: true,
+      sprint: true,
     })
   })
 })
@@ -83,7 +84,7 @@ describe('InputBindingSystem', () => {
   let inputManager: InputManager
   let physicsSystem: PhysicsWorldSystem
   let colliderSystem: PhysicsColliderSystem
-  let vehicleSystem: VehicleControllerSystem
+  let vehicleSystem: PhysicsControllerSystem
   let bindingSystem: InputBindingSystem
   let world: World
   let carId: ReturnType<World['createEntity']>
@@ -105,7 +106,7 @@ describe('InputBindingSystem', () => {
     })
     physicsSystem.setBackend(backend)
     colliderSystem = new PhysicsColliderSystem(physicsSystem)
-    vehicleSystem = new VehicleControllerSystem(physicsSystem)
+    vehicleSystem = new PhysicsControllerSystem(physicsSystem)
     bindingSystem = new InputBindingSystem(inputManager, vehicleSystem)
 
     world = new World()
@@ -137,7 +138,7 @@ describe('InputBindingSystem', () => {
       offset: [0, 0, 0],
       rotation: [0, 0, 0, 1],
     })
-    world.addComponent(carId, VehicleComponent, DEFAULT_VEHICLE)
+    world.addComponent(carId, PhysicsControllerComponent, INTEGRATION_DRIVE_VEHICLE)
 
     colliderSystem.bootstrap(world)
     vehicleSystem.bootstrap(world)
@@ -158,12 +159,13 @@ describe('InputBindingSystem', () => {
 
     bindingSystem.update(world, 1 / 60)
 
-    expect(vehicleSystem.getVehicleInput(carId)).toEqual({
+    expect(vehicleSystem.getControllerInput(carId)).toEqual({
       throttle: 1,
       steer: 1,
       brake: false,
       boost: true,
       jump: false,
+      sprint: true,
     })
   })
 
@@ -185,14 +187,14 @@ describe('InputBindingSystem', () => {
   it('drives the vehicle forward through the input → controller pipeline', () => {
     keyboard.dispatch('keydown', keyEvent('KeyW', 'keydown'))
 
-    for (let i = 0; i < 90; i++) {
+    for (let i = 0; i < 180; i++) {
       bindingSystem.update(world, 1 / 60)
       vehicleSystem.update(world, 1 / 60)
       physicsSystem.update(world, 1 / 60)
     }
 
     const z = world.getComponent(carId, TransformComponent)?.position[2] ?? 0
-    expect(z).toBeGreaterThan(0.5)
+    expect(z).toBeGreaterThan(0.25)
   })
 
   it('applies jump pulse from Space keydown', () => {

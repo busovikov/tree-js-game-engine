@@ -2,12 +2,12 @@ import type { EntityId, IWorld, ISystem } from '@haku/core'
 import {
   CameraComponent,
   TransformComponent,
-  VehicleComponent,
+  PhysicsControllerComponent,
 } from '@haku/core'
 import type { Quat, Vec3 } from '@haku/schema'
 import type { InputManager } from '../input/input-manager.js'
 import type { PhysicsWorldSystem } from './physics-world-system.js'
-import type { VehicleControllerSystem } from './vehicle-controller-system.js'
+import type { PhysicsControllerSystem } from './physics-controller-system.js'
 
 export const CHASE_CAMERA_OFFSET: Vec3 = [0, 5.2, -7.4]
 export const CHASE_CAMERA_LOOK_OFFSET: Vec3 = [0, 1.2, 3.2]
@@ -411,7 +411,7 @@ export class ChaseCameraSystem implements ISystem {
   constructor(
     private readonly inputManager: InputManager,
     private readonly physicsSystem: PhysicsWorldSystem,
-    private readonly vehicleController: VehicleControllerSystem,
+    private readonly controllerSystem: PhysicsControllerSystem,
     options: ChaseCameraSystemOptions = {},
   ) {
     this.controlledEntity = options.controlledEntity ?? null
@@ -434,23 +434,31 @@ export class ChaseCameraSystem implements ISystem {
       return
     }
 
-    const vehicleTransform = world.getComponent(vehicleId, TransformComponent)
+    const authoritativeVehicleTransform = world.getComponent(vehicleId, TransformComponent)
     const cameraTransform = world.getComponent(cameraId, TransformComponent)
     const cameraData = world.getComponent(cameraId, CameraComponent)
-    if (!vehicleTransform || !cameraTransform || !cameraData) {
+    if (!authoritativeVehicleTransform || !cameraTransform || !cameraData) {
       this.inputManager.endFrame()
       return
     }
+    const vehicleTransform = this.physicsSystem.resolvePresentationTransform(
+      vehicleId,
+      authoritativeVehicleTransform,
+    )
 
-    const raycastVehicle = this.vehicleController.getRaycastVehicle(vehicleId)
+    const raycastVehicle = this.controllerSystem.getRaycastVehicle(vehicleId)
+    const dynamicVehicle = this.controllerSystem.getDynamicRaycastVehicle(vehicleId)
     const wheelStates = raycastVehicle?.getWheelStates() ?? []
-    const grounded = wheelStates.some((state) => state.inContact)
+    const grounded =
+      wheelStates.some((state) => state.inContact) ||
+      (dynamicVehicle != null &&
+        [0, 1, 2, 3].some((i) => dynamicVehicle.getWheelIsInContact(i)))
     const linearVelocity =
       this.physicsSystem.getBodyLinearVelocity(vehicleId) ?? ([0, 0, 0] as Vec3)
     const upwardSpeed = Math.max(0, linearVelocity[1])
 
     const actions = this.inputManager.getActions()
-    const vehicleInput = this.vehicleController.getVehicleInput(vehicleId) ?? {}
+    const vehicleInput = this.controllerSystem.getControllerInput(vehicleId) ?? {}
 
     let runtime = this.runtimeByVehicle.get(vehicleId.value)
     if (!runtime) {
@@ -505,8 +513,8 @@ export class ChaseCameraSystem implements ISystem {
       return this.controlledEntity
     }
 
-    for (const id of world.query(VehicleComponent)) {
-      const vehicle = world.getComponent(id, VehicleComponent)
+    for (const id of world.query(PhysicsControllerComponent)) {
+      const vehicle = world.getComponent(id, PhysicsControllerComponent)
       if (vehicle?.enabled !== false) {
         this.controlledEntity = id
         return id

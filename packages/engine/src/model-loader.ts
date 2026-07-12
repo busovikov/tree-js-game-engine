@@ -1,13 +1,35 @@
 import { DEFAULT_ASSETS_DIR, projectPathToUrl } from '@haku/schema'
 import * as THREE from 'three'
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { countObject3DMeshes, modelLog, modelLogError, modelLogUrl } from './model-log.js'
+
+/** Browser path to bundled Draco decoder (see `apps/playground/public/draco/gltf/`). */
+const DEFAULT_DRACO_DECODER_PATH = '/draco/gltf/'
 
 export type ModelAssetResolver = (relativeAssetPath: string) => string
 export type ModelResourceResolver = (modelRelativePath: string, resourceFileName: string) => string
 export type ModelLoadPreparer = (relativeAssetPath: string) => Promise<void>
 
 const cache = new Map<string, Promise<THREE.Object3D>>()
+
+let dracoDecoderPath = DEFAULT_DRACO_DECODER_PATH
+let dracoLoader: DRACOLoader | null = null
+
+export function setDracoDecoderPath(path: string): void {
+  dracoDecoderPath = path.replace(/\/?$/, '/')
+  dracoLoader?.dispose()
+  dracoLoader = null
+}
+
+function getDracoLoader(): DRACOLoader {
+  if (!dracoLoader) {
+    dracoLoader = new DRACOLoader()
+    dracoLoader.setDecoderPath(dracoDecoderPath)
+    dracoLoader.preload()
+  }
+  return dracoLoader
+}
 
 let resolveModelAssetUrl: ModelAssetResolver = (relativeAssetPath) => {
   const normalized = relativeAssetPath.replace(/^\/+/, '')
@@ -83,6 +105,7 @@ function resolveGltfResourceUrl(relativeAssetPath: string, resourceUrl: string, 
 function loadGltfScene(relativeAssetPath: string): Promise<THREE.Object3D> {
   const url = resolveModelAssetUrl(relativeAssetPath)
   const loader = new GLTFLoader()
+  loader.setDRACOLoader(getDracoLoader())
   const resourcePath = resourcePathForUrl(url)
 
   modelLog('gltf.load.start', {

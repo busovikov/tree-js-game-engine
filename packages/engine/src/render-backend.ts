@@ -14,7 +14,7 @@ import {
 } from './model-loader.js'
 import { RenderSyncSystem } from './render-sync/render-sync-system.js'
 import { RenderGraph } from './render/render-graph.js'
-import { EditorSelectionOutlinePass } from './render/passes/editor-selection-outline.js'
+import { EditorSelectionEdgeSync } from './render/passes/editor-selection-edges.js'
 import { RenderTargetPass } from './render/passes/render-target-pass.js'
 import {
   applyShadowSettings,
@@ -32,7 +32,7 @@ export class ThreeRenderBackend implements IRenderBackend {
   private readonly scene = new THREE.Scene()
   private readonly syncSystem: RenderSyncSystem
   private readonly editorCamera: THREE.PerspectiveCamera
-  private readonly editorOutline: EditorSelectionOutlinePass
+  private readonly editorSelectionEdges: EditorSelectionEdgeSync
   private readonly renderGraph: RenderGraph
   private readonly ambientLight: THREE.AmbientLight
   private world: IWorld | null = null
@@ -52,10 +52,8 @@ export class ThreeRenderBackend implements IRenderBackend {
     this.ambientLight = new THREE.AmbientLight(0xffffff, 0.3)
     this.scene.add(this.ambientLight)
 
-    this.editorOutline = new EditorSelectionOutlinePass(this.scene, () => this.getViewportCamera())
-    this.renderGraph = new RenderGraph(this.renderer, this.renderSettings, {
-      editorOutline: features.selectionOutline !== false ? this.editorOutline : undefined,
-    })
+    this.editorSelectionEdges = new EditorSelectionEdgeSync()
+    this.renderGraph = new RenderGraph(this.renderer, this.renderSettings)
 
     this.applyRenderSettings(this.renderSettings)
   }
@@ -86,7 +84,6 @@ export class ThreeRenderBackend implements IRenderBackend {
 
   setViewportMode(mode: ViewportMode): void {
     this.viewportMode = mode
-    this.renderGraph.setSkipEditorOutline(mode !== 'scene')
     this.applyCameraLayers()
   }
 
@@ -158,7 +155,7 @@ export class ThreeRenderBackend implements IRenderBackend {
   detach(): void {
     this.syncSystem.detach()
     this.world = null
-    this.editorOutline.setTargets([])
+    this.editorSelectionEdges.setTargets([])
   }
 
   setRenderSettings(settings: RenderSettings): void {
@@ -202,10 +199,10 @@ export class ThreeRenderBackend implements IRenderBackend {
 
   setSelectionOutlineTargets(targets: readonly THREE.Object3D[]): void {
     if (this.features.selectionOutline === false) {
-      this.editorOutline.setTargets([])
+      this.editorSelectionEdges.setTargets([])
       return
     }
-    this.editorOutline.setTargets(targets)
+    this.editorSelectionEdges.setTargets(targets)
   }
 
   render(): void {
@@ -218,10 +215,6 @@ export class ThreeRenderBackend implements IRenderBackend {
 
   resize(width: number, height: number): void {
     this.renderer.setSize(width, height, false)
-    const pixelRatio = this.renderer.getPixelRatio()
-    const bufferWidth = Math.max(1, Math.round(width * pixelRatio))
-    const bufferHeight = Math.max(1, Math.round(height * pixelRatio))
-    this.editorOutline.setBufferSize(bufferWidth, bufferHeight, width, height)
     this.renderGraph.resize(width, height)
     const aspect = width / Math.max(height, 1)
 

@@ -8,7 +8,7 @@ import {
   RenderingLayersComponent,
   StaticComponent,
   TransformComponent,
-  VehicleComponent,
+  PhysicsControllerComponent,
 } from '@haku/core'
 import type { Light, MeshRenderer, PrefabDefinition, RenderSettings, Transform } from '@haku/schema'
 import { LightSchema, defaultRenderSettings, isComponentEnabled, meshRendererKey, normalizeMeshRenderer, resolveLightColor, resolveShadowSettings, spotToThreeCone, isFeatureActive } from '@haku/schema'
@@ -28,8 +28,14 @@ import {
 } from '../model-loader.js'
 import { syncMeshShadowFlags } from './sync-mesh-shadow.js'
 import {
+  fitIsaacMasonChassisModel,
+  fitIsaacMasonWheelModel,
   fitVehicleBodyModel,
   fitVehicleWheelModel,
+  inferIsaacWheelSide,
+  isIsaacMasonChassisAsset,
+  isIsaacMasonModelAsset,
+  isIsaacMasonWheelAsset,
   isVehicleBodyModelAsset,
   isVehicleWheelModelAsset,
 } from '../vehicle-model-fit.js'
@@ -46,6 +52,8 @@ import { applyLayerMask, resolveEntityLayerMask } from '../render/layers/layer-r
 import { RENDER_LAYER_DEFAULT, RENDER_LAYER_EDITOR_GIZMO } from '@haku/schema'
 
 const MODEL_ROOT_NAME = 'haku-model-root'
+
+export type PresentationTransformResolver = (entityId: EntityId, source: Transform) => Transform
 
 interface EntityRenderState {
   object3d: THREE.Object3D
@@ -66,6 +74,7 @@ export class RenderSyncSystem implements ISystem {
   private renderSettings: RenderSettings = defaultRenderSettings()
   private shadowCasterCount = 0
   private readonly _shadowAnchor = new THREE.Vector3()
+  private presentationTransformResolver: PresentationTransformResolver | null = null
 
   constructor(scene: THREE.Scene) {
     this.scene = scene
@@ -80,6 +89,10 @@ export class RenderSyncSystem implements ISystem {
     for (const [id, def] of Object.entries(prefabs)) {
       this.prefabs.set(id, def)
     }
+  }
+
+  setPresentationTransformResolver(resolver: PresentationTransformResolver | null): void {
+    this.presentationTransformResolver = resolver
   }
 
   attach(world: IWorld): void {
@@ -170,7 +183,9 @@ export class RenderSyncSystem implements ISystem {
 
       this.tagPickable(state.object3d, id.value)
       const isStatic = this.isEntityStatic(id)
-      this.applyTransform(state.object3d, transform, isStatic)
+      const presentationTransform =
+        this.presentationTransformResolver?.(id, transform) ?? transform
+      this.applyTransform(state.object3d, presentationTransform, isStatic)
       this.syncLight(id, state.object3d)
       this.syncCamera(id, state.object3d)
       this.syncEntityLayers(id, state.object3d)
@@ -385,7 +400,7 @@ export class RenderSyncSystem implements ISystem {
 
     if (state.loadedModelAsset === modelAsset && existingRoot) {
       modelLog('sync.already-loaded', { entityId: id.value, modelAsset })
-      this.applyRendererMaterial(state.object3d, meshRenderer.material)
+      this.applyRendererMaterial(state.object3d, meshRenderer.material, modelAsset)
       syncMeshShadowFlags(state.object3d, meshRenderer)
       return
     }
@@ -432,7 +447,7 @@ export class RenderSyncSystem implements ISystem {
         const currentRenderer = this.world.getComponent(id, MeshRendererComponent)
         if (currentRenderer) {
           const normalized = normalizeMeshRenderer(currentRenderer)
-          this.applyRendererMaterial(state.object3d, normalized.material)
+          this.applyRendererMaterial(state.object3d, normalized.material, modelAsset)
           syncMeshShadowFlags(state.object3d, normalized)
         }
         this.tagPickable(state.object3d, id.value)
@@ -464,24 +479,46 @@ export class RenderSyncSystem implements ISystem {
       return model
     }
 
-    if (this.world.hasComponent(id, VehicleComponent) && isVehicleBodyModelAsset(modelAsset)) {
+    if (this.world.hasComponent(id, PhysicsControllerComponent) && isVehicleBodyModelAsset(modelAsset)) {
+      if (isIsaacMasonChassisAsset(modelAsset)) {
+        return fitIsaacMasonChassisModel(model)
+      }
       return fitVehicleBodyModel(model)
     }
 
     const parentId = this.world.getParent(id)
     if (
       parentId &&
-      this.world.hasComponent(parentId, VehicleComponent) &&
+      this.world.hasComponent(parentId, PhysicsControllerComponent) &&
       isVehicleWheelModelAsset(modelAsset)
     ) {
-      return fitVehicleWheelModel(model)
+      if (isIsaacMasonWheelAsset(modelAsset)) {
+        const controller = this.world.getComponent(parentId, PhysicsControllerComponent)
+        const radius =
+          controller?.type === 'custom-raycast' ? controller.wheels.radius : undefined
+        const side = inferIsaacWheelSide(this.world.getEntityName(id) ?? '')
+        return fitIsaacMasonWheelModel(model, { radius, side })
+      }
+      return fitVehicleWheelModel(model, modelAsset)
     }
 
     return model
   }
 
-  private applyRendererMaterial(object3d: THREE.Object3D, material: MeshRenderer['material']): void {
+  private applyRendererMaterial(
+    object3d: THREE.Object3D,
+    material: MeshRenderer['material'],
+    modelAsset?: string,
+  ): void {
     const isModel = object3d.getObjectByName(MODEL_ROOT_NAME) != null
+
+    if (isModel && modelAsset && isIsaacMasonModelAsset(modelAsset)) {
+      syncMeshShadowFlags(object3d, {
+        castShadow: true,
+        receiveShadow: true,
+      } as MeshRenderer)
+      return
+    }
 
     if (isModel) {
       applyMaterialToObject(object3d, (meshMaterial) => {
@@ -580,7 +617,9 @@ export class RenderSyncSystem implements ISystem {
     const transform = this.world.getComponent(entityId, TransformComponent)
     const state = this.entityStates.get(entityId.value)
     if (!transform || !state) return
-    this.applyTransform(state.object3d, transform, this.isEntityStatic(entityId))
+    const presentationTransform =
+      this.presentationTransformResolver?.(entityId, transform) ?? transform
+    this.applyTransform(state.object3d, presentationTransform, this.isEntityStatic(entityId))
   }
 
   pickEntityAt(

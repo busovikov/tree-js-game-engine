@@ -1,6 +1,7 @@
 export {
   Engine,
   SceneLoader,
+  PHYSICS_CATCH_UP_POLICY,
   PhysicsColliderSystem,
   VehicleControllerSystem,
   InputManager,

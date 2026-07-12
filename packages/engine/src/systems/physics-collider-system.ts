@@ -3,10 +3,11 @@ import {
   ColliderComponent,
   StaticComponent,
   TransformComponent,
-  VehicleComponent,
+  PhysicsControllerComponent,
   entityId,
 } from '@haku/core'
-import type { Collider, Vehicle } from '@haku/schema'
+import type { Collider, ControllerChassis, PhysicsController } from '@haku/schema'
+import { controllerChassisCollider, controllerNeedsChassis } from '@haku/schema'
 import {
   createBodyWithShape,
   destroyBodyWithShape,
@@ -125,52 +126,119 @@ function resolveDynamicBodyParams(
   world: IWorld,
   id: EntityId,
   bodyType: RigidBodyType,
-): Pick<RigidBodyDescriptor, 'mass' | 'angularDamping'> {
+): Pick<RigidBodyDescriptor, 'mass' | 'angularDamping' | 'inertiaScalePitchRoll'> {
   if (bodyType !== 'dynamic') {
     return {}
   }
-  const vehicle = world.getComponent(id, VehicleComponent)
-  if (vehicle) {
-    return {
-      mass: vehicle.chassis.mass,
-      angularDamping: vehicle.chassis.angularDamping,
+  const controller = world.getComponent(id, PhysicsControllerComponent)
+  if (controller && controllerNeedsChassis(controller.type)) {
+    if (
+      controller.type === 'custom-raycast' ||
+      controller.type === 'dynamic-raycast' ||
+      controller.type === 'arcade-vehicle' ||
+      controller.type === 'revolute-joint-vehicle'
+    ) {
+      if (
+        controller.type === 'dynamic-raycast' &&
+        controller.driveProfile === 'threejs-rapier'
+      ) {
+        return { mass: controller.chassis.mass }
+      }
+      return {
+        mass: controller.chassis.mass,
+        angularDamping: controller.chassis.angularDamping,
+        inertiaScalePitchRoll: controller.chassis.inertiaScale,
+      }
     }
   }
   return { mass: 1 }
 }
 
-/** Implicit chassis box for {@link VehicleComponent} (AD-03 — no manual ColliderComponent). */
-export function vehicleChassisCollider(vehicle: Vehicle): Collider {
-  const [hx, hy, hz] = vehicle.chassis.halfExtents
-  return {
-    shape: 'box',
-    halfExtents: [hx, hy, hz],
-    isStatic: false,
-    offset: [0, vehicle.chassis.lift, 0],
-    rotation: [0, 0, 0, 1],
+/** Implicit chassis box for vehicle-style {@link PhysicsControllerComponent}. */
+export function controllerChassisColliderFromComponent(
+  chassis: ControllerChassis,
+): Collider {
+  return controllerChassisCollider(chassis)
+}
+
+/** @deprecated use controllerChassisColliderFromComponent */
+export function vehicleChassisCollider(chassis: ControllerChassis): Collider {
+  return controllerChassisColliderFromComponent(chassis)
+}
+
+export interface ResolvedColliderDescriptor {
+  collider: Collider
+  source: 'explicit' | 'implicit-controller'
+  bodyTypeOverride?: RigidBodyType
+}
+
+/**
+ * Resolves the collider owned by a physics controller without reading the world
+ * or constructing backend/renderer objects.
+ */
+export function resolveColliderDescriptor(
+  controller: PhysicsController | null | undefined,
+  explicitCollider: Collider | null | undefined,
+): ResolvedColliderDescriptor | null {
+  if (!controller) {
+    return explicitCollider ? { collider: explicitCollider, source: 'explicit' } : null
   }
+
+  if (controllerNeedsChassis(controller.type)) {
+    if (controller.type === 'arcade-vehicle' && explicitCollider) {
+      return {
+        collider: explicitCollider,
+        source: 'explicit',
+        bodyTypeOverride: 'dynamic',
+      }
+    }
+    if (
+      controller.type === 'custom-raycast' ||
+      controller.type === 'dynamic-raycast' ||
+      controller.type === 'arcade-vehicle' ||
+      controller.type === 'revolute-joint-vehicle'
+    ) {
+      return {
+        collider: controllerChassisColliderFromComponent(controller.chassis),
+        source: 'implicit-controller',
+        bodyTypeOverride: 'dynamic',
+      }
+    }
+  }
+
+  if (controller.type === 'kinematic-character') {
+    return {
+      collider: {
+        shape: 'capsule',
+        radius: controller.capsuleRadius,
+        halfHeight: controller.capsuleHalfHeight,
+        isStatic: false,
+        offset: [0, controller.capsuleHalfHeight + controller.capsuleRadius, 0],
+        rotation: [0, 0, 0, 1],
+      },
+      source: 'implicit-controller',
+      bodyTypeOverride: 'kinematic',
+    }
+  }
+
+  return null
 }
 
 function resolveColliderForEntity(
   world: IWorld,
   id: EntityId,
 ): { collider: Collider; bodyType: RigidBodyType } | null {
-  const vehicle = world.getComponent(id, VehicleComponent)
-  if (vehicle) {
-    return {
-      collider: vehicleChassisCollider(vehicle),
-      bodyType: 'dynamic',
-    }
-  }
-
-  const collider = world.getComponent(id, ColliderComponent)
-  if (!collider) {
+  const controller = world.getComponent(id, PhysicsControllerComponent)
+  const explicitCollider = world.getComponent(id, ColliderComponent)
+  const resolved = resolveColliderDescriptor(controller, explicitCollider)
+  if (!resolved) {
     return null
   }
 
   return {
-    collider,
-    bodyType: resolveBodyType(world, id, collider),
+    collider: resolved.collider,
+    bodyType:
+      resolved.bodyTypeOverride ?? resolveBodyType(world, id, resolved.collider),
   }
 }
 
@@ -189,7 +257,7 @@ export class PhysicsColliderSystem implements ISystem {
     this.physicsSystem = physicsSystem
   }
 
-  update(world: IWorld, _dt: number): void {
+  update(world: IWorld): void {
     if (this.bootstrapped) {
       return
     }
@@ -238,7 +306,7 @@ export class PhysicsColliderSystem implements ISystem {
       this.trackedBodies.set(id.value, { bodyWithShape, type: bodyType })
 
       if (bodyType !== 'static') {
-        this.physicsSystem.registerBody(id, bodyWithShape.body, bodyType, world)
+        this.physicsSystem.registerBody(id, bodyWithShape.body, bodyType, world, bodyWithShape.shape)
       }
     }
 

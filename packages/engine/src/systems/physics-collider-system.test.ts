@@ -3,13 +3,118 @@ import {
   ColliderComponent,
   StaticComponent,
   TransformComponent,
-  VehicleComponent,
+  PhysicsControllerComponent,
   World,
 } from '@haku/core'
 import { createRapierPhysicsBackend, resetRapierPhysicsIds } from '@haku/physics-rapier'
-import { VehicleSchema } from '@haku/schema'
-import { PhysicsColliderSystem } from './physics-collider-system.js'
+import {
+  ArcadeVehicleControllerSchema,
+  CustomRaycastControllerSchema,
+  CustomSpringControllerSchema,
+  DynamicRaycastControllerSchema,
+  KinematicCharacterControllerSchema,
+  PointerControlsControllerSchema,
+  RevoluteJointVehicleControllerSchema,
+} from '@haku/schema'
+import {
+  PhysicsColliderSystem,
+  resolveColliderDescriptor,
+} from './physics-collider-system.js'
 import { PhysicsWorldSystem } from './physics-world-system.js'
+
+describe('resolveColliderDescriptor', () => {
+  const redundantSphere = {
+    shape: 'sphere' as const,
+    radius: 0.2,
+    isStatic: false,
+    offset: [1, 2, 3] as [number, number, number],
+    rotation: [0, 0, 0, 1] as [number, number, number, number],
+  }
+
+  it.each([
+    ['custom-raycast', CustomRaycastControllerSchema.parse({ type: 'custom-raycast' })],
+    ['dynamic-raycast', DynamicRaycastControllerSchema.parse({ type: 'dynamic-raycast' })],
+    [
+      'revolute-joint-vehicle',
+      RevoluteJointVehicleControllerSchema.parse({ type: 'revolute-joint-vehicle' }),
+    ],
+  ])('uses an implicit chassis and ignores a redundant collider for %s', (_type, controller) => {
+    const resolved = resolveColliderDescriptor(controller, redundantSphere)
+
+    expect(resolved).toEqual({
+      collider: {
+        shape: 'box',
+        halfExtents: controller.chassis.halfExtents,
+        isStatic: false,
+        offset: [0, controller.chassis.lift, 0],
+        rotation: [0, 0, 0, 1],
+      },
+      source: 'implicit-controller',
+      bodyTypeOverride: 'dynamic',
+    })
+  })
+
+  it('uses an authored arcade collider when present', () => {
+    const controller = ArcadeVehicleControllerSchema.parse({ type: 'arcade-vehicle' })
+
+    expect(resolveColliderDescriptor(controller, redundantSphere)).toEqual({
+      collider: redundantSphere,
+      source: 'explicit',
+      bodyTypeOverride: 'dynamic',
+    })
+  })
+
+  it('falls back to an implicit arcade chassis without an authored collider', () => {
+    const controller = ArcadeVehicleControllerSchema.parse({ type: 'arcade-vehicle' })
+
+    expect(resolveColliderDescriptor(controller, null)).toEqual({
+      collider: {
+        shape: 'box',
+        halfExtents: controller.chassis.halfExtents,
+        isStatic: false,
+        offset: [0, controller.chassis.lift, 0],
+        rotation: [0, 0, 0, 1],
+      },
+      source: 'implicit-controller',
+      bodyTypeOverride: 'dynamic',
+    })
+  })
+
+  it('uses the runtime kinematic capsule offset and ignores a redundant collider', () => {
+    const controller = KinematicCharacterControllerSchema.parse({
+      type: 'kinematic-character',
+      capsuleRadius: 0.4,
+      capsuleHalfHeight: 0.75,
+    })
+
+    expect(resolveColliderDescriptor(controller, redundantSphere)).toEqual({
+      collider: {
+        shape: 'capsule',
+        radius: 0.4,
+        halfHeight: 0.75,
+        isStatic: false,
+        offset: [0, 1.15, 0],
+        rotation: [0, 0, 0, 1],
+      },
+      source: 'implicit-controller',
+      bodyTypeOverride: 'kinematic',
+    })
+  })
+
+  it.each([
+    ['custom-spring', CustomSpringControllerSchema.parse({ type: 'custom-spring' })],
+    ['pointer-controls', PointerControlsControllerSchema.parse({ type: 'pointer-controls' })],
+  ])('resolves no collider for non-collider controller %s', (_type, controller) => {
+    expect(resolveColliderDescriptor(controller, redundantSphere)).toBeNull()
+  })
+
+  it('passes through a collider when no physics controller owns the body', () => {
+    expect(resolveColliderDescriptor(null, redundantSphere)).toEqual({
+      collider: redundantSphere,
+      source: 'explicit',
+    })
+  })
+})
 
 describe('PhysicsColliderSystem', () => {
   beforeEach(() => {
@@ -62,7 +167,7 @@ describe('PhysicsColliderSystem', () => {
     physicsSystem.dispose()
   })
 
-  it('spawns vehicle dynamic body with VehicleComponent mass', async () => {
+  it('spawns vehicle dynamic body with PhysicsControllerComponent mass', async () => {
     const backend = await createRapierPhysicsBackend()
     const physicsSystem = new PhysicsWorldSystem({ fixedTimestep: 1 / 60, maxSubsteps: 120 })
     physicsSystem.setBackend(backend)
@@ -82,7 +187,7 @@ describe('PhysicsColliderSystem', () => {
       offset: [0, 0.5, 0],
       rotation: [0, 0, 0, 1],
     })
-    world.addComponent(carId, VehicleComponent, VehicleSchema.parse({}))
+    world.addComponent(carId, PhysicsControllerComponent, CustomRaycastControllerSchema.parse({ type: "custom-raycast" }))
 
     colliderSystem.bootstrap(world)
     expect(physicsSystem.getBodyHandle(carId)).not.toBeNull()
@@ -91,7 +196,7 @@ describe('PhysicsColliderSystem', () => {
     physicsSystem.dispose()
   })
 
-  it('spawns implicit chassis body for VehicleComponent without ColliderComponent', async () => {
+  it('spawns implicit chassis body for PhysicsControllerComponent without ColliderComponent', async () => {
     const backend = await createRapierPhysicsBackend()
     const physicsSystem = new PhysicsWorldSystem({ fixedTimestep: 1 / 60, maxSubsteps: 120 })
     physicsSystem.setBackend(backend)
@@ -104,7 +209,7 @@ describe('PhysicsColliderSystem', () => {
       rotation: [0, 0, 0, 1],
       scale: [1, 1, 1],
     })
-    world.addComponent(carId, VehicleComponent, VehicleSchema.parse({}))
+    world.addComponent(carId, PhysicsControllerComponent, CustomRaycastControllerSchema.parse({ type: "custom-raycast" }))
 
     colliderSystem.bootstrap(world)
     expect(physicsSystem.getBodyHandle(carId)).not.toBeNull()
@@ -113,7 +218,40 @@ describe('PhysicsColliderSystem', () => {
     physicsSystem.dispose()
   })
 
-  it('prefers VehicleComponent implicit chassis over manual ColliderComponent', async () => {
+  it('uses explicit sphere collider for arcade-vehicle (Isaac ball body)', async () => {
+    const backend = await createRapierPhysicsBackend()
+    const physicsSystem = new PhysicsWorldSystem({ fixedTimestep: 1 / 60, maxSubsteps: 120 })
+    physicsSystem.setBackend(backend)
+    const colliderSystem = new PhysicsColliderSystem(physicsSystem)
+
+    const world = new World()
+    const carId = world.createEntity('BallCar')
+    world.addComponent(carId, TransformComponent, {
+      position: [15, 2, 0],
+      rotation: [0, 0, 0, 1],
+      scale: [1, 1, 1],
+    })
+    world.addComponent(carId, ColliderComponent, {
+      shape: 'sphere',
+      radius: 0.7,
+      isStatic: false,
+      offset: [0, 0, 0],
+      rotation: [0, 0, 0, 1],
+    })
+    world.addComponent(
+      carId,
+      PhysicsControllerComponent,
+      ArcadeVehicleControllerSchema.parse({ type: 'arcade-vehicle' }),
+    )
+
+    colliderSystem.bootstrap(world)
+    expect(physicsSystem.getBodyHandle(carId)).not.toBeNull()
+
+    colliderSystem.dispose()
+    physicsSystem.dispose()
+  })
+
+  it('prefers PhysicsControllerComponent implicit chassis over manual ColliderComponent', async () => {
     const backend = await createRapierPhysicsBackend()
     const physicsSystem = new PhysicsWorldSystem({ fixedTimestep: 1 / 60, maxSubsteps: 120 })
     physicsSystem.setBackend(backend)
@@ -133,7 +271,7 @@ describe('PhysicsColliderSystem', () => {
       offset: [0, 0, 0],
       rotation: [0, 0, 0, 1],
     })
-    world.addComponent(carId, VehicleComponent, VehicleSchema.parse({}))
+    world.addComponent(carId, PhysicsControllerComponent, CustomRaycastControllerSchema.parse({ type: "custom-raycast" }))
 
     colliderSystem.bootstrap(world)
     expect(physicsSystem.getBodyHandle(carId)).not.toBeNull()

@@ -54,6 +54,7 @@ export class Engine {
     activeCameraId?: string | null,
   ): void {
     this.world = world
+    this.physicsSystem?.resetPresentationPoses()
     this.backend.setPrototypes(prototypes)
     this.backend.setPrefabs(prefabs)
     if (renderSettings) {
@@ -70,6 +71,7 @@ export class Engine {
 
   setWorld(world: IWorld): void {
     this.world = world
+    this.physicsSystem?.resetPresentationPoses()
     this.backend.sync.update(world)
   }
 
@@ -90,6 +92,9 @@ export class Engine {
     const system = new PhysicsWorldSystem(options)
     system.setBackend(backend)
     this.physicsSystem = system
+    this.backend.sync.setPresentationTransformResolver((id, source) =>
+      system.resolvePresentationTransform(id, source),
+    )
     this.addSystem(system)
     return system
   }
@@ -107,6 +112,7 @@ export class Engine {
     if (system === this.physicsSystem) {
       this.physicsSystem.dispose()
       this.physicsSystem = null
+      this.backend.sync.setPresentationTransformResolver(null)
     }
   }
 
@@ -161,6 +167,7 @@ export class Engine {
     this.systems = this.systems.filter((system) => system !== this.physicsSystem)
     this.physicsSystem.dispose()
     this.physicsSystem = null
+    this.backend.sync.setPresentationTransformResolver(null)
   }
 
   private setupResize(canvas: HTMLCanvasElement): void {
@@ -195,8 +202,19 @@ export class SceneLoader {
 }
 
 export { ThreeRenderBackend, RenderSyncSystem } from './render-backend.js'
-export { PhysicsWorldSystem, type PhysicsWorldSystemOptions } from './systems/physics-world-system.js'
-export { PhysicsColliderSystem, colliderToPhysicsShape, composeColliderTransform, vehicleChassisCollider } from './systems/physics-collider-system.js'
+export {
+  PHYSICS_CATCH_UP_POLICY,
+  PhysicsWorldSystem,
+  type PhysicsWorldSystemOptions,
+} from './systems/physics-world-system.js'
+export {
+  PhysicsColliderSystem,
+  colliderToPhysicsShape,
+  composeColliderTransform,
+  resolveColliderDescriptor,
+  vehicleChassisCollider,
+  type ResolvedColliderDescriptor,
+} from './systems/physics-collider-system.js'
 export {
   VehicleControllerSystem,
   computeDriveControlState,
@@ -210,6 +228,12 @@ export {
   computeWheelVisualTransform,
   type WheelVisualTransform,
 } from './systems/vehicle-visual-sync-system.js'
+export {
+  DynamicRaycastVisualSyncSystem,
+  computeDynamicRaycastWheelLocalTransform,
+  computeDynamicRaycastWheelRestTransform,
+  createDynamicRaycastWheelRestPoseResolver,
+} from './systems/dynamic-raycast-visual-sync-system.js'
 export {
   InputManager,
   DEFAULT_INPUT_ACTIONS,
@@ -247,6 +271,11 @@ export {
   type ChaseCameraPose,
   type ChaseCameraSystemOptions,
 } from './systems/chase-camera-system.js'
+export {
+  ThreeJsFollowCameraSystem,
+  usesThreeJsFollowCamera,
+  type ThreeJsFollowCameraSystemOptions,
+} from './systems/threejs-follow-camera-system.js'
 
 export {
   startVehiclePlayMode,

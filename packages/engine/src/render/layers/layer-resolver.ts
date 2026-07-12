@@ -22,6 +22,7 @@ export function resolveEntityLayerMask(
 export function applyLayerMask(object: THREE.Object3D, mask: number): void {
   object.layers.mask = mask
   object.traverse((child) => {
+    if (child.userData.hakuEditorOverlay) return
     child.layers.mask = mask
   })
 }

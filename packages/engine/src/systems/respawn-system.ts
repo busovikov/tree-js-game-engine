@@ -1,11 +1,11 @@
 import type { EntityId, IWorld, ISystem } from '@haku/core'
-import { TransformComponent, VehicleComponent } from '@haku/core'
+import { TransformComponent, PhysicsControllerComponent } from '@haku/core'
 import type { Quat, Vec3 } from '@haku/schema'
 import type { PhysicsTransform } from '@haku/physics'
 import type { PhysicsWorldSystem } from './physics-world-system.js'
-import type { VehicleControllerSystem } from './vehicle-controller-system.js'
+import type { PhysicsControllerSystem } from './physics-controller-system.js'
 
-/** Reference default: auto-respawn when chassis Y drops below this (Vehicle.js). */
+/** Auto-respawn when chassis Y drops below threshold (arcade safety net). */
 export const DEFAULT_RESPAWN_FALL_Y = -20
 
 export interface SpawnPose {
@@ -16,7 +16,7 @@ export interface SpawnPose {
 export interface RespawnSystemOptions {
   /** Y threshold for automatic respawn. Default: {@link DEFAULT_RESPAWN_FALL_Y}. */
   fallThresholdY?: number
-  /** Controlled vehicle; otherwise first enabled {@link VehicleComponent}. */
+  /** Controlled vehicle; otherwise first enabled {@link PhysicsControllerComponent}. */
   controlledEntity?: EntityId | null
 }
 
@@ -34,7 +34,7 @@ export class RespawnSystem implements ISystem {
 
   constructor(
     private readonly physicsSystem: PhysicsWorldSystem,
-    private readonly vehicleController: VehicleControllerSystem,
+    private readonly controllerSystem: PhysicsControllerSystem,
     options: RespawnSystemOptions = {},
   ) {
     this.fallThresholdY = options.fallThresholdY ?? DEFAULT_RESPAWN_FALL_Y
@@ -63,7 +63,7 @@ export class RespawnSystem implements ISystem {
     }
 
     this.physicsSystem.resetBodyState(id, transform, world)
-    this.vehicleController.resetVehicleState(id)
+    this.controllerSystem.resetControllerState(id)
   }
 
   update(world: IWorld, _dt: number): void {
@@ -101,12 +101,12 @@ export class RespawnSystem implements ISystem {
   }
 
   private captureSpawnPoses(world: IWorld): void {
-    for (const id of world.query(VehicleComponent, TransformComponent)) {
+    for (const id of world.query(PhysicsControllerComponent, TransformComponent)) {
       if (this.spawnPoses.has(id.value)) {
         continue
       }
-      const vehicle = world.getComponent(id, VehicleComponent)
-      if (vehicle?.enabled === false) {
+      const controller = world.getComponent(id, PhysicsControllerComponent)
+      if (controller?.enabled === false) {
         continue
       }
       const transform = world.getComponent(id, TransformComponent)
@@ -144,9 +144,9 @@ export class RespawnSystem implements ISystem {
       return this.controlledEntity
     }
 
-    for (const id of world.query(VehicleComponent)) {
-      const vehicle = world.getComponent(id, VehicleComponent)
-      if (vehicle?.enabled !== false) {
+    for (const id of world.query(PhysicsControllerComponent)) {
+      const controller = world.getComponent(id, PhysicsControllerComponent)
+      if (controller?.enabled !== false) {
         this.controlledEntity = id
         return id
       }

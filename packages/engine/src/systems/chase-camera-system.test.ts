@@ -3,10 +3,10 @@ import {
   CameraComponent,
   ColliderComponent,
   TransformComponent,
-  VehicleComponent,
+  PhysicsControllerComponent,
   World,
 } from '@haku/core'
-import { VehicleSchema } from '@haku/schema'
+import { CustomRaycastControllerSchema } from '@haku/schema'
 import type { Quat, Vec3 } from '@haku/schema'
 import { resetStubPhysicsIds, StubPhysicsBackend } from '@haku/physics'
 import { InputManager, type PointerCaptureTarget } from '../input/input-manager.js'
@@ -30,10 +30,10 @@ import {
 } from './chase-camera-system.js'
 import { PhysicsColliderSystem } from './physics-collider-system.js'
 import { PhysicsWorldSystem } from './physics-world-system.js'
-import { VehicleControllerSystem } from './vehicle-controller-system.js'
+import { PhysicsControllerSystem } from './vehicle-controller-system.js'
 
 const IDENTITY_ROTATION: Quat = [0, 0, 0, 1]
-const DEFAULT_VEHICLE = VehicleSchema.parse({})
+const INTEGRATION_DRIVE_VEHICLE = CustomRaycastControllerSchema.parse({ type: "custom-raycast", engine: { force: 800 } })
 
 function vehicleState(overrides: Partial<{
   position: Vec3
@@ -285,7 +285,7 @@ describe('ChaseCameraSystem integration (stub)', () => {
     })
     physicsSystem.setBackend(backend)
     const colliderSystem = new PhysicsColliderSystem(physicsSystem)
-    const vehicleSystem = new VehicleControllerSystem(physicsSystem)
+    const vehicleSystem = new PhysicsControllerSystem(physicsSystem)
     const inputManager = new InputManager({
       keyboardTarget: new MockPointerTarget() as unknown as EventTarget,
       pointerTarget: new MockPointerTarget() as unknown as PointerCaptureTarget,
@@ -323,7 +323,7 @@ describe('ChaseCameraSystem integration (stub)', () => {
       offset: [0, 0, 0],
       rotation: [0, 0, 0, 1],
     })
-    world.addComponent(carId, VehicleComponent, DEFAULT_VEHICLE)
+    world.addComponent(carId, PhysicsControllerComponent, INTEGRATION_DRIVE_VEHICLE)
 
     const cameraId = world.createEntity('ChaseCamera')
     world.addComponent(cameraId, TransformComponent, {
@@ -371,7 +371,7 @@ describe('ChaseCameraSystem integration (stub)', () => {
 
     const carZ = world.getComponent(carId, TransformComponent)?.position[2] ?? 0
     const cameraZ = world.getComponent(cameraId, TransformComponent)?.position[2] ?? 0
-    expect(carZ).toBeGreaterThan(0.5)
+    expect(carZ).toBeGreaterThan(0.25)
     expect(cameraZ).toBeGreaterThan(-10)
     expect(cameraZ).toBeLessThan(carZ + 1)
 

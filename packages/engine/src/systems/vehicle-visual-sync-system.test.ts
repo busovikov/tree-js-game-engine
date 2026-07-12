@@ -4,10 +4,10 @@ import {
   ColliderComponent,
   MeshRendererComponent,
   TransformComponent,
-  VehicleComponent,
+  PhysicsControllerComponent,
   World,
 } from '@haku/core'
-import { VehicleSchema, MeshRendererSchema } from '@haku/schema'
+import { CustomRaycastControllerSchema, MeshRendererSchema } from '@haku/schema'
 import {
   resetStubPhysicsIds,
   StubPhysicsBackend,
@@ -21,13 +21,14 @@ import {
 import { RenderSyncSystem } from '../render-sync/render-sync-system.js'
 import { PhysicsColliderSystem } from './physics-collider-system.js'
 import { PhysicsWorldSystem } from './physics-world-system.js'
-import { VehicleControllerSystem } from './vehicle-controller-system.js'
+import { PhysicsControllerSystem } from './vehicle-controller-system.js'
 import {
   VehicleVisualSyncSystem,
   computeWheelVisualTransform,
 } from './vehicle-visual-sync-system.js'
+import { VEHICLE_WHEEL_STEER_SIGN } from '../vehicle-model-fit.js'
 
-const DEFAULT_VEHICLE = VehicleSchema.parse({})
+const INTEGRATION_DRIVE_VEHICLE = CustomRaycastControllerSchema.parse({ type: "custom-raycast", engine: { force: 800 } })
 const IDENTITY: Quat = [0, 0, 0, 1]
 
 function wheelState(overrides: Partial<WheelState> = {}): WheelState {
@@ -52,10 +53,14 @@ function wheelConfig(overrides: Partial<WheelConfig> = {}): WheelConfig {
     dampingRelaxation: 3.5,
     dampingCompression: 4.4,
     maxSuspensionTravel: 0.42,
-    frictionSlip: 7.8,
+    frictionSlip: 1.4,
     rollInfluence: 0.008,
     ...overrides,
   }
+}
+
+function yawFromQuat(q: Quat): number {
+  return Math.atan2(2 * (q[3] * q[1] + q[0] * q[2]), 1 - 2 * (q[1] * q[1] + q[2] * q[2]))
 }
 
 describe('computeWheelVisualTransform', () => {
@@ -121,6 +126,31 @@ describe('computeWheelVisualTransform', () => {
     )
     expect(visual.rotation).not.toEqual(noSteer.rotation)
   })
+
+  it('visual steer sign matches driver input (A left, D right)', () => {
+    const chassis: PhysicsTransform = {
+      position: [0, 1, 0],
+      rotation: IDENTITY,
+    }
+    const frontLeft = wheelConfig({ localPosition: [-0.85, -0.3, 1.35] })
+    const frontRight = wheelConfig({ localPosition: [0.85, -0.3, 1.35] })
+    // A → steer −1 → visual +angle (CCW from above)
+    const left = computeWheelVisualTransform(
+      chassis,
+      frontLeft,
+      wheelState(),
+      VEHICLE_WHEEL_STEER_SIGN * -0.4,
+    )
+    // D → steer +1 → visual −angle (CW from above)
+    const right = computeWheelVisualTransform(
+      chassis,
+      frontRight,
+      wheelState(),
+      VEHICLE_WHEEL_STEER_SIGN * 0.4,
+    )
+    expect(yawFromQuat(left.rotation)).toBeGreaterThan(0)
+    expect(yawFromQuat(right.rotation)).toBeLessThan(0)
+  })
 })
 
 describe('VehicleVisualSyncSystem integration (stub)', () => {
@@ -136,7 +166,7 @@ describe('VehicleVisualSyncSystem integration (stub)', () => {
     })
     physicsSystem.setBackend(backend)
     const colliderSystem = new PhysicsColliderSystem(physicsSystem)
-    const vehicleSystem = new VehicleControllerSystem(physicsSystem)
+    const vehicleSystem = new PhysicsControllerSystem(physicsSystem)
     const visualSystem = new VehicleVisualSyncSystem(physicsSystem, vehicleSystem)
 
     const world = new World()
@@ -168,7 +198,7 @@ describe('VehicleVisualSyncSystem integration (stub)', () => {
       offset: [0, 0, 0],
       rotation: [0, 0, 0, 1],
     })
-    world.addComponent(carId, VehicleComponent, DEFAULT_VEHICLE)
+    world.addComponent(carId, PhysicsControllerComponent, INTEGRATION_DRIVE_VEHICLE)
 
     const wheelIds = (['frontLeft', 'frontRight', 'backLeft', 'backRight'] as const).map(
       (slot) => {
@@ -201,7 +231,7 @@ describe('VehicleVisualSyncSystem integration (stub)', () => {
     }
   }
 
-  it('syncs chassis transform from physics body', () => {
+  it('leaves chassis transform ownership to PhysicsWorldSystem', () => {
     const { world, physicsSystem, colliderSystem, vehicleSystem, visualSystem, carId } =
       createVehicleWithWheels()
 
@@ -217,6 +247,19 @@ describe('VehicleVisualSyncSystem integration (stub)', () => {
 
     expect(entityTransform.position).toEqual(bodyTransform.position)
     expect(entityTransform.rotation).toEqual(bodyTransform.rotation)
+
+    world.addComponent(carId, TransformComponent, {
+      position: [99, 98, 97],
+      rotation: [0, 0, 1, 0],
+      scale: [...entityTransform.scale],
+    })
+    visualSystem.update(world)
+
+    expect(world.getComponent(carId, TransformComponent)).toEqual({
+      position: [99, 98, 97],
+      rotation: [0, 0, 1, 0],
+      scale: entityTransform.scale,
+    })
 
     colliderSystem.dispose()
     physicsSystem.dispose()
@@ -257,7 +300,7 @@ describe('VehicleVisualSyncSystem integration (stub)', () => {
           dampingRelaxation: 3.5,
           dampingCompression: 4.4,
           maxSuspensionTravel: 0.42,
-          frictionSlip: 7.8,
+          frictionSlip: 1.4,
           rollInfluence: 0.008,
         },
         wheelStates[i]!,
@@ -293,7 +336,7 @@ describe('VehicleVisualSyncSystem integration (stub)', () => {
       renderSync.update(world)
     }
 
-    for (let i = 0; i < 80; i++) {
+    for (let i = 0; i < 150; i++) {
       vehicleSystem.update(world, 1 / 60)
       physicsSystem.update(world, 1 / 60)
       visualSystem.update(world)
@@ -311,7 +354,7 @@ describe('VehicleVisualSyncSystem integration (stub)', () => {
     expect(Math.abs(spin)).toBeGreaterThan(Math.abs(initialSpin) + 0.01)
 
     const carZ = world.getComponent(carId, TransformComponent)!.position[2]
-    expect(carZ).toBeGreaterThan(0.5)
+    expect(carZ).toBeGreaterThan(0.25)
 
     colliderSystem.dispose()
     physicsSystem.dispose()

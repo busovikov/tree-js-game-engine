@@ -3,15 +3,20 @@ export {
   SceneLoader,
   ThreeRenderBackend,
   RenderSyncSystem,
+  PHYSICS_CATCH_UP_POLICY,
   PhysicsWorldSystem,
   PhysicsColliderSystem,
   VehicleControllerSystem,
   VehicleVisualSyncSystem,
+  DynamicRaycastVisualSyncSystem,
+  createDynamicRaycastWheelRestPoseResolver,
   InputManager,
   InputBindingSystem,
   inputActionsToVehicleInput,
   startVehiclePlayMode,
   ChaseCameraSystem,
+  ThreeJsFollowCameraSystem,
+  usesThreeJsFollowCamera,
   RespawnSystem,
   DEFAULT_RESPAWN_FALL_Y,
   createChaseCameraRuntimeState,
@@ -31,6 +36,7 @@ export {
   CHASE_BOOST_FOV,
   colliderToPhysicsShape,
   composeColliderTransform,
+  resolveColliderDescriptor,
   vehicleChassisCollider,
   computeDriveControlState,
   computeWheelVisualTransform,
@@ -38,6 +44,7 @@ export {
 } from './engine.js'
 export type { EngineOptions, EngineFeatureFlags, LoadedScene } from './engine.js'
 export type { PhysicsWorldSystemOptions } from './systems/physics-world-system.js'
+export type { ResolvedColliderDescriptor } from './systems/physics-collider-system.js'
 export type { VehicleInput, DriveControlContext, DriveControlState } from './systems/vehicle-controller-system.js'
 export type {
   InputActions,
@@ -55,6 +62,7 @@ export type {
   ChaseCameraSystemOptions,
 } from './systems/chase-camera-system.js'
 export type { VehiclePlayModeOptions, VehiclePlayModeSession } from './play-mode-vehicle.js'
+export type { ThreeJsFollowCameraSystemOptions } from './systems/threejs-follow-camera-system.js'
 export type { RespawnSystemOptions, SpawnPose } from './systems/respawn-system.js'
 export { DEFAULT_INPUT_ACTIONS, KEY_BINDINGS } from './input/index.js'
 export type { WheelVisualTransform } from './systems/vehicle-visual-sync-system.js'
@@ -70,6 +78,7 @@ export {
   setModelAssetResolver,
   setModelResourceResolver,
   setModelLoadPreparer,
+  setDracoDecoderPath,
   clearModelCache,
   type ModelAssetResolver,
   type ModelResourceResolver,
@@ -85,3 +94,19 @@ export {
   type VehiclePlaytestOptions,
   type PlaytestWindowApi,
 } from './playtest/vehicle-metrics.js'
+export {
+  collectVehicleDebugSnapshot,
+  createVehicleDebugWindowApi,
+  createHttpVehicleDebugLogSink,
+  VehicleDebugLogger,
+  VEHICLE_DEBUG_LOG_RELATIVE_PATH,
+  VEHICLE_DEBUG_LOG_HTTP_ENDPOINT,
+  type VehicleDebugSnapshot,
+  type VehicleDebugCollectContext,
+  type VehicleDebugLogOptions,
+  type VehicleDebugLogRecord,
+  type VehicleDebugLogSink,
+  type VehicleDebugWindowApi,
+  type VehicleWheelDebugSnapshot,
+  type VehicleDriveDebugSnapshot,
+} from './playtest/vehicle-debug.js'

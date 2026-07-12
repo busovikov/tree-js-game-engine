@@ -2,7 +2,7 @@ import type { EntityId, IWorld } from '@haku/core'
 import {
   ColliderComponent,
   TransformComponent,
-  VehicleComponent,
+  PhysicsControllerComponent,
 } from '@haku/core'
 import { vehicleWheelLocalPositions } from '@haku/schema'
 import type { IRaycastVehicle } from '@haku/physics'
@@ -49,8 +49,8 @@ function horizontalDist(x: number, z: number): number {
 }
 
 function findVehicleId(world: IWorld, vehicleName?: string): EntityId | null {
-  for (const id of world.query(VehicleComponent, TransformComponent)) {
-    const data = world.getComponent(id, VehicleComponent)
+  for (const id of world.query(PhysicsControllerComponent, TransformComponent)) {
+    const data = world.getComponent(id, PhysicsControllerComponent)
     if (!data?.enabled) {
       continue
     }
@@ -138,7 +138,10 @@ export function collectVehiclePlaytestMetrics(
     return null
   }
 
-  const vehicleData = world.getComponent(vehicleId, VehicleComponent)!
+  const vehicleData = world.getComponent(vehicleId, PhysicsControllerComponent)
+  if (!vehicleData || vehicleData.type !== 'custom-raycast') {
+    return null
+  }
   const chassis = world.getComponent(vehicleId, TransformComponent)!
   const wheelIds = resolveWheelChildren(world, vehicleId)
   const wheelStates = raycastVehicle?.getWheelStates() ?? []

@@ -1,4 +1,3 @@
-import { EditorSelectionOutlinePass } from './passes/editor-selection-outline.js'
 import { ForwardPass } from './passes/forward-pass.js'
 import { PostProcessChain } from './passes/post-process-chain.js'
 import { RenderTargetPass } from './passes/render-target-pass.js'
@@ -6,43 +5,23 @@ import type { RenderSettings } from '@haku/schema'
 import type * as THREE from 'three'
 import type { RenderContext, RenderPass } from './render-pass.js'
 
-export interface RenderGraphOptions {
-  editorOutline?: EditorSelectionOutlinePass
-}
-
 export class RenderGraph {
   private readonly passes: RenderPass[] = []
   private settings: RenderSettings
   private width = 1
   private height = 1
-  private readonly editorOutline: EditorSelectionOutlinePass | undefined
-  private skipEditorOutline = false
 
   constructor(
     private readonly renderer: THREE.WebGLRenderer,
     settings: RenderSettings,
-    options: RenderGraphOptions = {},
   ) {
     this.settings = settings
-    this.editorOutline = options.editorOutline
     this.passes = [
       new RenderTargetPass(renderer),
       new ForwardPass(),
       new PostProcessChain(renderer),
     ]
-    if (options.editorOutline) {
-      this.passes.push(options.editorOutline)
-    }
     this.passes.sort((a, b) => a.order - b.order)
-  }
-
-  setSkipEditorOutline(skip: boolean): void {
-    this.skipEditorOutline = skip
-  }
-
-  private editorOutlineEnabled(): boolean {
-    if (this.skipEditorOutline) return false
-    return (this.editorOutline?.enabled(this.settings) ?? false) === true
   }
 
   setSettings(settings: RenderSettings): void {
@@ -82,7 +61,6 @@ export class RenderGraph {
 
     for (const pass of this.passes) {
       if (!pass.enabled(this.settings)) continue
-      if (pass.id === 'editor-selection-outline' && !this.editorOutlineEnabled()) continue
       if (pass.id === 'forward' && usePost) {
         postChain?.renderToTarget(ctx, scene, camera)
         continue

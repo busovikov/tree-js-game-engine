@@ -2,10 +2,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   ColliderComponent,
   TransformComponent,
-  VehicleComponent,
+  PhysicsControllerComponent,
   World,
 } from '@haku/core'
-import { VehicleSchema } from '@haku/schema'
+import { CustomRaycastControllerSchema } from '@haku/schema'
 import type { Quat, Vec3 } from '@haku/schema'
 import { resetStubPhysicsIds, StubPhysicsBackend } from '@haku/physics'
 import { InputManager, type PointerCaptureTarget } from '../input/input-manager.js'
@@ -16,9 +16,9 @@ import {
   DEFAULT_RESPAWN_FALL_Y,
   RespawnSystem,
 } from './respawn-system.js'
-import { VehicleControllerSystem } from './vehicle-controller-system.js'
+import { PhysicsControllerSystem } from './vehicle-controller-system.js'
 
-const DEFAULT_VEHICLE = VehicleSchema.parse({})
+const DEFAULT_VEHICLE = CustomRaycastControllerSchema.parse({ type: "custom-raycast" })
 const IDENTITY_ROTATION: Quat = [0, 0, 0, 1]
 
 type Listener = (event: unknown) => void
@@ -61,7 +61,7 @@ function keyEvent(code: string, type: 'keydown' | 'keyup', repeat = false) {
 describe('RespawnSystem', () => {
   let physicsSystem: PhysicsWorldSystem
   let colliderSystem: PhysicsColliderSystem
-  let vehicleController: VehicleControllerSystem
+  let vehicleController: PhysicsControllerSystem
   let respawnSystem: RespawnSystem
   let world: World
   let carId: ReturnType<World['createEntity']>
@@ -74,7 +74,7 @@ describe('RespawnSystem', () => {
     physicsSystem = new PhysicsWorldSystem()
     physicsSystem.setBackend(backend)
     colliderSystem = new PhysicsColliderSystem(physicsSystem)
-    vehicleController = new VehicleControllerSystem(physicsSystem)
+    vehicleController = new PhysicsControllerSystem(physicsSystem)
     respawnSystem = new RespawnSystem(physicsSystem, vehicleController, {
       fallThresholdY: DEFAULT_RESPAWN_FALL_Y,
     })
@@ -86,7 +86,7 @@ describe('RespawnSystem', () => {
       rotation: [...spawnRotation],
       scale: [1, 1, 1],
     })
-    world.addComponent(carId, VehicleComponent, DEFAULT_VEHICLE)
+    world.addComponent(carId, PhysicsControllerComponent, DEFAULT_VEHICLE)
     world.addComponent(carId, ColliderComponent, {
       shape: 'box',
       halfExtents: [0.9, 0.3, 1.55],
@@ -174,7 +174,7 @@ describe('RespawnSystem + InputBindingSystem', () => {
   let inputManager: InputManager
   let physicsSystem: PhysicsWorldSystem
   let colliderSystem: PhysicsColliderSystem
-  let vehicleController: VehicleControllerSystem
+  let vehicleController: PhysicsControllerSystem
   let respawnSystem: RespawnSystem
   let bindingSystem: InputBindingSystem
   let world: World
@@ -194,7 +194,7 @@ describe('RespawnSystem + InputBindingSystem', () => {
     physicsSystem = new PhysicsWorldSystem()
     physicsSystem.setBackend(backend)
     colliderSystem = new PhysicsColliderSystem(physicsSystem)
-    vehicleController = new VehicleControllerSystem(physicsSystem)
+    vehicleController = new PhysicsControllerSystem(physicsSystem)
     respawnSystem = new RespawnSystem(physicsSystem, vehicleController)
     bindingSystem = new InputBindingSystem(inputManager, vehicleController, {
       onRespawn: (id) => respawnSystem.requestRespawn(id),
@@ -207,7 +207,7 @@ describe('RespawnSystem + InputBindingSystem', () => {
       rotation: IDENTITY_ROTATION,
       scale: [1, 1, 1],
     })
-    world.addComponent(carId, VehicleComponent, DEFAULT_VEHICLE)
+    world.addComponent(carId, PhysicsControllerComponent, DEFAULT_VEHICLE)
     world.addComponent(carId, ColliderComponent, {
       shape: 'box',
       halfExtents: [0.9, 0.3, 1.55],
@@ -251,5 +251,21 @@ describe('RespawnSystem + InputBindingSystem', () => {
     const transform = world.getComponent(carId, TransformComponent)
     expect(transform?.position).toEqual([0, 8, 0])
     expect(transform?.rotation).toEqual(IDENTITY_ROTATION)
+  })
+
+  it('clears stale input on respawn and reapplies currently held input next frame', () => {
+    keyboard.dispatch('keydown', keyEvent('KeyW', 'keydown'))
+    bindingSystem.update(world, 1 / 60)
+    vehicleController.update(world, 1 / 60)
+    expect(vehicleController.getControllerInput(carId)?.throttle).toBe(1)
+
+    keyboard.dispatch('keydown', keyEvent('KeyR', 'keydown'))
+    bindingSystem.update(world, 1 / 60)
+    respawnSystem.update(world, 1 / 60)
+
+    expect(vehicleController.getControllerInput(carId)).toBeUndefined()
+
+    bindingSystem.update(world, 1 / 60)
+    expect(vehicleController.getControllerInput(carId)?.throttle).toBe(1)
   })
 })

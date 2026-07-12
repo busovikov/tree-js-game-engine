@@ -1,9 +1,11 @@
 import type { EntityId, IWorld, ISystem } from '@haku/core'
 import { entityId, TransformComponent } from '@haku/core'
+import type { Transform } from '@haku/schema'
 import type {
   IPhysicsBackend,
   IPhysicsWorld,
   PhysicsBodyHandle,
+  PhysicsShapeHandle,
   PhysicsTransform,
   RigidBodyType,
   Vec3,
@@ -15,15 +17,51 @@ export interface PhysicsWorldSystemOptions {
   fixedTimestep?: number
   /** Max physics substeps per frame to avoid spiral-of-death. Default: 3. */
   maxSubsteps?: number
+  /** Max render-frame delta admitted to the accumulator. Default: one frame's substep budget. */
+  maxFrameDelta?: number
+  /** Blend fixed physics poses for presentation. Default: true. */
+  presentationInterpolation?: boolean
 }
 
 interface TrackedBody {
   handle: PhysicsBodyHandle
   type: RigidBodyType
+  shapeHandle?: PhysicsShapeHandle
+}
+
+interface PresentationPoseHistory {
+  previous: PhysicsTransform
+  current: PhysicsTransform
 }
 
 const DEFAULT_FIXED_TIMESTEP = 1 / 60
 const DEFAULT_MAX_SUBSTEPS = 3
+
+/** Shared bounded catch-up policy for interactive play mode. */
+export const PHYSICS_CATCH_UP_POLICY: Readonly<Required<PhysicsWorldSystemOptions>> =
+  Object.freeze({
+    fixedTimestep: DEFAULT_FIXED_TIMESTEP,
+    maxSubsteps: DEFAULT_MAX_SUBSTEPS,
+    maxFrameDelta: DEFAULT_FIXED_TIMESTEP * DEFAULT_MAX_SUBSTEPS,
+    presentationInterpolation: true,
+  })
+
+/** Pure position lerp + normalized shortest-path quaternion interpolation. */
+export function interpolatePhysicsPose(
+  previous: PhysicsTransform,
+  current: PhysicsTransform,
+  alpha: number,
+): PhysicsTransform {
+  const t = Math.max(0, Math.min(1, alpha))
+  return {
+    position: [
+      previous.position[0] + (current.position[0] - previous.position[0]) * t,
+      previous.position[1] + (current.position[1] - previous.position[1]) * t,
+      previous.position[2] + (current.position[2] - previous.position[2]) * t,
+    ],
+    rotation: slerpQuaternion(previous.rotation, current.rotation, t),
+  }
+}
 
 /**
  * Steps {@link IPhysicsWorld} at a fixed rate and writes dynamic body transforms
@@ -34,14 +72,22 @@ export class PhysicsWorldSystem implements ISystem {
 
   private readonly fixedTimestep: number
   private readonly maxSubsteps: number
+  private readonly maxFrameDelta: number
+  private readonly presentationInterpolation: boolean
   private physicsWorld: PhysicsWorld | null = null
   private backend: IPhysicsBackend | null = null
   private accumulator = 0
   private readonly trackedBodies = new Map<string, TrackedBody>()
+  private readonly presentationPoses = new Map<string, PresentationPoseHistory>()
+  private readonly queuedSubstepActions = new Map<string, () => void>()
+  private readonly presentationSnapPending = new Set<string>()
 
   constructor(options: PhysicsWorldSystemOptions = {}) {
     this.fixedTimestep = options.fixedTimestep ?? DEFAULT_FIXED_TIMESTEP
     this.maxSubsteps = options.maxSubsteps ?? DEFAULT_MAX_SUBSTEPS
+    this.maxFrameDelta =
+      options.maxFrameDelta ?? this.fixedTimestep * this.maxSubsteps
+    this.presentationInterpolation = options.presentationInterpolation ?? true
   }
 
   /** Initialize and attach a physics backend. Replaces any previous backend. */
@@ -51,6 +97,7 @@ export class PhysicsWorldSystem implements ISystem {
     this.backend = backend
     this.physicsWorld = new PhysicsWorld(backend)
     this.accumulator = 0
+    this.resetPresentationPoses()
   }
 
   /** Release backend resources and clear tracked bodies. */
@@ -58,10 +105,54 @@ export class PhysicsWorldSystem implements ISystem {
     this.disposeBackend()
     this.trackedBodies.clear()
     this.accumulator = 0
+    this.resetPresentationPoses()
   }
 
   getPhysicsWorld(): IPhysicsWorld | null {
     return this.physicsWorld
+  }
+
+  /** Fraction of the next fixed step accumulated for presentation blending. */
+  getPresentationAlpha(): number {
+    return Math.max(0, Math.min(1, this.accumulator / this.fixedTimestep))
+  }
+
+  /**
+   * Resolve a render-only transform without mutating simulation components.
+   * Untracked, invalidated, and interpolation-disabled entities snap to source.
+   */
+  resolvePresentationTransform(id: EntityId, source: Transform): Transform {
+    const history = this.presentationPoses.get(id.value)
+    if (!this.presentationInterpolation || !history) {
+      return source
+    }
+    const pose = interpolatePhysicsPose(
+      history.previous,
+      history.current,
+      this.getPresentationAlpha(),
+    )
+    return {
+      position: [...pose.position],
+      rotation: [...pose.rotation],
+      scale: [...source.scale],
+    }
+  }
+
+  /** Invalidate all retained poses after replacing the presented world. */
+  resetPresentationPoses(): void {
+    this.presentationPoses.clear()
+    this.presentationSnapPending.clear()
+    for (const entityIdValue of this.trackedBodies.keys()) {
+      this.presentationSnapPending.add(entityIdValue)
+    }
+  }
+
+  /**
+   * Queue a keyed action to run before every fixed substep in the next update.
+   * Re-queuing the same key replaces the action; all actions expire after the update.
+   */
+  queueSubstepAction(key: string, action: () => void): void {
+    this.queuedSubstepActions.set(key, action)
   }
 
   /** Sync Rapier scene queries after bulk collider spawn. */
@@ -74,13 +165,37 @@ export class PhysicsWorldSystem implements ISystem {
     return this.trackedBodies.get(id.value)?.handle ?? null
   }
 
+  /** Returns the primary shape handle registered for an entity, if any. */
+  getShapeHandle(id: EntityId): PhysicsShapeHandle | null {
+    return this.trackedBodies.get(id.value)?.shapeHandle ?? null
+  }
+
+  /** Resolve entity id from a physics body handle (linear scan). */
+  findEntityForBody(body: PhysicsBodyHandle): EntityId | null {
+    for (const [entityIdValue, tracked] of this.trackedBodies) {
+      if (tracked.handle.value === body.value) {
+        return entityId(entityIdValue)
+      }
+    }
+    return null
+  }
+
   /** Linear velocity of a registered entity body in m/s, or null if not tracked. */
   getBodyLinearVelocity(id: EntityId): Vec3 | null {
     const handle = this.getBodyHandle(id)
-    if (!handle || !this.physicsWorld) {
+    if (!handle || !this.backend) {
       return null
     }
-    return [...this.physicsWorld.getBodyLinearVelocity(handle)] as Vec3
+    return [...this.backend.getBodyLinearVelocity(handle)] as Vec3
+  }
+
+  /** Angular velocity of a registered entity body in rad/s, or null if not tracked. */
+  getBodyAngularVelocity(id: EntityId): Vec3 | null {
+    const handle = this.getBodyHandle(id)
+    if (!handle || !this.backend) {
+      return null
+    }
+    return [...this.backend.getBodyAngularVelocity(handle)] as Vec3
   }
 
   /** Set linear velocity on a registered dynamic body (e.g. jump minimum upward speed). */
@@ -122,6 +237,10 @@ export class PhysicsWorldSystem implements ISystem {
     this.physicsWorld.setBodyTransform(handle, transform)
     this.setBodyLinearVelocity(id, [0, 0, 0])
     this.setBodyAngularVelocity(id, [0, 0, 0])
+    this.presentationPoses.set(id.value, {
+      previous: clonePhysicsTransform(transform),
+      current: clonePhysicsTransform(transform),
+    })
 
     if (world) {
       const entityTransform = world.getComponent(id, TransformComponent)
@@ -144,6 +263,7 @@ export class PhysicsWorldSystem implements ISystem {
     handle: PhysicsBodyHandle,
     type: RigidBodyType,
     world?: IWorld,
+    shapeHandle?: PhysicsShapeHandle,
   ): void {
     if (type === 'static') {
       return
@@ -159,40 +279,61 @@ export class PhysicsWorldSystem implements ISystem {
       }
     }
 
-    this.trackedBodies.set(id.value, { handle, type })
+    this.trackedBodies.set(id.value, { handle, type, shapeHandle })
+    if (this.physicsWorld) {
+      const pose = this.physicsWorld.getBodyTransform(handle)
+      this.presentationPoses.set(id.value, {
+        previous: clonePhysicsTransform(pose),
+        current: clonePhysicsTransform(pose),
+      })
+      this.presentationSnapPending.delete(id.value)
+    }
   }
 
   unregisterBody(id: EntityId): void {
     this.trackedBodies.delete(id.value)
+    this.presentationPoses.delete(id.value)
+    this.presentationSnapPending.delete(id.value)
   }
 
   update(world: IWorld, dt: number): void {
     if (!this.physicsWorld || this.trackedBodies.size === 0) {
+      this.queuedSubstepActions.clear()
       return
     }
 
-    this.accumulator += dt
+    const frameDelta = Number.isNaN(dt) || dt <= 0 ? 0 : Math.min(dt, this.maxFrameDelta)
+    this.accumulator += frameDelta
     if (this.accumulator > this.fixedTimestep * this.maxSubsteps) {
       this.accumulator = this.fixedTimestep * this.maxSubsteps
     }
 
-    let substeps = 0
-    while (this.accumulator >= this.fixedTimestep - 1e-9 && substeps < this.maxSubsteps) {
-      this.physicsWorld.step(this.fixedTimestep)
-      this.accumulator -= this.fixedTimestep
-      substeps += 1
+    try {
+      let substeps = 0
+      while (this.accumulator >= this.fixedTimestep - 1e-9 && substeps < this.maxSubsteps) {
+        for (const action of this.queuedSubstepActions.values()) {
+          action()
+        }
+        this.advancePresentationHistoryBeforeStep()
+        this.physicsWorld.step(this.fixedTimestep)
+        this.capturePresentationPosesAfterStep()
+        this.accumulator -= this.fixedTimestep
+        substeps += 1
+      }
+    } finally {
+      this.queuedSubstepActions.clear()
     }
 
-    this.syncDynamicTransforms(world)
+    this.syncPhysicsTransforms(world)
   }
 
-  private syncDynamicTransforms(world: IWorld): void {
+  private syncPhysicsTransforms(world: IWorld): void {
     if (!this.physicsWorld) {
       return
     }
 
     for (const [entityIdValue, { handle, type }] of this.trackedBodies) {
-      if (type !== 'dynamic') {
+      if (type !== 'dynamic' && type !== 'kinematic') {
         continue
       }
 
@@ -211,11 +352,111 @@ export class PhysicsWorldSystem implements ISystem {
     }
   }
 
+  private advancePresentationHistoryBeforeStep(): void {
+    if (!this.physicsWorld) {
+      return
+    }
+    for (const [entityIdValue, { handle, type }] of this.trackedBodies) {
+      if (type !== 'dynamic' && type !== 'kinematic') {
+        continue
+      }
+      const history = this.presentationPoses.get(entityIdValue)
+      if (history) {
+        history.previous = clonePhysicsTransform(history.current)
+      } else {
+        const pose = this.physicsWorld.getBodyTransform(handle)
+        this.presentationPoses.set(entityIdValue, {
+          previous: clonePhysicsTransform(pose),
+          current: clonePhysicsTransform(pose),
+        })
+      }
+    }
+  }
+
+  private capturePresentationPosesAfterStep(): void {
+    if (!this.physicsWorld) {
+      return
+    }
+    for (const [entityIdValue, { handle, type }] of this.trackedBodies) {
+      if (type !== 'dynamic' && type !== 'kinematic') {
+        continue
+      }
+      const current = this.physicsWorld.getBodyTransform(handle)
+      const history = this.presentationPoses.get(entityIdValue)
+      if (!history || this.presentationSnapPending.has(entityIdValue)) {
+        this.presentationPoses.set(entityIdValue, {
+          previous: clonePhysicsTransform(current),
+          current: clonePhysicsTransform(current),
+        })
+      } else {
+        history.current = clonePhysicsTransform(current)
+      }
+      this.presentationSnapPending.delete(entityIdValue)
+    }
+  }
+
   private disposeBackend(): void {
     if (this.backend) {
       this.backend.dispose()
       this.backend = null
     }
     this.physicsWorld = null
+    this.queuedSubstepActions.clear()
+    this.resetPresentationPoses()
   }
+}
+
+function clonePhysicsTransform(transform: PhysicsTransform): PhysicsTransform {
+  return {
+    position: [...transform.position],
+    rotation: [...transform.rotation],
+  }
+}
+
+function normalizeQuaternion(rotation: PhysicsTransform['rotation']): PhysicsTransform['rotation'] {
+  const length = Math.hypot(rotation[0], rotation[1], rotation[2], rotation[3])
+  if (length <= Number.EPSILON) {
+    return [0, 0, 0, 1]
+  }
+  return [
+    rotation[0] / length,
+    rotation[1] / length,
+    rotation[2] / length,
+    rotation[3] / length,
+  ]
+}
+
+function slerpQuaternion(
+  previous: PhysicsTransform['rotation'],
+  current: PhysicsTransform['rotation'],
+  alpha: number,
+): PhysicsTransform['rotation'] {
+  const from = normalizeQuaternion(previous)
+  let to = normalizeQuaternion(current)
+  let dot = from[0] * to[0] + from[1] * to[1] + from[2] * to[2] + from[3] * to[3]
+
+  if (dot < 0) {
+    to = [-to[0], -to[1], -to[2], -to[3]]
+    dot = -dot
+  }
+
+  if (dot > 0.9995) {
+    return normalizeQuaternion([
+      from[0] + (to[0] - from[0]) * alpha,
+      from[1] + (to[1] - from[1]) * alpha,
+      from[2] + (to[2] - from[2]) * alpha,
+      from[3] + (to[3] - from[3]) * alpha,
+    ])
+  }
+
+  const theta = Math.acos(Math.max(-1, Math.min(1, dot)))
+  const sinTheta = Math.sin(theta)
+  const previousWeight = Math.sin((1 - alpha) * theta) / sinTheta
+  const currentWeight = Math.sin(alpha * theta) / sinTheta
+  return normalizeQuaternion([
+    from[0] * previousWeight + to[0] * currentWeight,
+    from[1] * previousWeight + to[1] * currentWeight,
+    from[2] * previousWeight + to[2] * currentWeight,
+    from[3] * previousWeight + to[3] * currentWeight,
+  ])
 }

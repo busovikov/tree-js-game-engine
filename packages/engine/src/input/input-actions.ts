@@ -29,7 +29,7 @@ export const DEFAULT_INPUT_ACTIONS: InputActions = {
   cameraZoomDelta: 0,
 }
 
-/** Keyboard codes mapped to directional / modifier actions (reference Vehicle.js). */
+/** Keyboard codes mapped to directional / modifier actions (WASD + arrows). */
 export const KEY_BINDINGS = {
   forward: ['KeyW', 'ArrowUp'],
   backward: ['KeyS', 'ArrowDown'],

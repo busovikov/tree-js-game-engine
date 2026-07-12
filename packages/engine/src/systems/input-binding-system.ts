@@ -1,26 +1,30 @@
 import type { EntityId, IWorld, ISystem } from '@haku/core'
-import { VehicleComponent } from '@haku/core'
+import { PhysicsControllerComponent } from '@haku/core'
 import type { InputActions } from '../input/input-actions.js'
 import type { InputManager } from '../input/input-manager.js'
-import type { VehicleControllerSystem, VehicleInput } from './vehicle-controller-system.js'
+import type { PhysicsControllerSystem, ControllerInput } from './physics-controller-system.js'
 
 export interface InputBindingSystemOptions {
-  /** Entity to drive; when omitted, first enabled {@link VehicleComponent} is used. */
+  /** Entity to drive; when omitted, first enabled physics controller is used. */
   controlledEntity?: EntityId | null
   /** Fired once per R keydown while input is enabled (T01.21 implements respawn). */
   onRespawn?: (entityId: EntityId) => void
 }
 
-/** Map {@link InputActions} to {@link VehicleInput} for {@link VehicleControllerSystem}. */
-export function inputActionsToVehicleInput(actions: InputActions): VehicleInput {
+/** Map {@link InputActions} to {@link ControllerInput}. */
+export function inputActionsToControllerInput(actions: InputActions): ControllerInput {
   return {
     throttle: actions.throttle,
     steer: actions.steer,
     brake: actions.brake,
     boost: actions.boost,
     jump: actions.jump,
+    sprint: actions.boost,
   }
 }
+
+/** @deprecated use inputActionsToControllerInput */
+export const inputActionsToVehicleInput = inputActionsToControllerInput
 
 /**
  * Each frame: read {@link InputManager} actions → {@link VehicleControllerSystem.setVehicleInput}.
@@ -34,7 +38,7 @@ export class InputBindingSystem implements ISystem {
 
   constructor(
     private readonly inputManager: InputManager,
-    private readonly vehicleController: VehicleControllerSystem,
+    private readonly controllerSystem: PhysicsControllerSystem,
     options: InputBindingSystemOptions = {},
   ) {
     this.controlledEntity = options.controlledEntity ?? null
@@ -43,7 +47,7 @@ export class InputBindingSystem implements ISystem {
 
   setControlledEntity(id: EntityId | null): void {
     if (this.controlledEntity) {
-      this.vehicleController.clearVehicleInput(this.controlledEntity)
+      this.controllerSystem.clearControllerInput(this.controlledEntity)
     }
     this.controlledEntity = id
   }
@@ -60,7 +64,7 @@ export class InputBindingSystem implements ISystem {
     }
 
     const actions = this.inputManager.getActions()
-    this.vehicleController.setVehicleInput(entity, inputActionsToVehicleInput(actions))
+    this.controllerSystem.setControllerInput(entity, inputActionsToControllerInput(actions))
 
     if (actions.respawn) {
       this.onRespawn?.(entity)
@@ -71,7 +75,7 @@ export class InputBindingSystem implements ISystem {
 
   dispose(): void {
     if (this.controlledEntity) {
-      this.vehicleController.clearVehicleInput(this.controlledEntity)
+      this.controllerSystem.clearControllerInput(this.controlledEntity)
     }
     this.controlledEntity = null
   }
@@ -81,9 +85,9 @@ export class InputBindingSystem implements ISystem {
       return this.controlledEntity
     }
 
-    for (const id of world.query(VehicleComponent)) {
-      const vehicle = world.getComponent(id, VehicleComponent)
-      if (vehicle?.enabled !== false) {
+    for (const id of world.query(PhysicsControllerComponent)) {
+      const controller = world.getComponent(id, PhysicsControllerComponent)
+      if (controller?.enabled !== false) {
         this.controlledEntity = id
         return id
       }

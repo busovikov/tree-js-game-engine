@@ -18,11 +18,13 @@ export function syncWireframeOverlay(root: THREE.Object3D, enabled: boolean, col
         const lineMaterial = new THREE.LineBasicMaterial({
           color: new THREE.Color(color),
           toneMapped: false,
+          depthTest: false,
+          depthWrite: false,
         })
         overlay = new THREE.LineSegments(edges, lineMaterial)
         overlay.name = WIREFRAME_OVERLAY_NAME
         overlay.userData.hakuEditorOverlay = true
-        overlay.renderOrder = 2
+        overlay.renderOrder = 1000
         overlay.frustumCulled = false
         child.add(overlay)
       } else {
