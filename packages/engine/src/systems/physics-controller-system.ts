@@ -9,8 +9,6 @@ import type {
   IRaycastVehicle,
   IDynamicRaycastVehicle,
   PhysicsWheelHandle,
-  Quat,
-  Vec3,
   WheelConfig,
 } from '@haku/physics'
 import type { PhysicsWorldSystem } from './physics-world-system.js'
@@ -48,10 +46,6 @@ export interface ControllerInput {
   sprint?: boolean
 }
 
-const FORWARD_LOCAL: Vec3 = [0, 0, 1]
-const MPS_TO_KMH = 3.6
-const MOVING_FORWARD_DOT = 0.5
-
 /** @deprecated use ControllerInput */
 export type VehicleInput = ControllerInput
 
@@ -59,95 +53,21 @@ interface TrackedCustomRaycast {
   vehicle: IRaycastVehicle
   wheels: readonly [PhysicsWheelHandle, PhysicsWheelHandle, PhysicsWheelHandle, PhysicsWheelHandle]
   currentSteer: number
-  jumpCooldown: number
-  jumpBuffer: number
 }
 
 export interface DriveControlState {
   currentSteer: number
   engineForce: number
   brake: number
-  handbrakeRear: boolean
-  jumpCooldown: number
-  jumpBuffer: number
-  jumpApplied: boolean
 }
 
 export interface DriveControlContext {
   vehicle: CustomRaycastController
   input: ControllerInput
-  currentSteer: number
-  jumpCooldown: number
-  jumpBuffer: number
-  linearVelocity: Vec3
-  rotation: Quat
-  grounded: boolean
-  dt: number
 }
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value))
-}
-
-function dotVec3(a: Vec3, b: Vec3): number {
-  return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
-}
-
-function rotateVec3ByQuat(v: Vec3, q: Quat): Vec3 {
-  const [x, y, z] = v
-  const [qx, qy, qz, qw] = q
-  const ix = qw * x + qy * z - qz * y
-  const iy = qw * y + qz * x - qx * z
-  const iz = qw * z + qx * y - qy * x
-  const iw = -qx * x - qy * y - qz * z
-  return [
-    ix * qw + iw * -qx + iy * -qz - iz * -qy,
-    iy * qw + iw * -qy + iz * -qx - ix * -qz,
-    iz * qw + iw * -qz + ix * -qy - iy * -qx,
-  ]
-}
-
-function speedKmh(velocity: Vec3): number {
-  const speed = Math.hypot(velocity[0], velocity[1], velocity[2])
-  return speed * MPS_TO_KMH
-}
-
-/** Horizontal speed (m/s) below which steer is not applied to physics (prevents idle shake). */
-export const MIN_PHYSICS_STEER_SPEED_MPS = 0.8
-
-/** Reduce max steer at high speed to avoid spin-outs on the raycast solver. */
-export function steerScaleAtSpeed(speedKmh: number): number {
-  if (speedKmh <= 10) {
-    return 1
-  }
-  return clamp(10 / speedKmh, 0.15, 1)
-}
-
-/** Steer angle sent to raycast wheels — zero at standstill to avoid friction jitter. */
-export function resolvePhysicsSteerAngle(
-  currentSteer: number,
-  linearVelocity: Vec3,
-): number {
-  const horizontalSpeed = Math.hypot(linearVelocity[0], linearVelocity[2])
-  if (horizontalSpeed < MIN_PHYSICS_STEER_SPEED_MPS) {
-    return 0
-  }
-  return currentSteer
-}
-
-function clampVehicleLinearVelocity(velocity: Vec3, maxKmh: number): Vec3 {
-  const maxMps = maxKmh / MPS_TO_KMH
-  const [vx, vy, vz] = velocity
-  const speed = Math.hypot(vx, vy, vz)
-  if (speed <= maxMps) {
-    return velocity
-  }
-  const scale = maxMps / speed
-  return [vx * scale, vy * scale, vz * scale]
-}
-
-function chassisForwardWorld(rotation: Quat): Vec3 {
-  return rotateVec3ByQuat(FORWARD_LOCAL, rotation)
 }
 
 /** Build four {@link WheelConfig} entries from {@link PhysicsControllerComponent} data. */
@@ -186,8 +106,8 @@ export const vehicleWheelConfigs = raycastWheelConfigs
  * controller negates force so throttle forward drives +Z.
  */
 /**
- * Isaac Mason `custom-raycast-vehicle` sketch controls — direct throttle/steer/brake, no speed cap.
- * Leva defaults: maxForce 30, maxSteer 10, maxBrake 2.
+ * Isaac Mason `custom-raycast-vehicle` sketch controls — direct throttle/steer/brake, no speed cap,
+ * no jump. 1:1 port of https://github.com/isaac-mason/sketches/tree/main/sketches/rapier/custom-raycast-vehicle
  */
 export function computeIsaacDriveControlState(ctx: DriveControlContext): DriveControlState {
   const { vehicle, input } = ctx
@@ -207,86 +127,12 @@ export function computeIsaacDriveControlState(ctx: DriveControlContext): DriveCo
     currentSteer: steerInput * steering.maxSteer,
     engineForce,
     brake: input.brake === true ? brakes.brakeForce : 0,
-    handbrakeRear: false,
-    jumpCooldown: ctx.jumpCooldown,
-    jumpBuffer: ctx.jumpBuffer,
-    jumpApplied: false,
-  }
-}
-
-export function computeDriveControlState(ctx: DriveControlContext): DriveControlState {
-  const { vehicle, input, linearVelocity, rotation, grounded, dt } = ctx
-  const { engine, steering, brakes, jump } = vehicle
-
-  let jumpBuffer = ctx.jumpBuffer
-  let jumpCooldown = ctx.jumpCooldown
-
-  if (input.jump) {
-    jumpBuffer = jump.bufferTime
-  }
-  jumpCooldown = Math.max(0, jumpCooldown - dt)
-  jumpBuffer = Math.max(0, jumpBuffer - dt)
-
-  let jumpApplied = false
-  if (jumpBuffer > 0 && jumpCooldown <= 0 && grounded) {
-    jumpApplied = true
-    jumpCooldown = jump.cooldown
-    jumpBuffer = 0
-  }
-
-  const steerInput = clamp(input.steer ?? 0, -1, 1)
-  const speed = speedKmh(linearVelocity)
-  const targetSteer = steerInput * steering.maxSteer * steerScaleAtSpeed(speed)
-  const steerRate = steerInput === 0 ? steering.steerSpeed * 2.5 : steering.steerSpeed
-  const steerDelta = steerRate * dt
-  const currentSteer = clamp(
-    targetSteer,
-    ctx.currentSteer - steerDelta,
-    ctx.currentSteer + steerDelta,
-  )
-
-  const boosting = input.boost === true
-  const speedCap = boosting ? engine.maxSpeedKmh : engine.cruiseSpeedKmh
-
-  const throttleInput = clamp(input.throttle ?? 0, -1, 1)
-  const forwardInput = throttleInput > 0.05
-  const backwardInput = throttleInput < -0.05
-  const throttleAmount = Math.min(1, Math.abs(throttleInput))
-
-  const forward = chassisForwardWorld(rotation)
-  let engineForce = 0
-  if (forwardInput && speed < speedCap) {
-    // Isaac friction forwardWS = normal × axle → −Z for Y-up X-axle; negate for +Z drive.
-    engineForce =
-      -engine.force * (boosting ? engine.boostMultiplier : 1) * throttleAmount
-  } else if (backwardInput) {
-    const movingForward = dotVec3(linearVelocity, forward) > MOVING_FORWARD_DOT
-    engineForce = movingForward
-      ? 0
-      : engine.force * engine.reverseFactor * throttleAmount
-  }
-
-  let brake = 0
-  if (backwardInput && dotVec3(linearVelocity, forward) > MOVING_FORWARD_DOT) {
-    brake = brakes.brakeForce
-  }
-
-  const handbrakeRear = input.brake === true
-
-  return {
-    currentSteer,
-    engineForce,
-    brake,
-    handbrakeRear,
-    jumpCooldown,
-    jumpBuffer,
-    jumpApplied,
   }
 }
 
 /**
- * Applies rear-wheel drive, smoothed steering, coast/service brake, boost cap, and jump
- * for entities with {@link PhysicsControllerComponent} and a physics body from {@link PhysicsColliderSystem}.
+ * Applies rear-wheel drive and direct steer/brake for entities with {@link PhysicsControllerComponent}
+ * and a physics body from {@link PhysicsColliderSystem}.
  */
 export class PhysicsControllerSystem implements ISystem {
   readonly order = 48
@@ -353,8 +199,6 @@ export class PhysicsControllerSystem implements ISystem {
     const custom = this.customRaycast.get(id.value)
     if (custom) {
       custom.currentSteer = 0
-      custom.jumpCooldown = 0
-      custom.jumpBuffer = 0
       const [fl, fr, bl, br] = custom.wheels
       custom.vehicle.setSteering(fl, 0)
       custom.vehicle.setSteering(fr, 0)
@@ -453,103 +297,27 @@ export class PhysicsControllerSystem implements ISystem {
         continue
       }
 
-      const transform = world.getComponent(id, TransformComponent)
-      if (!transform) {
-        continue
-      }
-
       const input = this.inputs.get(entityIdValue) ?? {}
-      let linearVelocity =
-        this.physicsSystem.getBodyLinearVelocity(id) ?? ([0, 0, 0] as Vec3)
       const wheelStates = tracked.vehicle.getWheelStates()
       const grounded = wheelStates.some((state) => state.inContact)
-      const rearGrounded =
-        wheelStates[2]?.inContact === true && wheelStates[3]?.inContact === true
 
-      const driveProfile = vehicleData.driveProfile ?? 'arcade'
-      const isIsaacDrive = driveProfile === 'isaac'
-
-      if (!isIsaacDrive) {
-        const speedCapKmh = vehicleData.engine.maxSpeedKmh
-        const clamped = clampVehicleLinearVelocity(linearVelocity, speedCapKmh * 1.05)
-        if (
-          clamped[0] !== linearVelocity[0] ||
-          clamped[1] !== linearVelocity[1] ||
-          clamped[2] !== linearVelocity[2]
-        ) {
-          this.physicsSystem.setBodyLinearVelocity(id, clamped)
-          linearVelocity = clamped
-        }
-      }
-
-      const drive = isIsaacDrive
-        ? computeIsaacDriveControlState({
-            vehicle: vehicleData,
-            input,
-            currentSteer: tracked.currentSteer,
-            jumpCooldown: tracked.jumpCooldown,
-            jumpBuffer: tracked.jumpBuffer,
-            linearVelocity,
-            rotation: transform.rotation as Quat,
-            grounded,
-            dt,
-          })
-        : computeDriveControlState({
-            vehicle: vehicleData,
-            input,
-            currentSteer: tracked.currentSteer,
-            jumpCooldown: tracked.jumpCooldown,
-            jumpBuffer: tracked.jumpBuffer,
-            linearVelocity,
-            rotation: transform.rotation as Quat,
-            grounded,
-            dt,
-          })
+      const drive = computeIsaacDriveControlState({
+        vehicle: vehicleData,
+        input,
+      })
 
       tracked.currentSteer = drive.currentSteer
-      tracked.jumpCooldown = drive.jumpCooldown
-      tracked.jumpBuffer = drive.jumpBuffer
 
       const [fl, fr, bl, br] = tracked.wheels
-      const driveGrounded = isIsaacDrive ? grounded : rearGrounded
-      const physicsSteer = driveGrounded
-        ? isIsaacDrive
-          ? ISAAC_RAYCAST_PHYSICS_STEER_SIGN * drive.currentSteer
-          : ISAAC_RAYCAST_PHYSICS_STEER_SIGN *
-            resolvePhysicsSteerAngle(drive.currentSteer, linearVelocity)
-        : 0
-      const engineForce = driveGrounded ? drive.engineForce : 0
+      const physicsSteer = grounded ? ISAAC_RAYCAST_PHYSICS_STEER_SIGN * drive.currentSteer : 0
+      const engineForce = grounded ? drive.engineForce : 0
       tracked.vehicle.setSteering(fl, physicsSteer)
       tracked.vehicle.setSteering(fr, physicsSteer)
       tracked.vehicle.applyEngineForce(bl, engineForce)
       tracked.vehicle.applyEngineForce(br, engineForce)
 
-      if (isIsaacDrive) {
-        for (const wheel of tracked.wheels) {
-          tracked.vehicle.setBrake(wheel, drive.brake)
-        }
-      } else {
-        for (const wheel of tracked.wheels) {
-          tracked.vehicle.setBrake(wheel, drive.brake)
-        }
-        if (drive.handbrakeRear) {
-          tracked.vehicle.setBrake(bl, vehicleData.brakes.handbrakeForce)
-          tracked.vehicle.setBrake(br, vehicleData.brakes.handbrakeForce)
-        }
-      }
-
-      if (!isIsaacDrive && drive.jumpApplied) {
-        physicsWorld.applyImpulse(bodyHandle, [0, vehicleData.jump.impulse, 0])
-        const mass = vehicleData.chassis.mass
-        const minVy = vehicleData.jump.impulse / mass
-        const updated = this.physicsSystem.getBodyLinearVelocity(id) ?? linearVelocity
-        if (updated[1] < minVy) {
-          this.physicsSystem.setBodyLinearVelocity(id, [
-            updated[0],
-            minVy,
-            updated[2],
-          ])
-        }
+      for (const wheel of tracked.wheels) {
+        tracked.vehicle.setBrake(wheel, drive.brake)
       }
     }
 
@@ -604,8 +372,6 @@ export class PhysicsControllerSystem implements ISystem {
         vehicle: raycastVehicle,
         wheels: [wheels[0]!, wheels[1]!, wheels[2]!, wheels[3]!],
         currentSteer: 0,
-        jumpCooldown: 0,
-        jumpBuffer: 0,
       })
     }
 

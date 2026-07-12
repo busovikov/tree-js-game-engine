@@ -53,71 +53,43 @@ export const ControllerSuspensionSchema = z.object({
 })
 export type ControllerSuspension = z.infer<typeof ControllerSuspensionSchema>
 
-export const ControllerEngineSchema = z.object({
-  force: z.number().positive().default(350),
-  boostMultiplier: z.number().positive().default(1.8),
-  cruiseSpeedKmh: z.number().positive().default(90),
-  maxSpeedKmh: z.number().positive().default(140),
-  reverseFactor: z.number().min(0).max(1).default(0.6),
+/** Isaac Mason `custom-raycast-vehicle` sketch controls — Leva defaults: maxForce 30, maxSteer 10, maxBrake 2. */
+export const CustomRaycastEngineSchema = z.object({
+  force: z.number().positive().default(30),
 })
-export type ControllerEngine = z.infer<typeof ControllerEngineSchema>
+export type CustomRaycastEngine = z.infer<typeof CustomRaycastEngineSchema>
 
-export const ControllerSteeringSchema = z.object({
-  maxSteer: z.number().positive().default(0.55),
-  steerSpeed: z.number().positive().default(6),
+export const CustomRaycastSteeringSchema = z.object({
+  maxSteer: z.number().positive().default(10),
 })
-export type ControllerSteering = z.infer<typeof ControllerSteeringSchema>
+export type CustomRaycastSteering = z.infer<typeof CustomRaycastSteeringSchema>
 
-export const ControllerBrakesSchema = z.object({
-  brakeForce: z.number().positive().default(18),
-  handbrakeForce: z.number().positive().default(32),
+export const CustomRaycastBrakesSchema = z.object({
+  brakeForce: z.number().positive().default(2),
 })
-export type ControllerBrakes = z.infer<typeof ControllerBrakesSchema>
-
-/** Drive feel — `isaac` matches Mason custom-raycast sketch controls (no speed cap, instant steer). */
-export const ControllerDriveProfileSchema = z.enum(['arcade', 'isaac'])
-export type ControllerDriveProfile = z.infer<typeof ControllerDriveProfileSchema>
-
-export const ControllerJumpSchema = z.object({
-  impulse: z.number().positive().default(2000),
-  cooldown: z.number().min(0).default(0.5),
-  bufferTime: z.number().min(0).default(0.18),
-  airborneGravityScale: z.number().min(1).default(2),
-})
-export type ControllerJump = z.infer<typeof ControllerJumpSchema>
-
-export const ControllerAssistsSchema = z.object({
-  antiWheelie: z.boolean().default(true),
-  tiltClampAirborne: z.number().min(0).default(4),
-  uprightAssist: z.boolean().default(true),
-  wallSlideAssist: z.boolean().default(true),
-  wallSlideMaxSpeedKmh: z.number().min(0).default(18),
-  wallSlideStrength: z.number().min(0).default(5),
-  cornerLiftDamping: z.number().min(0).max(1).default(0.7),
-  gripLoadCap: z.number().positive().default(2),
-  landingGripTime: z.number().min(0).default(0.35),
-  landingGripFactor: z.number().min(0).max(1).default(0.4),
-})
-export type ControllerAssists = z.infer<typeof ControllerAssistsSchema>
+export type CustomRaycastBrakes = z.infer<typeof CustomRaycastBrakesSchema>
 
 const ControllerBaseSchema = z.object({
   enabled: z.boolean().default(true),
+  /** Whether play-mode should drive the scene camera to follow this controller (chase/follow cam). */
+  followCamera: z.boolean().default(true),
   /** Runtime-only handle populated by engine sync. */
   physicsHandle: z.string().optional(),
 })
 
-/** Isaac Mason `custom-raycast-vehicle` — Haku custom solver (replaces legacy Vehicle). */
+/**
+ * Isaac Mason `custom-raycast-vehicle` sketch — 1:1 port (direct force, instant steer,
+ * constant brake, no jump, no speed cap). See:
+ * https://github.com/isaac-mason/sketches/tree/main/sketches/rapier/custom-raycast-vehicle
+ */
 export const CustomRaycastControllerSchema = ControllerBaseSchema.extend({
   type: z.literal('custom-raycast'),
-  driveProfile: ControllerDriveProfileSchema.default('arcade'),
   chassis: ControllerChassisSchema.default(() => ControllerChassisSchema.parse({})),
   wheels: ControllerWheelsSchema.default(() => ControllerWheelsSchema.parse({})),
   suspension: ControllerSuspensionSchema.default(() => ControllerSuspensionSchema.parse({})),
-  engine: ControllerEngineSchema.default(() => ControllerEngineSchema.parse({})),
-  steering: ControllerSteeringSchema.default(() => ControllerSteeringSchema.parse({})),
-  brakes: ControllerBrakesSchema.default(() => ControllerBrakesSchema.parse({})),
-  jump: ControllerJumpSchema.default(() => ControllerJumpSchema.parse({})),
-  assists: ControllerAssistsSchema.default(() => ControllerAssistsSchema.parse({})),
+  engine: CustomRaycastEngineSchema.default(() => CustomRaycastEngineSchema.parse({})),
+  steering: CustomRaycastSteeringSchema.default(() => CustomRaycastSteeringSchema.parse({})),
+  brakes: CustomRaycastBrakesSchema.default(() => CustomRaycastBrakesSchema.parse({})),
 })
 export type CustomRaycastController = z.infer<typeof CustomRaycastControllerSchema>
 

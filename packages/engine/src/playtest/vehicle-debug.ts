@@ -1,7 +1,7 @@
 import type { EntityId, IWorld } from '@haku/core'
 import { TransformComponent, PhysicsControllerComponent } from '@haku/core'
 import type { CustomRaycastController } from '@haku/schema'
-import type { IRaycastVehicle, Quat, Vec3 } from '@haku/physics'
+import type { IRaycastVehicle, Vec3 } from '@haku/physics'
 import { vehicleChassisCollider } from '../systems/physics-collider-system.js'
 import {
   VEHICLE_BODY_TARGET_LENGTH,
@@ -9,7 +9,7 @@ import {
   expectedVehicleBodyFitScale,
 } from '../vehicle-model-fit.js'
 import {
-  computeDriveControlState,
+  computeIsaacDriveControlState,
   type PhysicsControllerSystem,
   type ControllerInput,
 } from '../systems/physics-controller-system.js'
@@ -37,8 +37,6 @@ export interface VehicleDriveDebugSnapshot {
   engineForce: number
   brake: number
   currentSteer: number
-  handbrakeRear: boolean
-  jumpApplied: boolean
 }
 
 export interface VehicleDebugSnapshot {
@@ -62,7 +60,7 @@ export interface VehicleDebugSnapshot {
     chassis: CustomRaycastController['chassis']
     wheels: CustomRaycastController['wheels']
     suspension: CustomRaycastController['suspension']
-    engine: Pick<CustomRaycastController['engine'], 'force' | 'cruiseSpeedKmh' | 'maxSpeedKmh'>
+    engine: Pick<CustomRaycastController['engine'], 'force'>
   }
   implicitCollider: {
     halfExtents: [number, number, number]
@@ -278,17 +276,9 @@ export function collectVehicleDebugSnapshot(
   const grounded = wheelStates.some((state) => state.inContact)
 
   const input: ControllerInput = context.vehicleController.getControllerInput(vehicleId) ?? {}
-  const currentSteer = context.vehicleController.getCurrentSteer(vehicleId) ?? 0
-  const drive = computeDriveControlState({
+  const drive = computeIsaacDriveControlState({
     vehicle: raycastController,
     input,
-    currentSteer,
-    jumpCooldown: 0,
-    jumpBuffer: 0,
-    linearVelocity,
-    rotation: transform.rotation as Quat,
-    grounded,
-    dt: 1 / 60,
   })
 
   const [cx, cy, cz] = transform.position as [number, number, number]
@@ -326,8 +316,6 @@ export function collectVehicleDebugSnapshot(
       engineForce: drive.engineForce,
       brake: drive.brake,
       currentSteer: drive.currentSteer,
-      handbrakeRear: drive.handbrakeRear,
-      jumpApplied: drive.jumpApplied,
     },
     component: {
       enabled: raycastController.enabled,
@@ -336,8 +324,6 @@ export function collectVehicleDebugSnapshot(
       suspension: { ...raycastController.suspension },
       engine: {
         force: raycastController.engine.force,
-        cruiseSpeedKmh: raycastController.engine.cruiseSpeedKmh,
-        maxSpeedKmh: raycastController.engine.maxSpeedKmh,
       },
     },
     implicitCollider: {

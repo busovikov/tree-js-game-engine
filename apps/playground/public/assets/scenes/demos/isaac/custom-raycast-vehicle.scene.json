@@ -1407,7 +1407,6 @@
           "data": {
             "type": "custom-raycast",
             "enabled": true,
-            "driveProfile": "isaac",
             "chassis": {
               "mass": 150,
               "halfExtents": [
@@ -1437,37 +1436,13 @@
               "sideFrictionStiffness": 1
             },
             "engine": {
-              "force": 30,
-              "boostMultiplier": 1,
-              "cruiseSpeedKmh": 9999,
-              "maxSpeedKmh": 9999,
-              "reverseFactor": 1
+              "force": 30
             },
             "steering": {
-              "maxSteer": 10,
-              "steerSpeed": 100
+              "maxSteer": 10
             },
             "brakes": {
-              "brakeForce": 2,
-              "handbrakeForce": 2
-            },
-            "jump": {
-              "impulse": 2000,
-              "cooldown": 0.5,
-              "bufferTime": 0.18,
-              "airborneGravityScale": 2
-            },
-            "assists": {
-              "antiWheelie": false,
-              "tiltClampAirborne": 0,
-              "uprightAssist": false,
-              "wallSlideAssist": false,
-              "wallSlideMaxSpeedKmh": 0,
-              "wallSlideStrength": 0,
-              "cornerLiftDamping": 0,
-              "gripLoadCap": 99,
-              "landingGripTime": 0,
-              "landingGripFactor": 1
+              "brakeForce": 2
             }
           }
         },

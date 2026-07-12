@@ -267,6 +267,7 @@
           "data": {
             "type": "dynamic-raycast",
             "enabled": true,
+            "followCamera": false,
             "driveProfile": "threejs-rapier",
             "chassis": {
               "mass": 10,

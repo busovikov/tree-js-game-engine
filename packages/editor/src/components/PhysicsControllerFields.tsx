@@ -113,6 +113,15 @@ export const PhysicsControllerFields = memo(function PhysicsControllerFields({
         disabled={disabled}
         onChange={(n) => patch({ enabled: n >= 0.5 })}
       />
+      <label className="mesh-field mesh-field--checkbox" title="Whether play mode drives the scene camera to chase/follow this controller.">
+        <input
+          type="checkbox"
+          checked={value.followCamera}
+          disabled={disabled}
+          onChange={(e) => patch({ followCamera: e.target.checked })}
+        />
+        <span className="mesh-field__label">Follow Camera</span>
+      </label>
     </>
   )
 
@@ -234,12 +243,6 @@ export const PhysicsControllerFields = memo(function PhysicsControllerFields({
   const patchBrakes = (partial: Partial<Extract<PhysicsController, { type: 'custom-raycast' }>['brakes']>) =>
     patchRaycast({ brakes: { ...value.brakes, ...partial } })
 
-  const patchJump = (partial: Partial<Extract<PhysicsController, { type: 'custom-raycast' }>['jump']>) =>
-    patchRaycast({ jump: { ...value.jump, ...partial } })
-
-  const patchAssists = (partial: Partial<Extract<PhysicsController, { type: 'custom-raycast' }>['assists']>) =>
-    patchRaycast({ assists: { ...value.assists, ...partial } })
-
   const patchChassisHalfExtents = (axis: 0 | 1 | 2, num: number) => {
     const next = [...value.chassis.halfExtents] as [number, number, number]
     next[axis] = Math.max(0.001, num)
@@ -262,6 +265,15 @@ export const PhysicsControllerFields = memo(function PhysicsControllerFields({
             </option>
           ))}
         </select>
+        <label className="mesh-field mesh-field--checkbox" title="Whether play mode drives the scene camera to chase/follow this controller.">
+          <input
+            type="checkbox"
+            checked={value.followCamera}
+            disabled={disabled}
+            onChange={(e) => patchRaycast({ followCamera: e.target.checked })}
+          />
+          <span className="mesh-field__label">Follow Camera</span>
+        </label>
         <SectionHeading>Chassis</SectionHeading>
         <p className="mesh-renderer-fields__hint" title="Raycast vehicle physics body — no separate Collider component.">
           Implicit physics box (orange wireframe in viewport). Edit halfExtents and lift below.
@@ -322,15 +334,6 @@ export const PhysicsControllerFields = memo(function PhysicsControllerFields({
           disabled={disabled}
           hint="Raycast wheel radius."
           onChange={(radius) => patchWheels({ radius: Math.max(0.001, radius) })}
-        />
-        <NumberField
-          label="width"
-          value={value.wheels.width}
-          min={0.001}
-          step={0.01}
-          disabled={disabled}
-          hint="Visual tire width."
-          onChange={(width) => patchWheels({ width: Math.max(0.001, width) })}
         />
         <NumberField
           label="halfWidth"
@@ -432,42 +435,8 @@ export const PhysicsControllerFields = memo(function PhysicsControllerFields({
           min={0.001}
           step={10}
           disabled={disabled}
+          hint="Direct engine force applied along chassis forward (Isaac Mason custom-raycast-vehicle sketch)."
           onChange={(force) => patchEngine({ force: Math.max(0.001, force) })}
-        />
-        <NumberField
-          label="boostMultiplier"
-          value={value.engine.boostMultiplier}
-          min={0.001}
-          step={0.1}
-          disabled={disabled}
-          onChange={(boostMultiplier) => patchEngine({ boostMultiplier: Math.max(0.001, boostMultiplier) })}
-        />
-        <NumberField
-          label="cruiseSpeedKmh"
-          value={value.engine.cruiseSpeedKmh}
-          min={0.001}
-          step={1}
-          disabled={disabled}
-          onChange={(cruiseSpeedKmh) => patchEngine({ cruiseSpeedKmh: Math.max(0.001, cruiseSpeedKmh) })}
-        />
-        <NumberField
-          label="maxSpeedKmh"
-          value={value.engine.maxSpeedKmh}
-          min={0.001}
-          step={1}
-          disabled={disabled}
-          onChange={(maxSpeedKmh) => patchEngine({ maxSpeedKmh: Math.max(0.001, maxSpeedKmh) })}
-        />
-        <NumberField
-          label="reverseFactor"
-          value={value.engine.reverseFactor}
-          min={0}
-          max={1}
-          step={0.05}
-          disabled={disabled}
-          onChange={(reverseFactor) =>
-            patchEngine({ reverseFactor: Math.min(1, Math.max(0, reverseFactor)) })
-          }
         />
       </div>
 
@@ -479,15 +448,8 @@ export const PhysicsControllerFields = memo(function PhysicsControllerFields({
           min={0.001}
           step={0.01}
           disabled={disabled}
+          hint="Max steer angle (radians), applied directly from steer input with no smoothing."
           onChange={(maxSteer) => patchSteering({ maxSteer: Math.max(0.001, maxSteer) })}
-        />
-        <NumberField
-          label="steerSpeed"
-          value={value.steering.steerSpeed}
-          min={0.001}
-          step={0.1}
-          disabled={disabled}
-          onChange={(steerSpeed) => patchSteering({ steerSpeed: Math.max(0.001, steerSpeed) })}
         />
       </div>
 
@@ -500,147 +462,6 @@ export const PhysicsControllerFields = memo(function PhysicsControllerFields({
           step={1}
           disabled={disabled}
           onChange={(brakeForce) => patchBrakes({ brakeForce: Math.max(0.001, brakeForce) })}
-        />
-        <NumberField
-          label="handbrakeForce"
-          value={value.brakes.handbrakeForce}
-          min={0.001}
-          step={1}
-          disabled={disabled}
-          onChange={(handbrakeForce) => patchBrakes({ handbrakeForce: Math.max(0.001, handbrakeForce) })}
-        />
-      </div>
-
-      <div className="mesh-renderer-fields__section">
-        <SectionHeading>Jump</SectionHeading>
-        <NumberField
-          label="impulse"
-          value={value.jump.impulse}
-          min={0.001}
-          step={10}
-          disabled={disabled}
-          onChange={(impulse) => patchJump({ impulse: Math.max(0.001, impulse) })}
-        />
-        <NumberField
-          label="cooldown"
-          value={value.jump.cooldown}
-          min={0}
-          step={0.05}
-          disabled={disabled}
-          onChange={(cooldown) => patchJump({ cooldown: Math.max(0, cooldown) })}
-        />
-        <NumberField
-          label="bufferTime"
-          value={value.jump.bufferTime}
-          min={0}
-          step={0.01}
-          disabled={disabled}
-          onChange={(bufferTime) => patchJump({ bufferTime: Math.max(0, bufferTime) })}
-        />
-        <NumberField
-          label="airborneGravityScale"
-          value={value.jump.airborneGravityScale}
-          min={1}
-          step={0.1}
-          disabled={disabled}
-          onChange={(airborneGravityScale) =>
-            patchJump({ airborneGravityScale: Math.max(1, airborneGravityScale) })
-          }
-        />
-      </div>
-
-      <div className="mesh-renderer-fields__section">
-        <SectionHeading>Assists</SectionHeading>
-        <label className="mesh-field mesh-field--checkbox">
-          <input
-            type="checkbox"
-            checked={value.assists.antiWheelie}
-            disabled={disabled}
-            onChange={(event) => patchAssists({ antiWheelie: event.target.checked })}
-          />
-          <span className="mesh-field__label">antiWheelie</span>
-        </label>
-        <label className="mesh-field mesh-field--checkbox">
-          <input
-            type="checkbox"
-            checked={value.assists.uprightAssist}
-            disabled={disabled}
-            onChange={(event) => patchAssists({ uprightAssist: event.target.checked })}
-          />
-          <span className="mesh-field__label">uprightAssist</span>
-        </label>
-        <label className="mesh-field mesh-field--checkbox">
-          <input
-            type="checkbox"
-            checked={value.assists.wallSlideAssist}
-            disabled={disabled}
-            onChange={(event) => patchAssists({ wallSlideAssist: event.target.checked })}
-          />
-          <span className="mesh-field__label">wallSlideAssist</span>
-        </label>
-        <NumberField
-          label="tiltClampAirborne"
-          value={value.assists.tiltClampAirborne}
-          min={0}
-          step={0.1}
-          disabled={disabled}
-          onChange={(tiltClampAirborne) => patchAssists({ tiltClampAirborne: Math.max(0, tiltClampAirborne) })}
-        />
-        <NumberField
-          label="wallSlideMaxSpeedKmh"
-          value={value.assists.wallSlideMaxSpeedKmh}
-          min={0}
-          step={1}
-          disabled={disabled}
-          onChange={(wallSlideMaxSpeedKmh) =>
-            patchAssists({ wallSlideMaxSpeedKmh: Math.max(0, wallSlideMaxSpeedKmh) })
-          }
-        />
-        <NumberField
-          label="wallSlideStrength"
-          value={value.assists.wallSlideStrength}
-          min={0}
-          step={0.1}
-          disabled={disabled}
-          onChange={(wallSlideStrength) => patchAssists({ wallSlideStrength: Math.max(0, wallSlideStrength) })}
-        />
-        <NumberField
-          label="cornerLiftDamping"
-          value={value.assists.cornerLiftDamping}
-          min={0}
-          max={1}
-          step={0.05}
-          disabled={disabled}
-          onChange={(cornerLiftDamping) =>
-            patchAssists({ cornerLiftDamping: Math.min(1, Math.max(0, cornerLiftDamping)) })
-          }
-        />
-        <NumberField
-          label="gripLoadCap"
-          value={value.assists.gripLoadCap}
-          min={0.001}
-          step={0.1}
-          disabled={disabled}
-          onChange={(gripLoadCap) => patchAssists({ gripLoadCap: Math.max(0.001, gripLoadCap) })}
-        />
-        <NumberField
-          label="landingGripTime"
-          value={value.assists.landingGripTime}
-          min={0}
-          step={0.05}
-          disabled={disabled}
-          onChange={(landingGripTime) => patchAssists({ landingGripTime: Math.max(0, landingGripTime) })}
-        />
-        <NumberField
-          label="landingGripFactor"
-          value={value.assists.landingGripFactor}
-          min={0}
-          max={1}
-          step={0.05}
-          disabled={disabled}
-          onChange={(landingGripFactor) =>
-            patchAssists({ landingGripFactor: Math.min(1, Math.max(0, landingGripFactor)) })
-          }
         />
       </div>
     </div>

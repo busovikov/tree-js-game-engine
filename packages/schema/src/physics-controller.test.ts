@@ -1,15 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
   ArcadeVehicleControllerSchema,
-  ControllerAssistsSchema,
-  ControllerBrakesSchema,
   ControllerChassisSchema,
-  ControllerEngineSchema,
-  ControllerJumpSchema,
-  ControllerSteeringSchema,
   ControllerSuspensionSchema,
   ControllerWheelsSchema,
+  CustomRaycastBrakesSchema,
   CustomRaycastControllerSchema,
+  CustomRaycastEngineSchema,
+  CustomRaycastSteeringSchema,
   CustomSpringControllerSchema,
   DynamicRaycastControllerSchema,
   KinematicCharacterControllerSchema,
@@ -39,11 +37,9 @@ describe('PhysicsControllerSchema', () => {
   it('applies custom-raycast grouped defaults and preserves partial overrides', () => {
     const controller = CustomRaycastControllerSchema.parse({
       type: 'custom-raycast',
-      engine: { force: 2_000 },
-      jump: { impulse: 2_500 },
+      engine: { force: 45 },
     })
 
-    expect(controller.driveProfile).toBe('arcade')
     expect(controller.chassis).toMatchObject({
       mass: 250,
       halfExtents: [0.9, 0.3, 1.55],
@@ -60,15 +56,9 @@ describe('PhysicsControllerSchema', () => {
       restLength: 0.55,
       maxTravel: 0.42,
     })
-    expect(controller.engine.force).toBe(2_000)
-    expect(controller.engine.boostMultiplier).toBe(1.8)
-    expect(controller.jump.impulse).toBe(2_500)
-    expect(controller.jump.airborneGravityScale).toBe(2)
-    expect(controller.assists).toMatchObject({
-      antiWheelie: true,
-      uprightAssist: true,
-      wallSlideAssist: true,
-    })
+    expect(controller.engine.force).toBe(45)
+    expect(controller.steering.maxSteer).toBe(10)
+    expect(controller.brakes.brakeForce).toBe(2)
   })
 
   it('applies defaults specific to every non-custom-raycast variant', () => {
@@ -138,11 +128,9 @@ describe('PhysicsControllerSchema', () => {
     expect(() => ControllerChassisSchema.parse({ mass: 0 })).toThrow()
     expect(() => ControllerWheelsSchema.parse({ radius: -0.1 })).toThrow()
     expect(() => ControllerSuspensionSchema.parse({ stiffness: 0 })).toThrow()
-    expect(() => ControllerEngineSchema.parse({ reverseFactor: 1.1 })).toThrow()
-    expect(() => ControllerSteeringSchema.parse({ maxSteer: 0 })).toThrow()
-    expect(() => ControllerBrakesSchema.parse({ handbrakeForce: -1 })).toThrow()
-    expect(() => ControllerJumpSchema.parse({ airborneGravityScale: 0.9 })).toThrow()
-    expect(() => ControllerAssistsSchema.parse({ landingGripFactor: 1.1 })).toThrow()
+    expect(() => CustomRaycastEngineSchema.parse({ force: 0 })).toThrow()
+    expect(() => CustomRaycastSteeringSchema.parse({ maxSteer: 0 })).toThrow()
+    expect(() => CustomRaycastBrakesSchema.parse({ brakeForce: 0 })).toThrow()
   })
 
   it.each([

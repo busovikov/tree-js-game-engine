@@ -22,11 +22,7 @@ import { PhysicsColliderSystem } from './physics-collider-system.js'
 import { PhysicsWorldSystem } from './physics-world-system.js'
 import {
   PhysicsControllerSystem,
-  computeDriveControlState,
   computeIsaacDriveControlState,
-  steerScaleAtSpeed,
-  resolvePhysicsSteerAngle,
-  MIN_PHYSICS_STEER_SPEED_MPS,
   vehicleWheelConfigs,
 } from './vehicle-controller-system.js'
 
@@ -37,188 +33,58 @@ const INTEGRATION_DRIVE_VEHICLE = CustomRaycastControllerSchema.parse({
 })
 const IDENTITY_ROTATION: Quat = [0, 0, 0, 1]
 
-function driveContext(overrides: Partial<Parameters<typeof computeDriveControlState>[0]> = {}) {
-  return {
-    vehicle: DEFAULT_VEHICLE,
-    input: {},
-    currentSteer: 0,
-    jumpCooldown: 0,
-    jumpBuffer: 0,
-    linearVelocity: [0, 0, 0] as Vec3,
-    rotation: IDENTITY_ROTATION,
-    grounded: true,
-    dt: 1 / 60,
-    ...overrides,
-  }
-}
-
-describe('computeDriveControlState', () => {
-  it('isaac profile matches sketch maxForce/maxSteer/maxBrake', () => {
+describe('computeIsaacDriveControlState', () => {
+  it('matches sketch maxForce/maxSteer/maxBrake (1:1 port, no speed cap, no jump)', () => {
     const vehicle = CustomRaycastControllerSchema.parse({
       type: 'custom-raycast',
-      driveProfile: 'isaac',
       engine: { force: 30 },
       steering: { maxSteer: 10 },
       brakes: { brakeForce: 2 },
     })
-    const drive = computeIsaacDriveControlState(
-      driveContext({
-        vehicle,
-        input: { throttle: 1, steer: 1, brake: true },
-      }),
-    )
+    const drive = computeIsaacDriveControlState({
+      vehicle,
+      input: { throttle: 1, steer: 1, brake: true },
+    })
     expect(drive.engineForce).toBe(-30)
     expect(drive.currentSteer).toBe(10)
     expect(drive.brake).toBe(2)
-    expect(drive.handbrakeRear).toBe(false)
 
-    const reverse = computeIsaacDriveControlState(
-      driveContext({ vehicle, input: { throttle: -1 } }),
-    )
+    const reverse = computeIsaacDriveControlState({
+      vehicle,
+      input: { throttle: -1 },
+    })
     expect(reverse.engineForce).toBe(30)
   })
 
-  it('applies RWD engine force when throttle is forward and under speed cap', () => {
-    const state = computeDriveControlState(
-      driveContext({ input: { throttle: 1 } }),
-    )
+  it('applies RWD engine force proportional to throttle', () => {
+    const state = computeIsaacDriveControlState({
+      vehicle: DEFAULT_VEHICLE,
+      input: { throttle: 1 },
+    })
     expect(state.engineForce).toBe(-DEFAULT_VEHICLE.engine.force)
   })
 
-  it('applies boost multiplier and raises speed cap while boosting', () => {
-    const underCruise = computeDriveControlState(
-      driveContext({
-        input: { throttle: 1, boost: true },
-        linearVelocity: [10, 0, 0],
-      }),
-    )
-    expect(underCruise.engineForce).toBeCloseTo(
-      -DEFAULT_VEHICLE.engine.force * DEFAULT_VEHICLE.engine.boostMultiplier,
-    )
-
-    const aboveBoostCap = computeDriveControlState(
-      driveContext({
-        input: { throttle: 1, boost: true },
-        linearVelocity: [50, 0, 0],
-      }),
-    )
-    expect(aboveBoostCap.engineForce).toBe(0)
-  })
-
-  it('cuts engine force at cruise speed without boost', () => {
-    const state = computeDriveControlState(
-      driveContext({
-        input: { throttle: 1 },
-        linearVelocity: [30, 0, 0],
-      }),
-    )
-    expect(state.engineForce).toBe(0)
-  })
-
-  it('applies service brake when reversing while moving forward', () => {
-    const state = computeDriveControlState(
-      driveContext({
-        input: { throttle: -1 },
-        linearVelocity: [0, 0, 5],
-      }),
-    )
-    expect(state.engineForce).toBe(0)
-    expect(state.brake).toBe(DEFAULT_VEHICLE.brakes.brakeForce)
-  })
-
-  it('applies reverse engine force when moving backward or stopped', () => {
-    const state = computeDriveControlState(
-      driveContext({
-        input: { throttle: -0.5 },
-        linearVelocity: [-1, 0, 0],
-      }),
-    )
-    expect(state.engineForce).toBeCloseTo(
-      DEFAULT_VEHICLE.engine.force * DEFAULT_VEHICLE.engine.reverseFactor * 0.5,
-    )
-  })
-
-  it('does not apply coast brake when throttle is neutral (Isaac Mason sketch)', () => {
-    const state = computeDriveControlState(driveContext({ input: {} }))
+  it('does not apply brake or engine force when input is neutral', () => {
+    const state = computeIsaacDriveControlState({ vehicle: DEFAULT_VEHICLE, input: {} })
     expect(state.brake).toBe(0)
     expect(state.engineForce).toBe(0)
+    expect(state.currentSteer).toBe(0)
   })
 
-  it('reduces steer authority at high speed', () => {
-    expect(steerScaleAtSpeed(10)).toBe(1)
-    expect(steerScaleAtSpeed(30)).toBeCloseTo(0.33, 2)
-    expect(steerScaleAtSpeed(120)).toBeCloseTo(0.15, 2)
-
-    let steer = 0
-    for (let i = 0; i < 120; i++) {
-      const frame = computeDriveControlState(
-        driveContext({
-          input: { steer: 1 },
-          currentSteer: steer,
-          linearVelocity: [0, 0, 10],
-          dt: 1 / 60,
-        }),
-      )
-      steer = frame.currentSteer
-    }
-    expect(steer).toBeLessThan(DEFAULT_VEHICLE.steering.maxSteer * 0.5)
+  it('steers instantly to steerInput × maxSteer (no smoothing, per reference sketch)', () => {
+    const state = computeIsaacDriveControlState({
+      vehicle: DEFAULT_VEHICLE,
+      input: { steer: 1 },
+    })
+    expect(state.currentSteer).toBe(DEFAULT_VEHICLE.steering.maxSteer)
   })
 
-  it('zeros physics steer at standstill', () => {
-    expect(resolvePhysicsSteerAngle(0.55, [0, 0, 0])).toBe(0)
-    expect(resolvePhysicsSteerAngle(0.55, [0.1, 0, 0.1])).toBe(0)
-    expect(resolvePhysicsSteerAngle(0.55, [0, 0, MIN_PHYSICS_STEER_SPEED_MPS])).toBe(0.55)
-    expect(resolvePhysicsSteerAngle(-0.4, [0, 0, 2])).toBe(-0.4)
-  })
-
-  it('smooths steering toward target over multiple frames', () => {
-    const first = computeDriveControlState(
-      driveContext({ input: { steer: 1 }, dt: 1 / 60 }),
-    )
-    expect(first.currentSteer).toBeCloseTo(DEFAULT_VEHICLE.steering.steerSpeed / 60, 4)
-    expect(Math.abs(first.currentSteer)).toBeLessThan(DEFAULT_VEHICLE.steering.maxSteer)
-
-    let steer = first.currentSteer
-    for (let i = 0; i < 120; i++) {
-      const frame = computeDriveControlState(
-        driveContext({
-          input: { steer: 1 },
-          currentSteer: steer,
-          dt: 1 / 60,
-        }),
-      )
-      steer = frame.currentSteer
-    }
-    expect(steer).toBeCloseTo(DEFAULT_VEHICLE.steering.maxSteer, 3)
-  })
-
-  it('flags handbrake on rear wheels when brake input is set', () => {
-    const state = computeDriveControlState(
-      driveContext({ input: { brake: true } }),
-    )
-    expect(state.handbrakeRear).toBe(true)
-  })
-
-  it('applies jump only when grounded with active buffer and no cooldown', () => {
-    const airborne = computeDriveControlState(
-      driveContext({ input: { jump: true }, grounded: false }),
-    )
-    expect(airborne.jumpApplied).toBe(false)
-
-    const grounded = computeDriveControlState(
-      driveContext({ input: { jump: true }, grounded: true }),
-    )
-    expect(grounded.jumpApplied).toBe(true)
-    expect(grounded.jumpCooldown).toBe(DEFAULT_VEHICLE.jump.cooldown)
-
-    const onCooldown = computeDriveControlState(
-      driveContext({
-        input: { jump: true },
-        grounded: true,
-        jumpCooldown: 0.2,
-      }),
-    )
-    expect(onCooldown.jumpApplied).toBe(false)
+  it('applies brake force when brake input is held', () => {
+    const state = computeIsaacDriveControlState({
+      vehicle: DEFAULT_VEHICLE,
+      input: { brake: true },
+    })
+    expect(state.brake).toBe(DEFAULT_VEHICLE.brakes.brakeForce)
   })
 })
 
@@ -356,33 +222,6 @@ describe('VehicleControllerSystem integration (stub)', () => {
     vehicleSystem.dispose()
   })
 
-  it('jumps when grounded and jump input is requested', () => {
-    const { world, physicsSystem, colliderSystem, vehicleSystem, carId } =
-      createFlatVehicleScene()
-
-    for (let i = 0; i < 30; i++) {
-      vehicleSystem.update(world, 1 / 60)
-      physicsSystem.update(world, 1 / 60)
-    }
-
-    const yBefore = world.getComponent(carId, TransformComponent)?.position[1] ?? 0
-    vehicleSystem.setVehicleInput(carId, { jump: true })
-    vehicleSystem.update(world, 1 / 60)
-    physicsSystem.update(world, 1 / 60)
-
-    for (let i = 0; i < 10; i++) {
-      vehicleSystem.update(world, 1 / 60)
-      physicsSystem.update(world, 1 / 60)
-    }
-
-    const yAfter = world.getComponent(carId, TransformComponent)?.position[1] ?? 0
-    expect(yAfter).toBeGreaterThan(yBefore + 0.05)
-
-    colliderSystem.dispose()
-    physicsSystem.dispose()
-    vehicleSystem.dispose()
-  })
-
   it('neutralizes a controller exactly once when it transitions to disabled', () => {
     const physicsSystem = new PhysicsWorldSystem()
     physicsSystem.setBackend(new StubPhysicsBackend())
@@ -424,8 +263,6 @@ describe('VehicleControllerSystem integration (stub)', () => {
           vehicle: IRaycastVehicle
           wheels: typeof wheels
           currentSteer: number
-          jumpCooldown: number
-          jumpBuffer: number
         }
       >
     }
@@ -434,8 +271,6 @@ describe('VehicleControllerSystem integration (stub)', () => {
       vehicle,
       wheels,
       currentSteer: 0.4,
-      jumpCooldown: 1,
-      jumpBuffer: 1,
     })
     vehicleSystem.setControllerInput(carId, { throttle: 1, steer: 1, brake: true })
 
@@ -489,8 +324,6 @@ describe('VehicleControllerSystem integration (stub)', () => {
       vehicle: customVehicle,
       wheels,
       currentSteer: 0.5,
-      jumpCooldown: 0.3,
-      jumpBuffer: 0.2,
     }
     const dynamic = {
       vehicle: dynamicVehicle,
@@ -545,8 +378,6 @@ describe('VehicleControllerSystem integration (stub)', () => {
     vehicleSystem.resetControllerState(id)
 
     expect(custom.currentSteer).toBe(0)
-    expect(custom.jumpCooldown).toBe(0)
-    expect(custom.jumpBuffer).toBe(0)
     expect(customVehicle.setSteering).toHaveBeenCalledTimes(2)
     expect(customVehicle.applyEngineForce).toHaveBeenCalledTimes(2)
     expect(customVehicle.setBrake).toHaveBeenCalledTimes(4)

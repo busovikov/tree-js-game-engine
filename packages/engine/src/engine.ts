@@ -217,7 +217,7 @@ export {
 } from './systems/physics-collider-system.js'
 export {
   VehicleControllerSystem,
-  computeDriveControlState,
+  computeIsaacDriveControlState,
   vehicleWheelConfigs,
   type VehicleInput,
   type DriveControlContext,

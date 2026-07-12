@@ -38,7 +38,7 @@ export {
   composeColliderTransform,
   resolveColliderDescriptor,
   vehicleChassisCollider,
-  computeDriveControlState,
+  computeIsaacDriveControlState,
   computeWheelVisualTransform,
   vehicleWheelConfigs,
 } from './engine.js'

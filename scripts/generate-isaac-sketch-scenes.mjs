@@ -343,7 +343,6 @@ function buildCustomRaycast() {
         data: {
           type: 'custom-raycast',
           enabled: true,
-          driveProfile: 'isaac',
           chassis: {
             mass: 150,
             halfExtents: [1, 0.55, 2.35],
@@ -368,23 +367,10 @@ function buildCustomRaycast() {
             rollInfluence: 0.01,
             sideFrictionStiffness: 1,
           },
-          // Isaac Leva controls: maxForce 30, maxSteer 10, maxBrake 2 — no speed cap in sketch
-          engine: { force: 30, boostMultiplier: 1, cruiseSpeedKmh: 9999, maxSpeedKmh: 9999, reverseFactor: 1 },
-          steering: { maxSteer: 10, steerSpeed: 100 },
-          brakes: { brakeForce: 2, handbrakeForce: 2 },
-          jump: { impulse: 2000, cooldown: 0.5, bufferTime: 0.18, airborneGravityScale: 2 },
-          assists: {
-            antiWheelie: false,
-            tiltClampAirborne: 0,
-            uprightAssist: false,
-            wallSlideAssist: false,
-            wallSlideMaxSpeedKmh: 0,
-            wallSlideStrength: 0,
-            cornerLiftDamping: 0,
-            gripLoadCap: 99,
-            landingGripTime: 0,
-            landingGripFactor: 1,
-          },
+          // Isaac Leva controls: maxForce 30, maxSteer 10, maxBrake 2 — no speed cap, no jump in sketch
+          engine: { force: 30 },
+          steering: { maxSteer: 10 },
+          brakes: { brakeForce: 2 },
         },
       },
       isaacModelMesh('sketches/isaac-mason/chassis.glb'),

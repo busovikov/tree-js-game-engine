@@ -1,5 +1,5 @@
-import type { EntityId } from '@haku/core'
-import { entityId } from '@haku/core'
+import type { EntityId, IWorld } from '@haku/core'
+import { entityId, PhysicsControllerComponent } from '@haku/core'
 import type { Engine } from './engine.js'
 import { InputManager, type InputManagerOptions } from './input/index.js'
 import { ChaseCameraSystem } from './systems/chase-camera-system.js'
@@ -94,22 +94,25 @@ export function startVehiclePlayMode(
   })
 
   const world = engine.getWorld()
+  const shouldFollowCamera = world == null || resolveFollowCameraPreference(world, controlledEntity)
   const useThreeJsCamera = world != null && usesThreeJsFollowCamera(world, controlledEntity)
 
   let chaseCamera: ChaseCameraSystem | undefined
   let threeJsFollowCamera: ThreeJsFollowCameraSystem | undefined
 
-  if (useThreeJsCamera) {
-    threeJsFollowCamera = new ThreeJsFollowCameraSystem({
-      controlledEntity,
-      cameraEntityId: cameraEntity,
-      physicsSystem,
-    })
-  } else {
-    chaseCamera = new ChaseCameraSystem(inputManager, physicsSystem, controllerSystem, {
-      controlledEntity,
-      cameraEntityId: cameraEntity,
-    })
+  if (shouldFollowCamera) {
+    if (useThreeJsCamera) {
+      threeJsFollowCamera = new ThreeJsFollowCameraSystem({
+        controlledEntity,
+        cameraEntityId: cameraEntity,
+        physicsSystem,
+      })
+    } else {
+      chaseCamera = new ChaseCameraSystem(inputManager, physicsSystem, controllerSystem, {
+        controlledEntity,
+        cameraEntityId: cameraEntity,
+      })
+    }
   }
 
   engine.addSystem(pointerControls)
@@ -159,4 +162,26 @@ export function startVehiclePlayMode(
       pointerControls.dispose()
     },
   }
+}
+
+/**
+ * Whether play mode should drive the scene camera to chase/follow the controlled vehicle.
+ * Defaults to true (existing behavior) unless the resolved controller explicitly opts out
+ * via `PhysicsControllerComponent.followCamera === false`.
+ */
+function resolveFollowCameraPreference(world: IWorld, controlledEntity: EntityId | null): boolean {
+  const targetId = controlledEntity ?? findFirstEnabledController(world)
+  if (!targetId) return true
+  const controller = world.getComponent(targetId, PhysicsControllerComponent)
+  return controller?.followCamera !== false
+}
+
+function findFirstEnabledController(world: IWorld): EntityId | null {
+  for (const id of world.query(PhysicsControllerComponent)) {
+    const controller = world.getComponent(id, PhysicsControllerComponent)
+    if (controller?.enabled !== false) {
+      return id
+    }
+  }
+  return null
 }

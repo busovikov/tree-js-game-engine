@@ -126,6 +126,9 @@ function buildScene() {
         data: {
           type: 'dynamic-raycast',
           enabled: true,
+          // Matches the original three.js example: a fixed OrbitControls camera the
+          // user drives freely, not an automatic chase/follow camera.
+          followCamera: false,
           driveProfile: 'threejs-rapier',
           chassis: {
             mass: 10,
