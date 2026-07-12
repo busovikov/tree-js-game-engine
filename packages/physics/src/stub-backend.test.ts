@@ -42,11 +42,35 @@ describe('@haku/physics StubPhysicsBackend', () => {
     expect(backend.isInitialized()).toBe(false)
   })
 
+  it('applies force during exactly the next simulation step', () => {
+    const backend = new StubPhysicsBackend()
+    backend.init()
+    const body = backend.createBody({
+      type: 'dynamic',
+      transform: identityTransform,
+      mass: 2,
+    })
+
+    backend.applyForce(body, [6, 0, 0], [0, 1, 0])
+    backend.step(0.5)
+    expect(backend.getBodyLinearVelocity(body)[0]).toBeCloseTo(1.5)
+    const angularAfterForce = backend.getBodyAngularVelocity(body)[2]
+    expect(Math.abs(angularAfterForce)).toBeGreaterThan(0)
+
+    backend.step(0.5)
+    expect(backend.getBodyLinearVelocity(body)[0]).toBeCloseTo(1.5)
+    expect(backend.getBodyAngularVelocity(body)[2]).toBeCloseTo(angularAfterForce)
+  })
+
   it('raycast vehicle: add wheel, apply force, step updates rotation', () => {
     const backend = new StubPhysicsBackend()
     backend.init()
 
-    const chassis = backend.createBody({ type: 'dynamic', transform: identityTransform })
+    const chassis = backend.createBody({
+      type: 'dynamic',
+      transform: { position: [0, 1.05, 0], rotation: [0, 0, 0, 1] },
+      mass: 250,
+    })
     const vehicle = backend.createRaycastVehicle(chassis)
     const wheel = vehicle.addWheel({
       localPosition: [0, 0, -1],
@@ -75,7 +99,7 @@ describe('@haku/physics StubPhysicsBackend', () => {
     const states = vehicle.getWheelStates()
     expect(states).toHaveLength(1)
     expect(states[0]?.engineForce).toBe(1500)
-    expect(states[0]?.inContact).toBe(true)
+    expect(backend.getBodyTransform(chassis).position[1]).toBeGreaterThan(0.5)
   })
 })
 

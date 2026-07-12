@@ -1,6 +1,7 @@
 import type { IPhysicsBackend } from './backend.js'
 import { PhysicsNotInitializedError } from './errors.js'
 import type { PhysicsBodyHandle, PhysicsShapeHandle } from './handles.js'
+import type { PhysicsJointHandle, PointerJointConfig, RevoluteMotorJointConfig } from './joints.js'
 import type { IRaycastVehicle } from './raycast-vehicle.js'
 import type {
   PhysicsShapeDescriptor,
@@ -64,6 +65,11 @@ export class PhysicsWorld implements IPhysicsWorld {
     return this.backend.getBodyLinearVelocity(body)
   }
 
+  getBodyAngularVelocity(body: PhysicsBodyHandle): Vec3 {
+    this.assertBackendReady()
+    return this.backend.getBodyAngularVelocity(body)
+  }
+
   applyImpulse(body: PhysicsBodyHandle, impulse: Vec3, worldPoint?: Vec3): void {
     this.assertBackendReady()
     this.backend.applyImpulse(body, impulse, worldPoint)
@@ -82,6 +88,55 @@ export class PhysicsWorld implements IPhysicsWorld {
   createRaycastVehicle(chassis: PhysicsBodyHandle): IRaycastVehicle {
     this.assertBackendReady()
     return this.backend.createRaycastVehicle(chassis)
+  }
+
+  createCharacterController(
+    body: PhysicsBodyHandle,
+    collider: PhysicsShapeHandle,
+    options: import('./physics-controllers.js').CharacterControllerOptions,
+  ): import('./physics-controllers.js').ICharacterController {
+    this.assertBackendReady()
+    return this.backend.createCharacterController(body, collider, options)
+  }
+
+  createDynamicRaycastVehicle(chassis: PhysicsBodyHandle): import('./physics-controllers.js').IDynamicRaycastVehicle {
+    this.assertBackendReady()
+    return this.backend.createDynamicRaycastVehicle(chassis)
+  }
+
+  createPointerAnchorBody(position: Vec3): PhysicsBodyHandle {
+    this.assertBackendReady()
+    return this.backend.createPointerAnchorBody(position)
+  }
+
+  createPointerJoint(config: PointerJointConfig): PhysicsJointHandle {
+    this.assertBackendReady()
+    return this.backend.createPointerJoint(config)
+  }
+
+  removeJoint(joint: PhysicsJointHandle): void {
+    this.assertBackendReady()
+    this.backend.removeJoint(joint)
+  }
+
+  createRevoluteMotorJoint(config: RevoluteMotorJointConfig): PhysicsJointHandle {
+    this.assertBackendReady()
+    return this.backend.createRevoluteMotorJoint(config)
+  }
+
+  setRevoluteMotorVelocity(joint: PhysicsJointHandle, velocity: number, factor: number): void {
+    this.assertBackendReady()
+    this.backend.setRevoluteMotorVelocity(joint, velocity, factor)
+  }
+
+  setRevoluteMotorPosition(
+    joint: PhysicsJointHandle,
+    angle: number,
+    stiffness: number,
+    damping: number,
+  ): void {
+    this.assertBackendReady()
+    this.backend.setRevoluteMotorPosition(joint, angle, stiffness, damping)
   }
 
   private assertBackendReady(): void {

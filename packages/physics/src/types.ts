@@ -20,6 +20,8 @@ export interface RigidBodyDescriptor {
   mass?: number
   /** Angular velocity damping; ignored for static bodies. */
   angularDamping?: number
+  /** Pitch/roll principal inertia multiplier (yaw unchanged). Default 1. */
+  inertiaScalePitchRoll?: number
 }
 
 export type PhysicsShapeDescriptor = (

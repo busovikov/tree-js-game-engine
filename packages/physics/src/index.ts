@@ -16,6 +16,29 @@ export {
 } from './primitives.js'
 export type { IRaycastVehicle, WheelConfig, WheelState } from './raycast-vehicle.js'
 export {
+  stepCustomSpring,
+} from './physics-controllers.js'
+export type {
+  ICharacterController,
+  IDynamicRaycastVehicle,
+  CharacterControllerOptions,
+  CharacterControllerStepResult,
+  DynamicRaycastWheelConfig,
+  CustomSpringConfig,
+} from './physics-controllers.js'
+export type {
+  PhysicsJointHandle,
+  PointerJointKind,
+  PointerJointConfig,
+  RevoluteMotorJointConfig,
+} from './joints.js'
+export { physicsJointHandle } from './joints.js'
+export {
+  computeImpulseDenominator,
+  type Mat3RowMajor,
+} from './raycast-vehicle-friction.js'
+export {
+  computeWheelWorldPose,
   defaultFourWheelConfigs,
   stepRaycastVehicle,
   type RaycastVehicleSimulationHooks,
