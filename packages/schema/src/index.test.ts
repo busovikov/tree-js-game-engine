@@ -3,8 +3,10 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
   DEFAULT_ASSETS_DIR,
+  EDITOR_LIGHT_GIZMO_MAX_DISTANCE,
   MeshMaterialSchema,
   MeshRendererSchema,
+  lightDisplayDistance,
   normalizeMeshMaterial,
   normalizeMeshRenderer,
   projectPathToUrl,
@@ -58,5 +60,34 @@ describe('@haku/schema', () => {
   it('embeds material defaults on empty MeshRenderer', () => {
     const renderer = MeshRendererSchema.parse({})
     expect(renderer.material.materialType).toBe('standard')
+  })
+
+  it('caps editor light gizmo distance for large spot/point ranges', () => {
+    expect(
+      lightDisplayDistance({
+        type: 'spot',
+        color: '#ffffff',
+        intensity: 1,
+        distance: 100,
+        decay: 1,
+        outerAngle: 30,
+        innerAngle: 10,
+        localPosition: [0, 0, 0],
+        targetPosition: [0, 0, -1],
+        castShadow: false,
+        enabled: true,
+      }),
+    ).toBe(EDITOR_LIGHT_GIZMO_MAX_DISTANCE)
+    expect(
+      lightDisplayDistance({
+        type: 'directional',
+        color: '#ffffff',
+        intensity: 1,
+        localPosition: [0, 0, 0],
+        targetPosition: [0, 0, -1],
+        castShadow: false,
+        enabled: true,
+      }),
+    ).toBe(2)
   })
 })

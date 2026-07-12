@@ -158,7 +158,7 @@ export {
 import { MeshRendererSchema } from './mesh.js'
 import { StaticSchema } from './static.js'
 import { ColliderSchema } from './collider.js'
-import { VehicleSchema } from './vehicle.js'
+import { PhysicsControllerSchema } from './physics-controller.js'
 import { TagSchema } from './tag.js'
 import { RenderingLayersSchema } from './rendering-layers.js'
 import { RenderTextureSchema } from './render-texture.js'
@@ -179,28 +179,60 @@ export {
 } from './collider.js'
 
 export {
-  VehicleAssistsSchema,
-  VehicleBrakesSchema,
+  PhysicsControllerSchema,
+  PhysicsControllerTypeSchema,
+  CustomRaycastControllerSchema,
+  DynamicRaycastControllerSchema,
+  ArcadeVehicleControllerSchema,
+  RevoluteJointVehicleControllerSchema,
+  KinematicCharacterControllerSchema,
+  CustomSpringControllerSchema,
+  PointerControlsControllerSchema,
+  PointerConstraintTypeSchema,
+  ControllerAssistsSchema,
+  ControllerBrakesSchema,
+  ControllerChassisSchema,
+  ControllerDriveProfileSchema,
+  DynamicRaycastDriveProfileSchema,
+  ControllerEngineSchema,
+  ControllerJumpSchema,
+  ControllerSteeringSchema,
+  ControllerSuspensionSchema,
+  ControllerWheelsSchema,
+  CONTROLLER_WHEEL_ORDER,
+  controllerWheelLocalPositions,
+  controllerChassisCollider,
+  controllerNeedsChassis,
+  controllerNeedsCapsule,
+  type PhysicsController,
+  type PhysicsControllerType,
+  type CustomRaycastController,
+  type DynamicRaycastController,
+  type ArcadeVehicleController,
+  type RevoluteJointVehicleController,
+  type KinematicCharacterController,
+  type CustomSpringController,
+  type PointerControlsController,
+  type PointerConstraintType,
+  type ControllerAssists,
+  type ControllerBrakes,
+  type ControllerDriveProfile,
+  type DynamicRaycastDriveProfile,
+  type ControllerChassis,
+  type ControllerEngine,
+  type ControllerJump,
+  type ControllerSteering,
+  type ControllerSuspension,
+  type ControllerWheelSlot,
+  type ControllerWheels,
   VehicleChassisSchema,
-  VehicleEngineSchema,
-  VehicleJumpSchema,
-  VehicleSchema,
-  VehicleSteeringSchema,
-  VehicleSuspensionSchema,
   VehicleWheelsSchema,
   VEHICLE_WHEEL_ORDER,
   vehicleWheelLocalPositions,
-  type Vehicle,
-  type VehicleAssists,
-  type VehicleBrakes,
   type VehicleChassis,
-  type VehicleEngine,
-  type VehicleJump,
-  type VehicleSteering,
-  type VehicleSuspension,
-  type VehicleWheelSlot,
   type VehicleWheels,
-} from './vehicle.js'
+  type VehicleWheelSlot,
+} from './physics-controller.js'
 
 export {
   GEOMETRY_PARAM_SPECS,
@@ -380,7 +412,7 @@ export const CORE_COMPONENT_IDS = [
   'Tag',
   'Static',
   'Collider',
-  'Vehicle',
+  'PhysicsController',
   'RenderingLayers',
   'RenderTexture',
 ] as const
@@ -397,7 +429,7 @@ export const coreComponentSchemas = {
   Tag: TagSchema,
   Static: StaticSchema,
   Collider: ColliderSchema,
-  Vehicle: VehicleSchema,
+  PhysicsController: PhysicsControllerSchema,
   RenderingLayers: RenderingLayersSchema,
   RenderTexture: RenderTextureSchema,
 } as const

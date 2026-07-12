@@ -21,7 +21,7 @@ function entityWithCollider(
 }
 
 describe('Collider serializer round-trip', () => {
-  it('round-trips box collider with all fields', () => {
+  it('loads a polluted box collider but strips runtime handles when saving', () => {
     const collider = {
       shape: 'box',
       halfExtents: [1, 0.25, 2],
@@ -29,6 +29,8 @@ describe('Collider serializer round-trip', () => {
       rotation: [0, 0.7071068, 0, 0.7071068],
       isStatic: false,
       physicsBodyHandle: 'body-42',
+      physicsHandle: 'controller-42',
+      physicsVehicleHandle: 'legacy-vehicle-42',
     }
     const doc = validateSceneDocument({
       schemaVersion: 1,
@@ -36,12 +38,20 @@ describe('Collider serializer round-trip', () => {
       entities: [entityWithCollider('a0000000-0000-4000-8000-000000000001', 'Box', collider)],
     })
 
-    const once = roundtripSceneDocument(doc)
-    const colliderData = once.entities[0].components.find((c) => c.type === 'Collider')?.data
-    expect(colliderData).toEqual(collider)
+    const world = loadSceneDocument(doc)
+    const loaded = world.getComponent(world.getAllEntities()[0], ColliderComponent)
+    expect(loaded?.physicsBodyHandle).toBe('body-42')
 
-    const twice = roundtripSceneDocument(once)
-    expect(twice).toEqual(once)
+    const saved = saveSceneDocument(world, doc.metadata)
+    const colliderData = saved.entities[0].components.find((c) => c.type === 'Collider')?.data
+    expect(colliderData).toEqual({
+      shape: 'box',
+      halfExtents: [1, 0.25, 2],
+      offset: [0, 1, 0],
+      rotation: [0, 0.7071068, 0, 0.7071068],
+      isStatic: false,
+    })
+    expect(JSON.stringify(saved)).not.toMatch(/physics(?:Body|Vehicle)?Handle/)
   })
 
   it('round-trips sphere collider', () => {

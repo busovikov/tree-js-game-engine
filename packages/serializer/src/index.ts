@@ -17,6 +17,25 @@ import {
   type SceneDocument,
 } from '@haku/schema'
 
+const RUNTIME_COMPONENT_FIELDS = {
+  Collider: ['physicsBodyHandle', 'physicsHandle', 'physicsVehicleHandle'],
+  PhysicsController: ['physicsBodyHandle', 'physicsHandle', 'physicsVehicleHandle'],
+} as const satisfies Record<string, readonly string[]>
+
+export function sanitizeComponentDataForPersistence(
+  typeId: string,
+  data: Record<string, unknown>,
+): Record<string, unknown> {
+  const fields = RUNTIME_COMPONENT_FIELDS[typeId as keyof typeof RUNTIME_COMPONENT_FIELDS]
+  if (!fields) return data
+
+  const sanitized = { ...data }
+  for (const field of fields) {
+    delete sanitized[field]
+  }
+  return sanitized
+}
+
 function getComponentType(typeId: string): ComponentType {
   const type = getCoreComponent(typeId)
   if (!type) throw new Error(`Unknown component type: ${typeId}`)
@@ -133,7 +152,11 @@ export function saveSceneDocument(
       const type = getComponentType(typeId)
       const data = world.getComponent(id, type)
       if (data !== undefined) {
-        components.push({ type: typeId, data: type.schema.parse(data) as Record<string, unknown> })
+        const parsed = type.schema.parse(data) as Record<string, unknown>
+        components.push({
+          type: typeId,
+          data: sanitizeComponentDataForPersistence(typeId, parsed),
+        })
       }
     }
     entities.push({
