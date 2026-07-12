@@ -41,12 +41,16 @@ If URL unknown → fetch board or ask user. **Do not code without anchor.**
 - [ ] notion-fetch NOTION_TASK_URL (first pass or if stale)
 - [ ] notion-update-page → In progress
 - [ ] notion-create-comment — "Started iteration N"
+- [ ] **Define detailed AC** (see M1_VERIFICATION.md for vehicle/editor tasks)
 - [ ] Implement + test
+- [ ] **Playwright + screenshot self-review** — open PNGs; rework if wheels/drive/camera wrong
 - [ ] notion-create-comment — **Review handoff** (mandatory template below)
 - [ ] Update task card body with "Last iteration" block (same content)
 - [ ] notion-update-page → Review
 - [ ] Echo Notion link · Status: Review
 ```
+
+**Never Review** when `m1-vehicle-alignment.spec.ts` fails or screenshots show detached wheels / backward drive.
 
 Increment `ITERATION` each pass. **Small user tweaks use the same flow.**
 

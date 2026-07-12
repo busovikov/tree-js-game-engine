@@ -68,6 +68,15 @@ EOF
 
 If commit or tests fail → stay **In progress**, comment reason, return `RESULT: blocked`.
 
+**M1 / vehicle / play-mode tasks — before Review:**
+
+```
+- [ ] docs/reference-cycle/raycast-vehicle/M1_VERIFICATION.md — AC defined
+- [ ] playwright test tests/m1-vehicle-alignment.spec.ts — pass
+- [ ] review-artifacts PNGs opened — wheels on body, W drives forward
+- [ ] If fail → rework (stay In progress), do NOT Review
+```
+
 **Do not** set **Done** — user approves on board.
 
 ### Review handoff (mandatory before Review)

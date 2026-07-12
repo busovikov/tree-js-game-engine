@@ -20,10 +20,11 @@
 | ----------- | ------ |
 | Current backend | Rapier (WASM) |
 | Future backend | box3D integration must be possible without breaking scene/gameplay code |
-| Raycast vehicle | Reimplement sketchbook-style on abstract layer (not cannon-es coupling) |
+| Raycast vehicle | Reimplement sketchbook-style on abstract layer (Rapier backend) |
+| Reference physics params | **Do not port** — reference runtime ≠ Rapier solver; tune in Play mode |
 | Gameplay / systems | Depend only on `@haku/physics` (or equivalent) interfaces — never Rapier types in core/engine components |
 
-**Rejected:** cannon-es direct coupling, hybrid cannon-only, defer physics entirely.
+**Rejected:** third-party JS physics engine coupling, hybrid external-physics-only vehicle, defer physics entirely.
 
 ---
 

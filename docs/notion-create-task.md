@@ -196,6 +196,16 @@ Modules, tests, APIs to read before coding.
 ### Acceptance Criteria
 Objective, independently testable. **Must include:** list of `docs/*.md` files implementer updates in git.
 
+### Testing (mandatory)
+Every implementation task spec must define how success is **verified by tests**, not only by manual inspection:
+
+- **Unit tests** — new/changed behavior in `packages/*/src/*.test.ts` (or target project tests)
+- **Integration** — cross-package or system tests when interfaces span packages
+- **Manual verification** — editor/play mode steps when UI or runtime behavior cannot be fully automated
+- **Regression** — `pnpm build`; `./scripts/check.sh` when task touches CI-critical paths
+
+Subagent **cannot** move to Review without passing tests listed here (or documented skip approved in Notion comment).
+
 ### Validation
 ```bash
 pnpm --filter @haku/<package> test
@@ -237,7 +247,8 @@ Avoid long narratives. Short bullets. Every AC objectively verifiable.
 - [ ] **Select = To do**, **Epic** and **Type** correct
 - [ ] **Feature Task Template** duplicated and all sections filled
 - [ ] **📎 Docs** linked on task card
-- [ ] Acceptance criteria measurable
+- [ ] **Testing** section filled (unit + manual + regression)
+- [ ] **Validation** commands listed with pass criteria
 - [ ] **Repo `docs/` update** listed in AC (mandatory section)
 - [ ] Out of scope explicit
 - [ ] Implementation-ready — minimal clarification needed
@@ -252,6 +263,8 @@ Avoid long narratives. Short bullets. Every AC objectively verifiable.
 | **Notion 📎 Docs** | Task-specific spec, design notes, kickoff | **Task author** at create; implementer may extend |
 
 Creating a ticket does **not** replace updating local `docs/` after implementation.
+
+**Reference-driven cycles:** local `docs/reference-cycle/` and Notion 📎 Docs must stay aligned — see [`reference-cycle/NOTION_SYNC.md`](./reference-cycle/NOTION_SYNC.md).
 
 ---
 

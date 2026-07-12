@@ -175,7 +175,7 @@ Every orchestrator reply starts with:
 
 1. Gap analysis: reference vs `@haku` capabilities
 2. For each gap with multiple paths — questions + alternatives table (A/B/C/D):
-   - **Physics** (Rapier, cannon-es, custom AABB, defer)
+   - **Physics** (Rapier + custom raycast vehicle, custom AABB, defer)
    - **In-game UI** (DOM overlay, scene entities, defer)
    - **Scripts**, network, audio, saves, etc.
 3. Draft `MASTER_PLAN.md` + **AD-xx** decisions

@@ -11,6 +11,7 @@
 | **[notion.md](./notion.md)** | **Execute task** — anchor URL in chat, Notion sync every pass |
 | **[notion-create-task.md](./notion-create-task.md)** | **Create ticket** — duplicate Feature Task Template, Epic, Type, To do |
 | **[reference-driven-cycle.md](./reference-driven-cycle.md)** | **Build game from reference** — orchestrator, subagents, iterative board |
+| **[reference-cycle/NOTION_SYNC.md](./reference-cycle/NOTION_SYNC.md)** | **Cycle + Notion** — git docs must mirror board specs; mandatory Testing |
 | [techstack.md](./techstack.md) | Choosing libraries, build tools, or package dependencies |
 | [architecture.md](./architecture.md) | System design, data flow, package boundaries |
 | [edge-cases.md](./edge-cases.md) | Failures, empty states, validation, security — **not happy-path only** |

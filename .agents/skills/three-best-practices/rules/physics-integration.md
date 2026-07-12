@@ -2,12 +2,13 @@
 
 Guide to integrating physics engines with Three.js.
 
+> **@haku monorepo:** Use **Rapier only** via `@haku/physics-rapier`. Custom raycast vehicles use `stepRaycastVehicle` on the abstract `@haku/physics` layer — see [`docs/links.md`](../../../../docs/links.md) § Rapier.
+
 ## Engine Comparison
 
 | Engine | Language | Characteristics | Performance |
 |--------|----------|-----------------|-------------|
 | **Rapier** | Rust/WASM | Deterministic, modern | Very High |
-| **Cannon-es** | JavaScript | Easy to use, maintained fork | High |
 | **Ammo.js** | C++/WASM | Bullet port, softbody support | Medium-High |
 
 ## Rapier (Recommended for 2025+)
@@ -15,7 +16,7 @@ Guide to integrating physics engines with Three.js.
 ### Setup
 
 ```bash
-npm install @dimforge/rapier3d
+npm install @dimforge/rapier3d-compat
 ```
 
 ### Vite Configuration
@@ -33,7 +34,7 @@ export default {
 ### Basic Usage
 
 ```javascript
-import RAPIER from '@dimforge/rapier3d';
+import RAPIER from '@dimforge/rapier3d-compat';
 
 await RAPIER.init();
 const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
@@ -71,63 +72,6 @@ RAPIER.ColliderDesc.convexHull(vertices)
 RAPIER.ColliderDesc.trimesh(vertices, indices)
 ```
 
-## Cannon-es
-
-### Setup
-
-```bash
-npm install cannon-es
-```
-
-### Basic Usage
-
-```javascript
-import * as CANNON from 'cannon-es';
-
-const world = new CANNON.World();
-world.gravity.set(0, -9.82, 0);
-
-const sphereBody = new CANNON.Body({
-  mass: 1,
-  shape: new CANNON.Sphere(0.5),
-  position: new CANNON.Vec3(0, 5, 0)
-});
-world.addBody(sphereBody);
-
-function animate() {
-  world.step(1/60);
-  mesh.position.copy(sphereBody.position);
-  mesh.quaternion.copy(sphereBody.quaternion);
-}
-```
-
-### Body Types
-
-```javascript
-// Dynamic (affected by forces)
-new CANNON.Body({ mass: 1 })
-
-// Static (immovable, mass = 0)
-new CANNON.Body({ mass: 0 })
-
-// Kinematic (controlled programmatically)
-new CANNON.Body({
-  mass: 0,
-  type: CANNON.Body.KINEMATIC
-})
-```
-
-### Shapes
-
-```javascript
-new CANNON.Sphere(radius)
-new CANNON.Box(new CANNON.Vec3(hx, hy, hz))
-new CANNON.Cylinder(radiusTop, radiusBottom, height, segments)
-new CANNON.Plane()
-new CANNON.ConvexPolyhedron({ vertices, faces })
-new CANNON.Trimesh(vertices, indices)
-```
-
 ## Sync Pattern
 
 ### BAD - Bidirectional sync
@@ -143,14 +87,16 @@ body.position.copy(mesh.position);
 
 ```javascript
 function syncPhysicsToMesh(body, mesh) {
-  mesh.position.copy(body.position);
-  mesh.quaternion.copy(body.quaternion);
+  const t = body.translation();
+  const r = body.rotation();
+  mesh.position.set(t.x, t.y, t.z);
+  mesh.quaternion.set(r.x, r.y, r.z, r.w);
 }
 
 // For kinematic bodies controlled by Three.js
 function syncMeshToKinematic(mesh, body) {
-  body.position.copy(mesh.position);
-  body.quaternion.copy(mesh.quaternion);
+  body.setTranslation(mesh.position, true);
+  body.setRotation(mesh.quaternion, true);
 }
 ```
 
@@ -160,54 +106,24 @@ function syncMeshToKinematic(mesh, body) {
 
 2. **Fixed Timestep**: Use fixed timestep for physics (1/60)
    ```javascript
-   world.step(1/60, deltaTime, 3); // Fixed step, max substeps
+   world.timestep = 1 / 60;
+   world.step();
    ```
 
-3. **Sleep**: Enable sleep for static bodies
+3. **Sleep**: Rapier sleeps inactive bodies automatically; wake with `body.wakeUp()` before teleporting or applying impulses
+
+4. **Impulses at point**: Prefer `applyImpulseAtPoint` for wheel/suspension forces
    ```javascript
-   body.allowSleep = true;
-   body.sleepSpeedLimit = 0.1;
+   body.applyImpulseAtPoint({ x: 0, y: impulse, z: 0 }, { x, y, z }, true);
    ```
 
-4. **Broad Phase**: Configure appropriate broad phase
-   ```javascript
-   world.broadphase = new CANNON.SAPBroadphase(world);
-   ```
+5. **Sync Direction**: Always sync physics -> visual, not reverse
 
-5. **Material Friction**: Define physics materials
-   ```javascript
-   const material = new CANNON.Material('default');
-   const contact = new CANNON.ContactMaterial(material, material, {
-     friction: 0.3,
-     restitution: 0.3
-   });
-   world.addContactMaterial(contact);
-   ```
-
-6. **Sync Direction**: Always sync physics -> visual, not reverse
-
-7. **Compound Shapes**: Use compound shapes for complex objects
-   ```javascript
-   const body = new CANNON.Body({ mass: 1 });
-   body.addShape(new CANNON.Box(size1), offset1);
-   body.addShape(new CANNON.Sphere(radius), offset2);
-   ```
-
-## Debug Visualization
-
-```javascript
-import CannonDebugger from 'cannon-es-debugger';
-
-const cannonDebugger = CannonDebugger(scene, world);
-
-function animate() {
-  world.step(1/60);
-  cannonDebugger.update();
-}
-```
+6. **Compound colliders**: Attach multiple colliders to one rigid body for chassis + corner spheres
 
 ## References
 
 - [Rapier Documentation](https://rapier.rs/)
-- [Cannon-es GitHub](https://github.com/pmndrs/cannon-es)
+- [Three.js Rapier vehicle controller](https://threejs.org/examples/physics_rapier_vehicle_controller.html)
+- [Isaac Mason custom raycast vehicle](https://sketches.isaacmason.com/sketch/rapier/custom-raycast-vehicle)
 - [Three.js + Physics Examples](https://threejs.org/examples/?q=physics)

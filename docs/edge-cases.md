@@ -69,6 +69,7 @@ Manual viewport checks **supplement** automated tests — never replace them.
 | Legacy scene without `materialType` | Preprocess → `standard` | `material.ts` preprocess |
 | Legacy scene without `renderSettings` | Preprocess → `defaultRenderSettings()` | `render-settings.test.ts` |
 | Component data wrong shape | `type.schema.parse(comp.data)` throws at load | serializer hydrate |
+| Collider/PhysicsController data contains runtime or legacy physics handles | Load succeeds and recognized handles remain available in memory; save and component copy omit `physicsBodyHandle`, `physicsHandle`, and `physicsVehicleHandle` | `serializer/collider.test.ts`, `serializer/physics-controller.test.ts` |
 
 **Do not** silently coerce invalid scene data — fail at load with clear error; log via `sceneLogError('load.failed', ...)`.
 
@@ -119,8 +120,22 @@ Test these explicitly — users will do them.
 | **Switch model asset mid-load** | Stale callback ignored (`modelLoadId`) | `render-sync-system.ts` |
 | **Select deleted entity** | Filtered out: `world?.hasEntity(id)` | `InspectorPanel` |
 | **Edit in play mode** | Inspector/transform disabled (`mode !== 'edit'`) | `InspectorPanel.canEdit` |
-| **R respawn in play mode** | Vehicle teleports to spawn pose; physics + steer/jump state cleared | `RespawnSystem` (T01.21) |
+| **R respawn in play mode** | Controller teleports to spawn pose; physics, input, propulsion, brake/motor, steering and buffered jump state are cleared. Held input may be sampled again by input binding on the next frame. | `RespawnSystem`, `PhysicsControllerSystem` |
 | **Drive off level (Y below -20)** | Auto-respawn to captured spawn transform | `RespawnSystem` (T01.21) |
+| **Disable an active physics controller** | On the enabled→disabled transition, custom/dynamic raycast forces and brakes, arcade velocity state, character movement buffers, and revolute motors are neutralized once | `PhysicsControllerSystem` |
+| **Physics controller also has a redundant Collider** | Runtime and editor use the same resolution contract: custom/dynamic/revolute controllers ignore it for their implicit chassis; arcade uses it explicitly or falls back to its chassis; kinematic ignores it for the implicit capsule; custom-spring and pointer-controls create no collider | `resolveColliderDescriptor`, `SceneColliderGizmos` |
+| **Apply force before a physics step** | Force and point torque affect exactly the next step, then clear | Stub/Rapier backend contract tests |
+| **Custom spring target is missing** | No-op; no force is queued for either body | `physics-controller-runtime.test.ts` |
+| **Render frame produces multiple physics substeps** | Custom spring recomputes force before every fixed substep | `PhysicsWorldSystem.queueSubstepAction` |
+| **Render FPS drops below 60** | Shared fixed-step policy catches up with at most three substeps; hitches beyond 50 ms drop excess simulation time | `PHYSICS_CATCH_UP_POLICY` |
+| **Render FPS exceeds fixed physics rate** | Render sync lerps previous/current body position and normalized shortest-path quaternion using accumulator alpha; authoritative `Transform` remains the latest fixed pose | `PhysicsWorldSystem.resolvePresentationTransform`, `RenderSyncSystem` |
+| **No physics step occurs on a render frame** | Reuse retained fixed poses with the new accumulator alpha; first registration has identical previous/current poses and therefore snaps safely | `physics-world-system.test.ts` |
+| **Physics body teleports or respawns** | Reset previous/current presentation poses to the teleported pose so no blend trail crosses the discontinuity | `PhysicsWorldSystem.resetBodyState`, `RespawnSystem` |
+| **Engine world or physics backend is replaced** | Invalidate retained presentation history; render uses the replacement world's authoritative transform until a fresh pose is captured, then snaps | `Engine.loadWorld`, `Engine.setWorld`, `PhysicsWorldSystem.setBackend` |
+| **Vehicle camera and wheels render during interpolation** | Chase/follow cameras consume the chassis presentation pose; wheel children inherit the same interpolated chassis parent. Wheel-local suspension, steering, and spin still update from current fixed-step samples without a second interpolation buffer | vehicle camera and visual sync systems |
+| **Edit-mode dynamic-raycast wheel rest pose recomputes after `worldRevision`** | Install a render-only presentation resolver and preserve the authored wheel `Transform`; save, undo, and the Play-mode snapshot therefore see only explicit scene edits | `createDynamicRaycastWheelRestPoseResolver`, `ViewportPanel` |
+| **Controller ramp runs at 30/60/120 FPS** | Three.js dynamic-raycast force/brake steps scale by `dt × 60`; steer and arcade speed alphas convert as `1 − (1 − legacyAlpha)^(dt × 60)`. Existing fields remain legacy per-60-Hz-reference-step values, preserving authored 60 Hz feel. | `physics-controller-runtime.ts` |
+| **Controller ramp receives zero, invalid, or hitch-sized dt** | Zero/negative/non-finite dt does not advance the ramp; positive dt is capped at 50 ms for ramp math so a hitch cannot jump directly to the target. Fixed-step and force contracts are unchanged. | `physics-controller-runtime.ts` |
 | **Keyboard shortcut while typing in input** | Shortcuts should not fire (check `event.target`) | `EditorApp` keydown |
 | **Open project in Safari/Firefox** | No File System Access → fallback folder picker or error message | `isFileSystemAccessSupported()` |
 | **Double-click scene in asset browser** | Loads scene; errors → alert | `AssetBrowserPanel` |
@@ -421,6 +436,7 @@ New features should be **scene-backed** (`RenderSettings`, components) so playgr
 - `ComponentEnabledSchema` — boolean on component records
 - `isComponentEnabled()` / `withComponentEnabled()` in schema
 - Disabled components skipped by render sync (verify when adding new component types)
+- Physics controllers use normalized `enabled !== false` semantics. The transition to disabled performs a one-shot runtime reset; remaining disabled does not repeat motor/force writes.
 
 ---
 

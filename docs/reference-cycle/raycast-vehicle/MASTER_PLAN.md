@@ -172,7 +172,7 @@ flowchart TD
 | Task | Title | Type | Deps | Milestone |
 | ---- | ----- | ---- | ---- | --------- |
 | T01.11 | VehicleComponent schema — chassis, wheels, engine, suspension, assists params | Feature | T01.1 | M1 |
-| T01.12 | RaycastVehicle on abstract physics layer (sketchbook-style, not cannon-es) | Feature | T01.2, T01.11 | M1 |
+| T01.12 | RaycastVehicle on abstract physics layer (sketchbook-style, Rapier backend) | Feature | T01.2, T01.11 | M1 |
 | T01.13 | VehicleControllerSystem — RWD, steer smooth, brake, boost, jump | Feature | T01.12 | M1 |
 | T01.14 | Vehicle visual sync — body + 4 wheel GLBs from physics state | Feature | T01.13 | M1 |
 | T01.15 | Arcade stability assists — anti-wheelie, upright, wall slide, landing grip, corner-lift | Feature | T01.13 | M2 |
@@ -180,7 +180,7 @@ flowchart TD
 
 **Acceptance (M1):** Rear-wheel drive, steering, coast brake, boost cap, jump with grounded check; visuals match wheel contact points.
 
-**T01.11 delivery (schema):** `@haku/schema` `VehicleSchema` with grouped chassis/wheels/suspension/engine/steering/brakes/jump/assists (~40 tunable fields); `@haku/core` `VehicleComponent` registry entry; defaults from reference `DEFAULT_PARAMS` order-of-magnitude. Raycast sync (T01.12), controller (T01.13), editor inspector (T01.27) out of scope.
+**T01.11 delivery (schema):** `@haku/schema` `VehicleSchema` with grouped chassis/wheels/suspension/engine/steering/brakes/jump/assists (~40 tunable fields); `@haku/core` `VehicleComponent` registry entry; schema defaults are **starting points for the Rapier stack** (tune in Play — not a 1:1 port of reference `DEFAULT_PARAMS`). Raycast sync (T01.12), controller (T01.13), editor inspector (T01.27) out of scope.
 
 **T01.12 delivery (physics):** `stepRaycastVehicle` shared solver in `@haku/physics`; `WheelConfig` aligned with schema (`dampingRelaxation` / `dampingCompression`); stub + Rapier backends apply suspension/friction/engine forces; flat-ground integration tests (4 wheels, 120 steps). VehicleControllerSystem (T01.13), visual wheel sync (T01.14), arcade assists (T01.15) out of scope.
 
@@ -316,7 +316,7 @@ flowchart TD
 
 | Risk | Mitigation |
 | ---- | ---------- |
-| Rapier lacks cannon-es RaycastVehicle | Reimplement sketchbook algorithm on abstract layer (AD-02); spike in T01.12 |
+| Rapier has no built-in raycast vehicle API | Custom sketchbook-style solver on abstract layer (AD-02); delivered in T01.12 |
 | Manual colliders ≠ reference trimesh fidelity | AD-03 accepted; approximate ramps with boxes; A/C for other projects |
 | ~20 MB GLB assets | Import as-is for demo; optimize in T01.38 if load times block CI |
 | ScriptRef immaturity | Vehicle logic in engine systems first; ScriptRef for transporter later if needed |
@@ -328,7 +328,7 @@ flowchart TD
 
 - Mobile / touch / gamepad input (post AD-07 v1)
 - Multiplayer, audio, save/load
-- Direct cannon-es port or Rapier types in components
+- Third-party physics engine ports or Rapier types in components
 - Moving Notion tasks to **To do** (orchestrator)
 - Production code in this Phase 1 task
 

@@ -199,6 +199,7 @@ Always include relevant **AD-xx** and **Parent facts** only.
 | Action | Who |
 | ------ | --- |
 | Create epics / plan tasks | Subagent or orchestrator → **No Select** |
+| **Task specs (📎 Docs)** | **Mandatory** — duplicate Feature Task Template `39a1402af56080349186fce071ae7c72`, fill all sections, link on card. See `docs/notion-create-task.md` |
 | No Select → **To do** | **Orchestrator** (GROOM) |
 | **In progress** / **Review** / comments | **Subagent** |
 | **Done** / reject → **To do** | **User** on board |

@@ -115,7 +115,8 @@ Grep similar code → cite **paths only** in spec. Do not paste whole files.
 | Constraints | AGENTS.md boundaries, `commitSceneEdit`, no React in engine |
 | Suggested Investigation | Modules, tests to read |
 | Acceptance Criteria | Testable; **list `docs/*.md` files implementer must update** |
-| Validation | `pnpm test`, `pnpm build`, `./scripts/check.sh` |
+| **Testing** | **Mandatory** — unit, integration, manual/play, regression |
+| Validation | `pnpm test`, `pnpm build`, `./scripts/check.sh` — all must pass before Review |
 | Deliverables | Code, tests, **repo docs updates** |
 | Out of Scope | Explicit exclusions |
 
@@ -147,6 +148,8 @@ No `content` when using `template_id` — body lives in 📎 Docs.
 Before returning to user:
 
 - [ ] Spec: every section filled, no placeholders
+- [ ] **Testing** + **Validation** sections filled
+- [ ] **Editor screenshots** attached when UI/editor-visible (see below)
 - [ ] Task: **To do**, correct Epic + Type
 - [ ] **📎 Docs** linked
 - [ ] AC lists git `docs/*.md` updates for implementer
@@ -161,6 +164,12 @@ Before returning to user:
 | ----- | ----------- |
 | **Notion 📎 Docs** | Task author now (spec) |
 | **Git `docs/*.md`** | Implementation agent later (required in AC) |
+
+**Reference-driven cycles:** keep `docs/reference-cycle/` and Notion in sync — `docs/reference-cycle/NOTION_SYNC.md`.
+
+### Editor screenshots (when UI-visible)
+
+Before **Review**, attach 2–4 PNGs to the Notion task. Capture via Playwright → `.agents/tools/editor-playwright/review-artifacts/<TASK_ID>/`. Comment must list filenames + regen command.
 
 ---
 

@@ -314,6 +314,28 @@ Append-only project log: `logs/haku.log` via `projectService.appendProjectLog()`
 | `webkitdirectory` fallback | https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/webkitdirectory |
 | Fetch API | https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API |
 
+### Rapier `@dimforge/rapier3d-compat` ^0.19.3
+
+> **Use for `@haku/physics-rapier` and raycast vehicle work.**
+> Haku implements a **custom raycast vehicle** on the abstract `@haku/physics` layer (`stepRaycastVehicle`). Align with Rapier docs and the references below — not any third-party reference game's physics API.
+
+| Topic | URL |
+| ----- | --- |
+| **Docs index** | https://rapier.rs/docs/ |
+| JavaScript getting started | https://rapier.rs/docs/user_guides/javascript/getting_started |
+| Rigid-body dynamics | https://rapier.rs/docs/user_guides/javascript/rigid_body_forces_and_impulses |
+| Ray casting | https://rapier.rs/docs/user_guides/javascript/scene_queries_ray_casting |
+| Colliders | https://rapier.rs/docs/user_guides/javascript/colliders |
+| **Three.js — Rapier vehicle controller (official example)** | https://threejs.org/examples/physics_rapier_vehicle_controller.html |
+| **Custom raycast vehicle (reference implementation)** | https://sketches.isaacmason.com/sketch/rapier/custom-raycast-vehicle |
+| rapier.js (npm / upstream) | https://github.com/dimforge/rapier.js |
+
+**Force adapter rule:** Rapier force/torque accumulators persist until reset, but the abstract `@haku/physics` contract is one-step. `RapierPhysicsBackend.step()` resets both after integration so it matches Stub; impulse semantics remain immediate and unchanged.
+
+**Composition rule:** `@haku/engine` production code depends only on `@haku/physics`. Application composition roots that select a concrete backend may depend on `@haku/physics-rapier`; this includes editor Play mode (`packages/editor/src/viewport/play-mode-physics.ts`) and playground/app factories. Keep Rapier types and construction out of engine core.
+
+**Agent rule — physics tuning:** Implement suspension, friction, engine, and steering using **Rapier docs + Isaac Mason sketch + Play-mode validation**. Do **not** copy numeric settings from the reference game’s physics runtime — those values target a different solver and are not portable. The reference is useful for **player-facing goals** (arcade RWD feel, jump height, speed caps, camera behavior), not for 1:1 parameter transfer.
+
 ---
 
 ## Key source files (deep links)
@@ -332,6 +354,9 @@ Append-only project log: `logs/haku.log` via `projectService.appendProjectLog()`
 | Apply render settings | `packages/engine/src/render/apply-render-settings.ts` |
 | Material factories | `packages/engine/src/mesh-factory.ts` |
 | glTF loader | `packages/engine/src/model-loader.ts` |
+| Raycast vehicle solver | `packages/physics/src/raycast-vehicle-simulation.ts` |
+| Rapier physics backend | `packages/physics-rapier/src/rapier-backend.ts` |
+| Vehicle controller (drive/steer) | `packages/engine/src/systems/vehicle-controller-system.ts` |
 | Editor store | `packages/editor/src/store/editor-store.ts` |
 | Undo / commit | `packages/editor/src/commands/scene-history.ts` |
 | World commands | `packages/editor/src/commands/world-commands.ts` |

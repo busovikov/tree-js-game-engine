@@ -95,6 +95,8 @@ Root scripts: `pnpm build`, `pnpm test`, `pnpm lint`, `pnpm typecheck`.
 
 **Tests:** `packages/physics/src/stub-backend.test.ts`, `packages/physics/src/primitives.test.ts`
 
+**Vehicle solver references:** [`links.md` § Rapier](../links.md#rapier-dimforge-rapier3d-compat-0193) — Rapier docs + custom raycast vehicle examples (Isaac Mason sketch, Three.js Rapier vehicle controller).
+
 ---
 
 ## `@haku/physics-rapier`
@@ -112,6 +114,8 @@ Root scripts: `pnpm build`, `pnpm test`, `pnpm lint`, `pnpm typecheck`.
 - `RapierPhysicsBackend`, `createRapierPhysicsBackend()`, `ensureRapierWasmLoaded()`
 
 **Tests:** `packages/physics-rapier/src/rapier-backend.test.ts` (WASM init, bodies, colliders, raycast, vehicle hooks)
+
+**Official docs & vehicle references:** [`links.md` § Rapier](./links.md#rapier-dimforge-rapier3d-compat-0193) — https://rapier.rs/docs/, Three.js Rapier vehicle example, Isaac Mason custom raycast vehicle sketch.
 
 ---
 

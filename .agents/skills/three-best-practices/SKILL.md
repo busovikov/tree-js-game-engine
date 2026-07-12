@@ -244,7 +244,7 @@ Reference these guidelines when:
 
 ### 16. Physics (MEDIUM)
 
-- `physics-integration` - Rapier, Cannon-es integration patterns
+- `physics-integration` - Rapier integration patterns (@haku: `@haku/physics-rapier` only)
 - `physics-compute-shaders` - GPU physics with compute shaders
 
 ### 17. WebXR (MEDIUM)
