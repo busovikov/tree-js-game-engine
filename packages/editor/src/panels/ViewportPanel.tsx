@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { Engine, createDynamicRaycastWheelRestPoseResolver } from '@haku/engine'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js'
-import { TransformComponent, PhysicsControllerComponent, entityId, type EntityId } from '@haku/core'
+import { TransformComponent, entityId, type EntityId } from '@haku/core'
 import { resolveActiveCameraId } from '@haku/schema'
 import { projectService } from '../services/project-service.js'
 import { useEditorStore } from '../store/editor-store.js'
@@ -27,7 +27,6 @@ import { SceneColliderGizmos } from '../viewport/scene-collider-gizmos.js'
 import { SceneSelectionOutline } from '../viewport/scene-selection-outline.js'
 import { SceneShadowVolumeGizmos } from '../viewport/shadow-volume-gizmos.js'
 import { startPlayModePhysics, type PlayModePhysicsSession } from '../viewport/play-mode-physics.js'
-import { installPlaytestHook } from '../viewport/playtest-hook.js'
 import { installVehicleDebugHook } from '../viewport/vehicle-debug-hook.js'
 
 function refreshGizmo(
@@ -205,24 +204,6 @@ export const ViewportPanel = memo(function ViewportPanel() {
 
     engine.start()
 
-    const removePlaytestHook = installPlaytestHook(engine, {
-      getWorld: () => useEditorStore.getState().world,
-      getRaycastVehicle: () => {
-        const session = playPhysicsRef.current?.vehicle
-        const activeWorld = useEditorStore.getState().world
-        if (!session || !activeWorld) {
-          return undefined
-        }
-        for (const id of activeWorld.query(PhysicsControllerComponent)) {
-          const vehicle = session.controllerSystem.getRaycastVehicle(id)
-          if (vehicle) {
-            return vehicle
-          }
-        }
-        return undefined
-      },
-    })
-
     const removeVehicleDebugHook = installVehicleDebugHook({
       getWorld: () => useEditorStore.getState().world,
       getEngine: () => engineRef.current,
@@ -242,7 +223,6 @@ export const ViewportPanel = memo(function ViewportPanel() {
     resize()
 
     return () => {
-      removePlaytestHook()
       removeVehicleDebugHook()
       unsubscribeWorld()
       observer.disconnect()
@@ -370,12 +350,18 @@ export const ViewportPanel = memo(function ViewportPanel() {
     if (!engine || !world || !gizmo || !selectionPivot) return
 
     const getObject3D = (id: EntityId) => engine.backend.sync.getObject3D(id)
+    const canShowGizmo = mode === 'edit' && activeViewportTab === 'scene'
 
     if (!selectionPivot.isDragging()) {
       for (const id of selectedIds) {
         engine.backend.sync.syncEntityTransform(id)
       }
-      refreshGizmo(gizmo, selectedIds, selectionPivot, getObject3D)
+      // See the dedicated visibility effect below for why attach() must stay gated to
+      // Scene+Edit — calling it unconditionally re-shows a gizmo tracking the wrong camera.
+      if (canShowGizmo) {
+        refreshGizmo(gizmo, selectedIds, selectionPivot, getObject3D)
+        gizmo.getHelper().visible = selectedIds.length > 0
+      }
     }
 
     const activeCameraId = sceneDocument ? resolveActiveCameraId(sceneDocument) : null
@@ -447,15 +433,26 @@ export const ViewportPanel = memo(function ViewportPanel() {
     const isEdit = mode === 'edit'
     const isSceneTab = activeViewportTab === 'scene'
     const isHandTool = transformTool === 'hand'
+    const canShowGizmo = isEdit && isSceneTab && !isHandTool
 
-    gizmo.getHelper().visible = isEdit && isSceneTab && selectedIds.length > 0 && !isHandTool
     orbit.enabled = isEdit && isSceneTab
 
-    if (selectedIds.length > 0 && !isHandTool && !selectionPivot.isDragging()) {
+    // TransformControls#attach() unconditionally sets its helper visible, so it must
+    // never be called outside Scene+Edit — otherwise it re-shows a gizmo that's tracking
+    // the wrong (editor) camera, causing wildly incorrect on-screen scale in the View tab
+    // or during Play mode.
+    const shouldAttach = canShowGizmo && selectedIds.length > 0 && !selectionPivot.isDragging()
+    const shouldDetach = !canShowGizmo || !selectedIds.length || isHandTool
+
+    if (shouldAttach) {
       refreshGizmo(gizmo, selectedIds, selectionPivot, (id) => engine.backend.sync.getObject3D(id))
-    } else if (!selectedIds.length || isHandTool) {
+    } else if (shouldDetach) {
       gizmo.detach()
     }
+    // else: mid-drag with a valid selection — leave the current attachment untouched.
+
+    // Re-assert visibility after the attach/detach above, since attach() always forces it true.
+    gizmo.getHelper().visible = canShowGizmo && selectedIds.length > 0
   }, [selectedIds, mode, world, transformTool, activeViewportTab])
 
   useEffect(() => {
@@ -463,10 +460,12 @@ export const ViewportPanel = memo(function ViewportPanel() {
     const gizmo = gizmoRef.current
     const selectionPivot = selectionPivotRef.current
     if (!engine || !gizmo || !selectionPivot) return
+    if (mode !== 'edit' || activeViewportTab !== 'scene') return
     if (selectedIds.length === 0 || transformTool === 'hand' || selectionPivot.isDragging()) return
 
     refreshGizmo(gizmo, selectedIds, selectionPivot, (id) => engine.backend.sync.getObject3D(id))
-  }, [gizmoSpace, selectedIds, transformTool])
+    gizmo.getHelper().visible = true
+  }, [gizmoSpace, selectedIds, transformTool, mode, activeViewportTab])
 
   useEffect(() => {
     const gizmo = gizmoRef.current
