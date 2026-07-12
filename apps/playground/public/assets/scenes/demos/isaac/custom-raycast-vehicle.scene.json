@@ -1,0 +1,3363 @@
+{
+  "schemaVersion": 1,
+  "metadata": {
+    "name": "Isaac — Custom Raycast Vehicle",
+    "activeCameraId": "e0100000-0000-4000-8000-000000000001"
+  },
+  "entities": [
+    {
+      "id": "e0100000-0000-4000-8000-000000000001",
+      "name": "MainCamera",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              30,
+              -20
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "Camera",
+          "data": {
+            "fov": 60,
+            "near": 0.1,
+            "far": 2000,
+            "enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000028",
+      "name": "HemisphereLight",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "Light",
+          "data": {
+            "type": "hemisphere",
+            "color": "#ffffff",
+            "intensity": 0.75,
+            "skyColor": "#1a1a28",
+            "groundColor": "#0a0a0a",
+            "enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000003",
+      "name": "LampPost_10_0_0",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              10,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              0.1,
+              5,
+              0.1
+            ],
+            "isStatic": true,
+            "offset": [
+              0,
+              5,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000004",
+      "name": "Pole",
+      "parent": "e0100000-0000-4000-8000-000000000003",
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              5,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "CylinderGeometry",
+            "geometryParams": {
+              "radiusTop": 0.1,
+              "radiusBottom": 0.1,
+              "height": 10,
+              "radialSegments": 32
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "#444444",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000005",
+      "name": "Arm",
+      "parent": "e0100000-0000-4000-8000-000000000003",
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -0.4,
+              10,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 1.2,
+              "height": 0.2,
+              "depth": 0.5
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "#444444",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000006",
+      "name": "Fixture",
+      "parent": "e0100000-0000-4000-8000-000000000003",
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -0.6,
+              9.89,
+              0
+            ],
+            "rotation": [
+              0.7071067811865475,
+              0,
+              0,
+              0.7071067811865476
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "PlaneGeometry",
+            "geometryParams": {
+              "width": 0.4,
+              "height": 0.2
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "#ffffff",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": false,
+            "receiveShadow": false,
+            "enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000007",
+      "name": "Spot",
+      "parent": "e0100000-0000-4000-8000-000000000003",
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -0.6,
+              10,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "Light",
+          "data": {
+            "type": "spot",
+            "color": "#ffffff",
+            "intensity": 150,
+            "distance": 40,
+            "decay": 1.5,
+            "outerAngle": 57,
+            "innerAngle": 48.449999999999996,
+            "castShadow": true,
+            "enabled": true,
+            "localPosition": [
+              0,
+              0,
+              0
+            ],
+            "targetPosition": [
+              -3.4,
+              -10,
+              0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000008",
+      "name": "LampPost_-10_0_25",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -10,
+              0,
+              25
+            ],
+            "rotation": [
+              0,
+              1,
+              0,
+              6.123233995736766e-17
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              0.1,
+              5,
+              0.1
+            ],
+            "isStatic": true,
+            "offset": [
+              0,
+              5,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000009",
+      "name": "Pole",
+      "parent": "e0100000-0000-4000-8000-000000000008",
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              5,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "CylinderGeometry",
+            "geometryParams": {
+              "radiusTop": 0.1,
+              "radiusBottom": 0.1,
+              "height": 10,
+              "radialSegments": 32
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "#444444",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000010",
+      "name": "Arm",
+      "parent": "e0100000-0000-4000-8000-000000000008",
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -0.4,
+              10,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 1.2,
+              "height": 0.2,
+              "depth": 0.5
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "#444444",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000011",
+      "name": "Fixture",
+      "parent": "e0100000-0000-4000-8000-000000000008",
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -0.6,
+              9.89,
+              0
+            ],
+            "rotation": [
+              0.7071067811865475,
+              0,
+              0,
+              0.7071067811865476
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "PlaneGeometry",
+            "geometryParams": {
+              "width": 0.4,
+              "height": 0.2
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "#ffffff",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": false,
+            "receiveShadow": false,
+            "enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000012",
+      "name": "Spot",
+      "parent": "e0100000-0000-4000-8000-000000000008",
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -0.6,
+              10,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "Light",
+          "data": {
+            "type": "spot",
+            "color": "#ffffff",
+            "intensity": 150,
+            "distance": 40,
+            "decay": 1.5,
+            "outerAngle": 57,
+            "innerAngle": 48.449999999999996,
+            "castShadow": true,
+            "enabled": true,
+            "localPosition": [
+              0,
+              0,
+              0
+            ],
+            "targetPosition": [
+              -3.4,
+              -10,
+              0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000013",
+      "name": "LampPost_10_0_50",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              10,
+              0,
+              50
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              0.1,
+              5,
+              0.1
+            ],
+            "isStatic": true,
+            "offset": [
+              0,
+              5,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000014",
+      "name": "Pole",
+      "parent": "e0100000-0000-4000-8000-000000000013",
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              5,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "CylinderGeometry",
+            "geometryParams": {
+              "radiusTop": 0.1,
+              "radiusBottom": 0.1,
+              "height": 10,
+              "radialSegments": 32
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "#444444",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000015",
+      "name": "Arm",
+      "parent": "e0100000-0000-4000-8000-000000000013",
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -0.4,
+              10,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 1.2,
+              "height": 0.2,
+              "depth": 0.5
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "#444444",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000016",
+      "name": "Fixture",
+      "parent": "e0100000-0000-4000-8000-000000000013",
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -0.6,
+              9.89,
+              0
+            ],
+            "rotation": [
+              0.7071067811865475,
+              0,
+              0,
+              0.7071067811865476
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "PlaneGeometry",
+            "geometryParams": {
+              "width": 0.4,
+              "height": 0.2
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "#ffffff",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": false,
+            "receiveShadow": false,
+            "enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000017",
+      "name": "Spot",
+      "parent": "e0100000-0000-4000-8000-000000000013",
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -0.6,
+              10,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "Light",
+          "data": {
+            "type": "spot",
+            "color": "#ffffff",
+            "intensity": 150,
+            "distance": 40,
+            "decay": 1.5,
+            "outerAngle": 57,
+            "innerAngle": 48.449999999999996,
+            "castShadow": true,
+            "enabled": true,
+            "localPosition": [
+              0,
+              0,
+              0
+            ],
+            "targetPosition": [
+              -3.4,
+              -10,
+              0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000018",
+      "name": "LampPost_-10_0_75",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -10,
+              0,
+              75
+            ],
+            "rotation": [
+              0,
+              1,
+              0,
+              6.123233995736766e-17
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              0.1,
+              5,
+              0.1
+            ],
+            "isStatic": true,
+            "offset": [
+              0,
+              5,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000019",
+      "name": "Pole",
+      "parent": "e0100000-0000-4000-8000-000000000018",
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              5,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "CylinderGeometry",
+            "geometryParams": {
+              "radiusTop": 0.1,
+              "radiusBottom": 0.1,
+              "height": 10,
+              "radialSegments": 32
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "#444444",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000020",
+      "name": "Arm",
+      "parent": "e0100000-0000-4000-8000-000000000018",
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -0.4,
+              10,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 1.2,
+              "height": 0.2,
+              "depth": 0.5
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "#444444",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000021",
+      "name": "Fixture",
+      "parent": "e0100000-0000-4000-8000-000000000018",
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -0.6,
+              9.89,
+              0
+            ],
+            "rotation": [
+              0.7071067811865475,
+              0,
+              0,
+              0.7071067811865476
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "PlaneGeometry",
+            "geometryParams": {
+              "width": 0.4,
+              "height": 0.2
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "#ffffff",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": false,
+            "receiveShadow": false,
+            "enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000022",
+      "name": "Spot",
+      "parent": "e0100000-0000-4000-8000-000000000018",
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -0.6,
+              10,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "Light",
+          "data": {
+            "type": "spot",
+            "color": "#ffffff",
+            "intensity": 150,
+            "distance": 40,
+            "decay": 1.5,
+            "outerAngle": 57,
+            "innerAngle": 48.449999999999996,
+            "castShadow": true,
+            "enabled": true,
+            "localPosition": [
+              0,
+              0,
+              0
+            ],
+            "targetPosition": [
+              -3.4,
+              -10,
+              0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000023",
+      "name": "LampPost_10_0_100",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              10,
+              0,
+              100
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              0.1,
+              5,
+              0.1
+            ],
+            "isStatic": true,
+            "offset": [
+              0,
+              5,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000024",
+      "name": "Pole",
+      "parent": "e0100000-0000-4000-8000-000000000023",
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              5,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "CylinderGeometry",
+            "geometryParams": {
+              "radiusTop": 0.1,
+              "radiusBottom": 0.1,
+              "height": 10,
+              "radialSegments": 32
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "#444444",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000025",
+      "name": "Arm",
+      "parent": "e0100000-0000-4000-8000-000000000023",
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -0.4,
+              10,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 1.2,
+              "height": 0.2,
+              "depth": 0.5
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "#444444",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000026",
+      "name": "Fixture",
+      "parent": "e0100000-0000-4000-8000-000000000023",
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -0.6,
+              9.89,
+              0
+            ],
+            "rotation": [
+              0.7071067811865475,
+              0,
+              0,
+              0.7071067811865476
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "PlaneGeometry",
+            "geometryParams": {
+              "width": 0.4,
+              "height": 0.2
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "#ffffff",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": false,
+            "receiveShadow": false,
+            "enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000027",
+      "name": "Spot",
+      "parent": "e0100000-0000-4000-8000-000000000023",
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -0.6,
+              10,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "Light",
+          "data": {
+            "type": "spot",
+            "color": "#ffffff",
+            "intensity": 150,
+            "distance": 40,
+            "decay": 1.5,
+            "outerAngle": 57,
+            "innerAngle": 48.449999999999996,
+            "castShadow": true,
+            "enabled": true,
+            "localPosition": [
+              0,
+              0,
+              0
+            ],
+            "targetPosition": [
+              -3.4,
+              -10,
+              0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000002",
+      "name": "Vehicle",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              5,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "PhysicsController",
+          "data": {
+            "type": "custom-raycast",
+            "enabled": true,
+            "driveProfile": "isaac",
+            "chassis": {
+              "mass": 150,
+              "halfExtents": [
+                1,
+                0.55,
+                2.35
+              ],
+              "lift": 0,
+              "angularDamping": 0.35,
+              "inertiaScale": 3
+            },
+            "wheels": {
+              "radius": 0.38,
+              "width": 0.32,
+              "halfWidth": 0.85,
+              "height": -0.3,
+              "halfLength": 1.35
+            },
+            "suspension": {
+              "stiffness": 30,
+              "restLength": 0.3,
+              "maxTravel": 0.3,
+              "frictionSlip": 1.4,
+              "dampingRelaxation": 2.3,
+              "dampingCompression": 4.4,
+              "rollInfluence": 0.01,
+              "sideFrictionStiffness": 1
+            },
+            "engine": {
+              "force": 30,
+              "boostMultiplier": 1,
+              "cruiseSpeedKmh": 9999,
+              "maxSpeedKmh": 9999,
+              "reverseFactor": 1
+            },
+            "steering": {
+              "maxSteer": 10,
+              "steerSpeed": 100
+            },
+            "brakes": {
+              "brakeForce": 2,
+              "handbrakeForce": 2
+            },
+            "jump": {
+              "impulse": 2000,
+              "cooldown": 0.5,
+              "bufferTime": 0.18,
+              "airborneGravityScale": 2
+            },
+            "assists": {
+              "antiWheelie": false,
+              "tiltClampAirborne": 0,
+              "uprightAssist": false,
+              "wallSlideAssist": false,
+              "wallSlideMaxSpeedKmh": 0,
+              "wallSlideStrength": 0,
+              "cornerLiftDamping": 0,
+              "gripLoadCap": 99,
+              "landingGripTime": 0,
+              "landingGripFactor": 1
+            }
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "ModelGeometry",
+            "geometryParams": {},
+            "modelAsset": "sketches/isaac-mason/chassis.glb",
+            "material": {
+              "color": "#ffffff",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000029",
+      "name": "HeadlightL",
+      "parent": "e0100000-0000-4000-8000-000000000002",
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0.7,
+              -0.2,
+              2.4
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "Light",
+          "data": {
+            "type": "spot",
+            "color": "#ffffff",
+            "intensity": 20,
+            "distance": 40,
+            "decay": 1,
+            "outerAngle": 46,
+            "innerAngle": 39.1,
+            "castShadow": true,
+            "enabled": true,
+            "localPosition": [
+              0,
+              0,
+              0
+            ],
+            "targetPosition": [
+              0,
+              0,
+              17.6
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000030",
+      "name": "HeadlightR",
+      "parent": "e0100000-0000-4000-8000-000000000002",
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -0.7,
+              -0.2,
+              2.4
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "Light",
+          "data": {
+            "type": "spot",
+            "color": "#ffffff",
+            "intensity": 20,
+            "distance": 40,
+            "decay": 1,
+            "outerAngle": 46,
+            "innerAngle": 39.1,
+            "castShadow": true,
+            "enabled": true,
+            "localPosition": [
+              0,
+              0,
+              0
+            ],
+            "targetPosition": [
+              0,
+              0,
+              17.6
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000031",
+      "name": "frontLeft",
+      "parent": "e0100000-0000-4000-8000-000000000002",
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "ModelGeometry",
+            "geometryParams": {},
+            "modelAsset": "sketches/isaac-mason/wheel.glb",
+            "material": {
+              "color": "#ffffff",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000032",
+      "name": "frontRight",
+      "parent": "e0100000-0000-4000-8000-000000000002",
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "ModelGeometry",
+            "geometryParams": {},
+            "modelAsset": "sketches/isaac-mason/wheel.glb",
+            "material": {
+              "color": "#ffffff",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000033",
+      "name": "backLeft",
+      "parent": "e0100000-0000-4000-8000-000000000002",
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "ModelGeometry",
+            "geometryParams": {},
+            "modelAsset": "sketches/isaac-mason/wheel.glb",
+            "material": {
+              "color": "#ffffff",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000034",
+      "name": "backRight",
+      "parent": "e0100000-0000-4000-8000-000000000002",
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "ModelGeometry",
+            "geometryParams": {},
+            "modelAsset": "sketches/isaac-mason/wheel.glb",
+            "material": {
+              "color": "#ffffff",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000035",
+      "name": "StaticBox",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              -5,
+              75
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 240,
+              "height": 10,
+              "depth": 240
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "#303030",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              120,
+              5,
+              120
+            ],
+            "isStatic": true,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000036",
+      "name": "StaticBox",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              -1,
+              30
+            ],
+            "rotation": [
+              -0.14943813247359922,
+              0,
+              0,
+              0.9887710779360422
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 10,
+              "height": 1,
+              "depth": 10
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              5,
+              0.5,
+              5
+            ],
+            "isStatic": true,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000037",
+      "name": "CenterLane",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              0.02,
+              50
+            ],
+            "rotation": [
+              -0.7071067811865475,
+              0,
+              0,
+              0.7071067811865476
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "PlaneGeometry",
+            "geometryParams": {
+              "width": 15,
+              "height": 150
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "#222222",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": false,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000038",
+      "name": "Cone0",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              4,
+              1,
+              6
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "CylinderGeometry",
+            "geometryParams": {
+              "radiusTop": 0.05,
+              "radiusBottom": 0.3,
+              "height": 1,
+              "radialSegments": 32
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "capsule",
+            "radius": 0.25,
+            "halfHeight": 0.4,
+            "isStatic": false,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000039",
+      "name": "Cone1",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              2,
+              1,
+              8
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "CylinderGeometry",
+            "geometryParams": {
+              "radiusTop": 0.05,
+              "radiusBottom": 0.3,
+              "height": 1,
+              "radialSegments": 32
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "capsule",
+            "radius": 0.25,
+            "halfHeight": 0.4,
+            "isStatic": false,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000040",
+      "name": "Cone2",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              4,
+              1,
+              10
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "CylinderGeometry",
+            "geometryParams": {
+              "radiusTop": 0.05,
+              "radiusBottom": 0.3,
+              "height": 1,
+              "radialSegments": 32
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "capsule",
+            "radius": 0.25,
+            "halfHeight": 0.4,
+            "isStatic": false,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000041",
+      "name": "Cone3",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -4,
+              1,
+              16
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "CylinderGeometry",
+            "geometryParams": {
+              "radiusTop": 0.05,
+              "radiusBottom": 0.3,
+              "height": 1,
+              "radialSegments": 32
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "capsule",
+            "radius": 0.25,
+            "halfHeight": 0.4,
+            "isStatic": false,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000042",
+      "name": "Cone4",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -2,
+              1,
+              18
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "CylinderGeometry",
+            "geometryParams": {
+              "radiusTop": 0.05,
+              "radiusBottom": 0.3,
+              "height": 1,
+              "radialSegments": 32
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "capsule",
+            "radius": 0.25,
+            "halfHeight": 0.4,
+            "isStatic": false,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000043",
+      "name": "Cone5",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -4,
+              1,
+              20
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "CylinderGeometry",
+            "geometryParams": {
+              "radiusTop": 0.05,
+              "radiusBottom": 0.3,
+              "height": 1,
+              "radialSegments": 32
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "capsule",
+            "radius": 0.25,
+            "halfHeight": 0.4,
+            "isStatic": false,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000044",
+      "name": "StaticBox",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -0.8,
+              -0.42,
+              50
+            ],
+            "rotation": [
+              0,
+              0,
+              0.7071067811865475,
+              0.7071067811865476
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 1,
+              "height": 2,
+              "depth": 1
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              0.5,
+              1,
+              0.5
+            ],
+            "isStatic": true,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000045",
+      "name": "StaticBox",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0.8,
+              -0.42,
+              51.5
+            ],
+            "rotation": [
+              0,
+              0,
+              0.7071067811865475,
+              0.7071067811865476
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 1,
+              "height": 2,
+              "depth": 1
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              0.5,
+              1,
+              0.5
+            ],
+            "isStatic": true,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000046",
+      "name": "StaticBox",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -0.8,
+              -0.42,
+              53
+            ],
+            "rotation": [
+              0,
+              0,
+              0.7071067811865475,
+              0.7071067811865476
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 1,
+              "height": 2,
+              "depth": 1
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              0.5,
+              1,
+              0.5
+            ],
+            "isStatic": true,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000047",
+      "name": "StaticBox",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0.8,
+              -0.42,
+              54.5
+            ],
+            "rotation": [
+              0,
+              0,
+              0.7071067811865475,
+              0.7071067811865476
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 1,
+              "height": 2,
+              "depth": 1
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              0.5,
+              1,
+              0.5
+            ],
+            "isStatic": true,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000048",
+      "name": "StaticBox",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -0.8,
+              -0.42,
+              56
+            ],
+            "rotation": [
+              0,
+              0,
+              0.7071067811865475,
+              0.7071067811865476
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 1,
+              "height": 2,
+              "depth": 1
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              0.5,
+              1,
+              0.5
+            ],
+            "isStatic": true,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000049",
+      "name": "StaticBox",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0.8,
+              -0.42,
+              57.5
+            ],
+            "rotation": [
+              0,
+              0,
+              0.7071067811865475,
+              0.7071067811865476
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 1,
+              "height": 2,
+              "depth": 1
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              0.5,
+              1,
+              0.5
+            ],
+            "isStatic": true,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000050",
+      "name": "DynamicBox",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              2,
+              70
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 2,
+              "height": 1,
+              "depth": 2
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              1,
+              0.5,
+              1
+            ],
+            "isStatic": false,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000051",
+      "name": "DynamicBox",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              4.5,
+              70
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 2,
+              "height": 1,
+              "depth": 2
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              1,
+              0.5,
+              1
+            ],
+            "isStatic": false,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000052",
+      "name": "DynamicBox",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              7,
+              70
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 2,
+              "height": 1,
+              "depth": 2
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              1,
+              0.5,
+              1
+            ],
+            "isStatic": false,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000053",
+      "name": "DynamicBox",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              9.5,
+              70
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 2,
+              "height": 1,
+              "depth": 2
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              1,
+              0.5,
+              1
+            ],
+            "isStatic": false,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000054",
+      "name": "DynamicBox",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              12,
+              70
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 2,
+              "height": 1,
+              "depth": 2
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              1,
+              0.5,
+              1
+            ],
+            "isStatic": false,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0100000-0000-4000-8000-000000000055",
+      "name": "DynamicBox",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              14.5,
+              70
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 2,
+              "height": 1,
+              "depth": 2
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              1,
+              0.5,
+              1
+            ],
+            "isStatic": false,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "renderSettings": {
+    "version": 1,
+    "features": {
+      "toneMapping": true,
+      "shadows": true,
+      "postProcessing": false,
+      "renderingLayers": false,
+      "renderTargets": false,
+      "fxaa": false,
+      "bloom": false,
+      "vignette": false
+    },
+    "toneMapping": "aces",
+    "toneMappingExposure": 1,
+    "outputColorSpace": "srgb",
+    "background": {
+      "type": "color",
+      "color": "#000000"
+    },
+    "ambient": {
+      "color": "#ffffff",
+      "intensity": 0.3
+    },
+    "shadows": {
+      "enabled": true,
+      "quality": "medium",
+      "type": "pcf",
+      "mapSize": 1024,
+      "maxCasters": 8
+    }
+  }
+}

@@ -1,6 +1,7 @@
 import {
   Engine,
   SceneLoader,
+  PHYSICS_CATCH_UP_POLICY,
   PhysicsColliderSystem,
   startVehiclePlayMode,
   projectPathToUrl,
@@ -22,7 +23,7 @@ async function main() {
   )
 
   const backend = await createRapierPhysicsBackend()
-  const physicsSystem = engine.setPhysicsBackend(backend)
+  const physicsSystem = engine.setPhysicsBackend(backend, PHYSICS_CATCH_UP_POLICY)
   engine.addSystem(new PhysicsColliderSystem(physicsSystem))
   startVehiclePlayMode(engine, physicsSystem, {
     input: { pointerTarget: canvas },

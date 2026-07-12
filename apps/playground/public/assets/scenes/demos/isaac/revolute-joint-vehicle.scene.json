@@ -1,0 +1,1559 @@
+{
+  "schemaVersion": 1,
+  "metadata": {
+    "name": "Isaac — Revolute Joint Vehicle",
+    "activeCameraId": "e0700000-0000-4000-8000-000000000001"
+  },
+  "entities": [
+    {
+      "id": "e0700000-0000-4000-8000-000000000001",
+      "name": "MainCamera",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              30,
+              30,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "Camera",
+          "data": {
+            "fov": 60,
+            "near": 0.1,
+            "far": 2000,
+            "enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0700000-0000-4000-8000-000000000003",
+      "name": "Sun",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -10,
+              30,
+              20
+            ],
+            "rotation": [
+              -0.2446258794777393,
+              0.14479246283091116,
+              -0.036971585637570345,
+              0.9580325796404553
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "Light",
+          "data": {
+            "type": "directional",
+            "color": "#ffffff",
+            "intensity": 1.2,
+            "castShadow": true,
+            "enabled": true,
+            "localPosition": [
+              0,
+              0,
+              0
+            ],
+            "targetPosition": [
+              0,
+              0,
+              -1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0700000-0000-4000-8000-000000000004",
+      "name": "StaticBox",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              -2,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 150,
+              "height": 2,
+              "depth": 150
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "#444444",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              75,
+              1,
+              75
+            ],
+            "isStatic": true,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0700000-0000-4000-8000-000000000002",
+      "name": "RevoluteVehicle",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              1,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "PhysicsController",
+          "data": {
+            "type": "revolute-joint-vehicle",
+            "enabled": true,
+            "chassis": {
+              "mass": 5,
+              "halfExtents": [
+                1.75,
+                0.25,
+                0.75
+              ],
+              "lift": 0.5,
+              "angularDamping": 0.35,
+              "inertiaScale": 3
+            },
+            "wheels": [
+              {
+                "axlePosition": [
+                  -1.2,
+                  -0.6,
+                  0.7
+                ],
+                "wheelPosition": [
+                  -1.2,
+                  -0.6,
+                  1
+                ],
+                "isSteered": true,
+                "isDriven": false
+              },
+              {
+                "axlePosition": [
+                  -1.2,
+                  -0.6,
+                  -0.7
+                ],
+                "wheelPosition": [
+                  -1.2,
+                  -0.6,
+                  -1
+                ],
+                "isSteered": true,
+                "isDriven": false
+              },
+              {
+                "axlePosition": [
+                  1.2,
+                  -0.6,
+                  0.7
+                ],
+                "wheelPosition": [
+                  1.2,
+                  -0.6,
+                  1
+                ],
+                "isSteered": false,
+                "isDriven": true
+              },
+              {
+                "axlePosition": [
+                  1.2,
+                  -0.6,
+                  -0.7
+                ],
+                "wheelPosition": [
+                  1.2,
+                  -0.6,
+                  -1
+                ],
+                "isSteered": false,
+                "isDriven": true
+              }
+            ],
+            "wheelRadius": 0.125,
+            "wheelHalfHeight": 0.125,
+            "drivenTargetVelocity": 1000,
+            "drivenFactor": 10,
+            "steerAngle": 0.6,
+            "steerStiffness": 100,
+            "steerDamping": 10
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 3.5,
+              "height": 0.5,
+              "depth": 1.5
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "#339af0",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0700000-0000-4000-8000-000000000005",
+      "name": "DynamicBox",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -28,
+              0.2,
+              11
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 1,
+              "height": 2,
+              "depth": 1
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              0.5,
+              1,
+              0.5
+            ],
+            "isStatic": false,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0700000-0000-4000-8000-000000000006",
+      "name": "DynamicBox",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -28,
+              0.2,
+              9
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 1,
+              "height": 2,
+              "depth": 1
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              0.5,
+              1,
+              0.5
+            ],
+            "isStatic": false,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0700000-0000-4000-8000-000000000007",
+      "name": "DynamicBox",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -28,
+              0.2,
+              7
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 1,
+              "height": 2,
+              "depth": 1
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              0.5,
+              1,
+              0.5
+            ],
+            "isStatic": false,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0700000-0000-4000-8000-000000000008",
+      "name": "DynamicBox",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -28,
+              0.2,
+              5
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 1,
+              "height": 2,
+              "depth": 1
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              0.5,
+              1,
+              0.5
+            ],
+            "isStatic": false,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0700000-0000-4000-8000-000000000009",
+      "name": "DynamicBox",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -28,
+              0.2,
+              3
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 1,
+              "height": 2,
+              "depth": 1
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              0.5,
+              1,
+              0.5
+            ],
+            "isStatic": false,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0700000-0000-4000-8000-000000000010",
+      "name": "DynamicBox",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -28,
+              0.2,
+              1
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 1,
+              "height": 2,
+              "depth": 1
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              0.5,
+              1,
+              0.5
+            ],
+            "isStatic": false,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0700000-0000-4000-8000-000000000011",
+      "name": "DynamicBox",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -28,
+              0.2,
+              -1
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 1,
+              "height": 2,
+              "depth": 1
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              0.5,
+              1,
+              0.5
+            ],
+            "isStatic": false,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0700000-0000-4000-8000-000000000012",
+      "name": "DynamicBox",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -28,
+              0.2,
+              -3
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 1,
+              "height": 2,
+              "depth": 1
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              0.5,
+              1,
+              0.5
+            ],
+            "isStatic": false,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0700000-0000-4000-8000-000000000013",
+      "name": "DynamicBox",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -28,
+              0.2,
+              -5
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 1,
+              "height": 2,
+              "depth": 1
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              0.5,
+              1,
+              0.5
+            ],
+            "isStatic": false,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0700000-0000-4000-8000-000000000014",
+      "name": "DynamicBox",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -28,
+              0.2,
+              -7
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 1,
+              "height": 2,
+              "depth": 1
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              0.5,
+              1,
+              0.5
+            ],
+            "isStatic": false,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0700000-0000-4000-8000-000000000015",
+      "name": "DynamicBox",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -28,
+              0.2,
+              -9
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 1,
+              "height": 2,
+              "depth": 1
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              0.5,
+              1,
+              0.5
+            ],
+            "isStatic": false,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0700000-0000-4000-8000-000000000016",
+      "name": "DynamicBox",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -28,
+              0.2,
+              -11
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 1,
+              "height": 2,
+              "depth": 1
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              0.5,
+              1,
+              0.5
+            ],
+            "isStatic": false,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0700000-0000-4000-8000-000000000017",
+      "name": "Sphere0",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -8.785177621757612,
+              1.352500181645155,
+              0.7728119823150337
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "SphereGeometry",
+            "geometryParams": {
+              "radius": 0.5635251095052809,
+              "widthSegments": 32,
+              "heightSegments": 16
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "sphere",
+            "radius": 0.5635251095052809,
+            "isStatic": false,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0700000-0000-4000-8000-000000000018",
+      "name": "Sphere1",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -8.33831398980692,
+              2.5026407884433866,
+              -4.743360951542854
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "SphereGeometry",
+            "geometryParams": {
+              "radius": 0.5981468586018309,
+              "widthSegments": 32,
+              "heightSegments": 16
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "sphere",
+            "radius": 0.5981468586018309,
+            "isStatic": false,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0700000-0000-4000-8000-000000000019",
+      "name": "Sphere2",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -11.709219288313761,
+              1.4738400150090456,
+              3.738137057516724
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "SphereGeometry",
+            "geometryParams": {
+              "radius": 1.1650617935694754,
+              "widthSegments": 32,
+              "heightSegments": 16
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "sphere",
+            "radius": 1.1650617935694754,
+            "isStatic": false,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0700000-0000-4000-8000-000000000020",
+      "name": "Sphere3",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -19.91951412986964,
+              4.412810894660652,
+              -0.0032327184453606606
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "SphereGeometry",
+            "geometryParams": {
+              "radius": 1.1471888120518998,
+              "widthSegments": 32,
+              "heightSegments": 16
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "sphere",
+            "radius": 1.1471888120518998,
+            "isStatic": false,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0700000-0000-4000-8000-000000000021",
+      "name": "Sphere4",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -14.630014196736738,
+              4.44582474976778,
+              0.9646977647207677
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "SphereGeometry",
+            "geometryParams": {
+              "radius": 1.1226282693911345,
+              "widthSegments": 32,
+              "heightSegments": 16
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "orange",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "sphere",
+            "radius": 1.1226282693911345,
+            "isStatic": false,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

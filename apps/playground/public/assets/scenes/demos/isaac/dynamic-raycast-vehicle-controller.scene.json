@@ -1,0 +1,307 @@
+{
+  "schemaVersion": 1,
+  "metadata": {
+    "name": "Isaac — Dynamic Raycast Vehicle",
+    "activeCameraId": "e0200000-0000-4000-8000-000000000001"
+  },
+  "entities": [
+    {
+      "id": "e0200000-0000-4000-8000-000000000001",
+      "name": "MainCamera",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              5,
+              10
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "Camera",
+          "data": {
+            "fov": 50,
+            "near": 0.1,
+            "far": 2000,
+            "enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0200000-0000-4000-8000-000000000003",
+      "name": "Sun",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              20,
+              10
+            ],
+            "rotation": [
+              -0.2446258794777393,
+              0.14479246283091116,
+              -0.036971585637570345,
+              0.9580325796404553
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "Light",
+          "data": {
+            "type": "directional",
+            "color": "#ffffff",
+            "intensity": 1.2,
+            "castShadow": true,
+            "enabled": true,
+            "localPosition": [
+              0,
+              0,
+              0
+            ],
+            "targetPosition": [
+              0,
+              0,
+              -1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0200000-0000-4000-8000-000000000004",
+      "name": "StaticBox",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              -0.5,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 600,
+              "height": 1,
+              "depth": 600
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "#444444",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              300,
+              0.5,
+              300
+            ],
+            "isStatic": true,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0200000-0000-4000-8000-000000000005",
+      "name": "RacetrackVisual",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -50,
+              0,
+              -150
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              0.6,
+              0.6,
+              0.6
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "ModelGeometry",
+            "geometryParams": {},
+            "modelAsset": "sketches/isaac-mason/racetrack.glb",
+            "material": {
+              "color": "#cccccc",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.15,
+              "roughness": 0.45
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0200000-0000-4000-8000-000000000002",
+      "name": "Vehicle",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -7,
+              2,
+              -130
+            ],
+            "rotation": [
+              0,
+              0.7071067811865475,
+              0,
+              0.7071067811865476
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "PhysicsController",
+          "data": {
+            "type": "dynamic-raycast",
+            "enabled": true,
+            "chassis": {
+              "mass": 250,
+              "halfExtents": [
+                0.8,
+                0.2,
+                0.4
+              ],
+              "lift": 0.5,
+              "angularDamping": 0.35,
+              "inertiaScale": 3
+            },
+            "wheels": {
+              "radius": 0.15,
+              "width": 0.25,
+              "halfWidth": 0.65,
+              "height": -0.15,
+              "halfLength": 0.45
+            },
+            "suspension": {
+              "stiffness": 30,
+              "restLength": 0.55,
+              "maxTravel": 0.42,
+              "frictionSlip": 1.4,
+              "dampingRelaxation": 4.6,
+              "dampingCompression": 8.8,
+              "rollInfluence": 0.01,
+              "sideFrictionStiffness": 1
+            },
+            "accelerateForce": 2,
+            "brakeForce": 0.05,
+            "steerAngle": 0.1308996938995747
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 1.6,
+              "height": 0.4,
+              "depth": 0.8
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "#ff6b6b",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,414 @@
+{
+  "schemaVersion": 1,
+  "metadata": {
+    "name": "Isaac — Pointer Controls",
+    "activeCameraId": "e0600000-0000-4000-8000-000000000001"
+  },
+  "entities": [
+    {
+      "id": "e0600000-0000-4000-8000-000000000001",
+      "name": "MainCamera",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              4,
+              4,
+              4
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "Camera",
+          "data": {
+            "fov": 50,
+            "near": 0.1,
+            "far": 2000,
+            "enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0600000-0000-4000-8000-000000000002",
+      "name": "PointLight",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -10,
+              5,
+              10
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "Light",
+          "data": {
+            "type": "point",
+            "color": "#ffffff",
+            "intensity": 100,
+            "castShadow": false,
+            "enabled": true,
+            "localPosition": [
+              0,
+              0,
+              0
+            ],
+            "targetPosition": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0600000-0000-4000-8000-000000000003",
+      "name": "StaticBox",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              -1,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 200,
+              "height": 2,
+              "depth": 200
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "#888888",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              100,
+              1,
+              100
+            ],
+            "isStatic": true,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0600000-0000-4000-8000-000000000004",
+      "name": "Cube",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              5,
+              0
+            ],
+            "rotation": [
+              -0.19134171618254486,
+              -0.19134171618254486,
+              0.03806023374435662,
+              0.9619397662556434
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 1.2,
+              "height": 1.2,
+              "depth": 1.2
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "#4dabf7",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "box",
+            "halfExtents": [
+              0.6,
+              0.6,
+              0.6
+            ],
+            "isStatic": false,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "type": "PhysicsController",
+          "data": {
+            "type": "pointer-controls",
+            "enabled": true,
+            "draggable": true,
+            "constraintType": "spherical"
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0600000-0000-4000-8000-000000000005",
+      "name": "Torus",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              -2,
+              5,
+              2
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "TorusGeometry",
+            "geometryParams": {
+              "radius": 0.6,
+              "tube": 0.2,
+              "radialSegments": 16,
+              "tubularSegments": 32
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "#ffd43b",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "sphere",
+            "radius": 0.75,
+            "isStatic": false,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "type": "PhysicsController",
+          "data": {
+            "type": "pointer-controls",
+            "enabled": true,
+            "draggable": true,
+            "constraintType": "spherical"
+          }
+        }
+      ]
+    },
+    {
+      "id": "e0600000-0000-4000-8000-000000000006",
+      "name": "Sphere",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              2,
+              5,
+              -2
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "SphereGeometry",
+            "geometryParams": {
+              "radius": 0.6,
+              "widthSegments": 32,
+              "heightSegments": 16
+            },
+            "modelAsset": "",
+            "material": {
+              "color": "#ff6b6b",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.05,
+              "roughness": 0.7
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "shape": "sphere",
+            "radius": 0.6,
+            "isStatic": false,
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        },
+        {
+          "type": "PhysicsController",
+          "data": {
+            "type": "pointer-controls",
+            "enabled": true,
+            "draggable": true,
+            "constraintType": "spherical"
+          }
+        }
+      ]
+    }
+  ]
+}

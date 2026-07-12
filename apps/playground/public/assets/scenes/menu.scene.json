@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "metadata": {
-    "name": "Menu",
-    "activeCameraId": "a0000000-0000-4000-8000-000000000001"
+    "name": "M1 Vehicle Smoke",
+    "activeCameraId": "c1000000-0000-4000-8000-000000000001"
   },
   "entities": [
     {
-      "id": "a0000000-0000-4000-8000-000000000001",
+      "id": "c1000000-0000-4000-8000-000000000001",
       "name": "MainCamera",
       "parent": null,
       "components": [
@@ -15,8 +15,8 @@
           "data": {
             "position": [
               0,
-              0,
-              14.070270458441648
+              14,
+              28
             ],
             "rotation": [
               0,
@@ -34,16 +34,16 @@
         {
           "type": "Camera",
           "data": {
-            "fov": 90,
+            "fov": 70,
             "near": 0.1,
-            "far": 1000,
+            "far": 500,
             "enabled": true
           }
         }
       ]
     },
     {
-      "id": "a0000000-0000-4000-8000-000000000003",
+      "id": "c1000000-0000-4000-8000-000000000002",
       "name": "Sun",
       "parent": null,
       "components": [
@@ -51,15 +51,15 @@
           "type": "Transform",
           "data": {
             "position": [
-              -0.6926469463393854,
-              0.22383022175479717,
-              -2.2913724243816582
+              20,
+              40,
+              15
             ],
             "rotation": [
-              0.4231237598191002,
-              0.4698607157159635,
-              -0.057224858935697884,
-              -0.7726076023591927
+              -0.35,
+              0.2,
+              0,
+              0.91
             ],
             "scale": [
               1,
@@ -71,14 +71,14 @@
         {
           "type": "Light",
           "data": {
-            "color": "#ffffff",
-            "intensity": 1.2,
-            "castShadow": false,
+            "color": "#fff8ee",
+            "intensity": 1.4,
+            "castShadow": true,
             "enabled": true,
             "type": "directional",
             "localPosition": [
               0,
-              0.4,
+              0,
               0
             ],
             "targetPosition": [
@@ -91,100 +91,45 @@
       ]
     },
     {
-      "id": "051b5b8e-f6e5-421a-a99a-25e5432089b7",
-      "name": "Cube",
+      "id": "c1000000-0000-4000-8000-000000000003",
+      "name": "RCLevel",
       "parent": null,
       "components": [
         {
           "type": "Transform",
           "data": {
             "position": [
-              3.5543223454805934,
-              1.3651241717255198,
-              -2.1628108765437615
-            ],
-            "rotation": [
               0,
-              0,
-              0,
-              1
-            ],
-            "scale": [
-              1,
-              1,
-              1
-            ]
-          }
-        },
-        {
-          "type": "MeshRenderer",
-          "data": {
-            "geometryType": "BoxGeometry",
-            "geometryParams": {
-              "width": 1,
-              "height": 1,
-              "depth": 1
-            },
-            "modelAsset": "",
-            "material": {
-              "color": "#6699ff",
-              "opacity": 1,
-              "transparent": false,
-              "wireframe": false,
-              "materialType": "standard",
-              "metalness": 0,
-              "roughness": 0.5
-            },
-            "castShadow": true,
-            "receiveShadow": true,
-            "enabled": true
-          }
-        }
-      ]
-    },
-    {
-      "id": "273de7a5-c6a3-421c-a047-ffe90dc4beac",
-      "name": "Plane",
-      "parent": null,
-      "components": [
-        {
-          "type": "Transform",
-          "data": {
-            "position": [
-              0.6726253907456665,
-              -2.783577764191034,
+              2,
               0
             ],
             "rotation": [
-              -0.7071067811865475,
               0,
               0,
-              0.7071067811865476
+              0,
+              1
             ],
             "scale": [
-              1000.0200000000001,
-              1000.0200000000001,
-              1000.0200000000001
+              3,
+              3,
+              3
             ]
           }
         },
         {
           "type": "MeshRenderer",
           "data": {
-            "geometryType": "PlaneGeometry",
-            "geometryParams": {
-              "width": 1,
-              "height": 1
-            },
-            "modelAsset": "",
+            "geometryType": "ModelGeometry",
+            "geometryParams": {},
+            "modelAsset": "models/rc-level.glb",
             "material": {
-              "color": "#6699ff",
+              "color": "#ffffff",
               "opacity": 1,
               "transparent": false,
               "wireframe": false,
               "materialType": "standard",
-              "metalness": 0,
-              "roughness": 0.5
+              "metalness": 0.1,
+              "roughness": 0.6
             },
             "castShadow": true,
             "receiveShadow": true,
@@ -194,17 +139,308 @@
       ]
     },
     {
-      "id": "c5a0794d-112e-4234-989e-513f0b5ee74a",
-      "name": "Box_A.gltf",
+      "id": "c1000000-0000-4000-8000-000000000004",
+      "name": "GroundCollider",
       "parent": null,
       "components": [
         {
           "type": "Transform",
           "data": {
             "position": [
-              -2.5852949722068264,
               0,
-              -2.9228585060772962
+              1.5,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "isStatic": true,
+            "shape": "box",
+            "halfExtents": [
+              45,
+              1,
+              45
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "c1000000-0000-4000-8000-000000000005",
+      "name": "RampCollider",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              3,
+              -25
+            ],
+            "rotation": [
+              -0.18,
+              0,
+              0,
+              0.984
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "isStatic": true,
+            "shape": "box",
+            "halfExtents": [
+              13,
+              0.5,
+              8
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "c1000000-0000-4000-8000-000000000006",
+      "name": "RampCollider2",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              18,
+              4,
+              10
+            ],
+            "rotation": [
+              -0.12,
+              0.5,
+              0,
+              0.85
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "isStatic": true,
+            "shape": "box",
+            "halfExtents": [
+              10,
+              0.5,
+              6
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "c1000000-0000-4000-8000-000000000010",
+      "name": "Vehicle",
+      "parent": null,
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              10,
+              5
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "Collider",
+          "data": {
+            "offset": [
+              0,
+              0.5,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "isStatic": false,
+            "shape": "box",
+            "halfExtents": [
+              0.9,
+              0.3,
+              1.55
+            ]
+          }
+        },
+        {
+          "type": "PhysicsController",
+          "data": {
+            "type": "custom-raycast",
+            "chassis": {
+              "mass": 250,
+              "halfExtents": [
+                0.9,
+                0.3,
+                1.55
+              ],
+              "lift": 0.5,
+              "angularDamping": 0.12,
+              "inertiaScale": 3
+            },
+            "wheels": {
+              "radius": 0.42,
+              "width": 0.32,
+              "halfWidth": 0.95,
+              "height": 0.35,
+              "halfLength": 1.55
+            },
+            "suspension": {
+              "stiffness": 30,
+              "restLength": 0.55,
+              "maxTravel": 0.42,
+              "frictionSlip": 1.4,
+              "dampingRelaxation": 2.3,
+              "dampingCompression": 4.4,
+              "rollInfluence": 0.01
+            },
+            "engine": {
+              "force": 30,
+              "boostMultiplier": 1.8,
+              "cruiseSpeedKmh": 90,
+              "maxSpeedKmh": 140,
+              "reverseFactor": 0.6
+            },
+            "steering": {
+              "maxSteer": 0.55,
+              "steerSpeed": 6
+            },
+            "brakes": {
+              "brakeForce": 18,
+              "handbrakeForce": 32
+            },
+            "jump": {
+              "impulse": 2000,
+              "cooldown": 0.5,
+              "bufferTime": 0.18,
+              "airborneGravityScale": 2
+            },
+            "assists": {
+              "antiWheelie": true,
+              "tiltClampAirborne": 4,
+              "uprightAssist": true,
+              "wallSlideAssist": true,
+              "wallSlideMaxSpeedKmh": 18,
+              "wallSlideStrength": 5,
+              "cornerLiftDamping": 0.7,
+              "gripLoadCap": 2,
+              "landingGripTime": 0.35,
+              "landingGripFactor": 0.4
+            },
+            "enabled": true
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "ModelGeometry",
+            "geometryParams": {},
+            "modelAsset": "models/base.glb",
+            "material": {
+              "color": "#ffffff",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.3,
+              "roughness": 0.4
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "c1000000-0000-4000-8000-000000000011",
+      "name": "frontLeft",
+      "parent": "c1000000-0000-4000-8000-000000000010",
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              0,
+              0
             ],
             "rotation": [
               0,
@@ -224,14 +460,14 @@
           "data": {
             "geometryType": "ModelGeometry",
             "geometryParams": {},
-            "modelAsset": "models/Box_A.gltf",
+            "modelAsset": "models/front-left.glb",
             "material": {
-              "color": "#6699ff",
+              "color": "#ffffff",
               "opacity": 1,
               "transparent": false,
               "wireframe": false,
               "materialType": "standard",
-              "metalness": 0,
+              "metalness": 0.2,
               "roughness": 0.5
             },
             "castShadow": true,
@@ -242,68 +478,15 @@
       ]
     },
     {
-      "id": "87288f51-6fa6-4784-ae4a-787c02943995",
-      "name": "New Entity",
-      "parent": null,
+      "id": "c1000000-0000-4000-8000-000000000012",
+      "name": "frontRight",
+      "parent": "c1000000-0000-4000-8000-000000000010",
       "components": [
         {
           "type": "Transform",
           "data": {
             "position": [
-              2.1883699828084726,
-              -2.1986594136424427,
-              1.0317381977510913
-            ],
-            "rotation": [
-              -0.4403203190994594,
-              -0.33040733953536944,
-              -0.7991407315899938,
-              0.24150175503113708
-            ],
-            "scale": [
-              1,
-              1,
-              1
-            ]
-          }
-        },
-        {
-          "type": "Light",
-          "data": {
-            "type": "spot",
-            "color": "#ccdcff",
-            "intensity": 2.1,
-            "colorTemperature": 9650,
-            "distance": 100,
-            "decay": 1.2,
-            "outerAngle": 30.8,
-            "innerAngle": 9.6,
-            "localPosition": [
               0,
-              -0.1,
-              0.8
-            ],
-            "targetPosition": [
-              0,
-              0,
-              -1
-            ],
-            "castShadow": false,
-            "enabled": true
-          }
-        }
-      ]
-    },
-    {
-      "id": "a2e1f535-bef5-4cff-a3f0-e2c628d2541d",
-      "name": "New Entity 2",
-      "parent": null,
-      "components": [
-        {
-          "type": "Transform",
-          "data": {
-            "position": [
-              9,
               0,
               0
             ],
@@ -318,6 +501,122 @@
               1,
               1
             ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "ModelGeometry",
+            "geometryParams": {},
+            "modelAsset": "models/front-right.glb",
+            "material": {
+              "color": "#ffffff",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.2,
+              "roughness": 0.5
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "c1000000-0000-4000-8000-000000000013",
+      "name": "backLeft",
+      "parent": "c1000000-0000-4000-8000-000000000010",
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "ModelGeometry",
+            "geometryParams": {},
+            "modelAsset": "models/back-left.glb",
+            "material": {
+              "color": "#ffffff",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.2,
+              "roughness": 0.5
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "c1000000-0000-4000-8000-000000000014",
+      "name": "backRight",
+      "parent": "c1000000-0000-4000-8000-000000000010",
+      "components": [
+        {
+          "type": "Transform",
+          "data": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "type": "MeshRenderer",
+          "data": {
+            "geometryType": "ModelGeometry",
+            "geometryParams": {},
+            "modelAsset": "models/back-right.glb",
+            "material": {
+              "color": "#ffffff",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false,
+              "materialType": "standard",
+              "metalness": 0.2,
+              "roughness": 0.5
+            },
+            "castShadow": true,
+            "receiveShadow": true,
+            "enabled": true
           }
         }
       ]
@@ -342,21 +641,21 @@
     "outputColorSpace": "srgb",
     "background": {
       "type": "color",
-      "color": "#1a1a2e"
+      "color": "#87a8c4"
     },
     "shadows": {
       "enabled": true,
       "quality": "medium",
       "type": "pcf",
       "mapSize": 1024,
-      "maxCasters": 1,
+      "maxCasters": 4,
       "bias": -0.0001,
       "normalBias": 0.02,
       "radius": 2,
       "autoUpdate": true,
-      "cameraSize": 40,
-      "cameraDistance": 100,
-      "followCamera": true,
+      "cameraSize": 60,
+      "cameraDistance": 120,
+      "followCamera": false,
       "followEditorCamera": false,
       "anchorGroundY": 0,
       "anchorMaxDistanceFactor": 4,
@@ -364,7 +663,7 @@
     },
     "ambient": {
       "color": "#ffffff",
-      "intensity": 0.3
+      "intensity": 0.35
     },
     "postProcessing": {
       "enabled": false,
