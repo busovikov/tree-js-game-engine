@@ -5,6 +5,37 @@
   background: #1a1a2e;
 }
 
+/* Themed scrollbars — match panel/border palette instead of the OS default. */
+.haku-editor-layout,
+.haku-editor-layout * {
+  scrollbar-width: thin;
+  scrollbar-color: #3a3a48 transparent;
+}
+
+.haku-editor-layout *::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.haku-editor-layout *::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.haku-editor-layout *::-webkit-scrollbar-thumb {
+  background-color: #3a3a48;
+  background-clip: padding-box;
+  border: 2px solid transparent;
+  border-radius: 6px;
+}
+
+.haku-editor-layout *::-webkit-scrollbar-thumb:hover {
+  background-color: #4a4a5c;
+}
+
+.haku-editor-layout *::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 .haku-panel-shell {
   display: flex;
   flex-direction: column;
@@ -100,8 +131,36 @@
 .haku-hierarchy-row {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   min-width: 0;
+}
+
+.haku-hierarchy-row__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 14px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #888;
+  font-size: 8px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.haku-hierarchy-row__toggle:hover {
+  color: #ddd;
+}
+
+.haku-hierarchy-row__toggle[aria-hidden='true'] {
+  cursor: default;
+}
+
+.haku-hierarchy-row--selected .haku-hierarchy-row__toggle {
+  color: #c8d0ff;
 }
 
 .haku-hierarchy-row--draggable {
