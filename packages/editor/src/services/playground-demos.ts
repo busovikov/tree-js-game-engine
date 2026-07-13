@@ -61,13 +61,6 @@ export const PLAYGROUND_DEMO_SCENES: readonly PlaygroundDemoScene[] = [
     sourceUrl: `${ISAAC_SKETCHES_BASE}/kinematic-character-controller`,
   },
   {
-    id: 'custom-spring',
-    label: 'Custom Spring',
-    scenePath: 'public/assets/scenes/demos/isaac/custom-spring.scene.json',
-    hint: 'Isaac custom-spring — fixed post + dynamic sphere (r=1.2, mass 5), rest 1 / stiffness 50 / damping 10.',
-    sourceUrl: `${ISAAC_SKETCHES_BASE}/custom-spring`,
-  },
-  {
     id: 'pointer-controls',
     label: 'Pointer Controls',
     scenePath: 'public/assets/scenes/demos/isaac/pointer-controls.scene.json',

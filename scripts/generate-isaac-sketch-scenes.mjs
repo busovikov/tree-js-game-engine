@@ -611,50 +611,6 @@ function capsuleMesh(radius, length, color) {
   }
 }
 
-/** custom-spring */
-function buildCustomSpring() {
-  currentBlock = 0xe0500000
-  idCounter = 0
-  const camId = eid()
-  const postId = eid()
-  const ballId = eid()
-  const entities = [
-    camera(camId, [4, 4, 4], 50),
-    sun(eid()),
-    staticBox([0, -2, 0], [20, 1, 20], '#333333'),
-    entity(postId, 'Post', null, [
-      transform([0, 0, 0]),
-      sphereMesh(0.1, '#999999'),
-      {
-        type: 'Collider',
-        data: { shape: 'sphere', radius: 0.05, isStatic: true, offset: [0, 0, 0], rotation: [0, 0, 0, 1] },
-      },
-    ]),
-    entity(ballId, 'Ball', null, [
-      transform([0, 0, 0]),
-      sphereMesh(1.2, 'orange', { wireframe: true }),
-      {
-        type: 'Collider',
-        data: { shape: 'sphere', radius: 1.2, isStatic: false, offset: [0, 0, 0], rotation: [0, 0, 0, 1] },
-      },
-      {
-        type: 'PhysicsController',
-        data: {
-          type: 'custom-spring',
-          enabled: true,
-          targetEntityId: postId,
-          localAnchorA: [0, 1.2, 0],
-          localAnchorB: [0, 0, 0],
-          restLength: 1,
-          stiffness: 50,
-          damping: 10,
-        },
-      },
-    ]),
-  ]
-  return scene('Isaac — Custom Spring', camId, entities)
-}
-
 /** pointer-controls */
 function buildPointerControls() {
   currentBlock = 0xe0600000
@@ -779,7 +735,6 @@ const SCENES = [
   ['dynamic-raycast-vehicle-controller', buildDynamicRaycast],
   ['arcade-vehicle-controller', buildArcadeVehicle],
   ['kinematic-character-controller', buildKinematicCharacter],
-  ['custom-spring', buildCustomSpring],
   ['pointer-controls', buildPointerControls],
   ['revolute-joint-vehicle', buildRevoluteJointVehicle],
 ]

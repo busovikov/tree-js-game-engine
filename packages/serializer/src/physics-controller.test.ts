@@ -14,7 +14,6 @@ const CONTROLLER_TYPES = [
   'arcade-vehicle',
   'revolute-joint-vehicle',
   'kinematic-character',
-  'custom-spring',
   'pointer-controls',
 ] as const
 

@@ -7,7 +7,6 @@ import {
 } from '@haku/core'
 import type {
   ArcadeVehicleController,
-  CustomSpringController,
   DynamicRaycastController,
   KinematicCharacterController,
   RevoluteJointVehicleController,
@@ -25,7 +24,7 @@ import type {
   Vec3,
 } from '@haku/physics'
 import { createBodyWithShape, destroyBodyWithShape } from '@haku/physics'
-import type { ControllerInput } from './physics-controller-system.js'
+import type { ControllerInput } from '../controllers/registry.js'
 import type { PhysicsWorldSystem } from './physics-world-system.js'
 
 function clamp(value: number, min: number, max: number): number {
@@ -469,70 +468,6 @@ export function updateCharacter(
   }
 }
 
-export function updateCustomSpring(
-  world: IWorld,
-  physicsWorld: IPhysicsWorld,
-  physicsSystem: PhysicsWorldSystem,
-): void {
-  physicsSystem.queueSubstepAction('custom-spring', () => {
-    applyCustomSpring(world, physicsWorld, physicsSystem)
-  })
-}
-
-function applyCustomSpring(
-  world: IWorld,
-  physicsWorld: IPhysicsWorld,
-  physicsSystem: PhysicsWorldSystem,
-): void {
-  for (const id of world.query(PhysicsControllerComponent)) {
-    const data = world.getComponent(id, PhysicsControllerComponent)
-    if (!data || data.enabled === false || data.type !== 'custom-spring') {
-      continue
-    }
-    if (!data.targetEntityId) {
-      continue
-    }
-    const targetId = entityId(data.targetEntityId)
-    const bodyA = physicsSystem.getBodyHandle(id)
-    const bodyB = physicsSystem.getBodyHandle(targetId)
-    if (!bodyA || !bodyB) {
-      continue
-    }
-
-    const transformA = physicsSystem.getBodyTransform(id)
-    const transformB = physicsSystem.getBodyTransform(targetId)
-    if (!transformA || !transformB) {
-      continue
-    }
-
-    const anchorA = transformLocalPoint(transformA, data.localAnchorA)
-    const anchorB = transformLocalPoint(transformB, data.localAnchorB)
-    const dx = anchorB[0] - anchorA[0]
-    const dy = anchorB[1] - anchorA[1]
-    const dz = anchorB[2] - anchorA[2]
-    const dist = Math.hypot(dx, dy, dz)
-    if (dist < 1e-6) {
-      continue
-    }
-    const inv = 1 / dist
-    const ux = dx * inv
-    const uy = dy * inv
-    const uz = dz * inv
-
-    const velA = physicsSystem.getBodyLinearVelocity(id) ?? ([0, 0, 0] as Vec3)
-    const velB = physicsSystem.getBodyLinearVelocity(targetId) ?? ([0, 0, 0] as Vec3)
-    const relVel =
-      (velB[0] - velA[0]) * ux + (velB[1] - velA[1]) * uy + (velB[2] - velA[2]) * uz
-    const fMag = -data.stiffness * (dist - data.restLength) - data.damping * relVel
-    const fx = ux * fMag
-    const fy = uy * fMag
-    const fz = uz * fMag
-
-    physicsWorld.applyForce(bodyA, [-fx, -fy, -fz], anchorA)
-    physicsWorld.applyForce(bodyB, [fx, fy, fz], anchorB)
-  }
-}
-
 interface RevoluteWheelRuntime {
   wheelBody: PhysicsBodyHandle
   wheelShape: import('@haku/physics').PhysicsShapeHandle
@@ -685,4 +620,4 @@ export function ensureArcadeTracked(
   }
 }
 
-export type { ArcadeVehicleController, CustomSpringController, KinematicCharacterController, RevoluteJointVehicleController }
+export type { ArcadeVehicleController, KinematicCharacterController, RevoluteJointVehicleController }

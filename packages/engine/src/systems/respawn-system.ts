@@ -63,7 +63,7 @@ export class RespawnSystem implements ISystem {
     }
 
     this.physicsSystem.resetBodyState(id, transform, world)
-    this.controllerSystem.resetControllerState(id)
+    this.controllerSystem.resetControllerState(world, id)
   }
 
   update(world: IWorld, _dt: number): void {

@@ -10,7 +10,6 @@ import { createRapierPhysicsBackend, resetRapierPhysicsIds } from '@haku/physics
 import {
   ArcadeVehicleControllerSchema,
   CustomRaycastControllerSchema,
-  CustomSpringControllerSchema,
   DynamicRaycastControllerSchema,
   KinematicCharacterControllerSchema,
   PointerControlsControllerSchema,
@@ -102,7 +101,6 @@ describe('resolveColliderDescriptor', () => {
   })
 
   it.each([
-    ['custom-spring', CustomSpringControllerSchema.parse({ type: 'custom-spring' })],
     ['pointer-controls', PointerControlsControllerSchema.parse({ type: 'pointer-controls' })],
   ])('resolves no collider for non-collider controller %s', (_type, controller) => {
     expect(resolveColliderDescriptor(controller, redundantSphere)).toBeNull()

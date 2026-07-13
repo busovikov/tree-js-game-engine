@@ -16,7 +16,6 @@ export const PhysicsControllerTypeSchema = z.enum([
   'arcade-vehicle',
   'revolute-joint-vehicle',
   'kinematic-character',
-  'custom-spring',
   'pointer-controls',
 ])
 export type PhysicsControllerType = z.infer<typeof PhysicsControllerTypeSchema>
@@ -187,19 +186,6 @@ export const KinematicCharacterControllerSchema = ControllerBaseSchema.extend({
 })
 export type KinematicCharacterController = z.infer<typeof KinematicCharacterControllerSchema>
 
-/** Isaac Mason `custom-spring` — force spring between two dynamic bodies. */
-export const CustomSpringControllerSchema = ControllerBaseSchema.extend({
-  type: z.literal('custom-spring'),
-  /** Entity id of the second connected body. */
-  targetEntityId: z.string().default(''),
-  localAnchorA: Vec3Schema.default([0, 0, 0]),
-  localAnchorB: Vec3Schema.default([0, 0, 0]),
-  restLength: z.number().min(0).default(1),
-  stiffness: z.number().min(0).default(50),
-  damping: z.number().min(0).default(10),
-})
-export type CustomSpringController = z.infer<typeof CustomSpringControllerSchema>
-
 export const PointerConstraintTypeSchema = z.enum(['spherical', 'spring', 'rope'])
 export type PointerConstraintType = z.infer<typeof PointerConstraintTypeSchema>
 
@@ -220,7 +206,6 @@ export const PhysicsControllerSchema = z.discriminatedUnion('type', [
   ArcadeVehicleControllerSchema,
   RevoluteJointVehicleControllerSchema,
   KinematicCharacterControllerSchema,
-  CustomSpringControllerSchema,
   PointerControlsControllerSchema,
 ])
 export type PhysicsController = z.infer<typeof PhysicsControllerSchema>

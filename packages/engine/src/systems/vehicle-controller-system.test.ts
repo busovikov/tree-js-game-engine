@@ -257,17 +257,19 @@ describe('VehicleControllerSystem integration (stub)', () => {
     ]
     const internals = vehicleSystem as unknown as {
       bootstrapped: boolean
-      customRaycast: Map<
-        string,
-        {
-          vehicle: IRaycastVehicle
-          wheels: typeof wheels
-          currentSteer: number
-        }
-      >
+      customRaycast: {
+        tracked: Map<
+          string,
+          {
+            vehicle: IRaycastVehicle
+            wheels: typeof wheels
+            currentSteer: number
+          }
+        >
+      }
     }
     internals.bootstrapped = true
-    internals.customRaycast.set(carId.value, {
+    internals.customRaycast.tracked.set(carId.value, {
       vehicle,
       wheels,
       currentSteer: 0.4,
@@ -362,20 +364,18 @@ describe('VehicleControllerSystem integration (stub)', () => {
       steerDamping: 10,
     }
     const internals = vehicleSystem as unknown as {
-      customRaycast: Map<string, unknown>
-      dynamicRaycast: Map<string, unknown>
-      arcadeVehicles: Map<string, typeof arcade>
-      characters: Map<string, typeof character>
-      revoluteVehicles: Map<string, typeof revolute>
+      customRaycast: { tracked: Map<string, unknown> }
+      dynamicRaycast: { tracked: Map<string, unknown> }
+      registry: { get(type: string): { tracked: Map<string, unknown> } | undefined }
     }
-    internals.customRaycast.set(id.value, custom)
-    internals.dynamicRaycast.set(id.value, dynamic)
-    internals.arcadeVehicles.set(id.value, arcade)
-    internals.characters.set(id.value, character)
-    internals.revoluteVehicles.set(id.value, revolute)
+    internals.customRaycast.tracked.set(id.value, custom)
+    internals.dynamicRaycast.tracked.set(id.value, dynamic)
+    internals.registry.get('arcade-vehicle')?.tracked.set(id.value, arcade)
+    internals.registry.get('kinematic-character')?.tracked.set(id.value, character)
+    internals.registry.get('revolute-joint-vehicle')?.tracked.set(id.value, revolute)
     vehicleSystem.setControllerInput(id, { throttle: 1, jump: true })
 
-    vehicleSystem.resetControllerState(id)
+    vehicleSystem.resetControllerState(world, id)
 
     expect(custom.currentSteer).toBe(0)
     expect(customVehicle.setSteering).toHaveBeenCalledTimes(2)

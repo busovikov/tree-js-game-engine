@@ -8,7 +8,6 @@ import {
 import {
   ArcadeVehicleControllerSchema,
   CustomRaycastControllerSchema,
-  CustomSpringControllerSchema,
   DynamicRaycastControllerSchema,
   KinematicCharacterControllerSchema,
   PointerControlsControllerSchema,
@@ -142,7 +141,6 @@ describe('SceneColliderGizmos controller parity', () => {
   })
 
   it.each([
-    ['custom-spring', CustomSpringControllerSchema.parse({ type: 'custom-spring' })],
     ['pointer-controls', PointerControlsControllerSchema.parse({ type: 'pointer-controls' })],
   ])('renders no collider for non-collider controller %s', (_type, controller) => {
     expect(syncControllerGizmo(controller, explicitSphere)).toBeUndefined()

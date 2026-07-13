@@ -15,16 +15,12 @@ export {
   type BodyWithShape,
 } from './primitives.js'
 export type { IRaycastVehicle, WheelConfig, WheelState } from './raycast-vehicle.js'
-export {
-  stepCustomSpring,
-} from './physics-controllers.js'
 export type {
   ICharacterController,
   IDynamicRaycastVehicle,
   CharacterControllerOptions,
   CharacterControllerStepResult,
   DynamicRaycastWheelConfig,
-  CustomSpringConfig,
 } from './physics-controllers.js'
 export type {
   PhysicsJointHandle,

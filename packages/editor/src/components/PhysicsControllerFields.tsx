@@ -25,7 +25,6 @@ const CONTROLLER_TYPE_LABELS: Record<PhysicsControllerType, string> = {
   'arcade-vehicle': 'Arcade vehicle',
   'revolute-joint-vehicle': 'Revolute joint vehicle',
   'kinematic-character': 'Kinematic character',
-  'custom-spring': 'Custom spring',
   'pointer-controls': 'Pointer controls',
 }
 
@@ -165,20 +164,6 @@ export const PhysicsControllerFields = memo(function PhysicsControllerFields({
         <NumberField label="sprintMultiplier" value={value.sprintMultiplier} min={0.001} step={0.1} disabled={disabled} onChange={(n) => patch({ sprintMultiplier: Math.max(0.001, n) })} />
         <NumberField label="maxJumpHeight" value={value.maxJumpHeight} min={0.001} step={0.1} disabled={disabled} onChange={(n) => patch({ maxJumpHeight: Math.max(0.001, n) })} />
         <NumberField label="snapToGroundDistance" value={value.snapToGroundDistance} min={0} step={0.01} disabled={disabled} onChange={(n) => patch({ snapToGroundDistance: Math.max(0, n) })} />
-      </div>
-    )
-  }
-
-  if (value.type === 'custom-spring') {
-    return (
-      <div className="mesh-renderer-fields">
-        {typeSelector}
-        <SectionHeading>Custom spring</SectionHeading>
-        <NumberField label="targetEntityId" value={0} disabled hint="Set target entity UUID in scene JSON." onChange={() => undefined} />
-        <div style={{ color: '#888', fontSize: 12, marginBottom: 8 }}>targetEntityId: {value.targetEntityId || '(none)'}</div>
-        <NumberField label="restLength" value={value.restLength} min={0} step={0.1} disabled={disabled} onChange={(n) => patch({ restLength: Math.max(0, n) })} />
-        <NumberField label="stiffness" value={value.stiffness} min={0} step={1} disabled={disabled} onChange={(n) => patch({ stiffness: Math.max(0, n) })} />
-        <NumberField label="damping" value={value.damping} min={0} step={0.1} disabled={disabled} onChange={(n) => patch({ damping: Math.max(0, n) })} />
       </div>
     )
   }

@@ -53,32 +53,6 @@
   },
   {
     "type": "cycle",
-    "from": "packages/engine/src/systems/physics-controller-runtime.ts",
-    "to": "packages/engine/src/systems/physics-controller-system.ts",
-    "rule": {
-      "severity": "error",
-      "name": "no-circular"
-    },
-    "cycle": [
-      {
-        "name": "packages/engine/src/systems/physics-controller-system.ts",
-        "dependencyTypes": [
-          "local",
-          "type-only",
-          "import"
-        ]
-      },
-      {
-        "name": "packages/engine/src/systems/physics-controller-runtime.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
     "from": "packages/schema/src/index.ts",
     "to": "packages/schema/src/scene-camera.ts",
     "rule": {
