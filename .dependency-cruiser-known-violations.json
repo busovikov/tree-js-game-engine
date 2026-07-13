@@ -1,0 +1,133 @@
+[
+  {
+    "type": "cycle",
+    "from": "packages/engine/src/engine.ts",
+    "to": "packages/engine/src/play-mode-vehicle.ts",
+    "rule": {
+      "severity": "error",
+      "name": "no-circular"
+    },
+    "cycle": [
+      {
+        "name": "packages/engine/src/play-mode-vehicle.ts",
+        "dependencyTypes": [
+          "local",
+          "export"
+        ]
+      },
+      {
+        "name": "packages/engine/src/engine.ts",
+        "dependencyTypes": [
+          "local",
+          "type-only",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "packages/engine/src/engine.ts",
+    "to": "packages/engine/src/render-backend.ts",
+    "rule": {
+      "severity": "error",
+      "name": "no-circular"
+    },
+    "cycle": [
+      {
+        "name": "packages/engine/src/render-backend.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "packages/engine/src/engine.ts",
+        "dependencyTypes": [
+          "local",
+          "type-only",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "packages/engine/src/systems/physics-controller-runtime.ts",
+    "to": "packages/engine/src/systems/physics-controller-system.ts",
+    "rule": {
+      "severity": "error",
+      "name": "no-circular"
+    },
+    "cycle": [
+      {
+        "name": "packages/engine/src/systems/physics-controller-system.ts",
+        "dependencyTypes": [
+          "local",
+          "type-only",
+          "import"
+        ]
+      },
+      {
+        "name": "packages/engine/src/systems/physics-controller-runtime.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "packages/schema/src/index.ts",
+    "to": "packages/schema/src/scene-camera.ts",
+    "rule": {
+      "severity": "error",
+      "name": "no-circular"
+    },
+    "cycle": [
+      {
+        "name": "packages/schema/src/scene-camera.ts",
+        "dependencyTypes": [
+          "local",
+          "export"
+        ]
+      },
+      {
+        "name": "packages/schema/src/index.ts",
+        "dependencyTypes": [
+          "local",
+          "type-only",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "module",
+    "from": "apps/editor/src/main.tsx",
+    "to": "apps/editor/src/main.tsx",
+    "rule": {
+      "severity": "warn",
+      "name": "no-orphan-dead-modules"
+    }
+  },
+  {
+    "type": "module",
+    "from": "apps/playground/scripts/player.ts",
+    "to": "apps/playground/scripts/player.ts",
+    "rule": {
+      "severity": "warn",
+      "name": "no-orphan-dead-modules"
+    }
+  },
+  {
+    "type": "module",
+    "from": "packages/create/templates/scripts/player.ts",
+    "to": "packages/create/templates/scripts/player.ts",
+    "rule": {
+      "severity": "warn",
+      "name": "no-orphan-dead-modules"
+    }
+  }
+]

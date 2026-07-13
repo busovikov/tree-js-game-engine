@@ -42,7 +42,7 @@ export {
   computeWheelVisualTransform,
   vehicleWheelConfigs,
 } from './engine.js'
-export type { EngineOptions, EngineFeatureFlags, LoadedScene } from './engine.js'
+export type { EngineOptions, EngineFeatureFlags, LoadedScene, SceneFetch } from './engine.js'
 export type { PhysicsWorldSystemOptions } from './systems/physics-world-system.js'
 export type { ResolvedColliderDescriptor } from './systems/physics-collider-system.js'
 export type { VehicleInput, DriveControlContext, DriveControlState } from './systems/vehicle-controller-system.js'
@@ -85,15 +85,6 @@ export {
   type ModelLoadPreparer,
 } from './model-loader.js'
 export { modelLog, modelLogWarn, modelLogError, modelLogUrl, sceneLog, sceneLogWarn, sceneLogError, setHakuLogSink, type HakuLogSink, type HakuLogCategory, type HakuLogLevel } from './model-log.js'
-export {
-  collectVehiclePlaytestMetrics,
-  assertVehiclePlaytestMetrics,
-  estimateGroundTopY,
-  chassisForwardDeltaZ,
-  type VehiclePlaytestMetrics,
-  type VehiclePlaytestOptions,
-  type PlaytestWindowApi,
-} from './playtest/vehicle-metrics.js'
 export {
   collectVehicleDebugSnapshot,
   createVehicleDebugWindowApi,

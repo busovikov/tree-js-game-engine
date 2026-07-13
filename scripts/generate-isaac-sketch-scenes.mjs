@@ -179,7 +179,7 @@ function staticBox(position, halfExtents, color, rotation = [0, 0, 0, 1]) {
   ])
 }
 
-function dynamicBox(position, halfExtents, color, mass = 0.2, rotation = [0, 0, 0, 1]) {
+function dynamicBox(position, halfExtents, color, _mass = 0.2, rotation = [0, 0, 0, 1]) {
   const id = eid()
   const w = halfExtents[0] * 2
   const h = halfExtents[1] * 2

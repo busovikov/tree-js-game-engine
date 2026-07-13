@@ -104,7 +104,7 @@ interface JointRecord {
   bodyB: PhysicsBodyHandle
 }
 
-interface WheelRecord extends WheelRuntime {}
+type WheelRecord = WheelRuntime
 
 class RapierRaycastVehicle implements IRaycastVehicle {
   private readonly wheels = new Map<string, WheelRecord>()

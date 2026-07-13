@@ -7,7 +7,9 @@
     "dev": "pnpm -r --parallel run dev",
     "test": "vitest run",
     "lint": "eslint .",
-    "typecheck": "pnpm -r run typecheck"
+    "typecheck": "pnpm -r run typecheck",
+    "depcruise": "depcruise packages apps --config .dependency-cruiser.cjs --ignore-known",
+    "depcruise:baseline": "depcruise packages apps --config .dependency-cruiser.cjs --output-type baseline > .dependency-cruiser-known-violations.json"
   },
   "devDependencies": {
     "@eslint/js": "^9.16.0",
@@ -17,7 +19,9 @@
     "@types/react-dom": "^18.3.1",
     "@typescript-eslint/eslint-plugin": "^8.18.0",
     "@typescript-eslint/parser": "^8.18.0",
+    "dependency-cruiser": "^16.0.0",
     "eslint": "^9.16.0",
+    "eslint-plugin-import": "^2.31.0",
     "happy-dom": "^15.11.7",
     "prettier": "^3.4.2",
     "typescript": "^5.7.2",

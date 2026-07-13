@@ -1,4 +1,5 @@
 import type { ZodType, ZodTypeDef } from 'zod'
+import type { RenderSettings } from '@haku/schema'
 
 export interface EntityId {
   readonly __brand: 'EntityId'
@@ -56,8 +57,6 @@ export interface ISystem {
   readonly order?: number
   update(world: IWorld, dt: number): void
 }
-
-import type { RenderSettings } from '@haku/schema'
 
 export interface ViewportRenderOverrides {
   previewShadows?: boolean

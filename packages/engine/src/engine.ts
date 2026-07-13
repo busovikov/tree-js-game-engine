@@ -40,6 +40,7 @@ export class Engine {
   private running = false
   private lastTime = 0
   private rafId = 0
+  private resizeHandler: (() => void) | null = null
 
   constructor(options: EngineOptions) {
     this.backend = new ThreeRenderBackend(options.canvas, options.features)
@@ -157,6 +158,10 @@ export class Engine {
   dispose(): void {
     this.stop()
     this.clearPhysicsSystem()
+    if (this.resizeHandler) {
+      window.removeEventListener('resize', this.resizeHandler)
+      this.resizeHandler = null
+    }
     this.backend.detach()
   }
 
@@ -177,13 +182,26 @@ export class Engine {
       this.backend.resize(width, height)
     }
     resize()
+    this.resizeHandler = resize
     window.addEventListener('resize', resize)
   }
 }
 
+/**
+ * Fetches a scene document by path. Mirrors the browser `fetch` signature so the
+ * global `fetch` is a drop-in default, while headless/test/bundle callers can
+ * inject their own resource resolver (see {@link SceneLoader.load}).
+ */
+export type SceneFetch = (path: string) => Promise<{
+  ok: boolean
+  json(): Promise<unknown>
+}>
+
+const defaultSceneFetch: SceneFetch = (path) => fetch(path)
+
 export class SceneLoader {
-  static async load(path: string): Promise<LoadedScene> {
-    const response = await fetch(path)
+  static async load(path: string, fetchScene: SceneFetch = defaultSceneFetch): Promise<LoadedScene> {
+    const response = await fetchScene(path)
     if (!response.ok) throw new Error(`Failed to load scene: ${path}`)
     const json = validateSceneDocument(await response.json())
     return SceneLoader.fromDocument(json)
@@ -282,15 +300,6 @@ export {
   type VehiclePlayModeOptions,
   type VehiclePlayModeSession,
 } from './play-mode-vehicle.js'
-export {
-  collectVehiclePlaytestMetrics,
-  assertVehiclePlaytestMetrics,
-  estimateGroundTopY,
-  chassisForwardDeltaZ,
-  type VehiclePlaytestMetrics,
-  type VehiclePlaytestOptions,
-  type PlaytestWindowApi,
-} from './playtest/vehicle-metrics.js'
 export {
   RespawnSystem,
   DEFAULT_RESPAWN_FALL_Y,

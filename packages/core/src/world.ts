@@ -1,5 +1,6 @@
 import type { ComponentType, EntityId, IWorld } from './types.js'
 import { entityId } from './types.js'
+import { getCoreComponent } from './components.js'
 
 interface GameObject {
   name: string
@@ -224,8 +225,6 @@ export class World implements IWorld {
     return false
   }
 }
-
-import { getCoreComponent } from './components.js'
 
 export function cloneWorld(source: World): World {
   const clone = new World()
