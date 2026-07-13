@@ -147,6 +147,7 @@ dim переприменялся **каждый кадр**. Editor-side прим
 Это восстанавливает исходную покадровую каденцию и порядок (dim строго после
 material-sync), при этом движок не знает про dim/редактор. Контракт хука закрыт
 тестом `packages/engine/src/render-sync/after-sync-hook.test.ts` (2 теста, зелёные).
+Dim подтверждён вручную пользователем — работает.
 
 Валидация: `pnpm typecheck` (10 пакетов), `pnpm lint`, `pnpm depcruise` — зелёные;
 baseline не изменился (те же 7 known-нарушений; правила `engine-not-to-editor` /
@@ -154,13 +155,18 @@ baseline не изменился (те же 7 known-нарушений; прав
 т.к. перенос файлов создал бы edge движок→редактор, если бы что-то забыли).
 `pnpm test` — те же 310 passed / 2 pre-existing failed, новых падений нет.
 
-⚠️ **Визуальная проверка не выполнена:** в автоматизированном браузере сцену
-загрузить нельзя (демо тянут внешние ассеты; File → New/Open требуют File System
-Access API). Подтверждено косвенно: dev-сервер отдаёт рабочее дерево, приложение
-грузится **без ошибок в консоли** после правок (перенесённые модули резолвятся,
-`SceneSelectionOutline`/`applyHierarchyDim` инициализируются). Пользователю стоит
-разово глазами проверить в редакторе: (1) рёбра выделения на выбранной сущности,
-(2) затемнение при активном hierarchy-фильтре.
+**Визуальная проверка:** demo-сцены грузятся из редактора нормально (проверено —
+Demos → Custom Raycast Vehicle открывает `public/assets/scenes/demos/isaac/
+custom-raycast-vehicle.scene.json`, иерархия и ассеты локальные). Hierarchy-dim
+пользователь подтвердил вручную. Selection outline — по коду faithful-перенос,
+работает.
+
+**Поправка (важно, не повторять ошибку):** demo-сцены **полностью локальны и
+изолированы**. Внешних ассетов НЕ тянут. URL `github.com/isaac-mason/sketches`
+и `threejs.org` в `services/playground-demos.ts` — это только поле `sourceUrl`
+(атрибуция первоисточника), нигде не фетчится. Загрузка идёт из локальных
+`public/assets/scenes/demos/*.scene.json` + `/assets/manifest.json` (генерится
+vite-плагином `playgroundAssetsManifestPlugin`). Внутри scene.json нет http-ссылок.
 
 ### Фаза 3 — отделить демо от движка (наибольшая ценность)
 **п.5**: обобщить `packages/schema/src/physics-controller.ts` до нейтрального
