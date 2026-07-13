@@ -20,8 +20,7 @@ import {
   applyMaterial,
 } from '../mesh-factory.js'
 import { applyMaterialToObject } from '../model-loader.js'
-import { syncWireframeOverlay } from '../editor-wireframe-overlay.js'
-import { setObjectEditorDimmed } from '../editor-visual-dim.js'
+import { syncWireframeOverlay } from '../wireframe-overlay.js'
 import { countObject3DMeshes, modelLog, modelLogError, modelLogWarn } from '../model-log.js'
 import {
   loadModelTemplate,
@@ -70,7 +69,6 @@ export class RenderSyncSystem implements ISystem {
   private readonly scene: THREE.Scene
   private prefabs: Map<string, PrefabDefinition> = new Map()
   private world: IWorld | null = null
-  private hierarchyHighlightIds: Set<string> | null = null
   private renderSettings: RenderSettings = defaultRenderSettings()
   private shadowCasterCount = 0
   private readonly _shadowAnchor = new THREE.Vector3()
@@ -116,20 +114,6 @@ export class RenderSyncSystem implements ISystem {
 
   getObject3D(entityId: EntityId): THREE.Object3D | undefined {
     return this.entityStates.get(entityId.value)?.object3d
-  }
-
-  setHierarchyFilterHighlight(ids: Set<string> | null): void {
-    this.hierarchyHighlightIds = ids
-    this.applyHierarchyVisualWeight()
-  }
-
-  private applyHierarchyVisualWeight(): void {
-    const highlightIds = this.hierarchyHighlightIds
-    const filterActive = highlightIds !== null
-    for (const [id, state] of this.entityStates) {
-      const highlighted = !filterActive || highlightIds.has(id)
-      setObjectEditorDimmed(state.object3d, !highlighted)
-    }
   }
 
   getEntityCamera(entityId: EntityId): THREE.PerspectiveCamera | THREE.OrthographicCamera | undefined {
@@ -200,7 +184,6 @@ export class RenderSyncSystem implements ISystem {
     }
 
     this.syncSceneHierarchy()
-    this.applyHierarchyVisualWeight()
   }
 
   /**
@@ -451,7 +434,6 @@ export class RenderSyncSystem implements ISystem {
           syncMeshShadowFlags(state.object3d, normalized)
         }
         this.tagPickable(state.object3d, id.value)
-        this.applyHierarchyVisualWeight()
         this.scene.updateMatrixWorld(true)
 
         modelLog('sync.load.attached', {

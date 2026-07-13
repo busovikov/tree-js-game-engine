@@ -62,12 +62,6 @@ export interface ViewportRenderOverrides {
   previewShadows?: boolean
 }
 
-export interface EditorRenderExtensions {
-  selectionOutline?: boolean
-  viewportPicking?: boolean
-  hierarchyDim?: boolean
-}
-
 export interface IRenderBackend {
   attach(world: IWorld): void
   detach(): void

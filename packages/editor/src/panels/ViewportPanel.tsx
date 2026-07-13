@@ -25,6 +25,7 @@ import { primarySelection, mergeSelection } from '../selection/selection-utils.j
 import { SceneAabbGizmos } from '../viewport/scene-aabb-gizmos.js'
 import { SceneColliderGizmos } from '../viewport/scene-collider-gizmos.js'
 import { SceneSelectionOutline } from '../viewport/scene-selection-outline.js'
+import { applyHierarchyDim } from '../viewport/hierarchy-dim.js'
 import { SceneShadowVolumeGizmos } from '../viewport/shadow-volume-gizmos.js'
 import { startPlayModePhysics, type PlayModePhysicsSession } from '../viewport/play-mode-physics.js'
 import { installVehicleDebugHook } from '../viewport/vehicle-debug-hook.js'
@@ -121,9 +122,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
     const engine = new Engine({
       canvas,
       features: {
-        selectionOutline: true,
         viewportPicking: true,
-        hierarchyDim: true,
       },
     })
     engine.backend.setModelAssetResolver((path) => projectService.resolveModelAssetUrl(path))
@@ -236,7 +235,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
       aabbGizmosRef.current = null
       colliderGizmosRef.current?.dispose()
       colliderGizmosRef.current = null
-      selectionOutlineRef.current?.dispose(engine.backend)
+      selectionOutlineRef.current?.dispose()
       selectionOutlineRef.current = null
       shadowVolumeGizmosRef.current?.dispose(engine.backend.threeScene)
       shadowVolumeGizmosRef.current = null
@@ -397,7 +396,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
     }
 
     if (selectionOutline) {
-      selectionOutline.sync(engine.backend, engine.backend.sync, {
+      selectionOutline.sync(engine.backend.sync, {
         visible: mode === 'edit' && selectedIds.length > 0,
         selectedIds: selectedIdSet,
       })
@@ -418,7 +417,9 @@ export const ViewportPanel = memo(function ViewportPanel() {
       hierarchyFilterQuery,
       hierarchyFilterMode,
     )
-    engine.backend.setHierarchyFilterHighlight(
+    applyHierarchyDim(
+      world,
+      engine.backend.sync,
       hierarchyFilterQuery.trim() ? highlightedIds : null,
     )
   }, [world, worldRevision, hierarchyFilterQuery, hierarchyFilterMode])

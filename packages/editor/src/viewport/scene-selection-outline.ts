@@ -1,6 +1,6 @@
 import { entityId, type EntityId } from '@haku/core'
-import type { ThreeRenderBackend } from '@haku/engine'
 import * as THREE from 'three'
+import { SelectionEdgeSync } from './selection-edge-sync.js'
 
 interface OutlineSyncAccess {
   getObject3D(id: EntityId): THREE.Object3D | undefined
@@ -12,13 +12,11 @@ export interface SceneSelectionOutlineOptions {
 }
 
 export class SceneSelectionOutline {
-  sync(
-    backend: ThreeRenderBackend,
-    sync: OutlineSyncAccess,
-    options: SceneSelectionOutlineOptions,
-  ): void {
+  private readonly edges = new SelectionEdgeSync()
+
+  sync(sync: OutlineSyncAccess, options: SceneSelectionOutlineOptions): void {
     if (!options.visible || options.selectedIds.size === 0) {
-      backend.setSelectionOutlineTargets([])
+      this.edges.setTargets([])
       return
     }
 
@@ -28,10 +26,10 @@ export class SceneSelectionOutline {
       if (object3d) targets.push(object3d)
     }
 
-    backend.setSelectionOutlineTargets(targets)
+    this.edges.setTargets(targets)
   }
 
-  dispose(backend: ThreeRenderBackend): void {
-    backend.setSelectionOutlineTargets([])
+  dispose(): void {
+    this.edges.dispose()
   }
 }

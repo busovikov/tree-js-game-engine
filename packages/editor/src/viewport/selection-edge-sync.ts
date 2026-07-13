@@ -4,7 +4,7 @@ const SELECTION_EDGE_NAME = 'haku-selection-edge'
 const EDGE_THRESHOLD_ANGLE = 15
 
 /** Crisp mesh-edge highlight for selected entities — no OutlinePass smear. */
-export class EditorSelectionEdgeSync {
+export class SelectionEdgeSync {
   private readonly edgesByRoot = new Map<THREE.Object3D, THREE.LineSegments[]>()
 
   setTargets(targets: readonly THREE.Object3D[]): void {

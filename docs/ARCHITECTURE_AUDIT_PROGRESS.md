@@ -93,14 +93,69 @@ _Обновлено: 2026-07-13. Источник плана: `docs/ARCHITECTURE
 
 ## Дальше по плану
 
-### Фаза 2 — восстановить направление зависимостей (следующая)
-**п.3.** Ввести точки расширения рендера в `IRenderBackend` (render-pass hooks);
-перенести редакторные проходы и типы из `engine`/`core` в `@haku/editor`.
-Затронутые файлы (по аудиту): в `engine` — `editor-visual-dim.ts`,
-`editor-wireframe-overlay.ts`, `render/passes/editor-selection-outline.ts`,
-`render/passes/editor-selection-edges.ts`; в `core` — `EditorRenderExtensions`,
-`ViewportRenderOverrides` в `src/types.ts`. Цель: убрать редакторные записи из
-baseline dependency-cruiser по оси движок↔редактор.
+Следующая — **Фаза 3** (вынос vehicle-домена в `@haku/vehicle`, trimesh,
+ассеты в LFS). См. ниже раздел «Фаза 3».
+
+### Фаза 2 — восстановить направление зависимостей ✅ (код + статическая валидация), ⚠️ (визуал не прогнан)
+
+**Итог по объёму: полный вынос (шаги 1–4), одобрен пользователем.**
+
+Ключевое уточнение против исходного предложения аудита: «render-pass hooks в
+`IRenderBackend`» **не понадобились**. Четыре «editor render passes» оказались
+не проходами `RenderGraph`, а декораторами scene-graph (добавляют
+`LineSegments`-детей к мешам / меняют цвет материала), зависящими только от
+`three`. Редактор **уже** имеет доступ к scene-graph через
+`engine.backend.sync.getObject3D(id)` — поэтому декораторы просто переехали в
+`@haku/editor` и гоняются из его циклов обновления, без нового API в бэкенде.
+
+Сделано:
+- **Шаг 1 (мёртвый код):** удалён `render/passes/editor-selection-outline.ts`
+  (был только deprecated-реэкспорт, ноль импортёров); удалён неиспользуемый тип
+  `EditorRenderExtensions` из `core/src/types.ts` + его реэкспорт из
+  `engine/src/index.ts` (реально использовался дубликат `EngineFeatureFlags`).
+- **Шаг 2 (де-редакторизация):** `editor-wireframe-overlay.ts` →
+  `wireframe-overlay.ts` (overlay управляется свойством `material.wireframe`
+  сцены, это engine-фича, а не редактор). Остаётся в `engine`.
+- **Шаг 3 (selection edges → editor):** `render/passes/editor-selection-edges.ts`
+  → `packages/editor/src/viewport/selection-edge-sync.ts`, класс
+  `EditorSelectionEdgeSync` → `SelectionEdgeSync`. `SceneSelectionOutline`
+  теперь владеет им напрямую (`this.edges.setTargets(...)`), сигнатуры
+  `sync()/dispose()` больше не принимают `backend`. Из `ThreeRenderBackend`
+  удалены: поле `editorSelectionEdges`, инициализация, cleanup в `detach()`,
+  метод `setSelectionOutlineTargets`, флаг `selectionOutline`.
+- **Шаг 4 (hierarchy dim → editor):** `editor-visual-dim.ts` →
+  `packages/editor/src/viewport/object-visual-dim.ts`; новый
+  `viewport/hierarchy-dim.ts` с `applyHierarchyDim(world, sync, highlightIds)`,
+  итерирующим `world.getAllEntities()` + `sync.getObject3D`. Из
+  `RenderSyncSystem` удалены `setHierarchyFilterHighlight`,
+  `applyHierarchyVisualWeight`, поле `hierarchyHighlightIds` и оба вызова
+  ре-применения (в `syncAll` и после async-загрузки модели). Из
+  `ThreeRenderBackend` удалён `setHierarchyFilterHighlight`. `EngineFeatureFlags`
+  схлопнут до одного `viewportPicking`. `ViewportPanel.tsx` вызывает
+  `applyHierarchyDim` в том же эффекте (deps включают `worldRevision`).
+
+Поведенческая тонкость (зафиксировать): раньше движок ре-применял dim после
+async-загрузки модели (строка ~454 в `render-sync-system.ts`). Теперь dim идёт с
+editor-каденцией (deps эффекта: `world, worldRevision, hierarchyFilterQuery,
+hierarchyFilterMode`) — как и selection outline, который так работал всегда.
+Крайний случай: модель, догрузившаяся при активном hierarchy-фильтре без бампа
+`worldRevision`, не затемнится до следующего взаимодействия с фильтром.
+Это делает dim и selection **консистентными** (оба editor-каденции) ценой
+теоретического edge-case. Приемлемо.
+
+Валидация: `pnpm typecheck` (10 пакетов), `pnpm lint`, `pnpm depcruise` — зелёные;
+baseline не изменился (те же 7 known-нарушений; правила `engine-not-to-editor` /
+`core-not-to-engine-or-editor` остались на нуле — теперь это **честная** проверка,
+т.к. перенос файлов создал бы edge движок→редактор, если бы что-то забыли).
+`pnpm test` — те же 310 passed / 2 pre-existing failed, новых падений нет.
+
+⚠️ **Визуальная проверка не выполнена:** в автоматизированном браузере сцену
+загрузить нельзя (демо тянут внешние ассеты; File → New/Open требуют File System
+Access API). Подтверждено косвенно: dev-сервер отдаёт рабочее дерево, приложение
+грузится **без ошибок в консоли** после правок (перенесённые модули резолвятся,
+`SceneSelectionOutline`/`applyHierarchyDim` инициализируются). Пользователю стоит
+разово глазами проверить в редакторе: (1) рёбра выделения на выбранной сущности,
+(2) затемнение при активном hierarchy-фильтре.
 
 ### Фаза 3 — отделить демо от движка (наибольшая ценность)
 **п.5**: обобщить `packages/schema/src/physics-controller.ts` до нейтрального

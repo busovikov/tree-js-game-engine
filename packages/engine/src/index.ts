@@ -66,7 +66,6 @@ export type { ThreeJsFollowCameraSystemOptions } from './systems/threejs-follow-
 export type { RespawnSystemOptions, SpawnPose } from './systems/respawn-system.js'
 export { DEFAULT_INPUT_ACTIONS, KEY_BINDINGS } from './input/index.js'
 export type { WheelVisualTransform } from './systems/vehicle-visual-sync-system.js'
-export type { EditorRenderExtensions } from '@haku/core'
 export {
   createGeometry,
   createMaterial,

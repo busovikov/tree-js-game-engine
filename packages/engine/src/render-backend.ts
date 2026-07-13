@@ -14,7 +14,6 @@ import {
 } from './model-loader.js'
 import { RenderSyncSystem } from './render-sync/render-sync-system.js'
 import { RenderGraph } from './render/render-graph.js'
-import { EditorSelectionEdgeSync } from './render/passes/editor-selection-edges.js'
 import { RenderTargetPass } from './render/passes/render-target-pass.js'
 import {
   applyShadowSettings,
@@ -32,7 +31,6 @@ export class ThreeRenderBackend implements IRenderBackend {
   private readonly scene = new THREE.Scene()
   private readonly syncSystem: RenderSyncSystem
   private readonly editorCamera: THREE.PerspectiveCamera
-  private readonly editorSelectionEdges: EditorSelectionEdgeSync
   private readonly renderGraph: RenderGraph
   private readonly ambientLight: THREE.AmbientLight
   private world: IWorld | null = null
@@ -52,7 +50,6 @@ export class ThreeRenderBackend implements IRenderBackend {
     this.ambientLight = new THREE.AmbientLight(0xffffff, 0.3)
     this.scene.add(this.ambientLight)
 
-    this.editorSelectionEdges = new EditorSelectionEdgeSync()
     this.renderGraph = new RenderGraph(this.renderer, this.renderSettings)
 
     this.applyRenderSettings(this.renderSettings)
@@ -155,7 +152,6 @@ export class ThreeRenderBackend implements IRenderBackend {
   detach(): void {
     this.syncSystem.detach()
     this.world = null
-    this.editorSelectionEdges.setTargets([])
   }
 
   setRenderSettings(settings: RenderSettings): void {
@@ -180,11 +176,6 @@ export class ThreeRenderBackend implements IRenderBackend {
     this.syncSystem.setPrefabs(prefabs)
   }
 
-  setHierarchyFilterHighlight(ids: Set<string> | null): void {
-    if (this.features.hierarchyDim === false) return
-    this.syncSystem.setHierarchyFilterHighlight(ids)
-  }
-
   setModelAssetResolver(resolver: ModelAssetResolver): void {
     setModelAssetResolver(resolver)
   }
@@ -195,14 +186,6 @@ export class ThreeRenderBackend implements IRenderBackend {
 
   setModelLoadPreparer(preparer: ModelLoadPreparer | null): void {
     setModelLoadPreparer(preparer)
-  }
-
-  setSelectionOutlineTargets(targets: readonly THREE.Object3D[]): void {
-    if (this.features.selectionOutline === false) {
-      this.editorSelectionEdges.setTargets([])
-      return
-    }
-    this.editorSelectionEdges.setTargets(targets)
   }
 
   render(): void {

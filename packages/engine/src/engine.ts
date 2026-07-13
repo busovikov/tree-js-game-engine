@@ -13,9 +13,7 @@ import {
 export type { ViewportMode } from './render-backend.js'
 
 export interface EngineFeatureFlags {
-  selectionOutline?: boolean
   viewportPicking?: boolean
-  hierarchyDim?: boolean
 }
 
 export interface EngineOptions {
