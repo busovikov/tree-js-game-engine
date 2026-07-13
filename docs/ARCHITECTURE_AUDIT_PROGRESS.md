@@ -134,14 +134,19 @@ _Обновлено: 2026-07-13. Источник плана: `docs/ARCHITECTURE
   схлопнут до одного `viewportPicking`. `ViewportPanel.tsx` вызывает
   `applyHierarchyDim` в том же эффекте (deps включают `worldRevision`).
 
-Поведенческая тонкость (зафиксировать): раньше движок ре-применял dim после
-async-загрузки модели (строка ~454 в `render-sync-system.ts`). Теперь dim идёт с
-editor-каденцией (deps эффекта: `world, worldRevision, hierarchyFilterQuery,
-hierarchyFilterMode`) — как и selection outline, который так работал всегда.
-Крайний случай: модель, догрузившаяся при активном hierarchy-фильтре без бампа
-`worldRevision`, не затемнится до следующего взаимодействия с фильтром.
-Это делает dim и selection **консистентными** (оба editor-каденции) ценой
-теоретического edge-case. Приемлемо.
+**Регрессия и фикс (важно).** Первый заход сломал dim полностью: `engine.tick()`
+каждый кадр зовёт `backend.sync.update()` → `syncAll()`, который переустанавливает
+цвета материалов. Раньше `syncAll` заканчивался `applyHierarchyVisualWeight()` —
+dim переприменялся **каждый кадр**. Editor-side применение один раз при смене
+фильтра затиралось следующим кадром.
+Фикс (без возврата editor-логики в движок): в `RenderSyncSystem` добавлен
+нейтральный `setAfterSyncHook(hook)`, вызываемый в конце каждого `syncAll`
+(по образцу существующего `setPresentationTransformResolver`). `ViewportPanel`
+регистрирует в нём переприменение `applyHierarchyDim` из `hierarchyDimRef`
+(highlight-набор пишется filter-эффектом; hook — no-op, когда фильтр неактивен).
+Это восстанавливает исходную покадровую каденцию и порядок (dim строго после
+material-sync), при этом движок не знает про dim/редактор. Контракт хука закрыт
+тестом `packages/engine/src/render-sync/after-sync-hook.test.ts` (2 теста, зелёные).
 
 Валидация: `pnpm typecheck` (10 пакетов), `pnpm lint`, `pnpm depcruise` — зелёные;
 baseline не изменился (те же 7 known-нарушений; правила `engine-not-to-editor` /

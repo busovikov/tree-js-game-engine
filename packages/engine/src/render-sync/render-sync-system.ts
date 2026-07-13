@@ -73,6 +73,7 @@ export class RenderSyncSystem implements ISystem {
   private shadowCasterCount = 0
   private readonly _shadowAnchor = new THREE.Vector3()
   private presentationTransformResolver: PresentationTransformResolver | null = null
+  private afterSyncHook: (() => void) | null = null
 
   constructor(scene: THREE.Scene) {
     this.scene = scene
@@ -91,6 +92,15 @@ export class RenderSyncSystem implements ISystem {
 
   setPresentationTransformResolver(resolver: PresentationTransformResolver | null): void {
     this.presentationTransformResolver = resolver
+  }
+
+  /**
+   * Register a callback run at the end of every full sync. Lets an outer layer
+   * (e.g. the editor) re-apply scene-graph decorations that a material re-sync
+   * would otherwise overwrite, without this system knowing about them.
+   */
+  setAfterSyncHook(hook: (() => void) | null): void {
+    this.afterSyncHook = hook
   }
 
   attach(world: IWorld): void {
@@ -184,6 +194,7 @@ export class RenderSyncSystem implements ISystem {
     }
 
     this.syncSceneHierarchy()
+    this.afterSyncHook?.()
   }
 
   /**

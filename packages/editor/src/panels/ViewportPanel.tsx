@@ -86,6 +86,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
   const aabbGizmosRef = useRef<SceneAabbGizmos | null>(null)
   const colliderGizmosRef = useRef<SceneColliderGizmos | null>(null)
   const selectionOutlineRef = useRef<SceneSelectionOutline | null>(null)
+  const hierarchyDimRef = useRef<ReadonlySet<string> | null>(null)
   const shadowVolumeGizmosRef = useRef<SceneShadowVolumeGizmos | null>(null)
   const playPhysicsRef = useRef<PlayModePhysicsSession | null>(null)
   const lastHandledFocusRequest = useRef(0)
@@ -179,6 +180,16 @@ export const ViewportPanel = memo(function ViewportPanel() {
     selectionOutlineRef.current = new SceneSelectionOutline()
     shadowVolumeGizmosRef.current = new SceneShadowVolumeGizmos()
 
+    // Re-apply the hierarchy-filter dim after every engine sync — the per-frame
+    // material re-sync would otherwise overwrite the dimmed colors.
+    engine.backend.sync.setAfterSyncHook(() => {
+      const highlightIds = hierarchyDimRef.current
+      if (!highlightIds) return
+      const activeWorld = useEditorStore.getState().world
+      if (!activeWorld) return
+      applyHierarchyDim(activeWorld, engine.backend.sync, highlightIds)
+    })
+
     orbit.addEventListener('end', () => {
       const path = useEditorStore.getState().scenePath
       const tab = useEditorStore.getState().activeViewportTab
@@ -237,6 +248,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
       colliderGizmosRef.current = null
       selectionOutlineRef.current?.dispose()
       selectionOutlineRef.current = null
+      engine.backend.sync.setAfterSyncHook(null)
       shadowVolumeGizmosRef.current?.dispose(engine.backend.threeScene)
       shadowVolumeGizmosRef.current = null
       selectionPivotRef.current?.dispose()
@@ -417,11 +429,11 @@ export const ViewportPanel = memo(function ViewportPanel() {
       hierarchyFilterQuery,
       hierarchyFilterMode,
     )
-    applyHierarchyDim(
-      world,
-      engine.backend.sync,
-      hierarchyFilterQuery.trim() ? highlightedIds : null,
-    )
+    const highlightIds = hierarchyFilterQuery.trim() ? highlightedIds : null
+    // The after-sync hook re-applies this every frame while a filter is active;
+    // apply once here too so clearing the filter restores brightness immediately.
+    hierarchyDimRef.current = highlightIds
+    applyHierarchyDim(world, engine.backend.sync, highlightIds)
   }, [world, worldRevision, hierarchyFilterQuery, hierarchyFilterMode])
 
   useEffect(() => {
