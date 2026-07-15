@@ -11,6 +11,7 @@
 | **[reference-driven-cycle.md](./reference-driven-cycle.md)** | **Build game from reference** — orchestrator, subagents, iterative board |
 | [techstack.md](./techstack.md) | Choosing libraries, build tools, or package dependencies |
 | [architecture.md](./architecture.md) | System design, data flow, package boundaries |
+| [PHYSICS_COLLIDER_RIGIDBODY_DESIGN.md](./PHYSICS_COLLIDER_RIGIDBODY_DESIGN.md) | **Physics refactor** — Collider/RigidBody split, capabilities, layers, events, phases P1–P5 |
 | [edge-cases.md](./edge-cases.md) | Failures, empty states, validation, security — **not happy-path only** |
 | [ui-kit.md](./ui-kit.md) | Editor UI patterns, components, how to add inspector fields |
 | [links.md](./links.md) | **Canonical refs** — official docs, internal API, read/write rules, migrations |

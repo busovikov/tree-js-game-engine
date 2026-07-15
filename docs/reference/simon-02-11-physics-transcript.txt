@@ -1,0 +1,1254 @@
+# Simon Dev — Gamedev 02-11 Physics (subtitle transcript)
+# Source: 02-11-physics-code.vtt (official course subtitles)
+# Video: Mux HLS ~01:48:42 — VTT covers full duration (last cue 01:48:39)
+# Code: 02-11-physics-final/src/main.js
+# Do NOT commit signed stream URLs (tokens expire).
+
+[00:00:00.400] All right, so let's talk about getting physics working in Three.js.
+[00:00:05.360] And by physics, I mean we're talking about like using a physics engine.
+[00:00:09.840] And that gives us that really dynamic sort of craziness that you get with those physics demos.
+[00:00:15.360] Three.js itself is a renderer. It handles all the rendering side of things for you,
+[00:00:20.879] but it can't really do dynamic physics. For that, you need a secondary library.
+[00:00:27.440] And there are a whole bunch of libraries that can handle this for you.
+[00:00:31.680] Now, the physics engine that we will be using is Brapier.
+[00:00:37.040] It's one of those things that for me takes a lot of boxes.
+[00:00:39.680] It's reasonably easy to use. It's reasonably feature complete.
+[00:00:43.520] It's fast and performant, and I've had success using it.
+[00:00:47.840] So I'm going to stick with this.
+[00:00:50.160] So to start, we need to install the npm packages.
+[00:00:52.880] And so we're on this Getting Started page, and we'll look at how to do that.
+[00:00:57.119] So we're going to be using the 3D version.
+[00:01:03.520] And you can see that they supply some code to get you started.
+[00:01:08.320] They've actually got another version down here, rapier-3d-compat.
+[00:01:13.360] And I'm going to go with this one because, well,
+[00:01:15.839] it just makes the code a lot cleaner and easier to use.
+[00:01:18.720] I just have to throw a rapier init in somewhere, and we're good to go.
+[00:01:23.680] They don't mention anything in the way of feature or performance differences,
+[00:01:27.120] so I assume everything's the same beyond a slightly different initialization process
+[00:01:31.120] like they call out here.
+[00:01:33.680] So let's go ahead and add it to our project.
+[00:01:36.800] So I'm going to go back here, and we need to bring up the terminal.
+[00:01:46.639] So we need to install this, dimforge-rapier-3d-compat.
+[00:01:53.680] So npm i, and there we go.
+[00:01:58.559] That's it.
+[00:01:59.120] That's all we have to do.
+[00:02:05.360] Now we can go here, and we can import it and start using it.
+[00:02:12.479] So we're going to go import rapier from – there we go.
+[00:02:19.839] And I'm going to add a new function, set up physics.
+[00:02:30.559] I'll set up physics, and in here, we need to await rapier.init.
+[00:02:37.839] So init, and that needs to be async.
+[00:02:50.479] And let's check.
+[00:02:51.600] We've got no errors, so we should be good.
+[00:02:56.000] Rapier has initialized.
+[00:02:58.960] So let's start by making a really basic scene.
+[00:03:02.160] So the first thing you have to do is you have to create a rapier.world.
+[00:03:06.880] I'm going to take a quick look at the docs here.
+[00:03:10.960] You can see that they instantiate an instance of a rapier world.
+[00:03:14.960] They pass it gravity, and then you can proceed to create whatever objects you want.
+[00:03:21.440] Let's go here, and we're going to actually assign rapier.world.
+[00:03:31.199] And then this.rapier.world is equal to new rapier.world.
+[00:03:39.600] And then we have to pass the gravity, so const gravity.
+[00:03:44.639] It's equal to x, 0.0, y.
+[00:03:50.000] There we go.
+[00:03:51.279] And then pass in the gravity.
+[00:03:56.479] So what we want to do is we want to create a ground mesh, and then we want to create a ball.
+[00:04:03.199] That should get us started in terms of just having some simple physics in the scene.
+[00:04:08.800] So this is going to be our ground plane.
+[00:04:14.960] So we'll do const ground geo is equal to new THREE.Mesh, THREE.BoxGeometry.
+[00:04:36.559] Let's make it, that's okay for now.
+[00:04:40.640] Then we're going to assign it a material.
+[00:04:44.640] Let's give it something like that, 40, 40, 40, make it a bit darker.
+[00:04:52.239] Then we create the mesh itself.
+[00:04:53.839] So ground mesh equals new THREE.Mesh, ground_mesh.receive_shadow is true.
+[00:05:08.000] It's true.
+[00:05:09.440] And then we add it to the scene.
+[00:05:14.799] And we get a bunch of errors because we don't have Three.js defined.
+[00:05:19.839] So go up here.
+[00:05:24.559] import * a THREE from three.
+[00:05:28.799] Okay.
+[00:05:31.279] So we've got our ground plane.
+[00:05:33.359] Now we can look back at the getting started.
+[00:05:36.720] You can see that they make a ground by creating a collider description.
+[00:05:43.040] Then they make a rigid body.
+[00:05:45.679] And you can see that they make the ground by just creating a collider description and
+[00:05:50.000] creating a collider in the world because the ground doesn't move.
+[00:05:53.839] So that's all they need to do.
+[00:05:55.279] So that's all we need to do.
+[00:05:56.559] We go here and const ground collider description equal to rapier dot collider description dot
+[00:06:08.959] cuboid.
+[00:06:11.519] Give it the same parameters.
+[00:06:15.519] Actually, this is the half width.
+[00:06:17.440] So these need to be half, half, zero, five.
+[00:06:22.079] And then this dot rapier world dot create collider.
+[00:06:36.559] Now there's nothing really to see yet.
+[00:06:38.239] We actually have to create some sort of dynamic object and then place it in the scene with
+[00:06:43.679] the ground.
+[00:06:44.640] So let's go create another object.
+[00:06:46.559] Go like this.
+[00:06:54.239] Create a sphere.
+[00:06:59.119] So const, so const sphere geo.
+[00:07:09.279] Let's make it a bit bigger.
+[00:07:11.359] And sphere material, we'll make it, yeah, red is okay.
+[00:07:28.959] This 1.0.
+[00:07:33.760] And then create the mesh.
+[00:07:35.920] Sphere mesh dot position dot set zero, five, zero.
+[00:07:46.959] Sphere mesh dot cast shadows true.
+[00:07:51.679] Sphere mesh dot receive shadow.
+[00:07:55.839] We'll make it cast and receive shadows.
+[00:07:59.839] And then we add it to the scene.
+[00:08:01.279] Scene dot add sphere mesh.
+[00:08:07.359] There is our sphere.
+[00:08:11.040] In fact, let's make the ground a bit bigger.
+[00:08:22.079] Ground dimensions.
+[00:08:23.600] Let's put just this here like this so we don't have, don't dim, dim, dim, dim, dim.
+[00:08:53.840] Dot x dot two.
+[00:08:57.200] Let's make this a lot bigger now.
+[00:08:59.840] 20, 20.
+[00:09:03.840] Okay.
+[00:09:07.760] I guess we could just make the ball smaller too.
+[00:09:12.640] That's fine.
+[00:09:14.559] Scene is a little dark to increase this environment intensity.
+[00:09:20.559] So just go here.
+[00:09:22.640] Let's set the default to one.
+[00:09:25.679] Okay.
+[00:09:27.919] So that creates our mesh.
+[00:09:29.359] And now we need to create the rigid body for that.
+[00:09:32.080] So that is going to be this chunk of code here.
+[00:09:35.280] So const rigid body descript, body description is equal to
+[00:09:48.960] rapier dot rigid body descriptor dot dynamic.
+[00:09:58.080] Dynamic.
+[00:10:03.440] Then rigid body description will match the position of the sphere.
+[00:10:09.679] Let's actually just do this.
+[00:10:13.440] Mesh dot x.
+[00:10:14.960] There we go.
+[00:10:27.679] Then rigid body is equal to this dot rapier world dot create rigid body.
+[00:10:35.919] And then we have to create a collider to attach to the rigid body.
+[00:10:39.679] So const sphere collider descript equal to rapier dot collider descript dot ball.
+[00:10:53.280] This is the radius.
+[00:10:54.640] Our radius is one.
+[00:10:56.000] So we're good.
+[00:11:00.320] And then this dot rapier world dot create collider rigid body.
+[00:11:12.320] Yeah, that looks okay.
+[00:11:16.559] So at this point, we've created a mesh for both the ground and the sphere.
+[00:11:20.159] And we've created the appropriate physics objects.
+[00:11:25.280] But we're not really seeing anything move.
+[00:11:27.039] And there's a couple extra steps that now you have to take.
+[00:11:30.320] First of all, we're not updating the physics in any way.
+[00:11:33.359] This on step is empty.
+[00:11:35.840] So the physics world isn't receiving any update.
+[00:11:38.239] It's not getting any time to do its simulation.
+[00:11:41.520] The second thing that we need to do is that once it actually does its simulation,
+[00:11:46.320] once it actually does its simulation, we need to sync the objects
+[00:11:51.039] because these objects will move the physics objects will move.
+[00:11:55.520] But they're not specifically tied to three j s.
+[00:11:59.200] We have to do that manually ourselves.
+[00:12:02.239] So what we want to do is we want to go here and we want to keep a list of all the objects in the scene.
+[00:12:11.599] And now we can push this combo in here.
+[00:12:14.880] Push the mesh is the sphere mesh and the rigid body is the rigid body.
+[00:12:27.919] Now the other thing that we want to do is we want to go into the on step and we actually
+[00:12:32.559] want to step the physics world.
+[00:12:35.200] So this dot rip your world dot step.
+[00:12:44.559] We can take a quick look at the docs here.
+[00:12:48.799] Let's go to.
+[00:12:53.679] API documentation, JavaScript 3D, and we can find the world.
+[00:13:00.159] And you can see that it's got a step function here.
+[00:13:04.239] This is where you advance the simulation one step at a time.
+[00:13:08.159] We go back a bit.
+[00:13:10.559] We go back to getting started.
+[00:13:12.080] You can see that here in the game loop.
+[00:13:15.200] They've got this game loop where they do.
+[00:13:17.840] Well, they use set timeout.
+[00:13:20.559] But what they do is step the world every frame and we need to do the same thing.
+[00:13:25.440] And then they log out the position.
+[00:13:27.520] So if we do that, let pause equals this dot objects at zero dot rigid body dot translation.
+[00:13:39.039] And then we want to log that out.
+[00:13:45.599] Now we can go here and restart.
+[00:13:47.679] And now we can take a look at the console and.
+[00:13:54.239] You can see that the initial sphere position is where we had it.
+[00:13:58.719] And then it drops down until it hits the ground.
+[00:14:06.159] But we're not sinking anything yet.
+[00:14:08.000] So we actually have to go and translate all the objects ourselves now.
+[00:14:13.599] Let's get rid of this.
+[00:14:18.000] And we can loop over the objects.
+[00:14:30.640] And now we want to get the object.
+[00:14:38.640] And we want to sync the translation and the rotation between the rigid body and the mesh.
+[00:14:48.559] This isn't too difficult to do.
+[00:14:50.479] You can take a quick look at the docs again.
+[00:14:53.919] Let's just open the API documentation.
+[00:14:58.400] Take a look here.
+[00:14:59.520] So if you go to rigid body.
+[00:15:02.000] So you got the API for rigid body here.
+[00:15:04.719] And you can see here that we've got the translation.
+[00:15:08.400] And we've got the rotation.
+[00:15:10.159] The rotation is almost certainly a quaternion.
+[00:15:13.520] But let's take a look.
+[00:15:14.559] Yeah, it's a quaternion.
+[00:15:18.400] You always want to get into this habit of checking the docs if possible.
+[00:15:22.559] So we go here and we do const pause equals object dot rigid body dot translation.
+[00:15:29.280] And quant equals object dot rigid body dot rotation.
+[00:15:36.239] So that should give us the position and the rotation.
+[00:15:42.400] And all we have to do is set it.
+[00:15:46.000] So object dot mesh dot position dot set.
+[00:15:51.280] There we go.
+[00:15:52.000] And quaternion dot set.
+[00:15:53.840] There we go.
+[00:15:55.039] So that should get us there.
+[00:15:56.799] Okay, let's go check it out.
+[00:15:59.520] Yeah, there we go.
+[00:16:01.599] The ball fell.
+[00:16:06.799] There's those shadows, which is a bit weird.
+[00:16:12.400] See shadow, cast shadow, see shadow, see shadow.
+[00:16:23.119] Oh, we don't have a light in the scene.
+[00:16:24.960] Let's add a light to the scene so we can have some light shadows.
+[00:16:29.520] So let's go add the light up here.
+[00:16:32.000] So we'll do it up here outside of the physics setup.
+[00:16:37.679] Just to separate it from all our physics code.
+[00:16:39.919] So const light equals new three dot directional light.
+[00:16:44.559] I'm going to make it white intensity one.
+[00:16:47.119] It won't be too strong.
+[00:16:48.400] So the target to the origin.
+[00:16:56.159] And then we'll enable shadows.
+[00:17:00.080] Now we just need to add it to the scene.
+[00:17:02.239] So this dot scene dot add light and this dot scene dot add light dot target.
+[00:17:11.040] scene dot add light and this dot scene dot add light dot target.
+[00:17:20.800] We can leave the shadow parameters as defaults for now.
+[00:17:23.839] We're probably going to have to revisit them afterwards.
+[00:17:26.400] But for now we can.
+[00:17:28.479] But I think for just the scene, they should be okay.
+[00:17:33.839] Okay, so we've got our shadow.
+[00:17:36.560] Let's just the intensity.
+[00:17:41.439] So before we move on too much further from this,
+[00:17:48.479] I want to take a minute to talk about a couple things.
+[00:17:52.000] First of all, one really handy thing to have
+[00:17:55.520] whenever you're doing physics stuff is you need to have debug rendering.
+[00:17:59.760] So we need to look into how to do that.
+[00:18:03.599] The second thing that we really need to talk about is that step function that we added.
+[00:18:08.640] So we go back down here, and this is where we step the world.
+[00:18:13.359] And although that was really, really simple, it is also wrong.
+[00:18:18.319] If we go back here to your body, we'll go to the world.
+[00:18:26.239] And now we need to find the step function.
+[00:18:29.520] So the thing with the step function and really with most physics engines
+[00:18:33.760] is that they used fixed time steps.
+[00:18:36.719] So you can see here that they advance the simulation by a single time step, by one time step.
+[00:18:42.479] So what is a time step?
+[00:18:45.760] Go back to the top, and we can see that
+[00:18:56.000] we can see that there is a time step accessor here,
+[00:18:59.839] and this is the current simulation time step.
+[00:19:02.880] And you can see here that they talk about the time step being a very specific amount.
+[00:19:07.680] So in the case of Rapier, the default is 0.016, or 1 60th of a frame.
+[00:19:15.040] So a game running at 60 FPS.
+[00:19:18.959] So that means that whenever you call time step, it isn't going to simulate
+[00:19:25.359] it isn't going to simulate whatever time elapsed, it's going to simulate one time step.
+[00:19:32.160] Which is 1 over 60.
+[00:19:36.959] Now the whole point is that if your game is running faster than that, or slower than that,
+[00:19:42.239] then you're going to have a problem.
+[00:19:44.719] If the game is running really, really, really fast,
+[00:19:47.199] let's say that, you know, this game is running at 1000 FPS.
+[00:19:52.079] Well, every time you step this, you're stepping the simulation at 1 60th of a second.
+[00:19:58.800] So if you're running faster than that,
+[00:20:01.119] then the simulation is going to be running more than one second per second.
+[00:20:07.839] You write down on a piece of paper, let's say that FPS
+[00:20:14.000] will 600.
+[00:20:15.839] Well, then these time steps are going to run 600 times, times 1 over 60.
+[00:20:28.800] Right.
+[00:20:30.000] So that means that at the end of it,
+[00:20:36.000] you're going to have run 10 seconds worth of physics in one second.
+[00:20:43.760] So the physics is going to be dramatically sped up.
+[00:20:48.319] And on the flip side, if the FPS is equal to 30,
+[00:20:51.520] then the time steps, well, you're going to have 30 of these updates times 1 over 60
+[00:21:03.599] is equal to 0.5 seconds worth of physics in one second.
+[00:21:10.640] So this isn't good.
+[00:21:12.319] It means that we actually can't just step it like this.
+[00:21:16.319] Otherwise, we're going to get inconsistent results between computers.
+[00:21:21.520] And not even with between computers, you're going to get inconsistent results
+[00:21:26.160] in different situations.
+[00:21:29.040] Now, you can vary the time step, but they don't really like that.
+[00:21:34.239] So the general way that you want to do this is you want to accumulate time.
+[00:21:39.439] So let's go do that.
+[00:21:41.920] So I'll show you how.
+[00:21:45.920] Time accumulator.
+[00:21:54.560] Let's go down here and back to the step function.
+[00:22:00.239] And what you're going to do is this dot physics accumulator,
+[00:22:03.520] and you're going to add the time elapsed.
+[00:22:05.920] And then you're going to get the time step equals this dot rapier world dot time step.
+[00:22:14.079] And so,
+[00:22:22.560] so while the amount of time that you've accumulated
+[00:22:26.160] is greater than a single time step, then you can do a step.
+[00:22:29.920] So this dot rapier world dot step.
+[00:22:33.599] And then that means that you lose some time in your accumulator.
+[00:22:44.000] And so what's going to happen is some frames are going to run the physics and others aren't.
+[00:22:49.760] So technically, your physics is going to be running at 60 FPS.
+[00:22:54.079] And it's going to be slightly decoupled from your rendering.
+[00:22:57.439] Save that and run it.
+[00:23:16.000] Yes, so this wasn't a function, it was just a property.
+[00:23:19.920] As soon as I run this, you're going to notice that everything falls slower.
+[00:23:23.439] And that's normal, because, well, it was actually running way too fast before.
+[00:23:29.040] And we fixed that.
+[00:23:32.239] And one extra thing that you might want to do here is you might want to add a bailout condition.
+[00:23:37.439] So let's say that you've accumulated way too many of these steps.
+[00:23:42.959] Next steps, you can say that that's five or something like that.
+[00:23:48.560] And then dot steps equals zero.
+[00:23:56.000] Steps, one, if steps is greater than or equal to max steps.
+[00:24:05.839] And we're just going to bail out and we're going to reset the accumulator as well.
+[00:24:10.160] So this will avoid that.
+[00:24:11.920] And the death spiral, as we've mentioned before, this is when
+[00:24:15.839] you've accumulated, basically, way too much.
+[00:24:17.920] The game is running too slowly.
+[00:24:20.959] In step two, it's miscalculating.
+[00:24:23.680] So
+[00:24:25.540] Yeah, let's close this out.
+[00:24:30.160] And you canhearted out, because we know that there's only eight steps to go until now.
+[00:24:38.560] And stepping the physics actually is causing the game to slow down even more,
+[00:24:45.599] causing it to have to step even more physics the next frame, etc, etc.
+[00:24:50.959] And so this kind of forms a death spiral where the game essentially freezes up on itself.
+[00:24:56.319] It creates a feedback loop where it can never catch up.
+[00:25:00.160] So we can avoid this by simply bailing out if we've done too many steps.
+[00:25:05.920] I mean, you're in a bad situation already.
+[00:25:08.640] You might as well not lock up the game while you're at it.
+[00:25:12.400] Some progress is better than none.
+[00:25:15.280] So the other thing that we want to do is we want to get debug rendering working
+[00:25:20.239] before moving too much further forward.
+[00:25:23.119] So let's look at how to do that.
+[00:25:26.239] So take a look here again, at the API.
+[00:25:32.800] You can see that they have this debug render.
+[00:25:35.199] And this basically passes back a bunch of lines and colors so that you can render the scene.
+[00:25:40.800] The debug render buffers, vertex and color buffers for debug rendering of the physics scene.
+[00:25:46.719] Debug rendering, rendering.
+[00:25:52.000] So let's go use that.
+[00:25:56.160] So we go here.
+[00:25:57.199] And what we need to do is when we create everything, we're also going to create a debug render.
+[00:26:03.119] And when we create everything, we're also going to create a debug mesh.
+[00:26:11.359] So this.physics.debugmesh equal to, we're going to actually need to import a couple things first.
+[00:26:23.680] So let's go declare that, first of all.
+[00:26:33.119] Import the things we need.
+[00:26:35.680] So we're going to be using the fat line segments add-on from Three.js.
+[00:26:41.359] So import line material from three dash add-ons dash lines dash line material.
+[00:26:56.319] Import line segments geometry from add-ons lines line segment geometry.
+[00:27:02.160] That's good.
+[00:27:03.119] And we want import line segments two from three dash add-ons dash lines dash line segments two.
+[00:27:17.839] That should be okay.
+[00:27:20.160] Okay.
+[00:27:20.719] So here we go.
+[00:27:21.680] So now we go back to using this.
+[00:27:29.040] Of course, new line segments two.
+[00:27:34.400] And we need a new line segments geometry and a new line material.
+[00:27:40.959] Let's see what parameters we set for that.
+[00:27:52.000] Okay.
+[00:28:02.719] So we want to set the color,
+[00:28:04.400] line width,
+[00:28:14.640] width for vertex color
+[00:28:23.280] is true and dashed false.
+[00:28:28.000] Now we can add a function update debug mesh.
+[00:28:35.520] And we're going to do all of our updating of the debug mesh every frame here.
+[00:28:40.160] And we're going to do all of our updating of the physics debug mesh here
+[00:28:44.239] because we're going to have to update it every frame.
+[00:28:47.199] So const debug buffer equals this dot rape your world dot debug render.
+[00:28:56.079] And this dot physics debug mesh dot geometry dot dispose.
+[00:29:08.479] This dot geometry plus new line segments geometry.
+[00:29:17.599] This dot set positions.
+[00:29:21.760] This dot set positions vertices.
+[00:29:31.599] We actually need to do this const rgb equals
+[00:29:37.439] y equals zero dollars less than debug render.
+[00:29:40.560] But buffer dot colors.
+[00:29:52.160] That length.
+[00:29:54.880] These are all four elements, we're turning them into threes.
+[00:30:05.199] Okay.
+[00:30:06.400] And then we can set that on the geometry.
+[00:30:11.280] Then we have to compute the line distances.
+[00:30:13.920] So this dot physics debug mesh dot compute line distances.
+[00:30:26.319] And we didn't add it to the scene.
+[00:30:28.160] So this dot scene dot add physics debug mesh.
+[00:30:34.400] And then we need to actually call this thing.
+[00:30:36.800] This update mesh.
+[00:30:42.000] And there we go.
+[00:30:43.920] There are the debug lines for all the objects in the scene.
+[00:30:52.079] In fact, we can add something to tweak pain.
+[00:30:57.680] Let's go and add a folder.
+[00:31:07.280] Okay.
+[00:31:12.560] And add folder.
+[00:31:23.359] So we're just creating a folder so that we can have it up here.
+[00:31:27.359] And we can enable it and disable it whenever we want.
+[00:31:35.199] So we can go physics folder binding.
+[00:31:44.000] This is x debug mesh visible.
+[00:31:58.079] Oh, it's under project.
+[00:32:00.880] That's fine.
+[00:32:01.699] That's fine.
+[00:32:03.140] Anyway, that gets us to the point where now we have a physics world, we have an object,
+[00:32:09.459] we have reasonably proper updates of the physics that are somewhat independent of the time.
+[00:32:16.979] And we have some way of visualizing the collision volumes.
+[00:32:20.020] So we're kind of in a good state at this point.
+[00:32:23.619] So now we can actually start talking about adding some more complex stuff to the scene.
+[00:32:28.180] So we can start playing with forces, we can start adding
+[00:32:31.859] more complex meshes, that kind of thing.
+[00:32:35.219] And we can even add some interactivity here.
+[00:32:39.219] So let's move on and talk about some of the properties of colliders.
+[00:32:46.420] So we're going to go to the docs here.
+[00:32:49.459] And we're going to look at this section on colliders.
+[00:32:52.020] And specifically, what I wanted to go look at, because I wanted to show you this,
+[00:32:56.819] was we're going to look at something called restitution.
+[00:33:00.579] So down here, you have the restitution.
+[00:33:04.900] And the restitution is essentially the elasticity of the object.
+[00:33:10.500] And that's something that you can set when you are creating the collider.
+[00:33:14.579] So if we go here, sphere collider discriminant set restitution.
+[00:33:24.900] And you can see the default is zero, no bouncing behavior, and one is perfect bouncing.
+[00:33:31.619] So if we go here and we set this to zero, we're going to get exactly the same behavior we had
+[00:33:37.859] before.
+[00:33:38.339] But if you increase this value a bit, so you get a bit of bounce there.
+[00:33:46.739] So put it up a bit more.
+[00:33:51.540] There you go.
+[00:33:52.099] So you get even more bounce now.
+[00:33:55.459] Now, if you can see the docs here, you can see that the, you can see there's a value of one,
+[00:34:01.380] it should be the value of one.
+[00:34:03.939] You can see that the, you can see that the value of one, it should be a perfect bounce.
+[00:34:09.379] But when we set it, it isn't a perfect bounce.
+[00:34:13.699] And that can be explained.
+[00:34:15.540] And that can be explained by looking at this.
+[00:34:17.939] So we've got the coefficient combine rule.
+[00:34:21.540] And whenever you have a collision between two objects, each of them are going to have
+[00:34:25.860] their own restitution coefficient, as it mentions here.
+[00:34:29.780] And so how do you decide which one to use?
+[00:34:33.939] Well, there's multiple ways that you can do this.
+[00:34:35.699] You can average out the two coefficients.
+[00:34:38.179] You can take the minimum.
+[00:34:39.300] You can multiply them.
+[00:34:40.580] You can take the max.
+[00:34:42.500] And as it mentions here, the average is used.
+[00:34:45.860] So we can try playing around with this rule.
+[00:34:50.179] Go back here.
+[00:34:51.379] And we can go sphere collider description dot set restitution combine rule.
+[00:34:58.260] We're going to go wave here dot coefficient combine rule dot average.
+[00:35:07.780] And this gives us exactly the same thing that we had before.
+[00:35:10.580] This is going to average the coefficient, the restitution coefficient between the ground
+[00:35:15.780] and the sphere.
+[00:35:17.139] And the grounds was set to zero because that's the default.
+[00:35:20.979] So what happens if you take one of the other rules?
+[00:35:23.540] We take max, for example.
+[00:35:25.139] Well, this is going to use the balls restitution, and it's going to ignore the grounds one.
+[00:35:30.580] So if we set that bounce, bounce.
+[00:35:35.540] So this is going to be bouncing forever.
+[00:35:38.659] Or as I mentioned, the dogs until we get some sort of numerical errors.
+[00:35:44.419] In fact, if you probably bring this above one,
+[00:35:47.540] in fact, if you probably bring this above one,
+[00:35:53.219] then it's going to progressively bounce higher and higher.
+[00:36:02.260] So that's restitution and restitution is really useful, as you can see.
+[00:36:06.659] And so it's one of the things that I wanted to show off first.
+[00:36:10.820] The next thing that we want to explore is using force or using forces.
+[00:36:15.860] And there's a couple of different ways that you can do this.
+[00:36:18.179] You can apply forces directly, or you can apply impulses.
+[00:36:22.260] And let's take a look at the differences between those.
+[00:36:26.659] So the first thing I want to do is I'm going to change the sphere for a box.
+[00:36:31.379] So we're going to get rid of this.
+[00:36:38.820] And now let's add our box.
+[00:36:40.580] And this is going to be user controlled box.
+[00:36:46.260] So let's first create the box geometry itself.
+[00:36:51.060] Geo equals new THREE.BoxGeometry.
+[00:36:57.459] Make it a bit bigger.
+[00:37:01.060] Constant material equals new mesh standard material.
+[00:37:05.620] Let's make it red.
+[00:37:09.620] And let's make it a bit bigger.
+[00:37:11.139] Constant material, let's make it red.
+[00:37:28.020] Then we create the mesh itself.
+[00:37:29.780] So constant mesh equals new THREE.Mesh, geo and matte.
+[00:37:35.379] We will make it cast and receive shadows.
+[00:37:38.340] Now we need to add it to the scene.
+[00:37:41.139] Actually, we need to offset this.
+[00:37:43.219] So mesh dot position dot set.
+[00:37:48.340] One.
+[00:37:49.939] But it's sitting right on the plane now.
+[00:37:55.540] And now we have to create the physics objects for it.
+[00:37:58.899] So const rigid body descriptor equals rapier rigid body descript dot dynamic.
+[00:38:08.820] Now dynamic isn't the only choice that you have here.
+[00:38:12.419] But it is the one that you want to use if you want the
+[00:38:15.379] rigid body to be affected by external forces like we're about to do.
+[00:38:21.699] You can take a look in the docs here.
+[00:38:24.260] So we go to here and rigid bodies.
+[00:38:30.419] You can scroll down to the rigid body types.
+[00:38:34.100] And there are four types.
+[00:38:35.860] So there is dynamic, fixed, kinematic position based, and kinematic velocity based.
+[00:38:44.340] Now dynamic and fixed we've kind of already touched on a little bit.
+[00:38:48.659] Dynamic is what is going to be allowed to be affected by external forces as they mentioned
+[00:38:53.780] here.
+[00:38:54.979] Whereas fixed ones, they're basically immobile.
+[00:38:57.860] They don't move.
+[00:38:59.699] You can contact with them, but they don't change in any way, like the ground.
+[00:39:05.620] And as they mentioned here, you've got kinematic position based and kinematic velocity based.
+[00:39:10.340] And these are great for moving objects.
+[00:39:13.459] So their position isn't altered by the physics engine.
+[00:39:16.419] But you can set its position and velocity.
+[00:39:20.260] So let's go back to the code here.
+[00:39:22.899] And we are going to continue creating our simple rigid body.
+[00:39:27.139] So scroll down.
+[00:39:30.179] And rigid body descriptor dot set translation.
+[00:39:34.580] And we are going to copy the mesh's position to the rigid body descriptor.
+[00:39:40.500] And now we can create the rigid body.
+[00:39:46.020] Now we have to go ahead and create the collider description and the collider itself.
+[00:39:51.060] So collider descript equals rapier collider descript cuboid.
+[00:40:00.419] And then collider equals this dot rapier world create collider, and you pass in the collider
+[00:40:08.179] description and the rigid body.
+[00:40:10.820] Now we're going to add it to our list of objects.
+[00:40:13.219] So this dot objects push.
+[00:40:17.620] And I guess it's saving the clutter is fine.
+[00:40:19.939] We don't really care.
+[00:40:24.739] Just to check if that works, we'll put this up here.
+[00:40:27.780] Just to check if that works, we'll put this up in the air a little bit.
+[00:40:31.780] And there we go.
+[00:40:32.419] It fell over.
+[00:40:36.260] Now let's add some sort of mechanism so that we can press a button or something and apply
+[00:40:41.620] some force or an impulse.
+[00:40:44.899] And what we have in the project is we have the input manager from the previous section
+[00:40:51.459] on creating a third person camera.
+[00:40:53.860] So this is going to come in really handy, because we can just use this to add our action.
+[00:41:00.260] Move back to the code here.
+[00:41:02.820] So of course, we need to go import it.
+[00:41:04.979] So let's go up here.
+[00:41:08.659] Import input manager from input manager dot JS.
+[00:41:17.699] And if you remember using it last time, we need to create one here.
+[00:41:27.939] No.
+[00:41:31.939] And we just create it here.
+[00:41:35.300] This dot input manager equals new input manager, and then you initialize it.
+[00:41:42.500] And now we should have access to it down here.
+[00:41:47.459] Let's put the console up.
+[00:41:52.020] Console dot log this dot input manager dot actions.
+[00:42:03.620] Yeah, so forward, forward, backwards.
+[00:42:08.340] That's right.
+[00:42:08.979] Okay.
+[00:42:09.620] It's all working.
+[00:42:10.500] So before we go ahead and add that sort of new functionality, where we apply force to
+[00:42:16.340] that object, let's separate some of this code out, because it's getting a little crowded
+[00:42:21.459] in here.
+[00:42:22.020] So we're going to copy all of this out.
+[00:42:26.739] I'm going to call that step physics.
+[00:42:29.060] Step physics.
+[00:42:37.459] Then we need this often here.
+[00:42:46.739] Okay.
+[00:42:50.739] There's also this.
+[00:42:52.899] And we don't actually need it in here.
+[00:42:56.340] Maybe we don't.
+[00:42:58.260] There's also this chunk of code here that I'll just call sync physics objects.
+[00:43:13.860] Okay, that makes our code a bit cleaner in here.
+[00:43:20.100] Now we can go in here and let's grab the actions from the input manager.
+[00:43:28.500] And if actions.forward,
+[00:43:33.459] what we're going to do here is we're going to test out the impulse functions and the
+[00:43:36.820] force functions. Let's go back to the docs here.
+[00:43:44.739] And we can see how to apply forces to rigid bodies. Go to the top.
+[00:43:51.699] Where is it? This page forces and impulses.
+[00:43:56.659] So you can see here that you've got a couple options for adding force or applying impulses.
+[00:44:03.219] They're a bit different in the way that they affect an object.
+[00:44:06.100] So if we would look at impulses first, they're the easiest to understand.
+[00:44:12.580] They're like a quick sort of sudden hit.
+[00:44:17.379] It gives an object an immediate change in its speed or velocity.
+[00:44:21.860] So if an easy example is hitting a ball with a bat, it suddenly speeds up in a very specific way.
+[00:44:32.260] So apply impulse is really good for those situations where you have a collision
+[00:44:36.500] or a sudden impact or something and you want a fast instantaneous change.
+[00:44:41.300] Think of an explosion going off or a character applying some sort of rocket jump.
+[00:44:47.379] You know, you would probably use apply impulse.
+[00:44:50.500] On the other hand, you have apply force.
+[00:44:54.100] On the other hand, you have kind of these add force functions.
+[00:44:58.020] And adding force, as they mentioned here, is something that changes the rigid body's acceleration.
+[00:45:04.659] So this is like applying a continual push against an object.
+[00:45:09.379] It gradually speeds up and changes the object's velocity over time.
+[00:45:14.899] Now the thing with apply impulse is that you apply impulse once and that's it.
+[00:45:19.379] You don't have to deal with it again.
+[00:45:21.219] The thing with add force is that you do have to clear the force once you're done.
+[00:45:26.419] Otherwise, because as they mentioned here, added forces are persistent across simulation steps.
+[00:45:33.139] And so when you want the force to go away, you actually do have to reset it.
+[00:45:36.739] You have to take it away.
+[00:45:38.899] So we go back here to the code and let's try out one of them.
+[00:45:43.860] Let's try out the impulse.
+[00:45:45.300] So this.objects at zero.rigidbody.applyimpulse and let's push it along the x-axis.
+[00:46:09.699] So here we go.
+[00:46:11.459] And well, because this gets applied many, many times, we actually apply the impulse way too often.
+[00:46:20.500] So what we need to do is we need to only apply it once.
+[00:46:25.060] Now as a just really quick hack.
+[00:46:30.260] True.
+[00:46:35.459] And yeah, non-hack, there we go.
+[00:46:41.459] There we go.
+[00:46:54.340] So now we only apply it once.
+[00:46:57.620] Oh, it's not working.
+[00:47:00.179] Oh, I think this thing has gone to sleep.
+[00:47:06.260] So we should be able to wake this thing up with a simple wake up call.
+[00:47:10.179] So this.objects at zero.rigidbody.wakeup and let's give that a try.
+[00:47:22.179] So it's gone to sleep and there we go.
+[00:47:26.100] So we're good.
+[00:47:29.860] So let's make the ground a little bit bigger so that we don't have to slide off the end.
+[00:47:40.100] Okay.
+[00:47:49.219] Now let's see the difference between that and applying a force.
+[00:47:52.979] So we go back down here.
+[00:47:55.699] Actually, let's remove this hack because it's really easy to do and I'll show you how to do that.
+[00:48:02.340] So what we need to do is we need to go into the input manager and we need to
+[00:48:07.780] and we need to keep track of both the current keys and the previous keys.
+[00:48:11.300] As I mentioned in this comment when we wrote this the first time,
+[00:48:14.820] copy the current state into the previous state so we can make a previous state
+[00:48:24.260] and then we can do this.
+[00:48:27.459] Copy that and then get previous actions and that should be good enough to go.
+[00:48:37.780] So now we can go here and we can update the input manager
+[00:48:41.939] because we didn't do that the first time.
+[00:48:46.340] And now it comes to previous actions. Close this.inputmanager.previousactions.
+[00:48:58.340] And now what we do is, for example, if we want to check whether or not we can apply an impulse,
+[00:49:04.580] then we want to apply it right when they press forward.
+[00:49:08.500] So that means that currently they're pressing forward but previously they weren't pressing
+[00:49:13.219] forward. So if actions.forward and not previous actions.forward, that should be enough.
+[00:49:26.500] So now we're going to try applying the impulse.
+[00:49:29.219] Actually, the input manager needs to go at the very end of this
+[00:49:35.060] because you want the current actions to become the previous ones at the end of the frame,
+[00:49:40.899] not at the very beginning. Otherwise, this will never be true because they'll be the same.
+[00:49:47.139] So let's save that and let's try it out. There we go.
+[00:49:52.179] There we go.
+[00:49:56.739] So let's contrast that to applying force. So we go here and
+[00:50:04.500] let's change this over to applying force. We'll leave the wakeup call.
+[00:50:11.540] But what we're going to do is we are going to apply force. Actually, we'll make a new
+[00:50:17.540] block for the force. So apply force and this will be apply impulse.
+[00:50:28.100] So when you're applying a force, it has to be continuous. It has to be
+[00:50:32.020] something that accumulates. So you want to hold down the forward button.
+[00:50:37.939] So what we're going to do is actions.forward
+[00:50:43.860] and we're going to apply the force like this.
+[00:50:53.780] So this.objects.zero.rigidbody.wakeup
+[00:51:03.860] and then we're going to apply the force. That's fine. Otherwise, we reset the forces.
+[00:51:13.379] That should be good.
+[00:51:27.780] Oh, this is add force. There we go.
+[00:51:36.419] Okay, so that should work. All right, so there's way too much force.
+[00:51:44.340] Yeah, let's even bring it down a little bit more. So there you go. And you can see that you kind of
+[00:51:50.820] have a slow start. And then as soon as I let go of the forward button, it slows down and eventually
+[00:51:57.620] comes to a stop. There I go again. And that's going to stop again. Now let's make the scene
+[00:52:06.419] a bit more interesting because we've only got the one box here. But what happens if we add a whole
+[00:52:11.939] bunch of boxes? So let's go and let's make this scene a lot more interesting by piling on a lot
+[00:52:19.379] more objects into the scene. So we can start by making a function create physics box.
+[00:52:32.100] And what we are going to do is whenever they press the spacebar,
+[00:52:35.939] we're going to rain down a bunch of boxes into the scene. So concept geo equals
+[00:52:46.500] box geometry. Let's create a material mesh standard material that's fine.
+[00:52:59.219] Let's go color.
+[00:53:05.939] And let's make them shiny. We'll make them really shiny.
+[00:53:24.820] So now comes to mesh equals new three dot mesh,
+[00:53:28.659] and we'll make a cast and receive shadows. Then we add it to the scene.
+[00:53:36.659] Now we want to create the rigid body for this thing, that's going to be a dynamic rigid body.
+[00:53:42.020] And what we're going to do here is we are going to set the translation randomly. So we're just
+[00:53:49.780] going to create a whole bunch of them. And they're going to be randomly created in the air. So math
+[00:53:56.020] dot random swans star, let's say five,
+[00:54:10.500] takes them about 10 up in the air, 10 units up in the air, and then we'll do the same thing.
+[00:54:15.620] And we create the rigid body and we create the collider.
+[00:54:29.699] This rapier will create collider. And then finally, we push it into our list of objects.
+[00:54:39.699] So theoretically, that should work. So just dump it in here to see what happens.
+[00:54:45.620] button and we get a little box falling. There we go. Okay.
+[00:55:00.260] So what we want is we want to create a whole bunch of these boxes whenever you hold down the space
+[00:55:06.260] bar. Actually, we don't even have a space bar in the input manager. Let's go add that. I believe
+[00:55:13.060] the space bar is 32. And now what we're going to do is, if they're holding down the space bar,
+[00:55:37.699] space, we want to create the physics boxes, but we don't want to do it nonstop. Because
+[00:55:47.540] we're running at 100 FPS, then that's going to be creating a lot of boxes really quickly.
+[00:55:53.300] Let's add a box timer. Go up to the top here.
+[00:55:58.100] Timer zero, back down here. Now, this dot box timer minus equals time elapsed.
+[00:56:14.020] elapsed. And then this dot box timer equals dot max.
+[00:56:29.540] That needs to be outside of this.
+[00:56:31.060] So, if this dot box timer is less than or equal to zero,
+[00:56:42.100] and then we will go this dot box timer. Yeah, so we can create 10 boxes a second. I think that's
+[00:56:48.100] fair. There we go. So now we've got boxes dropping down.
+[00:56:56.260] We've got no shadows. That really bugs me. Let's go quickly change the shadow parameters here.
+[00:57:08.100] Let's go size equals 20. And light dot shadow dot camera dot left equals,
+[00:57:24.260] we'll go right, top, bottom. And then let's set the resolution of this thing. Light dot shadow
+[00:57:36.419] dot map size. Let's set 1096. I'll set a pretty high resolution.
+[00:57:47.699] There we go. Now we can have a lot of boxes.
+[00:58:06.260] And the reason I want to dump in a lot of boxes was now we're going to try moving our object,
+[00:58:11.699] our box, our red box. I'm going to press the button.
+[00:58:16.820] And you can see that it's really struggling to move there.
+[00:58:30.659] But we can actually make things even harder on it. So we go down here. We go to the collider
+[00:58:38.100] description for the physics box. We'll just quickly look at the docs here.
+[00:58:47.939] So there's a couple knobs and dials that you have access to that can change
+[00:58:52.020] how these things interact. Now you remember that we had restitution, which was how elastic things
+[00:58:58.179] are. But we can look around here and there is also a friction. So you can set the friction
+[00:59:05.860] coefficient on every object. And then when two things collide, you can also set the coefficient
+[00:59:11.780] combined rule as we did with the restitution. So let's play around with the friction a little bit.
+[00:59:20.739] We go here, collider description dot friction. We make these frictionless.
+[00:59:29.540] But you can see that they kind of slide around really easily already. As they fall,
+[00:59:33.780] they just kind of bounce around. Now when we move our thing, everything just keeps sliding.
+[00:59:48.739] Try it again.
+[00:59:49.300] Yeah.
+[01:00:00.000] But if we set the friction really high, set it sort of absurdly high, we drop a bunch
+[01:00:09.880] of these into the scene.
+[01:00:16.320] Now if you try to plow your way through them, this thing is really struggling and we actually
+[01:00:23.959] blast over them because they're just too difficult to move.
+[01:00:29.059] So that's friction, but you also have access to density.
+[01:00:38.619] That's going to be pretty standard.
+[01:00:41.619] Let's try moving, and nothing really changes that much.
+[01:00:48.419] But if you make these neutron star dense, and we try dropping a bunch of those into
+[01:00:56.299] the scene, you can see as they fall onto the box, they just kind of rattle it and move
+[01:01:01.180] it around.
+[01:01:02.180] These things are so dense.
+[01:01:03.180] Now if I try moving, yeah, that's a lot of trouble.
+[01:01:12.540] In fact, I'll drop a bunch more, see if we can get a whole bunch in front of the path.
+[01:01:19.500] Let's just get a lot of them in there.
+[01:01:26.739] Okay, now let's try moving.
+[01:01:30.099] I'm holding down the button, but this thing looks completely stuck at this point.
+[01:01:34.779] Yeah, it has really no, oh, oh, it's finally managed to move.
+[01:01:39.739] Yeah, but at that point, a lot of force had accumulated.
+[01:01:47.220] We can also set the velocity of an object directly.
+[01:01:50.580] So instead of applying force, you can set the velocity.
+[01:01:54.540] So if we go down here, and instead of add force, if you want to be very direct about
+[01:02:00.059] how you control these things, you can go objects at 0.rigidbody.setlinearvelocity.
+[01:02:08.259] Yeah, there we go.
+[01:02:17.179] So this sets the linear velocity directly.
+[01:02:20.580] Instead of having to go through forces and impulses, you can just set the velocity.
+[01:02:26.380] Now when we press the button, you can see that it starts to move.
+[01:02:33.259] Let's bump up the velocity a bit more, so let's go to 5.
+[01:02:38.779] There you go.
+[01:02:42.139] And this is, of course, you can change the friction.
+[01:02:44.380] You can do all sorts of things.
+[01:02:47.580] Let me jump a bunch of boxes into the world.
+[01:02:54.500] Remember, these are the really heavy ones.
+[01:03:00.179] So now we can go ahead.
+[01:03:04.380] This gives you much more direct access to how fast things move.
+[01:03:08.660] You don't have to go through accumulating force or applying impulses.
+[01:03:12.699] You can just set the velocity directly if you want to.
+[01:03:18.500] One thing that works great when you set the linear velocity is that you can also set a
+[01:03:22.380] damping factor.
+[01:03:23.779] So we go back to the rigidbody docs, and we look at damping.
+[01:03:38.619] So as it mentions here, damping lets you slow down a rigidbody automatically.
+[01:03:44.500] This can be used to achieve a wide variety of effects, like fake air friction.
+[01:03:49.940] This is really similar to the damping factor that you have on the orbit controls, if you
+[01:03:53.860] remember that.
+[01:03:55.699] If you were to go look at app.js, and this is where we set up the orbit controls, you
+[01:04:00.100] can see that there's an enable damping right here.
+[01:04:02.740] And this does a really similar thing.
+[01:04:05.899] So we can go here, and we can set a damping value.
+[01:04:09.539] This.objects.zero.rigidbody.setLinearDamping, and we'll set it to zero.
+[01:04:27.940] So this is with zero damping, so this is entirely just friction.
+[01:04:32.260] Now if we set this to one, notice how much faster it comes to a stop.
+[01:04:40.459] If we set it even higher, so the stop is near instantaneous.
+[01:04:59.820] So those are a few of the basic knobs and dials that you have access to.
+[01:05:04.420] These allow you to both manipulate an object, you can apply force to it, or you can set
+[01:05:09.220] the velocity of an object directly, move it around.
+[01:05:13.500] But these are also what kind of dictate how collisions play out.
+[01:05:18.500] So when we dump a bunch of objects in here, this is where friction, mass, velocity, all
+[01:05:24.140] of that stuff, is where that comes into play.
+[01:05:29.980] So up until now, we've been using really, really simple objects.
+[01:05:33.299] We've got our cuboid, we've used a sphere as well.
+[01:05:37.299] How do you support more complex objects?
+[01:05:40.420] If you wanted to do a height terrain, if you wanted to do a more complicated model than
+[01:05:45.459] a box, how do you do that?
+[01:05:48.339] For example, in Resources, Models, we have a monkey.
+[01:05:54.899] This is just the Suzanne model from Blender.
+[01:05:58.859] It's the basic built-in one, but it's a bit more complicated than just your generic cube
+[01:06:03.660] or sphere.
+[01:06:04.660] So let's load that up into the world.
+[01:06:09.100] Go up here, and let's just create one over here.
+[01:06:16.459] Like this.
+[01:06:18.660] So I'm going to load monkey.glb file.
+[01:06:25.779] So const loader equals new glTFLoader.
+[01:06:36.100] We need to import the glTFLoader up here.
+[01:06:42.140] glTFLoader, gl3-addons-loaders, there we go.
+[01:06:58.140] glTFLoader.setPath, models, glTFLoader.load, monkey.glb, there we go.
+[01:07:23.420] Let's just add it to the scene to start.
+[01:07:27.019] Let's just move it up a little bit, so glTF2.
+[01:07:37.420] So there's the monkey.
+[01:07:40.459] You can see that this is quite a bit more complex than the box, the sphere, or anything
+[01:07:46.140] like that.
+[01:07:48.380] So how do we load that into the scene?
+[01:07:52.179] And more importantly, how do we load it so that the physics can interact with it?
+[01:07:58.059] Let's start it off by facing us, scene.rotation, there we go.
+[01:08:11.220] And now when this thing is loaded, let's create a physics mesh.
+[01:08:16.739] So we have createPhysicsBlocks, we're going to createPhysicsMesh.
+[01:08:21.380] And that is, of course, going to take the monkey and create, stop it.
+[01:08:35.739] That's going to take the monkey mesh right here, and it's going to create a physics mesh
+[01:08:40.859] out of it.
+[01:08:41.859] And we'll investigate some of the different ways we can do that.
+[01:08:45.179] Go up here.
+[01:08:49.659] Now let's go find our createPhysicsBlocks, and we'll create our physics mesh function
+[01:08:56.619] right around that.
+[01:09:00.619] So let's get started in here.
+[01:09:02.340] So const rigidBodyDescriptor equals rapier.rigidBodyDescriptor.dynamic, then let's copy the translation.
+[01:09:19.619] Position.rigidBodyDescriptor.setRotation, there we go.
+[01:09:38.500] And then we create a rigid body.
+[01:09:42.739] Now we need to create a collider.
+[01:09:45.299] And the only colliders that we've created so far have been basic shapes.
+[01:09:48.619] We've created cuboid, and we've created sphere.
+[01:09:53.580] So you can go ahead and create one, of course.
+[01:09:56.900] So const colliderDescript equals rapier.cuboid, and we create the collider.
+[01:10:13.380] And then we, of course, add it to the scene.
+[01:10:19.219] And then we should actually add the mesh to the scene.
+[01:10:23.059] Okay.
+[01:10:24.859] This is not working.
+[01:10:29.859] Actually, rigidBodyDescriptor takes a rapier rotation.
+[01:10:35.820] So we didn't set that properly.
+[01:10:37.159] So we need to go set that up properly.
+[01:10:40.419] So we can do that by const q equals new rapier.quaternion, and then mesh.quaternion.
+[01:10:56.780] Just copy its quaternion, and then we just do.
+[01:11:02.580] Okay, that should be okay.
+[01:11:08.580] There we go.
+[01:11:11.340] So this was to illustrate that the most basic thing that games do,
+[01:11:15.020] and because it's the cheapest thing to do, is that when you have a complex object,
+[01:11:20.380] you find a bounding volume.
+[01:11:22.380] In this case, it's not quite right because the ears are sticking out.
+[01:11:26.380] But you would find a bounding volume, a bounding box, and then simply create a
+[01:11:30.979] bounding box around more complicated geometry like this mesh here.
+[01:11:40.979] Because these basic shapes, spheres, cubes, that kind of thing,
+[01:11:44.859] they're the easiest things for the physics engines to work with.
+[01:11:48.780] As you increase the complexity of the mesh that you're trying to do physics on,
+[01:11:54.219] the more complex the mesh that you're trying to do physics with,
+[01:11:57.020] the fewer of them you can have.
+[01:11:58.539] Obviously, it's an inverse relationship.
+[01:12:01.500] That's why often when you see physics demos with many, many, many objects,
+[01:12:05.580] well, they're often cubes or spheres because, well, those are cheap to do.
+[01:12:10.580] And so it's more impressive if you do a lot of them.
+[01:12:13.700] But if you actually want the real geometry to be the subject of the physics engine,
+[01:12:18.940] like this monkey here, instead of doing a cube or a sphere around it,
+[01:12:24.020] let's actually try to use the geometry itself.
+[01:12:26.780] So how do you do that?
+[01:12:29.380] Well, we have to go back to the collider here.
+[01:12:35.460] And you can take a look over here, convex meshes.
+[01:12:41.059] You've got a couple of options for how to represent a more complex mesh
+[01:12:46.340] like this monkey head here.
+[01:12:48.619] You've got a couple of options for what you can do.
+[01:12:52.380] You can do a convex hull.
+[01:12:55.979] And as they mentioned, this is a really simple approach.
+[01:12:58.140] This computes the convex hull over all the points of the geometry.
+[01:13:02.380] And the other option is a triangle mesh collider.
+[01:13:05.659] That's down here.
+[01:13:07.700] So you can use trimesh.
+[01:13:11.099] Now, the convex hull is going to be the cheaper of the two
+[01:13:14.020] because a convex hull is essentially a simplified representation of the object.
+[01:13:20.020] For those of you who don't know, a convex hull is essentially a simplified object
+[01:13:24.140] that entirely contains the given set of points.
+[01:13:27.500] You could think of it as shrink-wrapping an object.
+[01:13:30.460] If you took that monkey head and you shrink-wrapped all around it,
+[01:13:34.659] you would end up with a shape that kind of approximates it very roughly.
+[01:13:39.580] It gives you a much finer approximation of the original,
+[01:13:42.859] but you still lose a lot of details, obviously.
+[01:13:46.140] And if that's not good enough, you can go to trimesh.
+[01:13:51.140] You can go down here.
+[01:13:52.539] And you basically can create a trimesh out of the vertices and indices.
+[01:13:57.539] In either case, what you're going to end up having to do
+[01:13:59.859] is take the buffer geometry from the mesh.
+[01:14:02.299] And you're going to have to take out all the vertices and indices
+[01:14:05.659] and feed them to this convex hull or trimesh function.
+[01:14:11.059] And because they only take one set of vertices and indices,
+[01:14:14.260] it does mean that if your object is composed of multiple meshes
+[01:14:20.500] or multiple geometries, I mean,
+[01:14:23.820] then you will have to kind of mash them all together into a single one.
+[01:14:28.979] So we can go here, and I'm going to show you how to do that.
+[01:14:32.900] So the first thing you need to do is you need to loop over the object.
+[01:14:36.260] You need to iterate over all of the submeshes, all of the children,
+[01:14:40.299] and you're going to have to gather up all of the geometries.
+[01:14:44.299] And mesh.traverse.
+[01:14:49.299] And the first thing that I would say to do
+[01:14:57.619] is to update the world matrix of the object.
+[01:15:03.419] Update matrix world.
+[01:15:05.780] There we go.
+[01:15:08.780] If child.instanceOf is a mesh.
+[01:15:17.940] Well, first of all, let's make it cast and should receive shadows.
+[01:15:25.780] Now, if it has a geometry, then we are going to copy the geometry.
+[01:15:36.619] new THREE.BufferGeometry.
+[01:15:43.739] And then we're going to copy over the attributes.
+[01:15:47.739] So geo.setIndex.
+[01:15:57.380] child.geometry.index.
+[01:16:01.380] Then geo.setAttributePosition, and then .clone.
+[01:16:18.380] Probably want to clone this one, too.
+[01:16:20.380] Clone.
+[01:16:23.380] And then we are going to apply the matrix4.
+[01:16:26.380] So geo.applyMatrix4 child.matrixWorld.
+[01:16:32.380] That was the whole reason why we did an update, first of all,
+[01:16:36.380] because if you've placed this somewhere, if you've rotated it,
+[01:16:39.380] if you've done something like that,
+[01:16:41.380] then you want to make sure that this is updated,
+[01:16:44.380] then apply them all,
+[01:16:46.380] especially if they're in some sort of hierarchy between themselves.
+[01:16:51.380] And now we can geos.pushGeo.
+[01:17:03.380] And now we can go ahead and merge these.
+[01:17:07.380] And you're going to need a specific add-on to do this
+[01:17:10.380] called bufferGeometryUtils.
+[01:17:13.380] Go to the docs quickly.
+[01:17:16.380] Look here, bufferGeometryUtils.
+[01:17:26.380] And this is just a little utility class
+[01:17:28.380] that has a bunch of useful functions.
+[01:17:32.380] If you're not familiar with it,
+[01:17:34.380] it can do things like compute tangents for you,
+[01:17:37.380] but the thing that we want is merged geometries.
+[01:17:44.380] So this thing can take a whole bunch of geometries
+[01:17:46.380] and merge them into a single buffer geometry for you.
+[01:17:51.380] Go back here.
+[01:17:55.380] We have to go to the top and import it.
+[01:17:58.380] So import bufferGeometryUtils
+[01:18:06.380] bufferGeometryUtils from 3-addons-utils-bufferGeometryUtils.
+[01:18:15.380] There we go.
+[01:18:20.380] Go back to here,
+[01:18:23.380] where we are creating the merged geometry.
+[01:18:28.380] So const physicsGeo
+[01:18:32.380] is equal to bufferGeometryUtils.mergeBufferGeometries.
+[01:18:38.380] And now we have access to a merged geo,
+[01:18:43.380] and thus the vertices and indices that we need
+[01:18:46.380] to compute our convex hull or our trimesh.
+[01:18:49.380] So const vertices is equal to
+[01:18:54.380] physicsGeo.attributes.position.array,
+[01:18:58.380] and of course the indices are in physicsGeo.index.array.
+[01:19:10.380] Let's see what's wrong.
+[01:19:13.380] mergeBufferGeometries.
+[01:19:15.380] This was called merged geometries.
+[01:19:24.380] So that should get us most of what we want,
+[01:19:27.380] and let's try swapping this in now.
+[01:19:29.380] So we're going to swap out the colliderDescription,
+[01:19:32.380] and we're going to use the convex hull instead.
+[01:19:35.380] The convex hull just wants the list of points,
+[01:19:40.380] so just the vertices.
+[01:19:44.380] const colliderDescript equals rapier.colliderDescript.
+[01:19:53.380] And you just need the vertices.
+[01:19:58.380] So that's going to be a new float32 array of vertices.
+[01:20:09.380] And that is almost right.
+[01:20:14.380] I think we just need to not pre-translate everything.
+[01:20:19.380] Where did we set the position?
+[01:20:26.380] So let's take away that,
+[01:20:28.380] and then create physicsMesh.
+[01:20:32.380] We'll translate it here instead.
+[01:20:35.380] So 0, 5, 0.
+[01:20:42.380] And we also need to take away the rotation,
+[01:20:45.380] so let's just take that away as well.
+[01:20:59.380] As you can see, you can see the convex hull shape around the object.
+[01:21:03.380] It just fits inside of it.
+[01:21:10.380] So when we, let's say we'll move the box here,
+[01:21:14.380] you can see when this thing falls,
+[01:21:16.380] it gets very close to what you'd expect it to act like.
+[01:21:22.380] But since this is a convex hull,
+[01:21:25.380] this interior area here,
+[01:21:27.380] nothing can ever go in there.
+[01:21:31.380] But it will be simpler to compute.
+[01:21:34.380] Now we can change this up for an actual trimesh.
+[01:21:39.380] So let's go here, and let's go const collider.descript.rapier.
+[01:21:46.380] I think that should be okay.
+[01:21:49.380] So rapier.collider.descript.trimesh,
+[01:21:52.380] and then we pass in the vertices and the indices.
+[01:21:56.380] Make sure.
+[01:21:59.380] Yeah, I think that's okay.
+[01:22:10.380] And you can see that that was a much more detailed simulation.
+[01:22:19.380] Let's drop the box on it.
+[01:22:40.380] Hmm.
+[01:22:53.380] So that's the most detailed simulation of the object,
+[01:22:56.380] but of course at the highest cost.
+[01:22:59.380] When you're trying to choose a shape for your game,
+[01:23:01.380] you're probably going to go in that order.
+[01:23:03.380] You're going to start with a simple object,
+[01:23:05.380] like a cuboid or a sphere or something to that effect.
+[01:23:09.380] If that's not good enough for you,
+[01:23:11.380] then you can move to convex hull,
+[01:23:13.380] and if you absolutely have to,
+[01:23:15.380] you can move to trimesh.
+[01:23:19.380] Put that one back in.
+[01:23:23.380] So let's go over a couple other simple little things
+[01:23:26.380] before we kind of call it a day on an intro to physics.
+[01:23:30.380] There's a couple features that you probably want to know about.
+[01:23:34.380] These would be detecting contacts between objects.
+[01:23:37.380] So if we had, say, a bunch of objects in the scene,
+[01:23:42.380] you as, say, a developer,
+[01:23:45.380] you might want to know what things are you in contact with
+[01:23:48.380] at any given point.
+[01:23:50.380] And the other thing that you might want to know is,
+[01:23:53.380] well, if we move our mouse around,
+[01:23:55.380] what things are under the mouse, right?
+[01:23:58.380] Or not necessarily even under the mouse,
+[01:24:02.380] you just want to be able to cast a ray in a direction
+[01:24:04.380] from one point to another and see what you hit.
+[01:24:08.380] If this was a character moving around and they had a gun
+[01:24:11.380] or they had something like that and you want to shoot,
+[01:24:13.380] you want to find out, well, did they hit anything?
+[01:24:16.380] Between point A and point B, did they hit any objects?
+[01:24:19.380] So let's go and see how to do those.
+[01:24:25.380] So the first thing we want to do
+[01:24:27.380] is we want to go back to the documents here,
+[01:24:30.380] and we want to go here to active events.
+[01:24:36.380] And as I mentioned in the docs, you've got event handlers here,
+[01:24:40.380] and these are user-defined callbacks to be notified
+[01:24:43.380] when two colliders start and stop touching.
+[01:24:46.380] But by default, they don't really generate these.
+[01:24:50.380] So in order to turn these on,
+[01:24:52.380] you have to follow the instructions here.
+[01:24:54.380] So what you have to do is you have to set active events
+[01:24:57.380] on the collider description when you create it.
+[01:25:00.380] As I mentioned in the documents,
+[01:25:02.380] only one of them has to have that enabled.
+[01:25:05.380] You can see here.
+[01:25:07.380] At least one of the involved colliders
+[01:25:09.380] must have the corresponding event set as active.
+[01:25:13.380] So this means that you don't have to go and set it on everything,
+[01:25:16.380] just on the few things that you want to be notified about.
+[01:25:23.380] Go back here, and whenever we create the...
+[01:25:29.380] And when we create that initial red box,
+[01:25:32.380] so that's done up here,
+[01:25:34.380] we're going to set active events on it.
+[01:25:39.380] ColliderDescription.setActiveEvents.
+[01:25:47.380] Prepare.activeEvents.collisionEvents.
+[01:25:53.380] Now, you can actually do this here in the descriptor
+[01:25:56.380] when you create it, or you can do it here.
+[01:26:01.380] Set active events.
+[01:26:05.380] So one is done during creation,
+[01:26:07.380] and the other is done after the fact.
+[01:26:10.380] It's really up to you.
+[01:26:20.380] So after you've done that,
+[01:26:22.380] you can go down to wherever we step the world.
+[01:26:28.380] That is done in StepPhysics here.
+[01:26:36.380] And what you're going to do is you are going to create an event queue.
+[01:26:40.380] const eventQueue equals new rapier.eventQueue.
+[01:26:51.380] Okay.
+[01:26:53.380] Then you're going to pass the event queue into the step function,
+[01:26:56.380] and this is going to get all of the events.
+[01:27:01.380] Then once you're done,
+[01:27:03.380] eventQueue.drainCollisionEvents,
+[01:27:13.380] you're going to get a callback.
+[01:27:18.380] You're going to get handle1, handle2,
+[01:27:21.380] and then this one is actually called started.
+[01:27:26.380] So let's see if that's working by logging them out.
+[01:27:30.380] So handle1, handle2.
+[01:27:45.380] There are some objects in the world,
+[01:27:47.380] and you can see that we're logging out something.
+[01:27:52.380] So clearly something is happening.
+[01:27:54.380] We're getting collision events.
+[01:28:13.380] Let me pass in a bunch of objects.
+[01:28:33.380] So what you're essentially getting is the handles of the rigid bodies that are in contact,
+[01:28:38.380] and we need a way of mapping those back to the objects in our scene.
+[01:28:42.380] We don't really have an easy way to do that right now,
+[01:28:45.380] but we do have a big list of all the objects.
+[01:28:47.380] So we can just iterate over them for now,
+[01:28:49.380] since we know that we don't have that many.
+[01:28:52.380] Now, this is not something that you would do in a game for real.
+[01:28:57.380] objects.length i,
+[01:29:06.380] and then const object equals this.objects at i.
+[01:29:21.380] So now if let's say object.rigidbody.handle is equal to handle1,
+[01:29:34.380] then let's say object.mesh.material.color.sethex.
+[01:29:43.380] Let's just set it to red,
+[01:29:51.380] and the same thing for this one.
+[01:29:55.380] There we go.
+[01:29:58.380] Sorry, that's green, not red.
+[01:30:03.380] And, well, the monkey doesn't turn green.
+[01:30:07.380] We should see it turn green, but we don't.
+[01:30:10.380] Let's go look in here.
+[01:30:17.380] Let's drop a breakpoint in here and restart.
+[01:30:25.380] Okay, so this should be between the monkey and the cube.
+[01:30:28.380] Let's see what happens.
+[01:30:31.380] Put breakpoints here.
+[01:30:35.380] So this is almost certainly the monkey.
+[01:30:41.380] You know what? This is a group.
+[01:30:43.380] This is not a single mesh.
+[01:30:47.380] We're assuming that this is a material that we can set directly.
+[01:30:50.380] In fact, we have to traverse the entire thing.
+[01:30:53.380] So there's the problem right there.
+[01:30:59.380] We want to actually do something like this.
+[01:31:01.380] Object.mesh.traverse.
+[01:31:28.380] So what we actually want to do is we want to traverse the entire hierarchy
+[01:31:32.380] and change all of the colors.
+[01:31:35.380] This is just so that we can see the context,
+[01:31:37.380] but we're not setting the color correctly right now.
+[01:31:40.380] And we want to do the same thing in both of these,
+[01:31:43.380] because not every single thing will just be a simple cube.
+[01:31:52.380] Go here.
+[01:31:57.380] Here we can see that the monkey turns green,
+[01:31:59.380] so we've kind of made some progress here.
+[01:32:02.380] But if we drop in a bunch of objects, what we're going to see is, well,
+[01:32:07.380] you can actually see that some of these boxes here,
+[01:32:09.380] like these two that are closest to us,
+[01:32:12.380] they never came into contact with the original box.
+[01:32:17.380] And if we slide our box along, not everything is getting colored green.
+[01:32:25.380] There's actually some bugs here,
+[01:32:27.380] and this is one of the areas where the docks from Rapier kind of led you
+[01:32:32.380] in the wrong direction.
+[01:32:35.380] So it seems like we'll go back to the getting started.
+[01:32:38.380] And if you use this getting started code,
+[01:32:40.380] and this took me a little while to figure out,
+[01:32:44.380] and you create the ground, as they mentioned here,
+[01:32:46.380] so all they do is they create a collider and then they add that.
+[01:32:50.380] If you don't create a corresponding rigid body,
+[01:32:53.380] then all of these events just seem to be off,
+[01:32:56.380] and I don't really know why.
+[01:32:58.380] But I do know that if you go and fix that,
+[01:33:01.380] we go up here, and this is where we create the ground.
+[01:33:05.380] So if we create a rigid body to go along with it,
+[01:33:10.380] const rigidBodyDescriptor equals .fixed,
+[01:33:19.380] and then const rigidBody is equal to createRigidBodyDescriptor,
+[01:33:27.380] createRigidBody.
+[01:33:29.380] We pass that in here.
+[01:33:37.380] So now we can drop in a bunch of boxes.
+[01:33:42.380] And you can see right off the bat that the few that touched it,
+[01:33:45.380] they've been colored green already.
+[01:33:47.380] And let's move the box.
+[01:33:51.380] And everything that was in the way,
+[01:33:53.380] it got colored green correctly.
+[01:33:55.380] Just try again.
+[01:33:57.380] Oops.
+[01:33:58.380] So restart.
+[01:34:00.380] Let's throw a bunch of boxes in again.
+[01:34:08.379] A bunch of them this time.
+[01:34:15.379] And there we go.
+[01:34:16.379] Everything that this one touched, everything the big one touched,
+[01:34:19.379] well, it gets colored green.
+[01:34:21.379] So now the collision detection is working,
+[01:34:24.379] or at least the collision events are working.
+[01:34:28.379] I don't know why this is the case,
+[01:34:32.379] especially since the docs show you this way.
+[01:34:35.379] But be warned that you probably should create a rigid body.
+[01:34:39.379] Now let's go back and just kind of clean things up here.
+[01:34:42.379] So we can go back to our drain collision events,
+[01:34:49.379] and let's just clean the code up a little bit here.
+[01:34:52.379] So, for example,
+[01:34:58.379] there's no reason to have two if statements here.
+[01:35:10.379] Another couple things that we want to take note of,
+[01:35:13.379] that we're not clearing, we're not freeing this.
+[01:35:18.379] So once this event queue is drained, we do want to free it.
+[01:35:25.379] And another thing to note is that there is this parameter for the event queue,
+[01:35:30.379] auto drain.
+[01:35:32.379] Now they say that you should set it to true.
+[01:35:36.379] That's the recommendation,
+[01:35:38.379] and that means that basically it'll be automatically drained before you do a
+[01:35:41.379] step.
+[01:35:43.379] Otherwise it'll keep all the events in memory until it's manually drained or
+[01:35:46.379] cleared.
+[01:35:48.379] Now we actually do want this to be false,
+[01:35:51.379] because we may step multiple times, first of all,
+[01:35:55.379] and the second of all is that we will drain it,
+[01:35:58.379] and then we'll free it.
+[01:36:01.379] In a game situation, you might only allocate this once,
+[01:36:05.379] and then drain it every frame,
+[01:36:08.379] instead of allocating it and freeing it every frame.
+[01:36:11.379] In our case, this was just a demo,
+[01:36:13.379] so I'm just showing you how to access it.
+[01:36:16.379] So the last thing that we want to talk about is how to cast a ray in the
+[01:36:20.379] world, and basically how to do a ray cast.
+[01:36:24.379] So let's take a quick look at the docs again.
+[01:36:28.379] So we will go here, and we will look at the API documentation for the
+[01:36:37.379] world.
+[01:36:39.379] Where's the world?
+[01:36:42.379] And specifically we're looking for cast ray.
+[01:36:48.379] So essentially it's pretty easy.
+[01:36:50.379] What you do is you cast ray.
+[01:36:52.379] You pass in essentially the ray,
+[01:36:55.379] so that is the starting point and the direction,
+[01:36:58.379] the maximum distance to travel,
+[01:37:02.379] and then a lot of these other parameters you don't necessarily have to set.
+[01:37:06.379] So the only one that you have to set is whether or not you want to treat
+[01:37:10.379] everything as solid.
+[01:37:12.379] And what this thing is going to do is it's going to pass back a ray
+[01:37:16.379] collider hit,
+[01:37:19.379] and that will provide you with information about what collider it hit
+[01:37:23.379] and the time of impact,
+[01:37:25.379] or essentially where in the world you impacted.
+[01:37:31.379] So for us, we need a few things.
+[01:37:34.379] If we want to use the mouse as the sort of ray to decide where we're hitting,
+[01:37:41.379] if we want to use the mouse as kind of the ray or the direction of the ray
+[01:37:45.379] cast, then we're going to need the mouse position.
+[01:37:49.379] And then we're going to have to build a ray,
+[01:37:52.379] which is essentially the canvas position.
+[01:37:55.379] And then we're going to call rapier world.castray and pass in the
+[01:37:59.379] parameters.
+[01:38:00.379] And what we'll do is we'll just draw something at the position at the point
+[01:38:05.379] of impact.
+[01:38:06.379] So what I'm going to do is I'll create a little ray cast,
+[01:38:08.379] measure a little sphere or something,
+[01:38:10.379] and we'll just put it wherever we think we hit.
+[01:38:14.379] So that means that we need to go up here and we need to define a ray cast
+[01:38:19.379] mesh,
+[01:38:20.379] really cast mesh,
+[01:38:23.379] mesh.
+[01:38:25.379] No.
+[01:38:30.379] And then in here,
+[01:38:32.379] we are going to create
+[01:38:41.379] a little sphere showing where ray cast hits.
+[01:38:50.379] Well,
+[01:38:51.379] this dot ray cast mesh is equal to new mesh.
+[01:38:55.379] We're going to create a sphere and we're going to create a
+[01:39:01.379] mesh standard material.
+[01:39:05.379] Let's make it red.
+[01:39:11.379] Let's make it a tiny bit bigger.
+[01:39:24.379] Make it invisible to start.
+[01:39:28.379] And then we'll add it to the scene.
+[01:39:34.379] Now the next thing we need is we actually need to know where the mouse is.
+[01:39:38.379] And so this is where we go back to the input manager and we start listening
+[01:39:42.379] for mouse events.
+[01:39:45.379] So we'll go pointer is equal to X zero,
+[01:39:52.379] Y zero.
+[01:39:53.379] And we're going to have to add a new event listener here.
+[01:39:57.379] We're going to listen to the pointer move event.
+[01:40:00.379] So window dot add event listener pointer move.
+[01:40:05.379] Perfect.
+[01:40:08.379] And then this dot pointer dot X is equal to.
+[01:40:19.379] This is going to give the pointers coordinates as a value between zero and
+[01:40:24.379] one,
+[01:40:25.379] but we actually don't want that because we actually want to turn this into
+[01:40:29.379] negative one to one.
+[01:40:31.379] And that's because of this.
+[01:40:32.379] So we go here to vector three.
+[01:40:37.379] And this is what we're going to use to turn the cameras position.
+[01:40:41.379] And this is what we're going to use to turn the mouse's position from a
+[01:40:45.379] position on the screen into a direction in the world.
+[01:40:51.379] So there is a function in here.
+[01:40:56.379] Where is it?
+[01:40:58.379] Unproject.
+[01:41:01.379] And so what you're going to do is you're going to have the mouse coordinates
+[01:41:07.379] and then you're going to unproject using a camera.
+[01:41:10.379] And that assumes that the position,
+[01:41:14.379] and that assumes the coordinates are in NDC or normalized device coordinate
+[01:41:19.379] space.
+[01:41:22.379] Now you haven't taken the math course or the GLSL course.
+[01:41:26.379] That's okay.
+[01:41:27.379] It essentially just means that it has to be in the range negative one to one.
+[01:41:33.379] So we're going to need to do that for the X.
+[01:41:35.379] And then we're going to need to do that for the Y.
+[01:41:37.379] But as you can see, we're actually going to need to flip it on Y.
+[01:41:46.379] And then we'll just return a pointer.
+[01:41:51.379] That should be good enough to get us going.
+[01:41:55.379] Now we'll go back to main here.
+[01:42:03.379] And let's go into on step.
+[01:42:05.379] And we're going to add a little function cast ray.
+[01:42:20.379] So what cast ray is going to do is it is going to take
+[01:42:35.379] equals dot camera camera.
+[01:42:43.379] We need access to the camera.
+[01:42:55.379] So the origin is the camera's position.
+[01:42:58.379] And then the direction.
+[01:43:01.379] New three dot vector three.
+[01:43:05.379] And we're going to pass in this dot input manager pointer dot X.
+[01:43:18.379] And it doesn't really matter for Z.
+[01:43:25.379] And now we want to direction dot unproject.
+[01:43:29.379] I want to subtract the origin and then normalize.
+[01:43:34.379] Now we want to construct a rapier ray.
+[01:43:37.379] So const ray is new rapier dot ray.
+[01:43:48.379] So that is the position or the origin of the ray.
+[01:43:54.379] And this is going to be the direction, the normalized direction.
+[01:44:05.379] Now const hit equals this dot rapier world dot cast ray.
+[01:44:13.379] A hundred is fine.
+[01:44:15.379] And then we want to treat objects as if they're solid.
+[01:44:20.379] So now if we hit anything, just log out that we hit something.
+[01:44:34.379] Got the mouse over the background and we're not getting any hit events.
+[01:44:38.379] And then as soon as I bring it over the ground, we're getting hit events.
+[01:44:42.379] And if I bring it over the object here, the monkey, we are getting another hit event.
+[01:44:48.379] So it is technically working.
+[01:44:56.379] So let's pull out the contact point.
+[01:45:00.379] Ray dot point at.
+[01:45:04.379] And we want the hit dot time of impact.
+[01:45:11.379] And then we want to copy that into the ray cast mesh position.
+[01:45:16.379] And then we want to make it visible.
+[01:45:19.379] So that means also if we don't hit anything, then we want to turn it invisible again.
+[01:45:28.379] So here we go.
+[01:45:33.379] So you can see this is working really nicely now.
+[01:45:36.379] So watch.
+[01:45:38.379] I've got it right on the cube.
+[01:45:44.379] And then as I switch it over, you can see it pop into the background.
+[01:45:49.379] And if I go over there, we've got nothing.
+[01:45:52.379] Now here's the interesting thing.
+[01:45:55.379] Remember the convex hull or bounding volume or trimesh?
+[01:45:59.379] Well, you can see that we're right on top of the box here.
+[01:46:06.379] But let's go change the physics mesh for that monkey to be a trimesh or a convex hull.
+[01:46:14.379] So let's go over here.
+[01:46:22.379] So now you can see that we've got a much more fine-grained result here.
+[01:46:31.379] But you can see that I can't go in between here.
+[01:46:39.379] If I change this to a trimesh...
+[01:46:53.379] ...you can see that we're hitting it and then we're not.
+[01:47:08.379] So get rid of that.
+[01:47:16.379] So that should be enough to get you started sort of understanding how to use physics engines.
+[01:47:22.379] It's not fully in-depth.
+[01:47:24.379] This is how to do everything, but this is how to get started at least.
+[01:47:28.379] There's some subjects that we probably want to touch on in future sections like joints or even some of the more advanced...
+[01:47:38.379] Where was it?
+[01:47:48.379] Oh, I think it was back here.
+[01:47:51.379] Yeah, so there was cast ray, but there's also shape casting.
+[01:47:55.379] So this is ray casting, but with a shape.
+[01:48:00.379] And there's also character controllers.
+[01:48:04.379] So many different physics engines will provide a really basic character controller.
+[01:48:09.379] We go here.
+[01:48:11.379] Go to getting started.
+[01:48:13.379] Or no, rather, character controller.
+[01:48:16.379] And this can be used, as I mentioned, for characters, but also for various objects in the game.
+[01:48:22.379] These tend to be pretty general purpose and we'll touch on it because they provide you with a good base feature level.
+[01:48:29.379] So if you want to get something started, these are a great place to start.
+[01:48:33.379] For your main character, it may be enough, but sometimes it isn't and you may have to implement it yourself.
+[01:48:39.379] And that's something that we'll touch on as well.

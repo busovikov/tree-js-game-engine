@@ -1,0 +1,172 @@
+# Simon Dev — Gamedev 02-11 Physics THEORY (subtitle transcript)
+# Source: 02-11-physics-theory.vtt
+# Video: Mux HLS ~00:18:12 (background / theory before code walkthrough)
+# Pair with: simon-02-11-physics-transcript.txt (code, ~1:48)
+
+[00:00:00.240] So today we're going to talk about integrating physics with Three.js.
+[00:00:05.040] And by physics I mean integrating a physics engine of some kind so that we can simulate complex
+[00:00:11.840] physics. So when we're talking about integrating physics or physics engine you're talking about
+[00:00:17.680] something that lets you do something like this. You can see that these demos here they feature
+[00:00:23.440] really really complex calculations where objects are falling and they're bouncing off of each other
+[00:00:30.719] and generally moving in a very physically real way. Now Three.js is a rendering library. You
+[00:00:36.799] can see that all of the objects that you see on the screen are being drawn with something like
+[00:00:41.680] Three.js but the simulation of the objects themselves well that has to be done with
+[00:00:47.759] something different and that is called a physics engine. Physics engines handle all of the complex
+[00:00:53.919] calculations for you in the same way that Three.js kind of handles a lot of the complexities of
+[00:00:59.919] rendering 3d graphics. Now there are many different physics engines available these days
+[00:01:06.320] and surprisingly on the web there's quite a few as well. We can roughly divide the physics engines
+[00:01:13.599] that are available to us into one of two categories. You have ones that are written
+[00:01:18.959] primarily in javascript and these ones tend to be reasonably lightweight. They may not be the
+[00:01:26.080] most feature complete or the most performance but as I said they're lightweight to include with your
+[00:01:32.239] project. So under that heading you might have a couple libraries like oimo or canon.js. These have
+[00:01:39.680] both been kind of kicking around for quite a few years now and they do the job. If you're setting
+[00:01:46.559] up just a little web page or something like that and you want to include a little bit of physics
+[00:01:50.879] with it then these will do the job just fine. So oimo.js was the demo that we were looking at a
+[00:01:56.720] bit earlier. As you can see from the github page it's been around for quite a few years now.
+[00:02:02.400] We can check out some of the demos so you've got demos down here basic compound chairs things like
+[00:02:07.919] this and you can see that it does the job just fine. Got a terrain here which is all right and
+[00:02:15.119] we've got an even ragdoll test. I mean there's nothing wrong with it. As for the other javascript
+[00:02:22.880] based one you've got canon.js and so this is another one it has been around for quite a while.
+[00:02:30.720] According to the wikipedia page it's been around since 2015 or so and when we look through some of
+[00:02:36.639] the demos we can take a quick look through some of the demos here. You've got your standard
+[00:02:42.080] stacking demo. Here's a better car. Let's see if it moves around. Not actually sure. Ah there's the
+[00:02:51.039] controls. Another stacking demo. You've got ragdoll physics and simulated cloth of some kind.
+[00:03:00.240] On the other side of things you have what I would probably call the more robust more
+[00:03:05.600] performant engines. These are not lightweight and they may be even a little bit more difficult to
+[00:03:11.039] use at first. A lot of them have been used in major games before so we're talking about major
+[00:03:17.119] games that you probably have played on playstation or xbox or on pc. On this list you will probably
+[00:03:24.800] have a few engines like ammo.js. You will have physx.js. You will have the Havoc plugin. You'll
+[00:03:33.759] have jolt physics.js and you'll have something like rapier.js. These are really interesting
+[00:03:40.320] because these are transpiled from other languages. They were not originally written in javascript.
+[00:03:45.919] They're often written in something like c++ or another highly performant language and then ported
+[00:03:51.839] over to javascript using something like inscripten. So these do tend to have near-native
+[00:03:58.080] performance and because they've been used in major games before they are probably highly robust.
+[00:04:04.880] A lot of them have been around for many many years now and their featured sets tend to be
+[00:04:10.399] quite extensive especially when you compare them to the javascript engines. So if we look at ammo.js
+[00:04:17.600] ammo.js is based off of the bullet physics engine and the bullet physics engine has been around for
+[00:04:26.480] quite a while at least 10 years if not longer and has seen quite a bit of use. If i'm not mistaken
+[00:04:34.480] this is the physics engine that's used by rockstar and so this was used in games like red dead
+[00:04:40.000] redemption. You can see here on the github page this is where they post the latest ports of the
+[00:04:46.000] bullet physics engine. You can take a look at some of their demos here so you've got a vehicle demo here
+[00:04:55.920] and there we go gonna fly and it's nothing really amazing to watch but
+[00:05:01.760] there's a soft body cloth demo here
+[00:05:31.839] so one of the problems with ammo.js although it is used quite often especially when you're
+[00:05:37.519] looking at tutorials for physics in especially when you're looking for tutorials and three.js
+[00:05:42.720] you'll often find ammo.js tutorials. The big problem is that there really is no official
+[00:05:48.559] documentation for ammo.js. It's a direct port of the bullet physics engine and this is completely
+[00:05:55.279] automated they don't really do anything to change it. So if you look at the bullet physics engine
+[00:06:01.200] they don't do anything to change it so you've actually got to go use the original bullet physics user guide.
+[00:06:07.359] So they do host a whole documents website where they provide the api. For advanced users you
+[00:06:14.239] probably won't have a problem but for beginners i would say that the documentation is a little
+[00:06:19.440] spartan and a little bit difficult to get through. It is without a doubt a very very powerful physics
+[00:06:25.760] engine. I've used it in the past but i probably wouldn't recommend it for a complete beginner.
+[00:06:32.480] Now PhysX is the open source real-time physics engine developed by NVIDIA and this thing has
+[00:06:39.279] been around for quite a while. I think it's about 20 years old at this point or possibly older
+[00:06:45.519] and the number of games that use PhysX is just gigantic. You can see here on the wikipedia page
+[00:06:51.920] games using PhysX that this engine has been used quite a bit so there's no worry
+[00:06:59.440] that this isn't a feature complete engine or that it's not performant.
+[00:07:06.640] You can take a look at some of the demos here.
+[00:07:13.600] So you can see we've got this sort of pretty cool demo with millions of objects being dropped down
+[00:07:19.679] and you can see that the performance is pretty good. You can take a look at their vehicle demo.
+[00:07:28.480] The vehicle demo is very cool. It's very flashy.
+[00:07:50.559] And here's their character support as well so
+[00:08:08.640] yeah i mean this this looks great.
+[00:08:11.359] This looks great.
+[00:08:14.399] So next up we have Havoc or Havoc PhysX and this has been around well i think this has actually
+[00:08:21.200] been around longer than i've been programming. I think this came out when i was in university.
+[00:08:26.959] You can see their website they've got quite a bit of stuff going on and there's been a whole bunch
+[00:08:33.679] of games that have been released on the Havoc PhysX engine. Now the thing with the Havoc PhysX
+[00:08:38.159] engine is that it comes with Babylon.js so they have some sort of deal with Babylon where they've
+[00:08:44.400] got the plugin bundled up with it. Now as far as i know Havoc is free to use under the MIT license.
+[00:08:52.159] The problem is it's kind of attached at the hip with Babylon. You absolutely can get it to work
+[00:08:57.840] on its own and you can even see that there are github projects that are dedicated to trying to
+[00:09:02.799] isolate Havoc so that you can use it on its own. It is a very very powerful engine but at the same
+[00:09:08.320] time this seems like a bit of an uphill battle. When there are other great ones available i'm
+[00:09:13.760] unclear why you would sort of go through all the hassle of trying to play with this but
+[00:09:18.479] but i mean it's up to you. If you're familiar with Havoc well well guess what it's available on the
+[00:09:24.159] web and so you can use it. If you're still trying to balance the i'm just want to get started with
+[00:09:30.159] something a bit easy with i want to make sure that it's future proof then let's keep moving.
+[00:09:36.000] One interesting new engine that showed up in the last year or two is JoltPhysics and JoltPhysics
+[00:09:42.400] is really interesting. Again it's another C++ engine that's been compiled over to JavaScript
+[00:09:48.320] using Inscriptum and the cool thing about JoltPhysics is it's the engine that was used by
+[00:09:53.679] Horizon Zero Dawn. It's extremely performant and in fact it's multi-threaded and so if you look on
+[00:10:00.479] the github page you can see that they have various flavors of the library including
+[00:10:06.320] including a wasm multi-threaded version. So we can take a look at some of the demos
+[00:10:12.159] and as you can see here on the demos page they've got quite a few demos. One of the nice things
+[00:10:17.760] about having lots of demos is that you have something to refer to beyond just documentation.
+[00:10:23.039] You have an actual working scene to take code from. So we can go through a lot of these demos
+[00:10:28.880] here and they've got various aspects of the physics engine being shown off.
+[00:10:48.239] Now the physics engine that we are going to be going with is one called Rapier.
+[00:10:53.119] Or Rapier.js and this is based on the Rapier physics engine which is part of Bevy engine.
+[00:11:00.320] Sort of a newer game engine that's written in Rust and the reason I'm going with Rapier is well
+[00:11:06.239] there's a few reasons. I've used it before in fact I've used quite a few of these but
+[00:11:12.479] and the thing that I like about Rapier is that it ticks a lot of boxes.
+[00:11:16.719] It kind of sits in that middle ground. It's performant enough to do all of the things that
+[00:11:22.000] I want it to do and I don't have the nagging feeling that we're going to run into a wall
+[00:11:28.159] somewhere in the future like if you were to use CanonJS or OMO where the performance issues are
+[00:11:34.719] going to become intractable. Its feature set is quite extensive but what I really like about it
+[00:11:42.559] is that the documentation is great. You can see here on their Rapier getting started page
+[00:11:50.320] you have a very extensive user documentation and this is part of what sold me on it especially as
+[00:11:57.039] a recommendation for anybody following this course digging through source code or forums
+[00:12:02.799] or wherever trying to find information about Ammo.js or anything else that is not really something I
+[00:12:08.479] want to be doing right now and so you've got these really really nice well-written docs that
+[00:12:14.159] you can see here. You've got rigid bodies, you've got colliders, you've got character controller
+[00:12:19.119] and they give you very extensive instructions on how to use everything and this is just what
+[00:12:24.000] sold me on Rapier but as we're about to see it actually doesn't matter that much which physics
+[00:12:30.320] engine you use. For the most part they're very similar in many regards. You of course can pick
+[00:12:37.200] whichever one you want. All the demos that I'm going to be doing at least in the near future
+[00:12:41.919] will be using Rapier. So before we actually go and integrate the code and start sort of getting an
+[00:12:48.000] actual scene going let's talk about how do you actually integrate physics and graphics together
+[00:12:53.520] in a single project because if you want to be able to simulate all of those objects in the world the
+[00:12:58.719] movements collisions reactions to forces you need to understand how these two systems operate and
+[00:13:05.760] the thing is is that they actually operate independently and annoyingly not only independently
+[00:13:11.760] but they're updated in different ways and at different rates so let's start with the idea
+[00:13:16.799] that you've got two different representations of the world so up until now we've had our graphical
+[00:13:22.159] representation of the world that's the 3gs scene that we were talking about so you could imagine a
+[00:13:28.320] scene containing a bunch of objects like trees and rocks and ground and you would have mesh objects
+[00:13:33.520] for each of those then the physics actually needs its own representation of the scene
+[00:13:39.280] so while the graphics had a three dot scene and then a bunch of three dot meshes inserted into it
+[00:13:45.760] for the physics depending on which library you're going to use this is going to be a physics scene
+[00:13:52.640] and then it's going to have a bunch of corresponding physics objects usually called
+[00:13:56.320] rigid bodies and these are going to have various properties as well like position shape velocity
+[00:14:02.479] mass etc now the major difference between these two scenes is that the 3gs scene the graphics
+[00:14:08.960] scene you are going to position things so if you want something to move you set its position
+[00:14:15.599] the difference with the physics engine is that the physics engine will have a step function
+[00:14:20.400] some sort of update and that will move a lot of the objects in the scene for you you may set the
+[00:14:27.359] position on some objects that you really care about let's say a character's collision but the
+[00:14:32.320] rest of the scene will update by itself and then what you're going to be expected to do
+[00:14:37.599] is that you will have to sync the graphics and the physics together so after the physics is updated
+[00:14:45.840] after it does its own simulation step and updates its own list of objects and positions and everything
+[00:14:51.760] else you will be expected to take those and sync the appropriate graphical things with them so if
+[00:14:58.479] you were to imagine a really really simple scene with a ground and a box falling well in the 3gs
+[00:15:07.119] scene you would have two separate objects you would have a mesh for the ground and you would
+[00:15:12.479] have a mesh for the box in the physics scene you would have an object representing the ground a
+[00:15:19.200] rigid body and this would have a very specific property so that it doesn't move and then you
+[00:15:24.640] would have another physics object for the box falling and this would have its own specific
+[00:15:30.239] properties it would be dynamic and it would be under the control of the physics engine
+[00:15:35.520] so then you would step the physics the physics would see that this thing is falling
+[00:15:40.799] and then afterwards you would be expected to know the mapping from that physics object back to the
+[00:15:46.320] graphics object so that you can update the position and the rotation of the mesh so that it appears to
+[00:15:52.719] be falling and as i mentioned before updating physics and updating graphics these are actually
+[00:15:58.880] a bit different in how they're going to be done physics for the most part needs fixed time steps
+[00:16:05.039] this tends to be a universal thing among physics engines what that means is that when you do an
+[00:16:11.280] update on the physics it tends to assume a very specific amount of time let's say that your time
+[00:16:16.960] step for your physics simulation is 1 60th of a second it means that whenever you call your update
+[00:16:23.359] function on physics it moves ahead 1 60th of a second in time but as we learned with our render
+[00:16:31.520] loops we tend to use the delta time the amount of time between frames can vary so when we do our
+[00:16:38.960] render loop now we update both the physics and the graphics we're going to have to take this into
+[00:16:44.640] account we're going to have to take into account that the physics actually updates and fixed time
+[00:16:49.119] steps we're going to have to take into account that the physics updates in fixed time steps
+[00:16:55.919] and graphics doesn't so this will be a lot more clear in code but our game loop will have to
+[00:17:01.679] change a little bit we'll have to use something called an accumulator we'll do a fixed physics
+[00:17:07.199] update using the accumulator we'll update the graphics after that and then optionally what you
+[00:17:14.239] can do is you can interpolate the graphics depending on the physics and then optionally
+[00:17:20.400] what you can do is you can interpolate the physics and this provides a much smoother look between
+[00:17:26.479] frames and one last thing to think about is that there is not necessarily a one-to-one mapping
+[00:17:32.560] from each graphical object to each physics object this is a mistake many people make when architecting
+[00:17:39.520] their code there's absolutely not a one-to-one mapping from your objects in your graphics scene
+[00:17:46.319] to your objects in your physics scene so don't make that assumption you could imagine a tree
+[00:17:51.760] and a tree is made of a trunk and many different leaves and this could be composed of many different
+[00:17:56.319] meshes but from a physics standpoint maybe you don't want to have many different meshes maybe
+[00:18:02.400] you just want a single capsule around the whole thing or a single bounding box around the whole
+[00:18:06.719] thing so that's the basic idea let's see how this plays out in code

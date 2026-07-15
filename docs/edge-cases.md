@@ -70,6 +70,11 @@ Manual viewport checks **supplement** automated tests — never replace them.
 | Legacy scene without `renderSettings` | Preprocess → `defaultRenderSettings()` | `render-settings.test.ts` |
 | Component data wrong shape | `type.schema.parse(comp.data)` throws at load | serializer hydrate |
 | Collider/PhysicsController data contains runtime or legacy physics handles | Load succeeds and recognized handles remain available in memory; save and component copy omit `physicsBodyHandle`, `physicsHandle`, and `physicsVehicleHandle` | `serializer/collider.test.ts`, `serializer/physics-controller.test.ts` |
+| Legacy `Collider.isStatic: false` without `RigidBody` | Load synthesizes `RigidBody { type: 'dynamic' }`; handle migrates from collider to RigidBody | `serializer/collider.test.ts` |
+| Legacy `Collider.isStatic: true` or omitted | Collider-only implicit static body; no RigidBody synthesized | `serializer/physics-migration.ts` |
+| `Collider` + `RigidBody` with `trimesh` + `type: dynamic` | Load throws `PhysicsValidationError` | `serializer/collider.test.ts` |
+| Collider `layer` ≥ 16 | Schema parse failure at load | `collider.test.ts` |
+| Scene without `physicsSettings` | Preprocess → `defaultPhysicsProjectSettings()` | `physics-project-settings.test.ts` |
 
 **Do not** silently coerce invalid scene data — fail at load with clear error; log via `sceneLogError('load.failed', ...)`.
 
@@ -119,7 +124,7 @@ Test these explicitly — users will do them.
 | **Rapid gizmo drag** | Commands merge via epsilon threshold | `mergeTransformCommand` |
 | **Switch model asset mid-load** | Stale callback ignored (`modelLoadId`) | `render-sync-system.ts` |
 | **Select deleted entity** | Filtered out: `world?.hasEntity(id)` | `InspectorPanel` |
-| **Edit in play mode** | Inspector/transform disabled (`mode !== 'edit'`) | `InspectorPanel.canEdit` |
+| **Edit in play mode** | Non-Transform inspector fields stay disabled. Transform is editable and teleports the live physics body via `resetBodyState` (velocities cleared). | `InspectorPanel.canEditTransform`, `teleportEntitiesToAuthoredTransform` |
 | **R respawn in play mode** | Controller teleports to spawn pose; physics, input, propulsion, brake/motor, steering and buffered jump state are cleared. Held input may be sampled again by input binding on the next frame. | `RespawnSystem`, `PhysicsControllerSystem` |
 | **Drive off level (Y below -20)** | Auto-respawn to captured spawn transform | `RespawnSystem` (T01.21) |
 | **Disable an active physics controller** | On the enabled→disabled transition, custom/dynamic raycast forces and brakes, arcade velocity state, character movement buffers, and revolute motors are neutralized once | `PhysicsControllerSystem` |
