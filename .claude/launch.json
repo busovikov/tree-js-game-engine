@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "editor",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@haku/editor-app", "dev"],
+      "port": 5174
+    }
+  ]
+}
