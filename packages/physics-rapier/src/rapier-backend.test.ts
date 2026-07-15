@@ -302,6 +302,157 @@ describe('@haku/physics-rapier RapierPhysicsBackend', () => {
     expect(states[0]?.engineForce).toBe(1500)
     expect(backend.getBodyTransform(chassis).position[1]).toBeGreaterThan(0.5)
   })
+
+  it('attaches cylinder collider shape', async () => {
+    const backend = await createBackend()
+    const body = backend.createBody({
+      type: 'dynamic',
+      transform: { position: [0, 1, 0], rotation: [0, 0, 0, 1] },
+      mass: 1,
+    })
+    backend.attachShape(body, { type: 'cylinder', radius: 0.5, halfHeight: 0.5 })
+    backend.prepareSceneQueries()
+
+    const hit = backend.raycast({
+      origin: [0, 3, 0],
+      direction: [0, -1, 0],
+      maxDistance: 5,
+    })
+    expect(hit).not.toBeNull()
+    expect(hit!.body.value).toBe(body.value)
+  })
+
+  it('filters raycasts by layer mask', async () => {
+    const backend = await createBackend()
+    const matrix = Array.from({ length: 16 }, (_, row) =>
+      Array.from({ length: 16 }, (_, col) => row === col),
+    )
+
+    const layer0 = backend.createBody({
+      type: 'static',
+      transform: { position: [0, 0, 0], rotation: [0, 0, 0, 1] },
+    })
+    backend.attachShape(layer0, {
+      type: 'box',
+      halfExtents: [2, 0.1, 2],
+      spawn: { collisionGroups: (1 << 16) | 1 },
+    })
+
+    const layer1 = backend.createBody({
+      type: 'static',
+      transform: { position: [5, 0, 0], rotation: [0, 0, 0, 1] },
+    })
+    backend.attachShape(layer1, {
+      type: 'box',
+      halfExtents: [2, 0.1, 2],
+      spawn: { collisionGroups: (2 << 16) | 2 },
+    })
+    backend.prepareSceneQueries()
+
+    const hitLayer1 = backend.raycast({
+      origin: [5, 2, 0],
+      direction: [0, -1, 0],
+      maxDistance: 5,
+      layerMask: 1 << 1,
+    })
+    const missLayer1 = backend.raycast({
+      origin: [5, 2, 0],
+      direction: [0, -1, 0],
+      maxDistance: 5,
+      layerMask: 1 << 0,
+    })
+
+    expect(hitLayer1?.body.value).toBe(layer1.value)
+    expect(missLayer1).toBeNull()
+  })
+
+  it('emits collision enter events when monitored colliders touch', async () => {
+    const backend = await createBackend()
+
+    const ground = backend.createBody({
+      type: 'static',
+      transform: { position: [0, -0.5, 0], rotation: [0, 0, 0, 1] },
+    })
+    backend.attachShape(ground, {
+      type: 'box',
+      halfExtents: [5, 0.5, 5],
+      spawn: {
+        entityId: 'ground-1',
+        collisionEvents: true,
+      },
+    })
+
+    const dynamic = backend.createBody({
+      type: 'dynamic',
+      transform: { position: [0, 2, 0], rotation: [0, 0, 0, 1] },
+      mass: 1,
+    })
+    backend.attachShape(dynamic, {
+      type: 'box',
+      halfExtents: [0.5, 0.5, 0.5],
+      spawn: {
+        entityId: 'box-1',
+        collisionEvents: true,
+      },
+    })
+    backend.prepareSceneQueries()
+
+    for (let i = 0; i < 60; i++) {
+      backend.step(1 / 60)
+    }
+    const events = backend.drainCollisionEvents()
+
+    expect(events.length).toBeGreaterThan(0)
+    expect(events.some((event) => event.phase === 'enter' && event.kind === 'collision')).toBe(true)
+    expect(
+      events.some(
+        (event) =>
+          (event.entityA === 'ground-1' && event.entityB === 'box-1') ||
+          (event.entityA === 'box-1' && event.entityB === 'ground-1'),
+      ),
+    ).toBe(true)
+  })
+
+  it('emits trigger enter events for sensor overlaps', async () => {
+    const backend = await createBackend()
+
+    const zone = backend.createBody({
+      type: 'static',
+      transform: { position: [0, 0, 0], rotation: [0, 0, 0, 1] },
+    })
+    backend.attachShape(zone, {
+      type: 'box',
+      halfExtents: [2, 2, 2],
+      spawn: {
+        entityId: 'area-1',
+        isSensor: true,
+        collisionEvents: true,
+      },
+    })
+
+    const dynamic = backend.createBody({
+      type: 'dynamic',
+      transform: { position: [0, 5, 0], rotation: [0, 0, 0, 1] },
+      mass: 1,
+    })
+    backend.attachShape(dynamic, {
+      type: 'sphere',
+      radius: 0.5,
+      spawn: {
+        entityId: 'ball-1',
+        collisionEvents: true,
+      },
+    })
+    backend.prepareSceneQueries()
+
+    for (let i = 0; i < 60; i++) {
+      backend.step(1 / 60)
+    }
+    const events = backend.drainCollisionEvents()
+
+    expect(events.some((event) => event.kind === 'trigger')).toBe(true)
+    expect(events.some((event) => event.entityA === 'area-1' || event.entityB === 'area-1')).toBe(true)
+  })
 })
 
 describe('@haku/physics-rapier PhysicsWorld integration', () => {
@@ -320,6 +471,78 @@ describe('@haku/physics-rapier PhysicsWorld integration', () => {
     world.attachShape(body, { type: 'box', halfExtents: [1, 1, 1] })
     world.step(1 / 60)
     world.destroyBody(body)
+    backend.dispose()
+  })
+
+  it('includes contact points on monitored collision enter events', async () => {
+    const backend = await createBackend()
+
+    const ground = backend.createBody({
+      type: 'static',
+      transform: { position: [0, -0.5, 0], rotation: [0, 0, 0, 1] },
+    })
+    backend.attachShape(ground, {
+      type: 'box',
+      halfExtents: [5, 0.5, 5],
+      spawn: {
+        entityId: 'ground-1',
+        collisionEvents: true,
+      },
+    })
+
+    const dynamic = backend.createBody({
+      type: 'dynamic',
+      transform: { position: [0, 2, 0], rotation: [0, 0, 0, 1] },
+      mass: 1,
+    })
+    backend.attachShape(dynamic, {
+      type: 'box',
+      halfExtents: [0.5, 0.5, 0.5],
+      spawn: {
+        entityId: 'box-1',
+        collisionEvents: true,
+        contactMonitor: true,
+        maxReportedContacts: 4,
+      },
+    })
+    backend.prepareSceneQueries()
+
+    let enterWithContacts: import('@haku/physics').PhysicsCollisionEvent | undefined
+    for (let i = 0; i < 60; i++) {
+      backend.step(1 / 60)
+      const events = backend.drainCollisionEvents()
+      enterWithContacts = events.find(
+        (event) =>
+          event.phase === 'enter' &&
+          event.kind === 'collision' &&
+          event.contacts &&
+          event.contacts.length > 0,
+      )
+      if (enterWithContacts) break
+    }
+
+    expect(enterWithContacts).toBeDefined()
+    expect(enterWithContacts!.contacts![0]?.point).toHaveLength(3)
+    expect(enterWithContacts!.contacts![0]?.normal).toHaveLength(3)
+
+    backend.dispose()
+  })
+
+  it('returns debug render buffers for spawned colliders', async () => {
+    const backend = await createBackend()
+    const body = backend.createBody({
+      type: 'static',
+      transform: identityTransform,
+    })
+    backend.attachShape(body, { type: 'box', halfExtents: [1, 1, 1] })
+    backend.prepareSceneQueries()
+    backend.step(1 / 60)
+
+    const buffers = backend.getDebugRenderBuffers()
+    expect(buffers).not.toBeNull()
+    expect(buffers!.vertices.length).toBeGreaterThan(0)
+    expect(buffers!.colors.length).toBeGreaterThan(0)
+
     backend.dispose()
   })
 })

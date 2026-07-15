@@ -1,18 +1,20 @@
 import RAPIER from '@dimforge/rapier3d-compat'
 import type { IPhysicsBackend } from '@haku/physics'
+import { RAPIER_PHYSICS_CAPABILITIES } from '@haku/physics'
 import {
   PhysicsHandleNotFoundError,
   PhysicsNotInitializedError,
   physicsBodyHandle,
+  physicsJointHandle,
   physicsShapeHandle,
   physicsWheelHandle,
   type PhysicsBodyHandle,
+  type PhysicsJointHandle,
   type PhysicsShapeHandle,
   type PhysicsWheelHandle,
-  physicsJointHandle,
-  type PhysicsJointHandle,
   type PointerJointConfig,
   type RevoluteMotorJointConfig,
+  type SceneJointConfig,
 } from '@haku/physics'
 import type { IRaycastVehicle, WheelConfig, WheelState } from '@haku/physics'
 import type {
@@ -32,13 +34,19 @@ import {
   type WheelRuntime,
 } from '@haku/physics'
 import type {
+  OverlapHit,
+  OverlapQuery,
   PhysicsShapeDescriptor,
   PhysicsTransform,
+  Quat,
   RaycastHit,
   RaycastQuery,
   RigidBodyDescriptor,
+  ShapecastHit,
+  ShapecastQuery,
   Vec3,
 } from '@haku/physics'
+import type { PhysicsCollisionEvent } from '@haku/physics'
 import { PhysicsWasmInitError } from './errors.js'
 import { quatFromRapier, quatToRapier, vec3FromRapier, vec3ToRapier } from './math.js'
 
@@ -92,14 +100,26 @@ interface BodyRecord {
   inertiaScalePitchRoll?: number
 }
 
+interface ColliderEventMeta {
+  entityId: string
+  isSensor: boolean
+  isArea: boolean
+  contactMonitor: boolean
+  maxReportedContacts: number
+}
+
 interface ShapeRecord {
   collider: RAPIER.Collider
   bodyHandle: PhysicsBodyHandle
+  enabled: boolean
+  entityId?: string
+  isSensor: boolean
+  isArea: boolean
 }
 
 interface JointRecord {
   joint: RAPIER.ImpulseJoint
-  kind: 'pointer' | 'revolute'
+  kind: 'pointer' | 'revolute' | 'scene'
   bodyA: PhysicsBodyHandle
   bodyB: PhysicsBodyHandle
 }
@@ -343,6 +363,9 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
   private readonly dynamicVehicles = new Map<string, RapierDynamicRaycastVehicle>()
   private readonly characterControllers = new Map<string, RapierCharacterController>()
   private readonly joints = new Map<string, JointRecord>()
+  private eventQueue: RAPIER.EventQueue | null = null
+  private readonly colliderEventMeta = new Map<number, ColliderEventMeta>()
+  private readonly colliderByHandle = new Map<number, RAPIER.Collider>()
 
   constructor(options: RapierPhysicsBackendOptions = {}) {
     this.gravity = options.gravity ?? [0, -9.81, 0]
@@ -358,6 +381,7 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
       return
     }
     this.world = new RAPIER.World(vec3ToRapier(this.gravity))
+    this.eventQueue = new RAPIER.EventQueue(false)
     this.initialized = true
   }
 
@@ -366,6 +390,8 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
       for (const [handle, record] of this.bodies) {
         this.disposeBodyOwnedResources(physicsBodyHandle(handle), record)
       }
+      this.eventQueue?.free()
+      this.eventQueue = null
       this.world.free()
       this.world = null
     }
@@ -373,6 +399,8 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
     this.bodies.clear()
     this.shapes.clear()
     this.colliderToBody.clear()
+    this.colliderEventMeta.clear()
+    this.colliderByHandle.clear()
     this.vehicles.clear()
     this.dynamicVehicles.clear()
     this.characterControllers.clear()
@@ -397,7 +425,7 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
     for (const vehicle of this.dynamicVehicles.values()) {
       vehicle.updateVehicle(dt)
     }
-    world.step()
+    world.step(this.eventQueue ?? undefined)
     for (const record of this.bodies.values()) {
       record.body.resetForces(false)
       record.body.resetTorques(false)
@@ -408,11 +436,20 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
     const world = this.getWorld()
     const bodyDesc = this.createRigidBodyDesc(descriptor)
     const body = world.createRigidBody(bodyDesc)
+  const explicitMass =
+      descriptor.type === 'dynamic' &&
+      descriptor.massMode !== 'autoFromColliders' &&
+      descriptor.mass !== undefined
+        ? descriptor.mass
+        : undefined
+    if (descriptor.type === 'dynamic' && descriptor.gravityScale !== undefined) {
+      body.setGravityScale(descriptor.gravityScale, true)
+    }
     const handle = physicsBodyHandle(createId('body'))
     this.bodies.set(handle.value, {
       body,
       colliderHandles: new Set(),
-      explicitMass: descriptor.type === 'dynamic' ? descriptor.mass : undefined,
+      explicitMass,
       inertiaScalePitchRoll:
         descriptor.type === 'dynamic' ? descriptor.inertiaScalePitchRoll : undefined,
     })
@@ -431,11 +468,16 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
     const world = this.getWorld()
     const bodyRecord = this.getBodyRecord(body)
     const colliderDesc = this.createColliderDesc(shape)
-    if (bodyRecord.explicitMass !== undefined) {
+    const isFirstShape = bodyRecord.colliderHandles.size === 0
+    const useAnalyticExplicit =
+      bodyRecord.explicitMass !== undefined &&
+      isFirstShape &&
+      isAnalyticPrimitive(shape)
+    if (useAnalyticExplicit) {
       colliderDesc.setDensity(0)
     }
     const collider = world.createCollider(colliderDesc, bodyRecord.body)
-    if (bodyRecord.explicitMass !== undefined) {
+    if (useAnalyticExplicit && bodyRecord.explicitMass !== undefined) {
       this.applyExplicitMassProperties(
         bodyRecord,
         shape,
@@ -443,9 +485,30 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
         bodyRecord.inertiaScalePitchRoll,
       )
     }
+    const spawn = shape.spawn
     const handle = physicsShapeHandle(createId('shape'))
+    const enabled = spawn?.enabled !== false
+    const isSensor = spawn?.isSensor === true
+    const isArea = spawn?.isArea === true
     bodyRecord.colliderHandles.add(handle.value)
-    this.shapes.set(handle.value, { collider, bodyHandle: body })
+    this.shapes.set(handle.value, {
+      collider,
+      bodyHandle: body,
+      enabled,
+      entityId: spawn?.entityId,
+      isSensor,
+      isArea,
+    })
+    if (spawn?.entityId) {
+      this.colliderEventMeta.set(collider.handle, {
+        entityId: spawn.entityId,
+        isSensor,
+        isArea,
+        contactMonitor: spawn.contactMonitor === true,
+        maxReportedContacts: spawn.maxReportedContacts ?? 0,
+      })
+    }
+    this.colliderByHandle.set(collider.handle, collider)
     this.colliderToBody.set(collider.handle, body)
     this.syncColliders()
     return handle
@@ -454,6 +517,8 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
   detachShape(shape: PhysicsShapeHandle): void {
     const world = this.getWorld()
     const record = this.getShapeRecord(shape)
+    this.colliderEventMeta.delete(record.collider.handle)
+    this.colliderByHandle.delete(record.collider.handle)
     this.colliderToBody.delete(record.collider.handle)
     const bodyRecord = this.getBodyRecord(record.bodyHandle)
     bodyRecord.colliderHandles.delete(shape.value)
@@ -461,10 +526,28 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
     this.shapes.delete(shape.value)
   }
 
+  replaceShape(shape: PhysicsShapeHandle, next: PhysicsShapeDescriptor): PhysicsShapeHandle {
+    const record = this.getShapeRecord(shape)
+    const body = record.bodyHandle
+    const enabled = record.enabled
+    this.detachShape(shape)
+    const nextHandle = this.attachShape(body, next)
+    if (!enabled) {
+      this.setShapeEnabled(nextHandle, false)
+    }
+    return nextHandle
+  }
+
   setBodyTransform(body: PhysicsBodyHandle, transform: PhysicsTransform): void {
     const record = this.getBodyRecord(body)
-    record.body.setTranslation(vec3ToRapier(transform.position), true)
-    record.body.setRotation(quatToRapier(transform.rotation), true)
+    const bodyType = record.body.bodyType()
+    if (bodyType === RAPIER.RigidBodyType.KinematicPositionBased) {
+      record.body.setNextKinematicTranslation(vec3ToRapier(transform.position))
+      record.body.setNextKinematicRotation(quatToRapier(transform.rotation))
+    } else {
+      record.body.setTranslation(vec3ToRapier(transform.position), true)
+      record.body.setRotation(quatToRapier(transform.rotation), true)
+    }
     this.syncColliders()
   }
 
@@ -555,16 +638,27 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
       ? this.getBodyRecord(query.excludeBody).body
       : undefined
 
+    const layerMask = query.layerMask ?? 0xffff
+    const filterGroups = (0xffff << 16) | layerMask
+    const solid = !query.includeSensors
+
     const hit = world.castRayAndGetNormal(
       ray,
       query.maxDistance,
-      true,
+      solid,
       undefined,
-      undefined,
+      filterGroups,
       undefined,
       excludeRigidBody,
     )
     if (!hit) {
+      return null
+    }
+
+    const shapeRecord = [...this.shapes.values()].find(
+      (record) => record.collider.handle === hit.collider.handle,
+    )
+    if (shapeRecord && !shapeRecord.enabled) {
       return null
     }
 
@@ -581,6 +675,188 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
       normal: vec3FromRapier(hit.normal),
       distance: hit.timeOfImpact,
     }
+  }
+
+  shapecast(query: ShapecastQuery): ShapecastHit | null {
+    const world = this.getWorld()
+    const direction = normalizeDirection(query.direction)
+    const worldPose = composeQueryTransform(query.transform, query.shape)
+    const rapierShape = createRapierShape(query.shape)
+    const filter = this.buildShapeQueryFilter(query.filter)
+
+    const hit = world.castShape(
+      vec3ToRapier(worldPose.position),
+      quatToRapier(worldPose.rotation),
+      vec3ToRapier(direction),
+      rapierShape,
+      0,
+      query.maxDistance,
+      true,
+      filter.filterFlags,
+      filter.filterGroups,
+      undefined,
+      filter.excludeRigidBody,
+      filter.filterPredicate,
+    )
+    if (!hit) {
+      return null
+    }
+
+    const shapeRecord = this.findShapeRecordByCollider(hit.collider.handle)
+    if (shapeRecord && !shapeRecord.enabled) {
+      return null
+    }
+
+    const bodyHandle = this.colliderToBody.get(hit.collider.handle)
+    if (!bodyHandle) {
+      return null
+    }
+
+    const colliderTransform = {
+      position: vec3FromRapier(hit.collider.translation()),
+      rotation: quatFromRapier(hit.collider.rotation()),
+    }
+    const point = this.transformLocalPoint(colliderTransform, vec3FromRapier(hit.witness2))
+
+    return {
+      body: bodyHandle,
+      point,
+      normal: vec3FromRapier(hit.normal2),
+      distance: hit.time_of_impact,
+      entityId: shapeRecord?.entityId,
+    }
+  }
+
+  overlap(query: OverlapQuery): OverlapHit[] {
+    const world = this.getWorld()
+    const worldPose = composeQueryTransform(query.transform, query.shape)
+    const rapierShape = createRapierShape(query.shape)
+    const filter = this.buildShapeQueryFilter(query.filter)
+    const hits: OverlapHit[] = []
+
+    world.intersectionsWithShape(
+      vec3ToRapier(worldPose.position),
+      quatToRapier(worldPose.rotation),
+      rapierShape,
+      (collider) => {
+        const shapeRecord = this.findShapeRecordByCollider(collider.handle)
+        if (shapeRecord && !shapeRecord.enabled) {
+          return true
+        }
+        const bodyHandle = this.colliderToBody.get(collider.handle)
+        if (!bodyHandle) {
+          return true
+        }
+        hits.push({
+          body: bodyHandle,
+          entityId: shapeRecord?.entityId,
+        })
+        return true
+      },
+      filter.filterFlags,
+      filter.filterGroups,
+      undefined,
+      filter.excludeRigidBody,
+      filter.filterPredicate,
+    )
+
+    return hits
+  }
+
+  fork(options?: { gravity?: Vec3 }): IPhysicsBackend {
+    const backend = new RapierPhysicsBackend({ gravity: options?.gravity ?? this.gravity })
+    if (this.initialized) {
+      backend.init()
+    }
+    return backend
+  }
+
+  capabilities() {
+    return RAPIER_PHYSICS_CAPABILITIES
+  }
+
+  setBodyEnabled(body: PhysicsBodyHandle, enabled: boolean): void {
+    const record = this.getBodyRecord(body)
+    record.body.setEnabled(enabled)
+  }
+
+  setShapeEnabled(shape: PhysicsShapeHandle, enabled: boolean): void {
+    const record = this.getShapeRecord(shape)
+    record.enabled = enabled
+    record.collider.setEnabled(enabled)
+  }
+
+  wakeBody(body: PhysicsBodyHandle): void {
+    const record = this.getBodyRecord(body)
+    record.body.wakeUp()
+  }
+
+  clearForces(body: PhysicsBodyHandle): void {
+    const record = this.getBodyRecord(body)
+    record.body.resetForces(true)
+    record.body.resetTorques(true)
+  }
+
+  finalizeExplicitMass(body: PhysicsBodyHandle, targetMass: number): void {
+    const record = this.getBodyRecord(body)
+    const computed = record.body.mass()
+    record.body.setAdditionalMass(targetMass - computed, true)
+    record.explicitMass = targetMass
+  }
+
+  drainCollisionEvents(): PhysicsCollisionEvent[] {
+    const queue = this.eventQueue
+    if (!queue) {
+      return []
+    }
+
+    const events: PhysicsCollisionEvent[] = []
+    const maxCapabilityContacts = this.capabilities().events.maxContactsPerPair
+    const world = this.getWorld()
+
+    queue.drainCollisionEvents((handle1, handle2, started) => {
+      const meta1 = this.colliderEventMeta.get(handle1)
+      const meta2 = this.colliderEventMeta.get(handle2)
+      if (!meta1 || !meta2) {
+        return
+      }
+
+      const kind = resolvePhysicsEventKind(meta1, meta2)
+      const event: PhysicsCollisionEvent = {
+        kind,
+        phase: started ? 'enter' : 'exit',
+        entityA: meta1.entityId,
+        entityB: meta2.entityId,
+      }
+
+      if (
+        started &&
+        kind === 'collision' &&
+        maxCapabilityContacts > 0 &&
+        this.capabilities().events.contactManifolds
+      ) {
+        const collider1 = this.colliderByHandle.get(handle1)
+        const collider2 = this.colliderByHandle.get(handle2)
+        if (collider1 && collider2) {
+          const contacts = extractContactPoints(world, collider1, collider2, maxCapabilityContacts)
+          if (contacts.length > 0) {
+            event.contacts = contacts
+          }
+        }
+      }
+
+      events.push(event)
+    })
+    return events
+  }
+
+  getDebugRenderBuffers(): { vertices: Float32Array; colors: Float32Array } | null {
+    const world = this.world
+    if (!world || !this.initialized) {
+      return null
+    }
+    const buffers = world.debugRender()
+    return { vertices: buffers.vertices, colors: buffers.colors }
   }
 
   createRaycastVehicle(chassis: PhysicsBodyHandle): IRaycastVehicle {
@@ -744,6 +1020,64 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
     revolute.configureMotorPosition(angle, stiffness, damping)
   }
 
+  createSceneJoint(config: SceneJointConfig): PhysicsJointHandle {
+    const world = this.getWorld()
+    const bodyA = this.getBodyRecord(config.bodyA).body
+    const bodyB = this.getBodyRecord(config.bodyB).body
+    const anchorA = vec3ToRapier(config.anchorA)
+    const anchorB = vec3ToRapier(config.anchorB)
+    const axis = vec3ToRapier(config.axis ?? [0, 1, 0])
+    const identityFrame = { x: 0, y: 0, z: 0, w: 1 }
+
+    let jointData: RAPIER.JointData
+    switch (config.type) {
+      case 'fixed':
+        jointData = RAPIER.JointData.fixed(anchorA, identityFrame, anchorB, identityFrame)
+        break
+      case 'revolute':
+        jointData = RAPIER.JointData.revolute(anchorA, anchorB, axis)
+        break
+      case 'prismatic':
+        jointData = RAPIER.JointData.prismatic(anchorA, anchorB, axis)
+        break
+      case 'spherical':
+        jointData = RAPIER.JointData.spherical(anchorA, anchorB)
+        break
+      case 'spring':
+        jointData = RAPIER.JointData.spring(
+          config.spring?.restLength ?? 0,
+          config.spring?.stiffness ?? 20,
+          config.spring?.damping ?? 5,
+          anchorA,
+          anchorB,
+        )
+        break
+      case 'rope':
+        jointData = RAPIER.JointData.rope(config.ropeLength ?? 0.5, anchorA, anchorB)
+        break
+    }
+
+    const joint = world.createImpulseJoint(jointData, bodyA, bodyB, true)
+    if (config.type === 'revolute' || config.type === 'prismatic') {
+      const unitJoint = joint as RAPIER.RevoluteImpulseJoint | RAPIER.PrismaticImpulseJoint
+      if (config.limits) {
+        unitJoint.setLimits(config.limits.min, config.limits.max)
+      }
+      if (config.motor) {
+        unitJoint.configureMotorVelocity(config.motor.velocity, config.motor.maxForce)
+      }
+    }
+
+    const handle = physicsJointHandle(createId('joint'))
+    this.joints.set(handle.value, {
+      joint,
+      kind: 'scene',
+      bodyA: config.bodyA,
+      bodyB: config.bodyB,
+    })
+    return handle
+  }
+
   /** @internal — used by controller wrappers in this module. */
   getWorldInternal(): RAPIER.World {
     return this.getWorld()
@@ -784,7 +1118,10 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
         bodyDesc = RAPIER.RigidBodyDesc.fixed()
         break
       case 'kinematic':
-        bodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased()
+        bodyDesc =
+          descriptor.kinematicMode === 'velocity'
+            ? RAPIER.RigidBodyDesc.kinematicVelocityBased()
+            : RAPIER.RigidBodyDesc.kinematicPositionBased()
         break
       case 'dynamic':
         bodyDesc = RAPIER.RigidBodyDesc.dynamic()
@@ -798,8 +1135,35 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
     )
     bodyDesc.setRotation(quatToRapier(descriptor.transform.rotation))
 
-    if (descriptor.type === 'dynamic' && descriptor.angularDamping !== undefined) {
-      bodyDesc.setAngularDamping(descriptor.angularDamping)
+    if (descriptor.type === 'dynamic') {
+      if (descriptor.angularDamping !== undefined) {
+        bodyDesc.setAngularDamping(descriptor.angularDamping)
+      }
+      if (descriptor.linearDamping !== undefined) {
+        bodyDesc.setLinearDamping(descriptor.linearDamping)
+      }
+      if (descriptor.ccdEnabled) {
+        bodyDesc.setCcdEnabled(true)
+      }
+    }
+
+    if (descriptor.lockPosition) {
+      bodyDesc.enabledTranslations(
+        !descriptor.lockPosition[0],
+        !descriptor.lockPosition[1],
+        !descriptor.lockPosition[2],
+      )
+    }
+    if (descriptor.lockRotation) {
+      bodyDesc.enabledRotations(
+        !descriptor.lockRotation[0],
+        !descriptor.lockRotation[1],
+        !descriptor.lockRotation[2],
+      )
+    }
+
+    if (descriptor.enabled === false) {
+      bodyDesc.setEnabled(false)
     }
 
     return bodyDesc
@@ -823,9 +1187,11 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
     } else if (shape.type === 'sphere') {
       const i = 0.4 * mass * shape.radius * shape.radius
       principal = [i, i, i]
-    } else {
+    } else if (shape.type === 'capsule') {
       const i = 0.5 * mass * shape.radius * shape.radius
       principal = [i, i, i]
+    } else {
+      return
     }
 
     const pitchRollScale = Math.max(1, inertiaScalePitchRoll)
@@ -860,12 +1226,73 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
       case 'capsule':
         colliderDesc = RAPIER.ColliderDesc.capsule(shape.halfHeight, shape.radius)
         break
+      case 'cylinder':
+        colliderDesc = RAPIER.ColliderDesc.cylinder(shape.halfHeight, shape.radius)
+        break
+      case 'convexHull': {
+        const hull = RAPIER.ColliderDesc.convexHull(new Float32Array(shape.points))
+        if (!hull) {
+          throw new Error('Invalid convex hull collider points')
+        }
+        colliderDesc = hull
+        break
+      }
+      case 'trimesh':
+        colliderDesc = RAPIER.ColliderDesc.trimesh(
+          new Float32Array(shape.vertices),
+          new Uint32Array(shape.indices),
+        )
+        break
+      case 'worldBoundary':
+        colliderDesc = new RAPIER.ColliderDesc(new RAPIER.HalfSpace(vec3ToRapier(shape.normal)))
+        break
     }
 
     const local = shape.localTransform
     if (local) {
       colliderDesc.setTranslation(local.position[0], local.position[1], local.position[2])
       colliderDesc.setRotation(quatToRapier(local.rotation))
+    }
+
+    const spawn = shape.spawn
+    let activeEvents = 0
+    if (spawn?.collisionGroups !== undefined) {
+      colliderDesc.setCollisionGroups(spawn.collisionGroups)
+    }
+    if (spawn?.isSensor) {
+      colliderDesc.setSensor(true)
+      colliderDesc.setActiveCollisionTypes(
+        RAPIER.ActiveCollisionTypes.DEFAULT |
+          RAPIER.ActiveCollisionTypes.KINEMATIC_FIXED |
+          RAPIER.ActiveCollisionTypes.FIXED_FIXED,
+      )
+    }
+    if (spawn?.collisionEvents || spawn?.isSensor || spawn?.isArea) {
+      activeEvents |= RAPIER.ActiveEvents.COLLISION_EVENTS
+    }
+    if (spawn?.contactMonitor) {
+      activeEvents |= RAPIER.ActiveEvents.CONTACT_FORCE_EVENTS
+    }
+    if (activeEvents !== 0) {
+      colliderDesc.setActiveEvents(activeEvents)
+    }
+    if (spawn?.friction !== undefined) {
+      colliderDesc.setFriction(spawn.friction)
+    }
+    if (spawn?.restitution !== undefined) {
+      colliderDesc.setRestitution(spawn.restitution)
+    }
+    if (spawn?.density !== undefined) {
+      colliderDesc.setDensity(spawn.density)
+    }
+    if (spawn?.frictionCombine !== undefined) {
+      colliderDesc.setFrictionCombineRule(combineRuleToRapier(spawn.frictionCombine))
+    }
+    if (spawn?.restitutionCombine !== undefined) {
+      colliderDesc.setRestitutionCombineRule(combineRuleToRapier(spawn.restitutionCombine))
+    }
+    if (spawn?.enabled === false) {
+      colliderDesc.setEnabled(false)
     }
 
     return colliderDesc
@@ -894,6 +1321,27 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
     return record
   }
 
+  private findShapeRecordByCollider(colliderHandle: number): ShapeRecord | undefined {
+    return [...this.shapes.values()].find((record) => record.collider.handle === colliderHandle)
+  }
+
+  private buildShapeQueryFilter(
+    filter: import('@haku/physics').ShapeQueryFilter | undefined,
+  ): ShapeQueryFilterOptions {
+    const layerMask = filter?.layerMask ?? 0xffff
+    const filterGroups = (0xffff << 16) | layerMask
+    const filterFlags =
+      filter?.includeTriggers === false ? RAPIER.QueryFilterFlags.EXCLUDE_SENSORS : undefined
+    const excludeRigidBody = filter?.excludeBody
+      ? this.getBodyRecord(filter.excludeBody).body
+      : undefined
+    const filterPredicate = (collider: RAPIER.Collider) => {
+      const shapeRecord = this.findShapeRecordByCollider(collider.handle)
+      return shapeRecord ? shapeRecord.enabled : true
+    }
+    return { filterFlags, filterGroups, excludeRigidBody, filterPredicate }
+  }
+
   private disposeBodyOwnedResources(handle: PhysicsBodyHandle, record: BodyRecord): void {
     this.vehicles.delete(handle.value)
     this.dynamicVehicles.get(handle.value)?.dispose()
@@ -913,6 +1361,8 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
     for (const shapeId of record.colliderHandles) {
       const shape = this.shapes.get(shapeId)
       if (shape) {
+        this.colliderEventMeta.delete(shape.collider.handle)
+        this.colliderByHandle.delete(shape.collider.handle)
         this.colliderToBody.delete(shape.collider.handle)
         this.shapes.delete(shapeId)
       }
@@ -928,7 +1378,7 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
     const world = this.getWorld()
     const dt = world.timestep
     world.timestep = 0
-    world.step()
+  world.step(this.eventQueue ?? undefined)
     world.timestep = dt
   }
 }
@@ -940,6 +1390,138 @@ function normalizeDirection(direction: Vec3): Vec3 {
     return [0, -1, 0]
   }
   return [x / length, y / length, z / length]
+}
+
+function composeQueryTransform(
+  base: PhysicsTransform,
+  descriptor: PhysicsShapeDescriptor,
+): PhysicsTransform {
+  if (!descriptor.localTransform) {
+    return base
+  }
+  const local = descriptor.localTransform
+  const rotatedLocal = rotateVec3ByQuat(local.position, base.rotation)
+  return {
+    position: [
+      base.position[0] + rotatedLocal[0],
+      base.position[1] + rotatedLocal[1],
+      base.position[2] + rotatedLocal[2],
+    ],
+    rotation: multiplyQuat(base.rotation, local.rotation),
+  }
+}
+
+function multiplyQuat(a: Quat, b: Quat): Quat {
+  const [ax, ay, az, aw] = a
+  const [bx, by, bz, bw] = b
+  const x = aw * bx + ax * bw + ay * bz - az * by
+  const y = aw * by - ax * bz + ay * bw + az * bx
+  const z = aw * bz + ax * by - ay * bx + az * bw
+  const w = aw * bw - ax * bx - ay * by - az * bz
+  const len = Math.hypot(x, y, z, w)
+  if (len === 0) {
+    return [0, 0, 0, 1]
+  }
+  return [x / len, y / len, z / len, w / len]
+}
+
+function rotateVec3ByQuat(v: Vec3, q: Quat): Vec3 {
+  const [x, y, z] = v
+  const [qx, qy, qz, qw] = q
+  const ix = qw * x + qy * z - qz * y
+  const iy = qw * y + qz * x - qx * z
+  const iz = qw * z + qx * y - qy * x
+  const iw = -qx * x - qy * y - qz * z
+  return [
+    ix * qw + iw * -qx + iy * -qz - iz * -qy,
+    iy * qw + iw * -qy + iz * -qx - ix * -qz,
+    iz * qw + iw * -qz + ix * -qy - iy * -qx,
+  ]
+}
+
+function createRapierShape(shape: PhysicsShapeDescriptor): RAPIER.Shape {
+  switch (shape.type) {
+    case 'box':
+      return new RAPIER.Cuboid(
+        shape.halfExtents[0],
+        shape.halfExtents[1],
+        shape.halfExtents[2],
+      )
+    case 'sphere':
+      return new RAPIER.Ball(shape.radius)
+    case 'capsule':
+      return new RAPIER.Capsule(shape.halfHeight, shape.radius)
+    case 'cylinder':
+      return new RAPIER.Cylinder(shape.halfHeight, shape.radius)
+    case 'convexHull': {
+      const hull = new RAPIER.ConvexPolyhedron(new Float32Array(shape.points))
+      return hull
+    }
+    case 'trimesh':
+      return new RAPIER.TriMesh(
+        new Float32Array(shape.vertices),
+        new Uint32Array(shape.indices),
+      )
+    case 'worldBoundary':
+      return new RAPIER.HalfSpace(vec3ToRapier(shape.normal))
+  }
+}
+
+interface ShapeQueryFilterOptions {
+  filterFlags?: RAPIER.QueryFilterFlags
+  filterGroups?: number
+  excludeRigidBody?: RAPIER.RigidBody
+  filterPredicate?: (collider: RAPIER.Collider) => boolean
+}
+
+function isAnalyticPrimitive(shape: PhysicsShapeDescriptor): boolean {
+  return shape.type === 'box' || shape.type === 'sphere' || shape.type === 'capsule'
+}
+
+function combineRuleToRapier(
+  rule: 'average' | 'multiply' | 'min' | 'max',
+): RAPIER.CoefficientCombineRule {
+  switch (rule) {
+    case 'average':
+      return RAPIER.CoefficientCombineRule.Average
+    case 'min':
+      return RAPIER.CoefficientCombineRule.Min
+    case 'multiply':
+      return RAPIER.CoefficientCombineRule.Multiply
+    case 'max':
+      return RAPIER.CoefficientCombineRule.Max
+  }
+}
+
+function resolvePhysicsEventKind(a: ColliderEventMeta, b: ColliderEventMeta): PhysicsCollisionEvent['kind'] {
+  if (a.isArea || b.isArea) {
+    return 'area'
+  }
+  if (a.isSensor || b.isSensor) {
+    return 'trigger'
+  }
+  return 'collision'
+}
+
+function extractContactPoints(
+  world: RAPIER.World,
+  collider1: RAPIER.Collider,
+  collider2: RAPIER.Collider,
+  maxContacts: number,
+): import('@haku/physics').PhysicsContactPoint[] {
+  const contacts: import('@haku/physics').PhysicsContactPoint[] = []
+  world.contactPair(collider1, collider2, (manifold) => {
+    const normal = vec3FromRapier(manifold.normal())
+    const count = Math.min(manifold.numSolverContacts(), maxContacts - contacts.length)
+    for (let i = 0; i < count; i++) {
+      contacts.push({
+        point: vec3FromRapier(manifold.solverContactPoint(i)),
+        normal: [normal[0], normal[1], normal[2]],
+        depth: manifold.solverContactDist(i),
+      })
+    }
+  })
+  return contacts
 }
 
 function sdpMatrix3ToRowMajor(matrix: RAPIER.SdpMatrix3): Mat3RowMajor {
