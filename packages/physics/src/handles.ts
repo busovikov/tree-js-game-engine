@@ -1,3 +1,13 @@
+/** Opaque handle to a simulation world slot (multi-world API). */
+export interface PhysicsWorldHandle {
+  readonly __brand: 'PhysicsWorldHandle'
+  readonly value: string
+}
+
+export function physicsWorldHandle(value: string): PhysicsWorldHandle {
+  return { __brand: 'PhysicsWorldHandle', value }
+}
+
 /** Opaque handle to a rigid body in the physics simulation. */
 export interface PhysicsBodyHandle {
   readonly __brand: 'PhysicsBodyHandle'

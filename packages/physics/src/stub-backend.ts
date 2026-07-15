@@ -1,4 +1,5 @@
 import type { IPhysicsBackend } from './backend.js'
+import { STUB_PHYSICS_CAPABILITIES } from './capabilities.js'
 import { PhysicsHandleNotFoundError, PhysicsNotInitializedError } from './errors.js'
 import {
   physicsBodyHandle,
@@ -26,14 +27,23 @@ import type {
   ICharacterController,
   IDynamicRaycastVehicle,
 } from './physics-controllers.js'
-import type { PhysicsJointHandle, PointerJointConfig, RevoluteMotorJointConfig } from './joints.js'
+import type {
+  PhysicsJointHandle,
+  PointerJointConfig,
+  RevoluteMotorJointConfig,
+  SceneJointConfig,
+} from './joints.js'
 import { physicsJointHandle } from './joints.js'
 import type {
+  OverlapHit,
+  OverlapQuery,
   PhysicsShapeDescriptor,
   PhysicsTransform,
   RaycastHit,
   RaycastQuery,
   RigidBodyDescriptor,
+  ShapecastHit,
+  ShapecastQuery,
   Vec3,
 } from './types.js'
 import {
@@ -60,11 +70,13 @@ interface StubBodyRecord {
   angularVelocity: Vec3
   force: Vec3
   torque: Vec3
+  enabled: boolean
 }
 
 interface StubShapeRecord {
   body: PhysicsBodyHandle
   shape: PhysicsShapeDescriptor
+  enabled: boolean
 }
 
 interface StubPointerJointRecord {
@@ -83,7 +95,12 @@ interface StubRevoluteJointRecord {
   usePositionMotor: boolean
 }
 
-type StubJointRecord = StubPointerJointRecord | StubRevoluteJointRecord
+interface StubSceneJointRecord {
+  kind: 'scene'
+  config: SceneJointConfig
+}
+
+type StubJointRecord = StubPointerJointRecord | StubRevoluteJointRecord | StubSceneJointRecord
 
 class StubRaycastVehicle implements IRaycastVehicle {
   private readonly wheels = new Map<string, WheelRuntime>()
@@ -330,11 +347,12 @@ export class StubPhysicsBackend implements IPhysicsBackend {
     this.applyStubJoints(dt)
 
     for (const record of this.bodies.values()) {
-      if (record.descriptor.type !== 'dynamic') {
+      if (record.descriptor.type !== 'dynamic' || record.enabled === false) {
         continue
       }
       const mass = record.descriptor.mass ?? 1
-      const gravityForce = scaleVec3(GRAVITY, mass)
+      const gravityScale = record.descriptor.gravityScale ?? 1
+      const gravityForce = scaleVec3(GRAVITY, mass * gravityScale)
       record.force = addVec3(record.force, gravityForce)
 
       const invMass = 1 / mass
@@ -362,7 +380,7 @@ export class StubPhysicsBackend implements IPhysicsBackend {
     }
 
     this.resolveStaticCollisions()
-    this.clearForces()
+    this.clearAllBodyForces()
 
     this.simulationTime += dt
   }
@@ -377,6 +395,7 @@ export class StubPhysicsBackend implements IPhysicsBackend {
       angularVelocity: vec3(0, 0, 0),
       force: vec3(0, 0, 0),
       torque: vec3(0, 0, 0),
+      enabled: descriptor.enabled !== false,
     })
     return handle
   }
@@ -398,7 +417,7 @@ export class StubPhysicsBackend implements IPhysicsBackend {
     this.assertInitialized()
     this.getBody(body)
     const handle = physicsShapeHandle(createId('shape'))
-    this.shapes.set(handle.value, { body, shape })
+    this.shapes.set(handle.value, { body, shape, enabled: shape.spawn?.enabled !== false })
     return handle
   }
 
@@ -407,6 +426,19 @@ export class StubPhysicsBackend implements IPhysicsBackend {
     if (!this.shapes.delete(shape.value)) {
       throw new PhysicsHandleNotFoundError('shape', shape.value)
     }
+  }
+
+  replaceShape(shape: PhysicsShapeHandle, next: PhysicsShapeDescriptor): PhysicsShapeHandle {
+    this.assertInitialized()
+    const record = this.getShape(shape)
+    const body = record.body
+    const enabled = record.enabled
+    this.detachShape(shape)
+    const nextHandle = this.attachShape(body, next)
+    if (!enabled) {
+      this.setShapeEnabled(nextHandle, false)
+    }
+    return nextHandle
   }
 
   setBodyTransform(body: PhysicsBodyHandle, transform: PhysicsTransform): void {
@@ -547,12 +579,117 @@ export class StubPhysicsBackend implements IPhysicsBackend {
 
   raycast(query: RaycastQuery): RaycastHit | null {
     this.assertInitialized()
-    const instances = [...this.shapes.values()].map((shapeRecord) => ({
-      body: shapeRecord.body,
-      shape: shapeRecord.shape,
-      transform: this.getBodyTransform(shapeRecord.body),
-    }))
-    return raycastShapes(query, instances)
+    return raycastShapes(query, this.collectRaycastInstances(query.includeSensors))
+  }
+
+  shapecast(query: ShapecastQuery): ShapecastHit | null {
+    this.assertInitialized()
+    const hit = this.raycast({
+      origin: query.transform.position,
+      direction: query.direction,
+      maxDistance: query.maxDistance,
+      excludeBody: query.filter?.excludeBody,
+      includeSensors: query.filter?.includeTriggers ?? false,
+      layerMask: query.filter?.layerMask,
+    })
+    if (!hit) {
+      return null
+    }
+    const entityId = this.findEntityIdForBody(hit.body)
+    return entityId ? { ...hit, entityId } : hit
+  }
+
+  overlap(query: OverlapQuery): OverlapHit[] {
+    this.assertInitialized()
+    if (query.shape.type !== 'box') {
+      return []
+    }
+
+    const queryPose = composeQueryTransform(query.transform, query.shape)
+    const queryHalf = query.shape.halfExtents
+    const includeTriggers = query.filter?.includeTriggers ?? false
+    const hits: OverlapHit[] = []
+
+    for (const shapeRecord of this.shapes.values()) {
+      if (!shapeRecord.enabled) {
+        continue
+      }
+      if (query.filter?.excludeBody && shapeRecord.body.value === query.filter.excludeBody.value) {
+        continue
+      }
+      if (!includeTriggers && shapeRecord.shape.spawn?.isSensor) {
+        continue
+      }
+      if (shapeRecord.shape.type !== 'box') {
+        continue
+      }
+
+      const targetTransform = this.getBodyTransform(shapeRecord.body)
+      if (
+        !aabbOverlap(
+          queryPose.position,
+          queryHalf,
+          targetTransform.position,
+          shapeRecord.shape.halfExtents,
+        )
+      ) {
+        continue
+      }
+
+      hits.push({
+        body: shapeRecord.body,
+        entityId: shapeRecord.shape.spawn?.entityId,
+      })
+    }
+
+    return hits
+  }
+
+  fork(_options?: { gravity?: Vec3 }): IPhysicsBackend {
+    const backend = new StubPhysicsBackend()
+    if (this.initialized) {
+      backend.init()
+    }
+    return backend
+  }
+
+  capabilities() {
+    return STUB_PHYSICS_CAPABILITIES
+  }
+
+  setBodyEnabled(body: PhysicsBodyHandle, enabled: boolean): void {
+    const record = this.getBody(body)
+    record.enabled = enabled
+  }
+
+  setShapeEnabled(shape: PhysicsShapeHandle, enabled: boolean): void {
+    const record = this.getShape(shape)
+    record.enabled = enabled
+  }
+
+  wakeBody(_body: PhysicsBodyHandle): void {
+    // Stub bodies never sleep.
+  }
+
+  clearForces(body: PhysicsBodyHandle): void {
+    const record = this.getBody(body)
+    record.force = vec3(0, 0, 0)
+    record.torque = vec3(0, 0, 0)
+  }
+
+  finalizeExplicitMass(body: PhysicsBodyHandle, targetMass: number): void {
+    const record = this.getBody(body)
+    if (record.descriptor.type === 'dynamic') {
+      record.descriptor = { ...record.descriptor, mass: targetMass }
+    }
+  }
+
+  drainCollisionEvents(): import('./events.js').PhysicsCollisionEvent[] {
+    return []
+  }
+
+  getDebugRenderBuffers(): null {
+    return null
   }
 
   createRaycastVehicle(chassis: PhysicsBodyHandle): IRaycastVehicle {
@@ -666,12 +803,21 @@ export class StubPhysicsBackend implements IPhysicsBackend {
     record.usePositionMotor = true
   }
 
+  createSceneJoint(config: SceneJointConfig): PhysicsJointHandle {
+    this.assertInitialized()
+    this.getBody(config.bodyA)
+    this.getBody(config.bodyB)
+    const handle = physicsJointHandle(createId('joint'))
+    this.joints.set(handle.value, { kind: 'scene', config })
+    return handle
+  }
+
   /** Exposed for tests — total simulated time in seconds. */
   getSimulationTime(): number {
     return this.simulationTime
   }
 
-  private clearForces(): void {
+  private clearAllBodyForces(): void {
     for (const record of this.bodies.values()) {
       record.force = vec3(0, 0, 0)
       record.torque = vec3(0, 0, 0)
@@ -743,6 +889,9 @@ export class StubPhysicsBackend implements IPhysicsBackend {
     for (const record of this.joints.values()) {
       if (record.kind === 'pointer') {
         this.applyStubPointerJoint(record.config)
+        continue
+      }
+      if (record.kind === 'scene') {
         continue
       }
       this.applyStubRevoluteJoint(record, dt)
@@ -843,6 +992,26 @@ export class StubPhysicsBackend implements IPhysicsBackend {
       throw new PhysicsNotInitializedError()
     }
   }
+
+  private collectRaycastInstances(includeSensors = false) {
+    return [...this.shapes.values()]
+      .filter((shapeRecord) => shapeRecord.enabled)
+      .filter((shapeRecord) => includeSensors || !shapeRecord.shape.spawn?.isSensor)
+      .map((shapeRecord) => ({
+        body: shapeRecord.body,
+        shape: shapeRecord.shape,
+        transform: this.getBodyTransform(shapeRecord.body),
+      }))
+  }
+
+  private findEntityIdForBody(body: PhysicsBodyHandle): string | undefined {
+    for (const shapeRecord of this.shapes.values()) {
+      if (shapeRecord.body.value === body.value) {
+        return shapeRecord.shape.spawn?.entityId
+      }
+    }
+    return undefined
+  }
 }
 
 function cloneTransform(transform: PhysicsTransform): PhysicsTransform {
@@ -904,6 +1073,52 @@ function rotateVec3ByQuatStub(
     iy * qw + iw * -qy + iz * -qx - ix * -qz,
     iz * qw + iw * -qz + ix * -qy - iy * -qx,
   ]
+}
+
+function composeQueryTransform(
+  base: PhysicsTransform,
+  descriptor: PhysicsShapeDescriptor,
+): PhysicsTransform {
+  if (!descriptor.localTransform) {
+    return base
+  }
+  const local = descriptor.localTransform
+  const rotatedLocal = rotateVec3ByQuatStub(local.position, [
+    base.rotation[0],
+    base.rotation[1],
+    base.rotation[2],
+    base.rotation[3],
+  ])
+  return {
+    position: [
+      base.position[0] + rotatedLocal[0],
+      base.position[1] + rotatedLocal[1],
+      base.position[2] + rotatedLocal[2],
+    ],
+    rotation: multiplyQuat(base.rotation, local.rotation),
+  }
+}
+
+function multiplyQuat(
+  a: readonly [number, number, number, number],
+  b: readonly [number, number, number, number],
+): [number, number, number, number] {
+  const [ax, ay, az, aw] = a
+  const [bx, by, bz, bw] = b
+  return normalizeQuat([
+    aw * bx + ax * bw + ay * bz - az * by,
+    aw * by - ax * bz + ay * bw + az * bx,
+    aw * bz + ax * by - ay * bx + az * bw,
+    aw * bw - ax * bx - ay * by - az * bz,
+  ])
+}
+
+function aabbOverlap(posA: Vec3, halfA: Vec3, posB: Vec3, halfB: Vec3): boolean {
+  return (
+    Math.abs(posA[0] - posB[0]) <= halfA[0] + halfB[0] &&
+    Math.abs(posA[1] - posB[1]) <= halfA[1] + halfB[1] &&
+    Math.abs(posA[2] - posB[2]) <= halfA[2] + halfB[2]
+  )
 }
 
 /** Reset stub ID counter — test helper only. */

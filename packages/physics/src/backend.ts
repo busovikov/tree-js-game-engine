@@ -1,3 +1,6 @@
+import type { PhysicsDebugRenderBuffers } from './debug-render.js'
+import type { PhysicsCollisionEvent } from './events.js'
+import type { PhysicsCapabilities } from './capabilities.js'
 import type { PhysicsBodyHandle, PhysicsShapeHandle } from './handles.js'
 import type { IRaycastVehicle } from './raycast-vehicle.js'
 import type {
@@ -5,13 +8,17 @@ import type {
   CharacterControllerOptions,
   IDynamicRaycastVehicle,
 } from './physics-controllers.js'
-import type { PhysicsJointHandle, PointerJointConfig, RevoluteMotorJointConfig } from './joints.js'
+import type { PhysicsJointHandle, PointerJointConfig, RevoluteMotorJointConfig, SceneJointConfig } from './joints.js'
 import type {
   PhysicsShapeDescriptor,
   PhysicsTransform,
+  OverlapHit,
+  OverlapQuery,
   RaycastHit,
   RaycastQuery,
   RigidBodyDescriptor,
+  ShapecastHit,
+  ShapecastQuery,
   Vec3,
 } from './types.js'
 
@@ -37,6 +44,8 @@ export interface IPhysicsBackend {
 
   attachShape(body: PhysicsBodyHandle, shape: PhysicsShapeDescriptor): PhysicsShapeHandle
   detachShape(shape: PhysicsShapeHandle): void
+  /** Replace collider geometry on the same body without recreating the rigid body. */
+  replaceShape(shape: PhysicsShapeHandle, next: PhysicsShapeDescriptor): PhysicsShapeHandle
 
   setBodyTransform(body: PhysicsBodyHandle, transform: PhysicsTransform): void
   getBodyTransform(body: PhysicsBodyHandle): PhysicsTransform
@@ -55,6 +64,11 @@ export interface IPhysicsBackend {
   setBodyAngularVelocity(body: PhysicsBodyHandle, velocity: Vec3): void
 
   raycast(query: RaycastQuery): RaycastHit | null
+  shapecast(query: ShapecastQuery): ShapecastHit | null
+  overlap(query: OverlapQuery): OverlapHit[]
+
+  /** Fork an isolated simulation backend (multi-world API). */
+  fork(options?: { gravity?: Vec3 }): IPhysicsBackend
 
   createRaycastVehicle(chassis: PhysicsBodyHandle): IRaycastVehicle
 
@@ -81,4 +95,21 @@ export interface IPhysicsBackend {
     stiffness: number,
     damping: number,
   ): void
+
+  createSceneJoint(config: SceneJointConfig): PhysicsJointHandle
+
+  capabilities(): PhysicsCapabilities
+
+  setBodyEnabled(body: PhysicsBodyHandle, enabled: boolean): void
+  setShapeEnabled(shape: PhysicsShapeHandle, enabled: boolean): void
+  wakeBody(body: PhysicsBodyHandle): void
+  clearForces(body: PhysicsBodyHandle): void
+  /** Adjust total mass after compound colliders are attached. */
+  finalizeExplicitMass(body: PhysicsBodyHandle, targetMass: number): void
+
+  /** Drain collision/trigger events accumulated since the previous drain. */
+  drainCollisionEvents(): PhysicsCollisionEvent[]
+
+  /** World-space debug line buffers after the latest simulation step; null when unsupported. */
+  getDebugRenderBuffers(): PhysicsDebugRenderBuffers | null
 }

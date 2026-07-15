@@ -1,13 +1,20 @@
+import type { PhysicsDebugRenderBuffers } from './debug-render.js'
+import type { PhysicsCollisionEvent } from './events.js'
+import type { PhysicsCapabilities } from './capabilities.js'
 import type { PhysicsBodyHandle, PhysicsShapeHandle } from './handles.js'
-import type { PhysicsJointHandle, PointerJointConfig, RevoluteMotorJointConfig } from './joints.js'
+import type { PhysicsJointHandle, PointerJointConfig, RevoluteMotorJointConfig, SceneJointConfig } from './joints.js'
 import type { IRaycastVehicle } from './raycast-vehicle.js'
 import type { ICharacterController, IDynamicRaycastVehicle } from './physics-controllers.js'
 import type {
   PhysicsShapeDescriptor,
   PhysicsTransform,
+  OverlapHit,
+  OverlapQuery,
   RaycastHit,
   RaycastQuery,
   RigidBodyDescriptor,
+  ShapecastHit,
+  ShapecastQuery,
   Vec3,
 } from './types.js'
 
@@ -24,6 +31,7 @@ export interface IPhysicsWorld {
 
   attachShape(body: PhysicsBodyHandle, shape: PhysicsShapeDescriptor): PhysicsShapeHandle
   detachShape(shape: PhysicsShapeHandle): void
+  replaceShape(shape: PhysicsShapeHandle, next: PhysicsShapeDescriptor): PhysicsShapeHandle
 
   setBodyTransform(body: PhysicsBodyHandle, transform: PhysicsTransform): void
   getBodyTransform(body: PhysicsBodyHandle): PhysicsTransform
@@ -35,6 +43,8 @@ export interface IPhysicsWorld {
   applyForce(body: PhysicsBodyHandle, force: Vec3, worldPoint?: Vec3): void
 
   raycast(query: RaycastQuery): RaycastHit | null
+  shapecast(query: ShapecastQuery): ShapecastHit | null
+  overlap(query: OverlapQuery): OverlapHit[]
 
   createRaycastVehicle(chassis: PhysicsBodyHandle): IRaycastVehicle
 
@@ -57,4 +67,18 @@ export interface IPhysicsWorld {
     stiffness: number,
     damping: number,
   ): void
+
+  createSceneJoint(config: SceneJointConfig): PhysicsJointHandle
+
+  capabilities(): PhysicsCapabilities
+
+  setBodyEnabled(body: PhysicsBodyHandle, enabled: boolean): void
+  setShapeEnabled(shape: PhysicsShapeHandle, enabled: boolean): void
+  wakeBody(body: PhysicsBodyHandle): void
+  clearForces(body: PhysicsBodyHandle): void
+  finalizeExplicitMass(body: PhysicsBodyHandle, targetMass: number): void
+  getBodyMass(body: PhysicsBodyHandle): number
+  drainCollisionEvents(): PhysicsCollisionEvent[]
+
+  getDebugRenderBuffers(): PhysicsDebugRenderBuffers | null
 }
