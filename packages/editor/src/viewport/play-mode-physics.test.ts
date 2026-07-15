@@ -2,26 +2,40 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PHYSICS_CATCH_UP_POLICY } from '@haku/engine'
 import { startPlayModePhysics } from './play-mode-physics.js'
 
-const { backend, colliderSystem, vehicleSession, createBackend, startVehiclePlayMode } = vi.hoisted(
-  () => {
+const { backend, colliderSystem, contactSystem, querySystem, jointSystem, areaGravitySystem, vehicleSession, createBackend, startVehiclePlayMode } =
+  vi.hoisted(() => {
     const backend = { kind: 'backend' }
     const colliderSystem = { dispose: vi.fn() }
+    const contactSystem = {
+      takeCollisionEvents: vi.fn(() => []),
+      peekCollisionEvents: vi.fn(() => []),
+    }
+    const querySystem = { raycast: vi.fn(() => null) }
+    const jointSystem = {}
+    const areaGravitySystem = {}
     const vehicleSession = { dispose: vi.fn() }
     return {
       backend,
       colliderSystem,
+      contactSystem,
+      querySystem,
+      jointSystem,
+      areaGravitySystem,
       vehicleSession,
       createBackend: vi.fn(async () => backend),
       startVehiclePlayMode: vi.fn(() => vehicleSession),
     }
-  },
-)
+  })
 
 vi.mock('@haku/engine', async (importOriginal) => {
   const original = await importOriginal<typeof import('@haku/engine')>()
   return {
     ...original,
     PhysicsColliderSystem: vi.fn(() => colliderSystem),
+    PhysicsContactSystem: vi.fn(() => contactSystem),
+    PhysicsQuerySystem: vi.fn(() => querySystem),
+    PhysicsJointSystem: vi.fn(() => jointSystem),
+    PhysicsAreaGravitySystem: vi.fn(() => areaGravitySystem),
     startVehiclePlayMode,
   }
 })
@@ -51,8 +65,13 @@ describe('startPlayModePhysics', () => {
       input: undefined,
     })
 
+    expect(session.contactSystem).toBe(contactSystem)
+    expect(session.querySystem).toBe(querySystem)
+    expect(session.takeCollisionEvents()).toEqual([])
     session.dispose()
     expect(vehicleSession.dispose).toHaveBeenCalledOnce()
+    expect(contactSystem.takeCollisionEvents).toHaveBeenCalledTimes(2)
+    expect(engine.removeSystem).toHaveBeenCalledTimes(5)
     expect(colliderSystem.dispose).toHaveBeenCalledOnce()
   })
 })

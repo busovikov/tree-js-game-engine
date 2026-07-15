@@ -1,10 +1,11 @@
-import { create } from 'zustand'
 import type { EntityId } from '@haku/core'
-import { World, cloneWorld } from '@haku/core'
+import { create } from 'zustand'
 import type { SceneDocument, ViewportTab } from '@haku/schema'
+import { World, cloneWorld } from '@haku/core'
 import { globalCommandBus } from '../commands/command-bus.js'
 import { resolveClickSelection } from '../selection/selection-utils.js'
 import type { HierarchyFilterMode } from '../hierarchy/entity-filter.js'
+import type { ColliderBakeService } from '../viewport/collider-mesh-bake.js'
 
 export type EditorMode = 'edit' | 'play'
 export type TransformTool = 'translate' | 'rotate' | 'scale' | 'hand'
@@ -37,7 +38,11 @@ interface EditorState {
   snapEnabled: boolean
   showAabb: boolean
   showShadowVolume: boolean
+  showAllColliders: boolean
+  showPhysicsDebug: boolean
   uniformScaleLocked: boolean
+  colliderResizeActive: boolean
+  colliderBakeService: ColliderBakeService | null
   gizmoSpace: GizmoSpace
   activeViewportTab: ViewportTab
   playPreviousTab: ViewportTab | null
@@ -60,7 +65,11 @@ interface EditorState {
   setSnapEnabled: (enabled: boolean) => void
   setShowAabb: (enabled: boolean) => void
   setShowShadowVolume: (enabled: boolean) => void
+  setShowAllColliders: (enabled: boolean) => void
+  setShowPhysicsDebug: (enabled: boolean) => void
   setUniformScaleLocked: (locked: boolean) => void
+  setColliderResizeActive: (active: boolean) => void
+  setColliderBakeService: (service: ColliderBakeService | null) => void
   setGizmoSpace: (space: GizmoSpace) => void
   setActiveViewportTab: (tab: ViewportTab) => void
   requestFocusSelection: () => void
@@ -85,7 +94,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   snapEnabled: false,
   showAabb: false,
   showShadowVolume: false,
+  showAllColliders: false,
+  showPhysicsDebug: false,
   uniformScaleLocked: false,
+  colliderResizeActive: false,
+  colliderBakeService: null,
   gizmoSpace: 'local',
   activeViewportTab: 'scene',
   playPreviousTab: null,
@@ -132,7 +145,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setSnapEnabled: (enabled) => set({ snapEnabled: enabled }),
   setShowAabb: (enabled) => set({ showAabb: enabled }),
   setShowShadowVolume: (enabled) => set({ showShadowVolume: enabled }),
+  setShowAllColliders: (enabled) => set({ showAllColliders: enabled }),
+  setShowPhysicsDebug: (enabled) => set({ showPhysicsDebug: enabled }),
   setUniformScaleLocked: (locked) => set({ uniformScaleLocked: locked }),
+  setColliderResizeActive: (active) => set({ colliderResizeActive: active }),
+  setColliderBakeService: (service) => set({ colliderBakeService: service }),
   setGizmoSpace: (space) => set({ gizmoSpace: space }),
   setActiveViewportTab: (tab) => set({ activeViewportTab: tab }),
   requestFocusSelection: () => set((s) => ({ focusSelectionRequest: s.focusSelectionRequest + 1 })),

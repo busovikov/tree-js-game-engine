@@ -5,15 +5,32 @@ import {
   LightComponent,
   MeshRendererComponent,
   ScriptRefComponent,
-  StaticComponent,
   TagComponent,
   TransformComponent,
   PhysicsControllerComponent,
+  RigidBodyComponent,
+  PhysicsAreaComponent,
+  AnimatableBodyComponent,
+  PhysicsJointComponent,
+  CollidersComponent,
   getCoreComponent,
 } from '@haku/core'
 import type { ComponentType, EntityId } from '@haku/core'
-import type { Camera, Collider, Light, MeshMaterial, MeshRenderer, PhysicsController, Transform } from '@haku/schema'
-import { resolveActiveCameraId } from '@haku/schema'
+import type {
+  AnimatableBody,
+  Camera,
+  Collider,
+  Light,
+  MeshMaterial,
+  MeshRenderer,
+  PhysicsArea,
+  PhysicsController,
+  PhysicsJoint,
+  Colliders,
+  RigidBody,
+  Transform,
+} from '@haku/schema'
+import { ColliderSchema, isNonUniformScale, resolveActiveCameraId } from '@haku/schema'
 import { sanitizeComponentDataForPersistence } from '@haku/serializer'
 import { commitActiveSceneCamera } from '../commands/active-scene-camera.js'
 import { useEditorStore } from '../store/editor-store.js'
@@ -21,11 +38,19 @@ import { commitSceneEdit } from '../commands/scene-history.js'
 import { CameraFields, normalizeCamera } from '../components/CameraFields.js'
 import { LightFields, normalizeLight } from '../components/LightFields.js'
 import { TransformFields } from '../components/TransformFields.js'
+import { teleportEntitiesToAuthoredTransform } from '../viewport/play-mode-physics-access.js'
 import { MeshRendererFields } from '../components/MeshRendererFields.js'
 import { buildMaterialMixedValues } from '../components/MaterialPropertiesPanel.js'
 import { TagFields } from '../components/TagFields.js'
 import { ColliderFields, normalizeCollider } from '../components/ColliderFields.js'
+import { RigidBodyFields, normalizeRigidBody } from '../components/RigidBodyFields.js'
+import { PhysicsAreaFields, normalizePhysicsArea } from '../components/PhysicsAreaFields.js'
+import { AnimatableBodyFields, normalizeAnimatableBody } from '../components/AnimatableBodyFields.js'
 import { PhysicsControllerFields, normalizePhysicsController } from '../components/PhysicsControllerFields.js'
+import { PhysicsJointFields, normalizePhysicsJoint } from '../components/PhysicsJointFields.js'
+import { CollidersFields, normalizeColliders } from '../components/CollidersFields.js'
+import { EDITOR_PHYSICS_CAPABILITIES } from '../physics/editor-physics-capabilities.js'
+import { currentMeshRevision, type ColliderBakeMode } from '../viewport/collider-mesh-bake.js'
 import { SchemaFields } from '../components/SchemaFields.js'
 import { InspectorComponentSection } from '../components/InspectorComponentSection.js'
 import { normalizeMeshRenderer, normalizeMeshMaterial, defaultGeometryParams, isComponentEnabled, withComponentEnabled } from '@haku/schema'
@@ -52,6 +77,11 @@ const COMPONENT_MAP = {
   MeshRenderer: MeshRendererComponent,
   ScriptRef: ScriptRefComponent,
   Collider: ColliderComponent,
+  RigidBody: RigidBodyComponent,
+  PhysicsArea: PhysicsAreaComponent,
+  AnimatableBody: AnimatableBodyComponent,
+  PhysicsJoint: PhysicsJointComponent,
+  Colliders: CollidersComponent,
   PhysicsController: PhysicsControllerComponent,
 } as const
 
@@ -62,6 +92,11 @@ const ADDABLE_COMPONENTS = [
   { id: 'Light' as const, component: LightComponent, label: 'Light' },
   { id: 'MeshRenderer' as const, component: MeshRendererComponent, label: 'Mesh Renderer' },
   { id: 'Collider' as const, component: ColliderComponent, label: 'Collider' },
+  { id: 'RigidBody' as const, component: RigidBodyComponent, label: 'Rigid Body' },
+  { id: 'PhysicsArea' as const, component: PhysicsAreaComponent, label: 'Physics Area' },
+  { id: 'AnimatableBody' as const, component: AnimatableBodyComponent, label: 'Animatable Body' },
+  { id: 'PhysicsJoint' as const, component: PhysicsJointComponent, label: 'Physics Joint' },
+  { id: 'Colliders' as const, component: CollidersComponent, label: 'Colliders' },
   { id: 'PhysicsController' as const, component: PhysicsControllerComponent, label: 'Physics Controller' },
 ]
 
@@ -88,6 +123,8 @@ export const InspectorPanel = memo(function InspectorPanel() {
   )
 
   const canEdit = selectedIds.length > 0 && !!world && mode === 'edit'
+  /** Variant B: Transform stays editable in play; pose pushes through resetBodyState. */
+  const canEditTransform = selectedIds.length > 0 && !!world && (mode === 'edit' || mode === 'play')
   const isMulti = selectedIds.length > 1
 
   const entityNames = useMemo(
@@ -105,17 +142,6 @@ export const InspectorPanel = memo(function InspectorPanel() {
     return world.hasComponent(id, TagComponent)
       ? (world.getComponent(id, TagComponent)?.tags ?? [])
       : []
-  }, [selectedIds, world, worldRevision])
-
-  const staticMixed: MixedBool = useMemo(() => {
-    if (!world || selectedIds.length === 0) return null
-    return mergeBooleans(
-      selectedIds.map((id) =>
-        world.hasComponent(id, StaticComponent)
-          ? (world.getComponent(id, StaticComponent)?.isStatic ?? false)
-          : false,
-      ),
-    )
   }, [selectedIds, world, worldRevision])
 
   const transforms = useMemo(() => {
@@ -142,6 +168,24 @@ export const InspectorPanel = memo(function InspectorPanel() {
     [transforms],
   )
 
+  const colliderNonUniformScale = useMemo(() => {
+    if (!world || selectedIds.length !== 1) return false
+    const id = selectedIds[0]!
+    if (!world.hasComponent(id, ColliderComponent)) return false
+    const transform = world.getComponent(id, TransformComponent)
+    return transform ? isNonUniformScale(transform.scale as [number, number, number]) : false
+  }, [selectedIds, world, worldRevision])
+
+  const selectedMeshRevision = useMemo(() => {
+    if (!world || selectedIds.length !== 1) return undefined
+    return currentMeshRevision(world, selectedIds[0]!)
+  }, [selectedIds, world, worldRevision])
+
+  const selectedRigidBodyType = useMemo(() => {
+    if (!world || selectedIds.length !== 1) return undefined
+    return world.getComponent(selectedIds[0]!, RigidBodyComponent)?.type
+  }, [selectedIds, world, worldRevision])
+
   const commonTypes = useMemo(
     () => (world ? commonComponentTypes(world, selectedIds) : []),
     [world, selectedIds, worldRevision],
@@ -164,6 +208,24 @@ export const InspectorPanel = memo(function InspectorPanel() {
     [canEdit, selectedIds, world],
   )
 
+  const forEachSelectedTransform = useCallback(
+    (edit: (id: EntityId, draftWorld: NonNullable<typeof world>) => void) => {
+      if (!canEditTransform || !world) return
+      commitSceneEdit((draft) => {
+        for (const id of selectedIds) {
+          if (draft.world.hasEntity(id)) edit(id, draft.world)
+        }
+      })
+      if (mode === 'play') {
+        const liveWorld = useEditorStore.getState().world
+        if (liveWorld) {
+          teleportEntitiesToAuthoredTransform(liveWorld, selectedIds)
+        }
+      }
+    },
+    [canEditTransform, mode, selectedIds, world],
+  )
+
   const updateEntityName = useCallback(
     (name: string) => {
       if (!canEdit || isMulti || !world || selectedIds.length !== 1) return
@@ -181,28 +243,13 @@ export const InspectorPanel = memo(function InspectorPanel() {
     [canEdit, isMulti, selectedIds, world],
   )
 
-  const updateStatic = useCallback(
-    (checked: boolean) => {
-      forEachSelected((id, draftWorld) => {
-        if (checked) {
-          draftWorld.addComponent(id, StaticComponent, { isStatic: true })
-          return
-        }
-        if (draftWorld.hasComponent(id, StaticComponent)) {
-          draftWorld.removeComponent(id, StaticComponent)
-        }
-      })
-    },
-    [forEachSelected],
-  )
-
   const applyTransformAxis = useCallback(
     (
       field: 'position' | 'scale' | 'rotation',
       axis: 0 | 1 | 2,
       value: number,
     ) => {
-      forEachSelected((id, draftWorld) => {
+      forEachSelectedTransform((id, draftWorld) => {
         const current = draftWorld.getComponent(id, TransformComponent) ?? DEFAULT_TRANSFORM
         const next = structuredClone(current)
         if (field === 'position') {
@@ -215,12 +262,12 @@ export const InspectorPanel = memo(function InspectorPanel() {
         draftWorld.addComponent(id, TransformComponent, next)
       })
     },
-    [forEachSelected],
+    [forEachSelectedTransform],
   )
 
   const applyUniformScaleAxis = useCallback(
     (axis: 0 | 1 | 2, value: number) => {
-      forEachSelected((id, draftWorld) => {
+      forEachSelectedTransform((id, draftWorld) => {
         const current = draftWorld.getComponent(id, TransformComponent) ?? DEFAULT_TRANSFORM
         const next = structuredClone(current)
         const scale = current.scale as [number, number, number]
@@ -234,16 +281,16 @@ export const InspectorPanel = memo(function InspectorPanel() {
         draftWorld.addComponent(id, TransformComponent, next)
       })
     },
-    [forEachSelected],
+    [forEachSelectedTransform],
   )
 
   const updateTransform = useCallback(
     (after: Transform) => {
-      forEachSelected((id, draftWorld) => {
+      forEachSelectedTransform((id, draftWorld) => {
         draftWorld.addComponent(id, TransformComponent, after)
       })
     },
-    [forEachSelected],
+    [forEachSelectedTransform],
   )
 
   const resetTransform = useCallback(() => {
@@ -294,11 +341,125 @@ export const InspectorPanel = memo(function InspectorPanel() {
     [forEachSelected],
   )
 
+  const bakeColliderFromMesh = useCallback(
+    (mode: ColliderBakeMode) => {
+      if (!world || selectedIds.length !== 1) return
+      const id = selectedIds[0]!
+      const service = useEditorStore.getState().colliderBakeService
+      if (!service) return
+
+      const current = world.getComponent(id, ColliderComponent)
+      const collisionMeshAsset =
+        current && (current.shape === 'convexHull' || current.shape === 'trimesh')
+          ? current.bakeSource?.collisionMeshAsset
+          : undefined
+
+      const result = service.bakeFromEntity(id, mode, {
+        collisionMeshAsset,
+        maxConvexHullVertices: EDITOR_PHYSICS_CAPABILITIES.shapes.maxConvexHullVertices,
+      })
+      if (!result) {
+        console.warn('Collider bake failed — no mesh geometry found in viewport.')
+        return
+      }
+
+      for (const warning of result.warnings) {
+        console.warn(warning)
+      }
+
+      commitSceneEdit((draft) => {
+        const existing = draft.world.getComponent(id, ColliderComponent)
+        const base = existing ?? ColliderSchema.parse({ shape: mode })
+        if (mode === 'convexHull') {
+          draft.world.addComponent(
+            id,
+            ColliderComponent,
+            ColliderSchema.parse({
+              ...base,
+              shape: 'convexHull',
+              points: result.points ?? [],
+              bakeSource: result.bakeSource,
+            }),
+          )
+          return
+        }
+
+        draft.world.addComponent(
+          id,
+          ColliderComponent,
+          ColliderSchema.parse({
+            ...base,
+            shape: 'trimesh',
+            vertices: result.vertices ?? [],
+            indices: result.indices ?? [],
+            bakeSource: result.bakeSource,
+          }),
+        )
+      })
+    },
+    [selectedIds, world],
+  )
+
+  const updateRigidBody = useCallback(
+    (after: RigidBody) => {
+      forEachSelected((id, draftWorld) => {
+        if (draftWorld.hasComponent(id, RigidBodyComponent)) {
+          draftWorld.addComponent(id, RigidBodyComponent, after)
+        }
+      })
+    },
+    [forEachSelected],
+  )
+
+  const updatePhysicsArea = useCallback(
+    (after: PhysicsArea) => {
+      forEachSelected((id, draftWorld) => {
+        if (draftWorld.hasComponent(id, PhysicsAreaComponent)) {
+          draftWorld.addComponent(id, PhysicsAreaComponent, after)
+        }
+      })
+    },
+    [forEachSelected],
+  )
+
+  const updateAnimatableBody = useCallback(
+    (after: AnimatableBody) => {
+      forEachSelected((id, draftWorld) => {
+        if (draftWorld.hasComponent(id, AnimatableBodyComponent)) {
+          draftWorld.addComponent(id, AnimatableBodyComponent, after)
+        }
+      })
+    },
+    [forEachSelected],
+  )
+
   const updatePhysicsController = useCallback(
     (after: PhysicsController) => {
       forEachSelected((id, draftWorld) => {
         if (draftWorld.hasComponent(id, PhysicsControllerComponent)) {
           draftWorld.addComponent(id, PhysicsControllerComponent, after)
+        }
+      })
+    },
+    [forEachSelected],
+  )
+
+  const updatePhysicsJoint = useCallback(
+    (after: PhysicsJoint) => {
+      forEachSelected((id, draftWorld) => {
+        if (draftWorld.hasComponent(id, PhysicsJointComponent)) {
+          draftWorld.addComponent(id, PhysicsJointComponent, after)
+        }
+      })
+    },
+    [forEachSelected],
+  )
+
+  const updateColliders = useCallback(
+    (after: Colliders) => {
+      forEachSelected((id, draftWorld) => {
+        if (draftWorld.hasComponent(id, CollidersComponent)) {
+          draftWorld.addComponent(id, CollidersComponent, after)
         }
       })
     },
@@ -442,18 +603,6 @@ export const InspectorPanel = memo(function InspectorPanel() {
             }
           }}
         />
-        <label className="haku-inspector__static">
-          <input
-            type="checkbox"
-            checked={staticMixed === true}
-            ref={(input) => {
-              if (input) input.indeterminate = staticMixed === null
-            }}
-            disabled={!canEdit}
-            onChange={(event) => updateStatic(event.target.checked)}
-          />
-          Static
-        </label>
       </div>
 
       {!isMulti && (
@@ -475,10 +624,19 @@ export const InspectorPanel = memo(function InspectorPanel() {
           collapsed={collapsedSections.Transform === true}
           canToggleEnabled={false}
           canDelete={false}
-          disabled={mode === 'play'}
+          disabled={!canEditTransform}
           onToggleCollapsed={() => toggleSectionCollapsed('Transform')}
           onCopy={() => copyComponentData('Transform', structuredClone(transformDisplay) as Record<string, unknown>)}
-          onPaste={() => pasteComponentData('Transform', TransformComponent)}
+          onPaste={() => {
+            if (!componentClipboard || componentClipboard.typeId !== 'Transform') return
+            forEachSelectedTransform((id, draftWorld) => {
+              draftWorld.addComponent(
+                id,
+                TransformComponent,
+                TransformComponent.schema.parse(componentClipboard.data),
+              )
+            })
+          }}
           canPaste={componentClipboard?.typeId === 'Transform'}
         >
           <div className="haku-inspector__section-toolbar">
@@ -486,7 +644,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
               type="button"
               className="haku-inspector__section-action"
               title="Reset transform"
-              disabled={mode === 'play'}
+              disabled={!canEditTransform}
               onClick={resetTransform}
             >
               Reset
@@ -497,7 +655,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
             mixedPosition={isMulti ? mixedPosition : undefined}
             mixedRotation={isMulti ? mixedRotation : undefined}
             mixedScale={isMulti ? mixedScale : undefined}
-            disabled={mode === 'play'}
+            disabled={!canEditTransform}
             onChange={isMulti ? undefined : updateTransform}
             onPositionAxisChange={(axis, value) => applyTransformAxis('position', axis, value)}
             onRotationAxisChange={(axis, value) => applyTransformAxis('rotation', axis, value)}
@@ -649,14 +807,53 @@ export const InspectorPanel = memo(function InspectorPanel() {
             ) : key === 'Collider' ? (
               <ColliderFields
                 value={normalizeCollider(data)}
+                physicsSettings={sceneDocument?.physicsSettings}
                 disabled={mode === 'play'}
+                nonUniformScaleWarning={colliderNonUniformScale}
+                entityId={isMulti ? undefined : selectedIds[0]?.value}
+                rigidBodyType={selectedRigidBodyType}
+                currentMeshRevision={selectedMeshRevision}
+                onBake={isMulti ? undefined : bakeColliderFromMesh}
                 onChange={isMulti ? undefined : updateCollider}
+              />
+            ) : key === 'RigidBody' ? (
+              <RigidBodyFields
+                value={normalizeRigidBody(data)}
+                disabled={mode === 'play'}
+                onChange={isMulti ? undefined : updateRigidBody}
+              />
+            ) : key === 'PhysicsArea' ? (
+              <PhysicsAreaFields
+                value={normalizePhysicsArea(data)}
+                physicsSettings={sceneDocument?.physicsSettings}
+                disabled={mode === 'play'}
+                onChange={isMulti ? undefined : updatePhysicsArea}
+              />
+            ) : key === 'AnimatableBody' ? (
+              <AnimatableBodyFields
+                value={normalizeAnimatableBody(data)}
+                disabled={mode === 'play'}
+                onChange={isMulti ? undefined : updateAnimatableBody}
               />
             ) : key === 'PhysicsController' ? (
               <PhysicsControllerFields
                 value={normalizePhysicsController(data)}
                 disabled={mode === 'play'}
                 onChange={isMulti ? undefined : updatePhysicsController}
+              />
+            ) : key === 'PhysicsJoint' ? (
+              <PhysicsJointFields
+                value={normalizePhysicsJoint(data)}
+                disabled={mode === 'play'}
+                onChange={isMulti ? undefined : updatePhysicsJoint}
+              />
+            ) : key === 'Colliders' ? (
+              <CollidersFields
+                value={normalizeColliders(data)}
+                physicsSettings={sceneDocument?.physicsSettings}
+                disabled={mode === 'play'}
+                nonUniformScaleWarning={colliderNonUniformScale}
+                onChange={isMulti ? undefined : updateColliders}
               />
             ) : (
               <SchemaFields

@@ -7,6 +7,7 @@ import {
 } from '@haku/core'
 import {
   ArcadeVehicleControllerSchema,
+  ColliderSchema,
   CustomRaycastControllerSchema,
   DynamicRaycastControllerSchema,
   KinematicCharacterControllerSchema,
@@ -21,7 +22,6 @@ import { SceneColliderGizmos } from './scene-collider-gizmos.js'
 const explicitSphere: Collider = {
   shape: 'sphere',
   radius: 0.7,
-  isStatic: false,
   offset: [1, 2, 3],
   rotation: [0, Math.SQRT1_2, 0, Math.SQRT1_2],
 }
@@ -144,5 +144,34 @@ describe('SceneColliderGizmos controller parity', () => {
     ['pointer-controls', PointerControlsControllerSchema.parse({ type: 'pointer-controls' })],
   ])('renders no collider for non-collider controller %s', (_type, controller) => {
     expect(syncControllerGizmo(controller, explicitSphere)).toBeUndefined()
+  })
+
+  it('renders colliders for unselected entities when showAll is enabled', () => {
+    const world = new World()
+    const selectedId = world.createEntity('Selected')
+    const otherId = world.createEntity('Other')
+    world.addComponent(otherId, ColliderComponent, ColliderSchema.parse({
+      shape: 'box',
+      halfExtents: [0.5, 0.5, 0.5],
+    }))
+
+    const selectedObject = new THREE.Object3D()
+    const otherObject = new THREE.Object3D()
+    const objects = new Map<string, THREE.Object3D>([
+      [selectedId.value, selectedObject],
+      [otherId.value, otherObject],
+    ])
+    const gizmos = new SceneColliderGizmos()
+    gizmos.sync(
+      world,
+      {
+        getObject3D(entityId: EntityId) {
+          return objects.get(entityId.value)
+        },
+      },
+      { visible: true, selectedIds: new Set([selectedId.value]), showAll: true },
+    )
+
+    expect(otherObject.children.some((child) => child.name === 'haku-collider-overlay')).toBe(true)
   })
 })

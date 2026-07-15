@@ -3,6 +3,7 @@ import { setHakuLogSink } from '@haku/engine'
 import { EditorLayout } from './EditorLayout.js'
 import { MenuBar } from './components/MenuBar.js'
 import { RenderSettingsDialog } from './components/RenderSettingsDialog.js'
+import { PhysicsProjectSettingsDialog } from './components/PhysicsProjectSettingsDialog.js'
 import { commitSceneEdit } from './commands/scene-history.js'
 import { useEditorStore } from './store/editor-store.js'
 import { projectService } from './services/project-service.js'
@@ -44,6 +45,7 @@ export const EditorApp = memo(function EditorApp() {
   const enterPlayMode = useEditorStore((s) => s.enterPlayMode)
   const exitPlayMode = useEditorStore((s) => s.exitPlayMode)
   const [renderSettingsOpen, setRenderSettingsOpen] = useState(false)
+  const [physicsSettingsOpen, setPhysicsSettingsOpen] = useState(false)
 
   useEffect(() => {
     setHakuLogSink(projectLogSink)
@@ -168,6 +170,21 @@ export const EditorApp = memo(function EditorApp() {
     })
   }, [])
 
+  const onPhysicsSettings = useCallback(() => {
+    setPhysicsSettingsOpen(true)
+  }, [])
+
+  const onApplyPhysicsSettings = useCallback(
+    (physicsSettings: import('@haku/schema').PhysicsProjectSettings) => {
+      commitSceneEdit((draft) => {
+        if (draft.sceneDocument) {
+          draft.sceneDocument.physicsSettings = physicsSettings
+        }
+      })
+    },
+    [],
+  )
+
   const menus = useMemo(
     () => [
       {
@@ -203,10 +220,26 @@ export const EditorApp = memo(function EditorApp() {
             disabled: !sceneDocument || mode === 'play',
             onClick: onRenderSettings,
           },
+          {
+            id: 'physics-settings',
+            label: 'Physics Settings…',
+            disabled: !sceneDocument || mode === 'play',
+            onClick: onPhysicsSettings,
+          },
         ],
       },
     ],
-    [mode, onCreateProject, onLoadPlaygroundDemo, onOpenProject, onRenderSettings, onSave, sceneDocument, scenePath],
+    [
+      mode,
+      onCreateProject,
+      onLoadPlaygroundDemo,
+      onOpenProject,
+      onPhysicsSettings,
+      onRenderSettings,
+      onSave,
+      sceneDocument,
+      scenePath,
+    ],
   )
 
   return (
@@ -245,6 +278,12 @@ export const EditorApp = memo(function EditorApp() {
         initialSettings={sceneDocument?.renderSettings}
         onApply={onApplyRenderSettings}
         onClose={() => setRenderSettingsOpen(false)}
+      />
+      <PhysicsProjectSettingsDialog
+        open={physicsSettingsOpen}
+        initialSettings={sceneDocument?.physicsSettings}
+        onApply={onApplyPhysicsSettings}
+        onClose={() => setPhysicsSettingsOpen(false)}
       />
     </div>
   )

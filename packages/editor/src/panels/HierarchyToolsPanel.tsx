@@ -97,6 +97,23 @@ function AabbIcon() {
   )
 }
 
+function ColliderIcon() {
+  return (
+    <ToolIcon>
+      <path d="M5 8h14v8H5V8Z" stroke="currentColor" strokeWidth="1.75" />
+      <path d="M8 8V5h8v3M8 16v3h8v-3M5 11H2M22 11h-3M5 13H2M22 13h-3" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+    </ToolIcon>
+  )
+}
+
+function PhysicsDebugIcon() {
+  return (
+    <ToolIcon>
+      <path d="M4 18h16M6 14l3-8 3 5 2-3 4 6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+    </ToolIcon>
+  )
+}
+
 function PlanetSpaceIcon({ space }: { space: 'local' | 'world' }) {
   return (
     <ToolIcon>
@@ -149,6 +166,10 @@ export const HierarchyToolsPanel = memo(function HierarchyToolsPanel() {
   const setShowAabb = useEditorStore((s) => s.setShowAabb)
   const showShadowVolume = useEditorStore((s) => s.showShadowVolume)
   const setShowShadowVolume = useEditorStore((s) => s.setShowShadowVolume)
+  const showAllColliders = useEditorStore((s) => s.showAllColliders)
+  const setShowAllColliders = useEditorStore((s) => s.setShowAllColliders)
+  const showPhysicsDebug = useEditorStore((s) => s.showPhysicsDebug)
+  const setShowPhysicsDebug = useEditorStore((s) => s.setShowPhysicsDebug)
   const world = useEditorStore((s) => s.world)
   const activeViewportTab = useEditorStore((s) => s.activeViewportTab)
   const transformTool = useEditorStore((s) => s.transformTool)
@@ -161,6 +182,7 @@ export const HierarchyToolsPanel = memo(function HierarchyToolsPanel() {
 
   const canEdit = !!world && mode === 'edit'
   const canPan = !!world && mode === 'edit' && activeViewportTab === 'scene'
+  const canPhysicsDebug = !!world && mode === 'play'
 
   const tools: Array<{ tool: TransformTool; title: string; icon: ReactNode }> = [
     { tool: 'translate', title: formatToolTitle('Move', TRANSFORM_TOOL_SHORTCUT.translate), icon: <MoveIcon /> },
@@ -233,12 +255,30 @@ export const HierarchyToolsPanel = memo(function HierarchyToolsPanel() {
       </ToolButton>
 
       <ToolButton
+        title="Show collider wireframes for all entities in the scene."
+        active={showAllColliders}
+        disabled={!canEdit}
+        onClick={() => setShowAllColliders(!showAllColliders)}
+      >
+        <ColliderIcon />
+      </ToolButton>
+
+      <ToolButton
         title="Show directional shadow map orthographic volume (debug)."
         active={showShadowVolume}
         disabled={!canEdit}
         onClick={() => setShowShadowVolume(!showShadowVolume)}
       >
         <ShadowVolumeIcon />
+      </ToolButton>
+
+      <ToolButton
+        title="Show Rapier physics debug lines (play mode)."
+        active={showPhysicsDebug}
+        disabled={!canPhysicsDebug}
+        onClick={() => setShowPhysicsDebug(!showPhysicsDebug)}
+      >
+        <PhysicsDebugIcon />
       </ToolButton>
     </div>
   )

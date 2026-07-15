@@ -3,11 +3,11 @@ import * as THREE from 'three'
 import { Engine, createDynamicRaycastWheelRestPoseResolver } from '@haku/engine'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js'
-import { TransformComponent, entityId, type EntityId } from '@haku/core'
+import { TransformComponent, ColliderComponent, entityId, type EntityId } from '@haku/core'
 import { resolveActiveCameraId } from '@haku/schema'
 import { projectService } from '../services/project-service.js'
 import { useEditorStore } from '../store/editor-store.js'
-import { commitMultiTransformChange, commitTransformChange, transformsEqual } from '../commands/scene-history.js'
+import { commitMultiTransformChange, commitTransformChange, commitSceneEdit, transformsEqual } from '../commands/scene-history.js'
 import { computeHierarchyFilterSets } from '../hierarchy/entity-filter.js'
 import { focusSelection } from '../viewport/focus-selection.js'
 import {
@@ -24,17 +24,22 @@ import { SceneLightGizmos } from '../viewport/scene-light-gizmos.js'
 import { primarySelection, mergeSelection } from '../selection/selection-utils.js'
 import { SceneAabbGizmos } from '../viewport/scene-aabb-gizmos.js'
 import { SceneColliderGizmos } from '../viewport/scene-collider-gizmos.js'
+import { SceneColliderResizeGizmo } from '../viewport/scene-collider-resize-gizmo.js'
+import { bakeColliderFromEntity, resolveEntityMeshRenderer } from '../viewport/collider-mesh-bake.js'
 import { SceneSelectionOutline } from '../viewport/scene-selection-outline.js'
 import { applyHierarchyDim } from '../viewport/hierarchy-dim.js'
 import { SceneShadowVolumeGizmos } from '../viewport/shadow-volume-gizmos.js'
+import { ScenePhysicsDebugDraw } from '../viewport/physics-debug-draw.js'
 import { startPlayModePhysics, type PlayModePhysicsSession } from '../viewport/play-mode-physics.js'
 import { installVehicleDebugHook } from '../viewport/vehicle-debug-hook.js'
+import { installPlayModePhysicsAccess } from '../viewport/play-mode-physics-access.js'
 
 function refreshGizmo(
   gizmo: TransformControls,
   selection: EntityId[],
   pivot: SelectionTransformPivot,
   getObject3D: (id: EntityId) => import('three').Object3D | undefined,
+  colliderResizeProxy?: THREE.Object3D | null,
 ): void {
   if (selection.length === 0) {
     gizmo.detach()
@@ -44,7 +49,7 @@ function refreshGizmo(
   gizmo.setSpace(useEditorStore.getState().gizmoSpace)
 
   if (selection.length === 1) {
-    const object = getObject3D(selection[0]!)
+    const object = colliderResizeProxy ?? getObject3D(selection[0]!)
     if (!object) {
       gizmo.detach()
       return
@@ -85,12 +90,15 @@ export const ViewportPanel = memo(function ViewportPanel() {
   const lightGizmosRef = useRef<SceneLightGizmos | null>(null)
   const aabbGizmosRef = useRef<SceneAabbGizmos | null>(null)
   const colliderGizmosRef = useRef<SceneColliderGizmos | null>(null)
+  const colliderResizeGizmoRef = useRef<SceneColliderResizeGizmo | null>(null)
   const selectionOutlineRef = useRef<SceneSelectionOutline | null>(null)
   const hierarchyDimRef = useRef<ReadonlySet<string> | null>(null)
   const shadowVolumeGizmosRef = useRef<SceneShadowVolumeGizmos | null>(null)
+  const physicsDebugDrawRef = useRef<ScenePhysicsDebugDraw | null>(null)
   const playPhysicsRef = useRef<PlayModePhysicsSession | null>(null)
   const lastHandledFocusRequest = useRef(0)
   const dragStartTransform = useRef<ReturnType<typeof TransformComponent.schema.parse> | null>(null)
+  const dragStartCollider = useRef<import('@haku/schema').Collider | null>(null)
   const dragStartSnapshots = useRef<EntityDragSnapshot[]>([])
   const uniformScaleDragStart = useRef<THREE.Vector3 | null>(null)
   const gizmoPointerRef = useRef(false)
@@ -107,6 +115,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
   const selectedIdSet = useMemo(() => new Set(selectedIds.map((id) => id.value)), [selectedIds])
   const showAabb = useEditorStore((s) => s.showAabb)
   const showShadowVolume = useEditorStore((s) => s.showShadowVolume)
+  const showAllColliders = useEditorStore((s) => s.showAllColliders)
   const mode = useEditorStore((s) => s.mode)
   const transformTool = useEditorStore((s) => s.transformTool)
   const scenePath = useEditorStore((s) => s.scenePath)
@@ -115,6 +124,8 @@ export const ViewportPanel = memo(function ViewportPanel() {
   const hierarchyFilterQuery = useEditorStore((s) => s.hierarchyFilterQuery)
   const hierarchyFilterMode = useEditorStore((s) => s.hierarchyFilterMode)
   const gizmoSpace = useEditorStore((s) => s.gizmoSpace)
+  const colliderResizeActive = useEditorStore((s) => s.colliderResizeActive)
+  const setColliderBakeService = useEditorStore((s) => s.setColliderBakeService)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -177,8 +188,10 @@ export const ViewportPanel = memo(function ViewportPanel() {
     aabbGizmosRef.current = new SceneAabbGizmos()
     aabbGizmosRef.current.attach(engine.backend.threeScene)
     colliderGizmosRef.current = new SceneColliderGizmos()
+    colliderResizeGizmoRef.current = new SceneColliderResizeGizmo()
     selectionOutlineRef.current = new SceneSelectionOutline()
     shadowVolumeGizmosRef.current = new SceneShadowVolumeGizmos()
+    physicsDebugDrawRef.current = new ScenePhysicsDebugDraw()
 
     // Re-apply the hierarchy-filter dim after every engine sync — the per-frame
     // material re-sync would otherwise overwrite the dimmed colors.
@@ -204,9 +217,19 @@ export const ViewportPanel = memo(function ViewportPanel() {
     const tick = () => {
       orbit.update()
       const shadowGizmos = shadowVolumeGizmosRef.current
+      const physicsDebug = physicsDebugDrawRef.current
       const activeEngine = engineRef.current
-      if (shadowGizmos && activeEngine && useEditorStore.getState().showShadowVolume) {
-        shadowGizmos.sync(activeEngine.backend.threeScene, true)
+      if (activeEngine) {
+        const editorState = useEditorStore.getState()
+        if (shadowGizmos && editorState.showShadowVolume) {
+          shadowGizmos.sync(activeEngine.backend.threeScene, true)
+        }
+        if (physicsDebug) {
+          const showDebug = editorState.mode === 'play' && editorState.showPhysicsDebug
+          const physicsWorld = activeEngine.getPhysicsWorldSystem()?.getPhysicsWorld()
+          const buffers = showDebug ? (physicsWorld?.getDebugRenderBuffers() ?? null) : null
+          physicsDebug.sync(activeEngine.backend.threeScene, buffers, showDebug)
+        }
       }
       requestAnimationFrame(tick)
     }
@@ -218,6 +241,9 @@ export const ViewportPanel = memo(function ViewportPanel() {
       getWorld: () => useEditorStore.getState().world,
       getEngine: () => engineRef.current,
       getVehicleSession: () => playPhysicsRef.current?.vehicle,
+    })
+    const removePlayModePhysicsAccess = installPlayModePhysicsAccess({
+      getEngine: () => engineRef.current,
     })
 
     const resize = () => {
@@ -233,6 +259,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
     resize()
 
     return () => {
+      removePlayModePhysicsAccess()
       removeVehicleDebugHook()
       unsubscribeWorld()
       observer.disconnect()
@@ -246,11 +273,15 @@ export const ViewportPanel = memo(function ViewportPanel() {
       aabbGizmosRef.current = null
       colliderGizmosRef.current?.dispose()
       colliderGizmosRef.current = null
+      colliderResizeGizmoRef.current?.dispose()
+      colliderResizeGizmoRef.current = null
       selectionOutlineRef.current?.dispose()
       selectionOutlineRef.current = null
       engine.backend.sync.setAfterSyncHook(null)
       shadowVolumeGizmosRef.current?.dispose(engine.backend.threeScene)
       shadowVolumeGizmosRef.current = null
+      physicsDebugDrawRef.current?.dispose(engine.backend.threeScene)
+      physicsDebugDrawRef.current = null
       selectionPivotRef.current?.dispose()
       selectionPivotRef.current = null
       gizmo.dispose()
@@ -259,6 +290,31 @@ export const ViewportPanel = memo(function ViewportPanel() {
       engineRef.current = null
     }
   }, [])
+
+  useEffect(() => {
+    const engine = engineRef.current
+    if (!engine) return
+
+    setColliderBakeService({
+      bakeFromEntity: (entityId, mode, options) => {
+        const activeWorld = useEditorStore.getState().world
+        return bakeColliderFromEntity(
+          entityId,
+          mode,
+          {
+            getObject3D: (id) => engine.backend.sync.getObject3D(id),
+            getMeshRenderer: (id) =>
+              activeWorld ? resolveEntityMeshRenderer(activeWorld, id) : undefined,
+          },
+          options,
+        )
+      },
+    })
+
+    return () => {
+      setColliderBakeService(null)
+    }
+  }, [setColliderBakeService])
 
   useEffect(() => {
     const engine = engineRef.current
@@ -271,7 +327,12 @@ export const ViewportPanel = memo(function ViewportPanel() {
     }
 
     let cancelled = false
-    void startPlayModePhysics(engine, world, canvasRef.current ?? undefined)
+    void startPlayModePhysics(
+      engine,
+      world,
+      canvasRef.current ?? undefined,
+      sceneDocument?.physicsSettings,
+    )
       .then((session) => {
         if (cancelled) {
           session.dispose()
@@ -290,7 +351,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
       playPhysicsRef.current?.dispose()
       playPhysicsRef.current = null
     }
-  }, [mode, world, worldRevision])
+  }, [mode, world, worldRevision, sceneDocument?.physicsSettings])
 
   useEffect(() => {
     const engine = engineRef.current
@@ -356,12 +417,17 @@ export const ViewportPanel = memo(function ViewportPanel() {
     const lightGizmos = lightGizmosRef.current
     const aabbGizmos = aabbGizmosRef.current
     const colliderGizmos = colliderGizmosRef.current
+    const colliderResizeGizmo = colliderResizeGizmoRef.current
     const selectionOutline = selectionOutlineRef.current
     const selectionPivot = selectionPivotRef.current
     if (!engine || !world || !gizmo || !selectionPivot) return
 
     const getObject3D = (id: EntityId) => engine.backend.sync.getObject3D(id)
     const canShowGizmo = mode === 'edit' && activeViewportTab === 'scene'
+    const resizeProxy =
+      colliderResizeActive && transformTool === 'scale' && primary
+        ? (colliderResizeGizmo?.sync(world, engine.backend.sync, primary, true) ?? null)
+        : (colliderResizeGizmo?.sync(world, engine.backend.sync, null, false) ?? null)
 
     if (!selectionPivot.isDragging()) {
       for (const id of selectedIds) {
@@ -370,7 +436,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
       // See the dedicated visibility effect below for why attach() must stay gated to
       // Scene+Edit — calling it unconditionally re-shows a gizmo tracking the wrong camera.
       if (canShowGizmo) {
-        refreshGizmo(gizmo, selectedIds, selectionPivot, getObject3D)
+        refreshGizmo(gizmo, selectedIds, selectionPivot, getObject3D, resizeProxy)
         gizmo.getHelper().visible = selectedIds.length > 0
       }
     }
@@ -404,6 +470,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
       colliderGizmos.sync(world, engine.backend.sync, {
         visible: mode === 'edit' && activeViewportTab === 'scene',
         selectedIds: selectedIdSet,
+        showAll: showAllColliders,
       })
     }
 
@@ -418,7 +485,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
       engine.backend.threeScene,
       mode === 'edit' && showShadowVolume,
     )
-  }, [world, worldRevision, selectedIds, selectedIdSet, mode, activeViewportTab, showAabb, showShadowVolume, primary, sceneDocument])
+  }, [world, worldRevision, selectedIds, selectedIdSet, mode, activeViewportTab, showAabb, showAllColliders, showShadowVolume, primary, sceneDocument, colliderResizeActive, transformTool])
 
   useEffect(() => {
     const engine = engineRef.current
@@ -441,7 +508,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
     const gizmo = gizmoRef.current
     const orbit = orbitRef.current
     const selectionPivot = selectionPivotRef.current
-    if (!engine || !gizmo || !orbit || !selectionPivot) return
+    if (!engine || !gizmo || !orbit || !selectionPivot || !world) return
 
     const isEdit = mode === 'edit'
     const isSceneTab = activeViewportTab === 'scene'
@@ -456,9 +523,14 @@ export const ViewportPanel = memo(function ViewportPanel() {
     // or during Play mode.
     const shouldAttach = canShowGizmo && selectedIds.length > 0 && !selectionPivot.isDragging()
     const shouldDetach = !canShowGizmo || !selectedIds.length || isHandTool
+    const colliderResizeGizmo = colliderResizeGizmoRef.current
+    const resizeProxy =
+      colliderResizeActive && transformTool === 'scale' && primary
+        ? (colliderResizeGizmo?.sync(world, engine.backend.sync, primary, true) ?? null)
+        : (colliderResizeGizmo?.sync(world, engine.backend.sync, null, false) ?? null)
 
     if (shouldAttach) {
-      refreshGizmo(gizmo, selectedIds, selectionPivot, (id) => engine.backend.sync.getObject3D(id))
+      refreshGizmo(gizmo, selectedIds, selectionPivot, (id) => engine.backend.sync.getObject3D(id), resizeProxy)
     } else if (shouldDetach) {
       gizmo.detach()
     }
@@ -466,19 +538,31 @@ export const ViewportPanel = memo(function ViewportPanel() {
 
     // Re-assert visibility after the attach/detach above, since attach() always forces it true.
     gizmo.getHelper().visible = canShowGizmo && selectedIds.length > 0
-  }, [selectedIds, mode, world, transformTool, activeViewportTab])
+  }, [selectedIds, mode, world, transformTool, activeViewportTab, colliderResizeActive, primary])
 
   useEffect(() => {
     const engine = engineRef.current
     const gizmo = gizmoRef.current
     const selectionPivot = selectionPivotRef.current
-    if (!engine || !gizmo || !selectionPivot) return
+    if (!engine || !gizmo || !selectionPivot || !world) return
     if (mode !== 'edit' || activeViewportTab !== 'scene') return
     if (selectedIds.length === 0 || transformTool === 'hand' || selectionPivot.isDragging()) return
 
-    refreshGizmo(gizmo, selectedIds, selectionPivot, (id) => engine.backend.sync.getObject3D(id))
+    const colliderResizeGizmo = colliderResizeGizmoRef.current
+    const resizeProxy =
+      colliderResizeActive && transformTool === 'scale' && primary
+        ? (colliderResizeGizmo?.sync(world, engine.backend.sync, primary, true) ?? null)
+        : (colliderResizeGizmo?.sync(world, engine.backend.sync, null, false) ?? null)
+
+    refreshGizmo(
+      gizmo,
+      selectedIds,
+      selectionPivot,
+      (id) => engine.backend.sync.getObject3D(id),
+      resizeProxy,
+    )
     gizmo.getHelper().visible = true
-  }, [gizmoSpace, selectedIds, transformTool, mode, activeViewportTab])
+  }, [gizmoSpace, selectedIds, transformTool, mode, activeViewportTab, colliderResizeActive, primary, world])
 
   useEffect(() => {
     const gizmo = gizmoRef.current
@@ -549,8 +633,26 @@ export const ViewportPanel = memo(function ViewportPanel() {
       }
 
       const sel = primarySelection(ids)
+      const resizeGizmo = colliderResizeGizmoRef.current
+      const colliderResize = useEditorStore.getState().colliderResizeActive
+      if (
+        colliderResize &&
+        resizeGizmo &&
+        sel &&
+        gizmo.mode === 'scale' &&
+        w.hasComponent(sel, ColliderComponent)
+      ) {
+        const collider = w.getComponent(sel, ColliderComponent)!
+        dragStartCollider.current = structuredClone(collider)
+        dragStartTransform.current = null
+        dragStartSnapshots.current = []
+        uniformScaleDragStart.current = resizeGizmo.proxy.scale.clone()
+        return
+      }
+
       const obj = sel ? getObject3D(sel) : null
       dragStartSnapshots.current = []
+      dragStartCollider.current = null
 
       if (sel && w) {
         dragStartTransform.current = w.getComponent(sel, TransformComponent) ?? null
@@ -592,12 +694,39 @@ export const ViewportPanel = memo(function ViewportPanel() {
         const pivot = selectionPivotRef.current
         if (engine && activeGizmo && pivot) {
           const ids = useEditorStore.getState().selection.filter((id) => w.hasEntity(id))
-          refreshGizmo(activeGizmo, ids, pivot, (id) => engine.backend.sync.getObject3D(id))
+          const colliderResizeGizmo = colliderResizeGizmoRef.current
+          const primaryId = primarySelection(ids)
+          const resizeProxy =
+            useEditorStore.getState().colliderResizeActive &&
+            useEditorStore.getState().transformTool === 'scale' &&
+            primaryId
+              ? (colliderResizeGizmo?.sync(w, engine.backend.sync, primaryId, true) ?? null)
+              : null
+          refreshGizmo(
+            activeGizmo,
+            ids,
+            pivot,
+            (id) => engine.backend.sync.getObject3D(id),
+            resizeProxy,
+          )
         }
         return
       }
 
+      const startCollider = dragStartCollider.current
       const sel = primarySelection(useEditorStore.getState().selection)
+      if (startCollider && sel) {
+        const after = w.getComponent(sel, ColliderComponent)
+        dragStartCollider.current = null
+        uniformScaleDragStart.current = null
+        if (after && JSON.stringify(startCollider) !== JSON.stringify(after)) {
+          commitSceneEdit((draft) => {
+            draft.world.addComponent(sel, ColliderComponent, after)
+          })
+        }
+        return
+      }
+
       const before = dragStartTransform.current
       if (!sel || !before) return
       const after = w.getComponent(sel, TransformComponent)
@@ -656,6 +785,33 @@ export const ViewportPanel = memo(function ViewportPanel() {
       }
 
       const sel = primarySelection(ids)
+      const resizeGizmo = colliderResizeGizmoRef.current
+      if (
+        useEditorStore.getState().colliderResizeActive &&
+        resizeGizmo &&
+        sel &&
+        gizmo.mode === 'scale' &&
+        ids.length === 1
+      ) {
+        const collider = w.getComponent(sel, ColliderComponent)
+        if (!collider) return
+
+        const uniformScaleLocked = useEditorStore.getState().uniformScaleLocked
+        if (uniformScaleDragStart.current) {
+          applyScaleGizmoConstraint(
+            resizeGizmo.proxy,
+            uniformScaleDragStart.current,
+            gizmo.axis,
+            uniformScaleLocked,
+          )
+        }
+
+        const next = resizeGizmo.applyScaleToCollider(collider, resizeGizmo.proxy.scale)
+        w.addComponent(sel, ColliderComponent, next)
+        useEditorStore.getState().setWorld(w)
+        return
+      }
+
       const obj = sel ? getObject3D(sel) : null
       if (!sel || !obj) return
 

@@ -25,6 +25,7 @@ const CONTROLLER_TYPE_LABELS: Record<PhysicsControllerType, string> = {
   'arcade-vehicle': 'Arcade vehicle',
   'revolute-joint-vehicle': 'Revolute joint vehicle',
   'kinematic-character': 'Kinematic character',
+  'character-body': 'Character body',
   'pointer-controls': 'Pointer controls',
 }
 
@@ -164,6 +165,22 @@ export const PhysicsControllerFields = memo(function PhysicsControllerFields({
         <NumberField label="sprintMultiplier" value={value.sprintMultiplier} min={0.001} step={0.1} disabled={disabled} onChange={(n) => patch({ sprintMultiplier: Math.max(0.001, n) })} />
         <NumberField label="maxJumpHeight" value={value.maxJumpHeight} min={0.001} step={0.1} disabled={disabled} onChange={(n) => patch({ maxJumpHeight: Math.max(0.001, n) })} />
         <NumberField label="snapToGroundDistance" value={value.snapToGroundDistance} min={0} step={0.01} disabled={disabled} onChange={(n) => patch({ snapToGroundDistance: Math.max(0, n) })} />
+      </div>
+    )
+  }
+
+  if (value.type === 'character-body') {
+    return (
+      <div className="mesh-renderer-fields">
+        {typeSelector}
+        <SectionHeading>Character body (move_and_slide)</SectionHeading>
+        <NumberField label="capsuleRadius" value={value.capsuleRadius} min={0.001} step={0.01} disabled={disabled} onChange={(n) => patch({ capsuleRadius: Math.max(0.001, n) })} />
+        <NumberField label="capsuleHalfHeight" value={value.capsuleHalfHeight} min={0} step={0.01} disabled={disabled} onChange={(n) => patch({ capsuleHalfHeight: Math.max(0, n) })} />
+        <NumberField label="moveSpeed" value={value.moveSpeed} min={0.001} step={0.1} disabled={disabled} onChange={(n) => patch({ moveSpeed: Math.max(0.001, n) })} />
+        <NumberField label="floorMaxAngle" value={value.floorMaxAngle} min={0} max={90} step={1} disabled={disabled} onChange={(n) => patch({ floorMaxAngle: Math.max(0, Math.min(90, n)) })} />
+        <NumberField label="floorSnapLength" value={value.floorSnapLength} min={0} step={0.01} disabled={disabled} onChange={(n) => patch({ floorSnapLength: Math.max(0, n) })} />
+        <NumberField label="stepHeight" value={value.stepHeight} min={0} step={0.05} disabled={disabled} onChange={(n) => patch({ stepHeight: Math.max(0, n) })} />
+        <NumberField label="maxJumpHeight" value={value.maxJumpHeight} min={0.001} step={0.1} disabled={disabled} onChange={(n) => patch({ maxJumpHeight: Math.max(0.001, n) })} />
       </div>
     )
   }

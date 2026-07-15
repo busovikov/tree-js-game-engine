@@ -14,6 +14,8 @@ interface ColliderSyncAccess {
 export interface SceneColliderGizmosOptions {
   visible: boolean
   selectedIds: ReadonlySet<string>
+  /** When true, draw colliders for every entity (not only the current selection). */
+  showAll?: boolean
 }
 
 interface ColliderGizmoEntry {
@@ -29,7 +31,31 @@ function shapeGeometryKey(collider: Collider): string {
       return `sphere:${collider.radius}`
     case 'capsule':
       return `capsule:${collider.radius}:${collider.halfHeight}`
+    case 'convexHull':
+      return `convexHull:${collider.points.length}`
+    case 'trimesh':
+      return `trimesh:${collider.vertices.length}:${collider.indices.length}`
+    default:
+      return collider.shape
   }
+}
+
+function createConvexHullGeometry(points: readonly number[]): THREE.BufferGeometry | null {
+  if (points.length < 9) return null
+  const geometry = new THREE.BufferGeometry()
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3))
+  return geometry
+}
+
+function createTrimeshGeometry(
+  vertices: readonly number[],
+  indices: readonly number[],
+): THREE.BufferGeometry | null {
+  if (vertices.length < 9 || indices.length < 3) return null
+  const geometry = new THREE.BufferGeometry()
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3))
+  geometry.setIndex([...indices])
+  return geometry
 }
 
 function createWireframeGeometry(collider: Collider): THREE.BufferGeometry {
@@ -48,6 +74,24 @@ function createWireframeGeometry(collider: Collider): THREE.BufferGeometry {
       return new THREE.EdgesGeometry(
         new THREE.CapsuleGeometry(collider.radius, collider.halfHeight * 2, 4, 12),
       )
+    case 'convexHull': {
+      const source = createConvexHullGeometry(collider.points)
+      const edges = source
+        ? new THREE.EdgesGeometry(source)
+        : new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1))
+      source?.dispose()
+      return edges
+    }
+    case 'trimesh': {
+      const source = createTrimeshGeometry(collider.vertices, collider.indices)
+      const edges = source
+        ? new THREE.EdgesGeometry(source)
+        : new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1))
+      source?.dispose()
+      return edges
+    }
+    default:
+      return new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1))
   }
 }
 
@@ -96,7 +140,8 @@ export class SceneColliderGizmos {
     const alive = new Set<string>()
 
     for (const id of world.getAllEntities()) {
-      if (!options.selectedIds.has(id.value)) continue
+      const isSelected = options.selectedIds.has(id.value)
+      if (!options.showAll && !isSelected) continue
 
       const vehicle = world.getComponent(id, PhysicsControllerComponent)
       const explicitCollider = world.getComponent(id, ColliderComponent)

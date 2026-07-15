@@ -342,6 +342,7 @@ export class ProjectService {
       document.prototypes,
       document.prefabs,
       document.renderSettings,
+      document.physicsSettings,
     )
     const json = JSON.stringify(saved, null, 2) + '\n'
 

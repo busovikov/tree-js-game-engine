@@ -3,8 +3,8 @@
  */
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
 import { fireEvent, render, screen, cleanup } from '@testing-library/react'
-import { ColliderComponent, TransformComponent, World } from '@haku/core'
-import { ColliderSchema, type BoxCollider } from '@haku/schema'
+import { ColliderComponent, RigidBodyComponent, TransformComponent, World } from '@haku/core'
+import { ColliderSchema, defaultPhysicsProjectSettings, type BoxCollider } from '@haku/schema'
 import { commitSceneEdit } from '../commands/scene-history.js'
 import { globalCommandBus } from '../commands/world-commands.js'
 import { useEditorStore } from '../store/editor-store.js'
@@ -48,15 +48,14 @@ describe('Collider inspector via commitSceneEdit', () => {
     if (collider?.shape === 'box') {
       expect(collider.halfExtents).toEqual([0.5, 0.5, 0.5])
     }
-    expect(collider?.isStatic).toBe(true)
+    expect(collider?.enabled).toBe(true)
   })
 
-  it('updates halfExtents and static flag', () => {
+  it('updates halfExtents and trigger flag', () => {
     const id = useEditorStore.getState().selection[0]!
     const initial = ColliderSchema.parse({
       shape: 'box',
       halfExtents: [12, 0.5, 8],
-      isStatic: true,
     }) as BoxCollider
 
     commitSceneEdit((draft) => {
@@ -67,7 +66,7 @@ describe('Collider inspector via commitSceneEdit', () => {
       draft.world.addComponent(id, ColliderComponent, {
         ...initial,
         halfExtents: [14, 0.75, 9],
-        isStatic: false,
+        isTrigger: true,
       })
     })
 
@@ -75,7 +74,7 @@ describe('Collider inspector via commitSceneEdit', () => {
     if (collider?.shape === 'box') {
       expect(collider.halfExtents).toEqual([14, 0.75, 9])
     }
-    expect(collider?.isStatic).toBe(false)
+    expect(collider?.isTrigger).toBe(true)
   })
 
   it('switches shape to sphere via commitSceneEdit', () => {
@@ -93,7 +92,9 @@ describe('Collider inspector via commitSceneEdit', () => {
           shape: 'sphere',
           offset: current.offset,
           rotation: current.rotation,
-          isStatic: current.isStatic,
+          enabled: current.enabled,
+          layer: current.layer,
+          isTrigger: current.isTrigger,
         }),
       )
     })
@@ -107,12 +108,11 @@ describe('ColliderFields UI', () => {
     cleanup()
   })
 
-  it('shape picker and static toggle call onChange with parsed collider', () => {
+  it('shape picker and trigger toggle call onChange with parsed collider', () => {
     const changes: unknown[] = []
     const value = normalizeCollider({
       shape: 'box',
       halfExtents: [12, 0.5, 8],
-      isStatic: true,
     })
 
     render(
@@ -128,9 +128,9 @@ describe('ColliderFields UI', () => {
     expect(changes).toHaveLength(1)
     expect((changes[0] as { shape: string }).shape).toBe('sphere')
 
-    fireEvent.click(screen.getByLabelText('Collider static'))
+    fireEvent.click(screen.getByLabelText('Collider trigger'))
     expect(changes).toHaveLength(2)
-    expect((changes[1] as { isStatic: boolean }).isStatic).toBe(false)
+    expect((changes[1] as { isTrigger: boolean }).isTrigger).toBe(true)
   })
 
   it('size fields update box halfExtents', () => {
@@ -151,5 +151,17 @@ describe('ColliderFields UI', () => {
     expect(changes.length).toBeGreaterThan(0)
     const last = changes[changes.length - 1] as { halfExtents: number[] }
     expect(last.halfExtents[0]).toBe(12)
+  })
+
+  it('material picker lists project physics materials', () => {
+    render(
+      <ColliderFields
+        value={normalizeCollider({ shape: 'box' })}
+        physicsSettings={defaultPhysicsProjectSettings()}
+      />,
+    )
+
+    expect(screen.getByText('Material')).toBeTruthy()
+    expect(screen.getByDisplayValue('default')).toBeTruthy()
   })
 })
