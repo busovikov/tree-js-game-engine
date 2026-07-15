@@ -1,5 +1,7 @@
 import {
   World,
+  ColliderComponent,
+  RigidBodyComponent,
   entityId,
   getCoreComponent,
   type ComponentType,
@@ -9,18 +11,22 @@ import {
 import {
   PrefabInstanceSchema,
   SceneDocumentSchema,
+  defaultPhysicsProjectSettings,
   defaultRenderSettings,
+  validateEntityPhysicsComponents,
   validateSceneDocument,
   type ComponentRecord,
   type EntityRecord,
   type PrefabDefinition,
   type SceneDocument,
 } from '@haku/schema'
-
-const RUNTIME_COMPONENT_FIELDS = {
-  Collider: ['physicsBodyHandle', 'physicsHandle', 'physicsVehicleHandle'],
-  PhysicsController: ['physicsBodyHandle', 'physicsHandle', 'physicsVehicleHandle'],
-} as const satisfies Record<string, readonly string[]>
+import {
+  RUNTIME_COMPONENT_FIELDS,
+  migrateEntityComponents,
+  migrateEntityRecord,
+  parseMigratedColliderData,
+  parseMigratedRigidBodyData,
+} from './physics-migration.js'
 
 export function sanitizeComponentDataForPersistence(
   typeId: string,
@@ -40,6 +46,40 @@ function getComponentType(typeId: string): ComponentType {
   const type = getCoreComponent(typeId)
   if (!type) throw new Error(`Unknown component type: ${typeId}`)
   return type
+}
+
+function parseComponentData(typeId: string, data: Record<string, unknown>): unknown {
+  if (typeId === 'Collider') {
+    return parseMigratedColliderData(data)
+  }
+  if (typeId === 'RigidBody') {
+    return parseMigratedRigidBodyData(data)
+  }
+  const type = getComponentType(typeId)
+  return type.schema.parse(data)
+}
+
+function validateEntityPhysics(world: IWorld, id: EntityId): void {
+  const collider = world.getComponent(id, ColliderComponent)
+  if (!collider) return
+  validateEntityPhysicsComponents({
+    collider,
+    rigidBody: world.getComponent(id, RigidBodyComponent),
+  })
+}
+
+function addMigratedComponents(
+  world: IWorld,
+  id: EntityId,
+  components: ComponentRecord[],
+): void {
+  const migrated = migrateEntityComponents(components)
+  for (const comp of migrated) {
+    if (comp.type === 'PrefabInstance') continue
+    const type = getComponentType(comp.type)
+    world.addComponent(id, type, parseComponentData(comp.type, comp.data as Record<string, unknown>))
+  }
+  validateEntityPhysics(world, id)
 }
 
 function applyOverrides(
@@ -74,11 +114,7 @@ function expandPrefabInstance(
   for (const record of prefab.entities) {
     const newId = idMap.get(record.id)!
     world.createEntity(record.name, newId)
-    for (const comp of record.components) {
-      if (comp.type === 'PrefabInstance') continue
-      const type = getComponentType(comp.type)
-      world.addComponent(newId, type, type.schema.parse(comp.data))
-    }
+    addMigratedComponents(world, newId, record.components)
   }
 
   for (const record of prefab.entities) {
@@ -105,7 +141,8 @@ function loadEntityRecords(
 
   for (const record of records) {
     const id = entityId(record.id)
-    for (const comp of record.components) {
+    const migratedRecord = migrateEntityRecord(record)
+    for (const comp of migratedRecord.components) {
       if (comp.type === 'PrefabInstance') {
         const data = PrefabInstanceSchema.parse(comp.data)
         if (expandPrefabs) {
@@ -116,9 +153,8 @@ function loadEntityRecords(
         }
         continue
       }
-      const type = getComponentType(comp.type)
-      world.addComponent(id, type, type.schema.parse(comp.data))
     }
+    addMigratedComponents(world, id, migratedRecord.components)
   }
 
   for (const record of records) {
@@ -143,6 +179,7 @@ export function saveSceneDocument(
   prototypes: SceneDocument['prototypes'] = {},
   prefabs: SceneDocument['prefabs'] = {},
   renderSettings: SceneDocument['renderSettings'] = defaultRenderSettings(),
+  physicsSettings: SceneDocument['physicsSettings'] = defaultPhysicsProjectSettings(),
 ): SceneDocument {
   const entities: EntityRecord[] = []
 
@@ -174,12 +211,20 @@ export function saveSceneDocument(
     prototypes,
     prefabs,
     renderSettings,
+    physicsSettings,
   })
 }
 
 export function roundtripSceneDocument(doc: SceneDocument): SceneDocument {
   const world = loadSceneDocument(doc)
-  return saveSceneDocument(world, doc.metadata, doc.prototypes, doc.prefabs, doc.renderSettings)
+  return saveSceneDocument(
+    world,
+    doc.metadata,
+    doc.prototypes,
+    doc.prefabs,
+    doc.renderSettings,
+    doc.physicsSettings,
+  )
 }
 
 export { validateSceneDocument }

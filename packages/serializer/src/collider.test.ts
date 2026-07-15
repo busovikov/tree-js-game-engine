@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { ColliderComponent } from '@haku/core'
+import { ColliderComponent, RigidBodyComponent } from '@haku/core'
 import { loadSceneDocument, roundtripSceneDocument, saveSceneDocument, validateSceneDocument } from './index.js'
+import { migrateEntityComponents } from './physics-migration.js'
 
 const TRANSFORM = { position: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] }
 
@@ -8,6 +9,7 @@ function entityWithCollider(
   id: string,
   name: string,
   collider: Record<string, unknown>,
+  extraComponents: Array<{ type: string; data: Record<string, unknown> }> = [],
 ) {
   return {
     id,
@@ -16,12 +18,13 @@ function entityWithCollider(
     components: [
       { type: 'Transform', data: TRANSFORM },
       { type: 'Collider', data: collider },
+      ...extraComponents,
     ],
   }
 }
 
 describe('Collider serializer round-trip', () => {
-  it('loads a polluted box collider but strips runtime handles when saving', () => {
+  it('migrates legacy dynamic collider to Collider + RigidBody and strips runtime handles on save', () => {
     const collider = {
       shape: 'box',
       halfExtents: [1, 0.25, 2],
@@ -39,19 +42,63 @@ describe('Collider serializer round-trip', () => {
     })
 
     const world = loadSceneDocument(doc)
-    const loaded = world.getComponent(world.getAllEntities()[0], ColliderComponent)
-    expect(loaded?.physicsBodyHandle).toBe('body-42')
+    const id = world.getAllEntities()[0]
+    const loadedCollider = world.getComponent(id, ColliderComponent)
+    const loadedRigidBody = world.getComponent(id, RigidBodyComponent)
+    expect(loadedCollider?.shape).toBe('box')
+    expect(loadedCollider).not.toHaveProperty('isStatic')
+    expect(loadedRigidBody?.type).toBe('dynamic')
+    expect(loadedRigidBody?.physicsBodyHandle).toBe('body-42')
 
     const saved = saveSceneDocument(world, doc.metadata)
     const colliderData = saved.entities[0].components.find((c) => c.type === 'Collider')?.data
+    const rigidBodyData = saved.entities[0].components.find((c) => c.type === 'RigidBody')?.data
     expect(colliderData).toEqual({
       shape: 'box',
+      enabled: true,
       halfExtents: [1, 0.25, 2],
       offset: [0, 1, 0],
       rotation: [0, 0.7071068, 0, 0.7071068],
-      isStatic: false,
+      isTrigger: false,
+      materialId: '',
+      layer: 0,
+      unsupportedShapePolicy: 'skip',
     })
+    expect(rigidBodyData).toMatchObject({ type: 'dynamic' })
     expect(JSON.stringify(saved)).not.toMatch(/physics(?:Body|Vehicle)?Handle/)
+  })
+
+  it('keeps implicit static collider without RigidBody when legacy isStatic is true', () => {
+    const migrated = migrateEntityComponents([
+      { type: 'Collider', data: { shape: 'box', isStatic: true } },
+    ])
+    expect(migrated.some((c) => c.type === 'RigidBody')).toBe(false)
+  })
+
+  it('drops the removed custom-spring controller so legacy scenes still load', () => {
+    const migrated = migrateEntityComponents([
+      { type: 'Transform', data: TRANSFORM },
+      { type: 'PhysicsController', data: { type: 'custom-spring', stiffness: 10 } },
+    ])
+    expect(migrated.some((c) => c.type === 'PhysicsController')).toBe(false)
+    // A scene document containing it must load without throwing.
+    expect(() =>
+      loadSceneDocument({
+        schemaVersion: 1,
+        metadata: { name: 'LegacyCustomSpring' },
+        entities: [
+          {
+            id: 'b0000000-0000-4000-8000-0000000000c5',
+            name: 'Spring',
+            parent: null,
+            components: [
+              { type: 'Transform', data: TRANSFORM },
+              { type: 'PhysicsController', data: { type: 'custom-spring', stiffness: 10 } },
+            ],
+          },
+        ],
+      }),
+    ).not.toThrow()
   })
 
   it('round-trips sphere collider', () => {
@@ -59,7 +106,6 @@ describe('Collider serializer round-trip', () => {
       shape: 'sphere',
       radius: 1.25,
       offset: [0.5, 0, -0.5],
-      isStatic: true,
     }
     const doc = validateSceneDocument({
       schemaVersion: 1,
@@ -73,24 +119,43 @@ describe('Collider serializer round-trip', () => {
     expect(colliderData?.rotation).toEqual([0, 0, 0, 1])
   })
 
-  it('round-trips capsule collider', () => {
-    const collider = {
-      shape: 'capsule',
-      radius: 0.4,
-      halfHeight: 0.8,
-      offset: [0, 0.5, 0],
-      rotation: [0, 0, 0, 1],
-      isStatic: false,
-    }
+  it('round-trips capsule collider with explicit RigidBody', () => {
     const doc = validateSceneDocument({
       schemaVersion: 1,
       metadata: { name: 'CapsuleCollider' },
-      entities: [entityWithCollider('c0000000-0000-4000-8000-000000000003', 'Capsule', collider)],
+      entities: [
+        {
+          id: 'c0000000-0000-4000-8000-000000000003',
+          name: 'Capsule',
+          parent: null,
+          components: [
+            { type: 'Transform', data: TRANSFORM },
+            {
+              type: 'Collider',
+              data: {
+                shape: 'capsule',
+                radius: 0.4,
+                halfHeight: 0.8,
+                offset: [0, 0.5, 0],
+                rotation: [0, 0, 0, 1],
+              },
+            },
+            { type: 'RigidBody', data: { type: 'dynamic', mass: 2 } },
+          ],
+        },
+      ],
     })
 
     const saved = roundtripSceneDocument(doc)
     const colliderData = saved.entities[0].components.find((c) => c.type === 'Collider')?.data
-    expect(colliderData).toEqual(collider)
+    const rigidBodyData = saved.entities[0].components.find((c) => c.type === 'RigidBody')?.data
+    expect(colliderData).toMatchObject({
+      shape: 'capsule',
+      radius: 0.4,
+      halfHeight: 0.8,
+      offset: [0, 0.5, 0],
+    })
+    expect(rigidBodyData).toMatchObject({ type: 'dynamic', mass: 2 })
   })
 
   it('round-trips scene with multiple collider shapes idempotently', () => {
@@ -101,13 +166,13 @@ describe('Collider serializer round-trip', () => {
         entityWithCollider('a0000000-0000-4000-8000-000000000001', 'Ground', {
           shape: 'box',
           halfExtents: [10, 0.1, 10],
-          isStatic: true,
         }),
-        entityWithCollider('b0000000-0000-4000-8000-000000000002', 'Ball', {
-          shape: 'sphere',
-          radius: 0.5,
-          isStatic: false,
-        }),
+        entityWithCollider(
+          'b0000000-0000-4000-8000-000000000002',
+          'Ball',
+          { shape: 'sphere', radius: 0.5 },
+          [{ type: 'RigidBody', data: { type: 'dynamic' } }],
+        ),
         entityWithCollider('c0000000-0000-4000-8000-000000000003', 'Pillar', {
           shape: 'capsule',
           radius: 0.3,
@@ -121,6 +186,28 @@ describe('Collider serializer round-trip', () => {
     expect(twice).toEqual(once)
     expect(once.entities).toHaveLength(3)
     expect(once.entities.every((e) => e.components.some((c) => c.type === 'Collider'))).toBe(true)
+    expect(once.physicsSettings?.layers).toHaveLength(16)
+  })
+
+  it('rejects trimesh collider on dynamic rigid body at load', () => {
+    const doc = validateSceneDocument({
+      schemaVersion: 1,
+      metadata: { name: 'InvalidTrimesh' },
+      entities: [
+        {
+          id: 'f0000000-0000-4000-8000-000000000006',
+          name: 'BadMesh',
+          parent: null,
+          components: [
+            { type: 'Transform', data: TRANSFORM },
+            { type: 'Collider', data: { shape: 'trimesh', vertices: [], indices: [] } },
+            { type: 'RigidBody', data: { type: 'dynamic' } },
+          ],
+        },
+      ],
+    })
+
+    expect(() => loadSceneDocument(doc)).toThrow(/Trimesh collider cannot be used on a dynamic/)
   })
 
   it('entities without collider have no Collider component (backward compat)', () => {
