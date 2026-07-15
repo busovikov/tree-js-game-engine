@@ -4,8 +4,13 @@ export {
   ThreeRenderBackend,
   RenderSyncSystem,
   PHYSICS_CATCH_UP_POLICY,
+  PRIMARY_WORLD_HANDLE,
   PhysicsWorldSystem,
   PhysicsColliderSystem,
+  PhysicsContactSystem,
+  PhysicsQuerySystem,
+  PhysicsJointSystem,
+  PhysicsAreaGravitySystem,
   VehicleControllerSystem,
   VehicleVisualSyncSystem,
   DynamicRaycastVisualSyncSystem,
@@ -44,6 +49,17 @@ export {
 } from './engine.js'
 export type { EngineOptions, EngineFeatureFlags, LoadedScene, SceneFetch } from './engine.js'
 export type { PhysicsWorldSystemOptions } from './systems/physics-world-system.js'
+export type {
+  PhysicsCollisionEvent,
+  PhysicsContactPoint,
+  PhysicsWorldHandle,
+  RaycastHit,
+  RaycastQuery,
+  ShapecastHit,
+  ShapecastQuery,
+  OverlapHit,
+  OverlapQuery,
+} from '@haku/physics'
 export type { ResolvedColliderDescriptor } from './systems/physics-collider-system.js'
 export type { VehicleInput, DriveControlContext, DriveControlState } from './systems/vehicle-controller-system.js'
 export type {

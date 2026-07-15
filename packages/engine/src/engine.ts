@@ -3,7 +3,7 @@ import type { IWorld, ISystem } from '@haku/core'
 import { entityId } from '@haku/core'
 import { loadSceneDocument } from '@haku/serializer'
 import type { RenderPrototype, RenderSettings, SceneDocument, SceneMetadata } from '@haku/schema'
-import { defaultRenderSettings, resolveActiveCameraId, validateSceneDocument } from '@haku/schema'
+import { defaultPhysicsProjectSettings, defaultRenderSettings, resolveActiveCameraId, validateSceneDocument } from '@haku/schema'
 import { ThreeRenderBackend } from './render-backend.js'
 import {
   PhysicsWorldSystem,
@@ -27,6 +27,7 @@ export interface LoadedScene {
   metadata: SceneMetadata
   prefabs: SceneDocument['prefabs']
   renderSettings: RenderSettings
+  physicsSettings: SceneDocument['physicsSettings']
   activeCameraId: string | null
 }
 
@@ -212,6 +213,7 @@ export class SceneLoader {
       metadata: doc.metadata,
       prefabs: doc.prefabs,
       renderSettings: doc.renderSettings ?? defaultRenderSettings(),
+      physicsSettings: doc.physicsSettings ?? defaultPhysicsProjectSettings(),
       activeCameraId: resolveActiveCameraId(doc),
     }
   }
@@ -221,6 +223,7 @@ export { ThreeRenderBackend, RenderSyncSystem } from './render-backend.js'
 export {
   PHYSICS_CATCH_UP_POLICY,
   PhysicsWorldSystem,
+  PRIMARY_WORLD_HANDLE,
   type PhysicsWorldSystemOptions,
 } from './systems/physics-world-system.js'
 export {
@@ -231,6 +234,10 @@ export {
   vehicleChassisCollider,
   type ResolvedColliderDescriptor,
 } from './systems/physics-collider-system.js'
+export { PhysicsContactSystem } from './systems/physics-contact-system.js'
+export { PhysicsQuerySystem } from './systems/physics-query-system.js'
+export { PhysicsJointSystem } from './systems/physics-joint-system.js'
+export { PhysicsAreaGravitySystem } from './systems/physics-area-gravity-system.js'
 export {
   VehicleControllerSystem,
   computeIsaacDriveControlState,

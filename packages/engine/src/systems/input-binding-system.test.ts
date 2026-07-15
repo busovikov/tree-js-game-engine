@@ -5,7 +5,7 @@ import {
   PhysicsControllerComponent,
   World,
 } from '@haku/core'
-import { CustomRaycastControllerSchema } from '@haku/schema'
+import { CustomRaycastControllerSchema, ColliderSchema, ArcadeVehicleControllerSchema } from '@haku/schema'
 import { resetStubPhysicsIds, StubPhysicsBackend } from '@haku/physics'
 import { InputManager, type PointerCaptureTarget } from '../input/input-manager.js'
 import { PhysicsColliderSystem } from './physics-collider-system.js'
@@ -117,13 +117,10 @@ describe('InputBindingSystem', () => {
       rotation: [0, 0, 0, 1],
       scale: [1, 1, 1],
     })
-    world.addComponent(groundId, ColliderComponent, {
+    world.addComponent(groundId, ColliderComponent, ColliderSchema.parse({
       shape: 'box',
       halfExtents: [30, 0.1, 30],
-      isStatic: true,
-      offset: [0, 0, 0],
-      rotation: [0, 0, 0, 1],
-    })
+    }))
 
     carId = world.createEntity('Car')
     world.addComponent(carId, TransformComponent, {
@@ -131,13 +128,10 @@ describe('InputBindingSystem', () => {
       rotation: [0, 0, 0, 1],
       scale: [1, 1, 1],
     })
-    world.addComponent(carId, ColliderComponent, {
+    world.addComponent(carId, ColliderComponent, ColliderSchema.parse({
       shape: 'box',
       halfExtents: [0.9, 0.3, 1.55],
-      isStatic: false,
-      offset: [0, 0, 0],
-      rotation: [0, 0, 0, 1],
-    })
+    }))
     world.addComponent(carId, PhysicsControllerComponent, INTEGRATION_DRIVE_VEHICLE)
 
     colliderSystem.bootstrap(world)
@@ -198,6 +192,16 @@ describe('InputBindingSystem', () => {
   })
 
   it('applies jump pulse from Space keydown', () => {
+    world.addComponent(
+      carId,
+      PhysicsControllerComponent,
+      ArcadeVehicleControllerSchema.parse({ type: 'arcade-vehicle', jumpImpulse: 5000 }),
+    )
+    colliderSystem.dispose()
+    vehicleSystem.dispose()
+    colliderSystem.bootstrap(world)
+    vehicleSystem.bootstrap(world)
+
     for (let i = 0; i < 30; i++) {
       bindingSystem.update(world, 1 / 60)
       vehicleSystem.update(world, 1 / 60)

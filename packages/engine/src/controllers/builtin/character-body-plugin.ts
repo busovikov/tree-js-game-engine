@@ -6,17 +6,17 @@ import {
   type TrackedCharacter,
 } from '../../systems/physics-controller-runtime.js'
 
-/** Isaac Mason `kinematic-character-controller` — Rapier KinematicCharacterController. */
-export class KinematicCharacterPlugin implements ControllerPlugin {
-  readonly type = 'kinematic-character'
+/** Godot-style CharacterBody3D — shares kinematic character runtime with tier-3 step config. */
+export class CharacterBodyPlugin implements ControllerPlugin {
+  readonly type = 'character-body'
   private readonly tracked = new Map<string, TrackedCharacter>()
 
   bootstrap(ctx: ControllerRuntimeContext): void {
-    bootstrapCharacter(ctx.world, ctx.physicsWorld, ctx.physicsSystem, this.tracked, 'kinematic-character')
+    bootstrapCharacter(ctx.world, ctx.physicsWorld, ctx.physicsSystem, this.tracked, 'character-body')
   }
 
   update(ctx: ControllerRuntimeContext, dt: number): void {
-    updateCharacter(ctx.world, this.tracked, ctx.inputs, dt, 'kinematic-character')
+    updateCharacter(ctx.world, this.tracked, ctx.inputs, dt, 'character-body')
   }
 
   resetEntity(_ctx: ControllerRuntimeContext, id: EntityId): void {

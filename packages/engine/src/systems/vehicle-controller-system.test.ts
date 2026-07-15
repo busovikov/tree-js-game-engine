@@ -5,7 +5,7 @@ import {
   PhysicsControllerComponent,
   World,
 } from '@haku/core'
-import { CustomRaycastControllerSchema } from '@haku/schema'
+import { CustomRaycastControllerSchema, ColliderSchema } from '@haku/schema'
 import {
   resetStubPhysicsIds,
   StubPhysicsBackend,
@@ -125,13 +125,10 @@ describe('VehicleControllerSystem integration (stub)', () => {
       rotation: [0, 0, 0, 1],
       scale: [1, 1, 1],
     })
-    world.addComponent(groundId, ColliderComponent, {
+    world.addComponent(groundId, ColliderComponent, ColliderSchema.parse({
       shape: 'box',
       halfExtents: [30, 0.1, 30],
-      isStatic: true,
-      offset: [0, 0, 0],
-      rotation: [0, 0, 0, 1],
-    })
+    }))
 
     const carId = world.createEntity('Car')
     world.addComponent(carId, TransformComponent, {
@@ -139,13 +136,10 @@ describe('VehicleControllerSystem integration (stub)', () => {
       rotation: [0, 0, 0, 1],
       scale: [1, 1, 1],
     })
-    world.addComponent(carId, ColliderComponent, {
+    world.addComponent(carId, ColliderComponent, ColliderSchema.parse({
       shape: 'box',
       halfExtents: [0.9, 0.3, 1.55],
-      isStatic: false,
-      offset: [0, 0, 0],
-      rotation: [0, 0, 0, 1],
-    })
+    }))
     world.addComponent(carId, PhysicsControllerComponent, INTEGRATION_DRIVE_VEHICLE)
 
     colliderSystem.bootstrap(world)
@@ -422,13 +416,10 @@ describe('VehicleControllerSystem integration (Rapier)', () => {
       rotation: [0, 0, 0, 1],
       scale: [1, 1, 1],
     })
-    world.addComponent(groundId, ColliderComponent, {
+    world.addComponent(groundId, ColliderComponent, ColliderSchema.parse({
       shape: 'box',
       halfExtents: [30, 0.1, 30],
-      isStatic: true,
-      offset: [0, 0, 0],
-      rotation: [0, 0, 0, 1],
-    })
+    }))
 
     const carId = world.createEntity('Car')
     world.addComponent(carId, TransformComponent, {
@@ -436,13 +427,10 @@ describe('VehicleControllerSystem integration (Rapier)', () => {
       rotation: [0, 0, 0, 1],
       scale: [1, 1, 1],
     })
-    world.addComponent(carId, ColliderComponent, {
+    world.addComponent(carId, ColliderComponent, ColliderSchema.parse({
       shape: 'box',
       halfExtents: [0.9, 0.3, 1.55],
-      isStatic: false,
-      offset: [0, 0, 0],
-      rotation: [0, 0, 0, 1],
-    })
+    }))
     world.addComponent(carId, PhysicsControllerComponent, INTEGRATION_DRIVE_VEHICLE)
 
     colliderSystem.bootstrap(world)
@@ -476,13 +464,10 @@ describe('VehicleControllerSystem integration (Rapier)', () => {
       rotation: [0, 0, 0, 1],
       scale: [1, 1, 1],
     })
-    world.addComponent(groundId, ColliderComponent, {
+    world.addComponent(groundId, ColliderComponent, ColliderSchema.parse({
       shape: 'box',
       halfExtents: [30, 0.1, 30],
-      isStatic: true,
-      offset: [0, 0, 0],
-      rotation: [0, 0, 0, 1],
-    })
+    }))
 
     const carId = world.createEntity('Car')
     world.addComponent(carId, TransformComponent, {

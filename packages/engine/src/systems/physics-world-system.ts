@@ -1,5 +1,5 @@
 import type { EntityId, IWorld, ISystem } from '@haku/core'
-import { entityId, TransformComponent } from '@haku/core'
+import { entityId, AnimatableBodyComponent, PhysicsControllerComponent, RigidBodyComponent, TransformComponent } from '@haku/core'
 import type { Transform } from '@haku/schema'
 import type {
   IPhysicsBackend,
@@ -7,10 +7,19 @@ import type {
   PhysicsBodyHandle,
   PhysicsShapeHandle,
   PhysicsTransform,
+  PhysicsWorldHandle,
   RigidBodyType,
   Vec3,
 } from '@haku/physics'
-import { PhysicsWorld } from '@haku/physics'
+import { PhysicsWorld, physicsWorldHandle } from '@haku/physics'
+
+export const PRIMARY_WORLD_HANDLE = physicsWorldHandle('primary')
+
+interface WorldSlot {
+  world: PhysicsWorld
+  backend: IPhysicsBackend
+  isPrimary: boolean
+}
 
 export interface PhysicsWorldSystemOptions {
   /** Fixed simulation step in seconds. Default: 1/60 (60 Hz). */
@@ -27,6 +36,9 @@ interface TrackedBody {
   handle: PhysicsBodyHandle
   type: RigidBodyType
   shapeHandle?: PhysicsShapeHandle
+  interpolatePresentation: boolean
+  /** Transform is authored in ECS and pushed into physics before each step. */
+  ecsAuthoritative: boolean
 }
 
 interface PresentationPoseHistory {
@@ -35,7 +47,7 @@ interface PresentationPoseHistory {
 }
 
 const DEFAULT_FIXED_TIMESTEP = 1 / 60
-const DEFAULT_MAX_SUBSTEPS = 3
+const DEFAULT_MAX_SUBSTEPS = 5
 
 /** Shared bounded catch-up policy for interactive play mode. */
 export const PHYSICS_CATCH_UP_POLICY: Readonly<Required<PhysicsWorldSystemOptions>> =
@@ -76,6 +88,8 @@ export class PhysicsWorldSystem implements ISystem {
   private readonly presentationInterpolation: boolean
   private physicsWorld: PhysicsWorld | null = null
   private backend: IPhysicsBackend | null = null
+  private readonly worldSlots = new Map<string, WorldSlot>()
+  private readonly entityWorld = new Map<string, string>()
   private accumulator = 0
   private readonly trackedBodies = new Map<string, TrackedBody>()
   private readonly presentationPoses = new Map<string, PresentationPoseHistory>()
@@ -96,8 +110,69 @@ export class PhysicsWorldSystem implements ISystem {
     backend.init()
     this.backend = backend
     this.physicsWorld = new PhysicsWorld(backend)
+    this.worldSlots.set(PRIMARY_WORLD_HANDLE.value, {
+      world: this.physicsWorld,
+      backend,
+      isPrimary: true,
+    })
     this.accumulator = 0
     this.resetPresentationPoses()
+  }
+
+  /** Fork an isolated physics world from the root backend. */
+  createWorld(options?: { gravity?: Vec3 }): PhysicsWorldHandle {
+    if (!this.backend) {
+      throw new Error('Physics backend is not initialized')
+    }
+    const forkedBackend = this.backend.fork(options)
+    forkedBackend.init()
+    const handle = physicsWorldHandle(`world-${this.worldSlots.size}`)
+    this.worldSlots.set(handle.value, {
+      world: new PhysicsWorld(forkedBackend),
+      backend: forkedBackend,
+      isPrimary: false,
+    })
+    return handle
+  }
+
+  /** Dispose a forked world slot. Primary world cannot be destroyed. */
+  destroyWorld(handle: PhysicsWorldHandle): void {
+    if (handle.value === PRIMARY_WORLD_HANDLE.value) {
+      return
+    }
+    const slot = this.worldSlots.get(handle.value)
+    if (!slot) {
+      return
+    }
+    for (const [entityIdValue, worldHandle] of this.entityWorld) {
+      if (worldHandle === handle.value) {
+        this.entityWorld.delete(entityIdValue)
+      }
+    }
+    slot.backend.dispose()
+    this.worldSlots.delete(handle.value)
+  }
+
+  /** Map an entity to a physics world slot. Null resets to primary. */
+  setEntityWorld(entityId: EntityId | string, handle: PhysicsWorldHandle | null): void {
+    const id = typeof entityId === 'string' ? entityId : entityId.value
+    if (handle === null || handle.value === PRIMARY_WORLD_HANDLE.value) {
+      this.entityWorld.delete(id)
+      return
+    }
+    this.entityWorld.set(id, handle.value)
+  }
+
+  /** Physics world for an entity, defaulting to primary. */
+  getPhysicsWorldForEntity(entityId: EntityId | string): PhysicsWorld | null {
+    const id = typeof entityId === 'string' ? entityId : entityId.value
+    const handleValue = this.entityWorld.get(id) ?? PRIMARY_WORLD_HANDLE.value
+    return this.worldSlots.get(handleValue)?.world ?? null
+  }
+
+  /** Physics world for a world handle. */
+  getPhysicsWorldByHandle(handle: PhysicsWorldHandle): PhysicsWorld | null {
+    return this.worldSlots.get(handle.value)?.world ?? null
   }
 
   /** Release backend resources and clear tracked bodies. */
@@ -112,6 +187,11 @@ export class PhysicsWorldSystem implements ISystem {
     return this.physicsWorld
   }
 
+  /** All active world slots (primary + forked). */
+  getWorldSlots(): ReadonlyArray<{ world: PhysicsWorld; isPrimary: boolean }> {
+    return [...this.worldSlots.values()].map(({ world, isPrimary }) => ({ world, isPrimary }))
+  }
+
   /** Fraction of the next fixed step accumulated for presentation blending. */
   getPresentationAlpha(): number {
     return Math.max(0, Math.min(1, this.accumulator / this.fixedTimestep))
@@ -122,8 +202,9 @@ export class PhysicsWorldSystem implements ISystem {
    * Untracked, invalidated, and interpolation-disabled entities snap to source.
    */
   resolvePresentationTransform(id: EntityId, source: Transform): Transform {
+    const tracked = this.trackedBodies.get(id.value)
     const history = this.presentationPoses.get(id.value)
-    if (!this.presentationInterpolation || !history) {
+    if (!this.presentationInterpolation || !history || tracked?.interpolatePresentation === false) {
       return source
     }
     const pose = interpolatePhysicsPose(
@@ -157,7 +238,9 @@ export class PhysicsWorldSystem implements ISystem {
 
   /** Sync Rapier scene queries after bulk collider spawn. */
   prepareSceneQueries(): void {
-    this.physicsWorld?.prepareSceneQueries()
+    for (const slot of this.worldSlots.values()) {
+      slot.world.prepareSceneQueries()
+    }
   }
 
   /** Returns the physics body handle registered for an entity, if any. */
@@ -183,46 +266,61 @@ export class PhysicsWorldSystem implements ISystem {
   /** Linear velocity of a registered entity body in m/s, or null if not tracked. */
   getBodyLinearVelocity(id: EntityId): Vec3 | null {
     const handle = this.getBodyHandle(id)
-    if (!handle || !this.backend) {
+    const slot = this.resolveSlotForEntity(id.value)
+    if (!handle || !slot) {
       return null
     }
-    return [...this.backend.getBodyLinearVelocity(handle)] as Vec3
+    return [...slot.backend.getBodyLinearVelocity(handle)] as Vec3
   }
 
   /** Angular velocity of a registered entity body in rad/s, or null if not tracked. */
   getBodyAngularVelocity(id: EntityId): Vec3 | null {
     const handle = this.getBodyHandle(id)
-    if (!handle || !this.backend) {
+    const slot = this.resolveSlotForEntity(id.value)
+    if (!handle || !slot) {
       return null
     }
-    return [...this.backend.getBodyAngularVelocity(handle)] as Vec3
+    return [...slot.backend.getBodyAngularVelocity(handle)] as Vec3
   }
 
   /** Set linear velocity on a registered dynamic body (e.g. jump minimum upward speed). */
   setBodyLinearVelocity(id: EntityId, velocity: Vec3): void {
     const handle = this.getBodyHandle(id)
-    if (!handle || !this.backend) {
+    const slot = this.resolveSlotForEntity(id.value)
+    if (!handle || !slot) {
       return
     }
-    this.backend.setBodyLinearVelocity(handle, velocity)
+    slot.backend.setBodyLinearVelocity(handle, velocity)
   }
 
   /** Set angular velocity on a registered dynamic body (e.g. respawn reset). */
   setBodyAngularVelocity(id: EntityId, velocity: Vec3): void {
     const handle = this.getBodyHandle(id)
-    if (!handle || !this.backend) {
+    const slot = this.resolveSlotForEntity(id.value)
+    if (!handle || !slot) {
       return
     }
-    this.backend.setBodyAngularVelocity(handle, velocity)
+    slot.backend.setBodyAngularVelocity(handle, velocity)
   }
 
   /** Current physics transform for a registered body, or null if not tracked. */
   getBodyTransform(id: EntityId): PhysicsTransform | null {
     const handle = this.getBodyHandle(id)
-    if (!handle || !this.physicsWorld) {
+    const world = this.getPhysicsWorldForEntity(id)
+    if (!handle || !world) {
       return null
     }
-    return this.physicsWorld.getBodyTransform(handle)
+    return world.getBodyTransform(handle)
+  }
+
+  /** Mass of a registered entity body in kg, or null if not tracked. */
+  getBodyMass(id: EntityId): number | null {
+    const handle = this.getBodyHandle(id)
+    const slot = this.resolveSlotForEntity(id.value)
+    if (!handle || !slot) {
+      return null
+    }
+    return slot.backend.getBodyMass(handle)
   }
 
   /**
@@ -230,11 +328,12 @@ export class PhysicsWorldSystem implements ISystem {
    */
   resetBodyState(id: EntityId, transform: PhysicsTransform, world?: IWorld): void {
     const handle = this.getBodyHandle(id)
-    if (!handle || !this.physicsWorld) {
+    const physicsWorld = this.getPhysicsWorldForEntity(id)
+    if (!handle || !physicsWorld) {
       return
     }
 
-    this.physicsWorld.setBodyTransform(handle, transform)
+    physicsWorld.setBodyTransform(handle, transform)
     this.setBodyLinearVelocity(id, [0, 0, 0])
     this.setBodyAngularVelocity(id, [0, 0, 0])
     this.presentationPoses.set(id.value, {
@@ -265,27 +364,53 @@ export class PhysicsWorldSystem implements ISystem {
     world?: IWorld,
     shapeHandle?: PhysicsShapeHandle,
   ): void {
-    if (type === 'static') {
-      return
-    }
-
     if (world && this.physicsWorld) {
       const transform = world.getComponent(id, TransformComponent)
       if (transform) {
-        this.physicsWorld.setBodyTransform(handle, {
+        const entityWorld = this.getPhysicsWorldForEntity(id)
+        entityWorld?.setBodyTransform(handle, {
           position: transform.position,
           rotation: transform.rotation,
         })
       }
     }
 
-    this.trackedBodies.set(id.value, { handle, type, shapeHandle })
+    const rigidBody = world?.getComponent(id, RigidBodyComponent)
+    const animatable = world?.getComponent(id, AnimatableBodyComponent)
+    const controller = world?.getComponent(id, PhysicsControllerComponent)
+    // Static bodies are tracked for handle lookup / teleport only — they never drive ECS pose.
+    const interpolatePresentation =
+      type === 'static'
+        ? false
+        : rigidBody === undefined
+          ? true
+          : rigidBody.interpolation === 'interpolate'
+    // Controller-driven kinematic bodies (kinematic-character / character-body) move their own
+    // physics body each frame, so they must stay physics-authoritative — otherwise the pre-step
+    // ECS push overwrites the controller's target and the character freezes.
+    const ecsAuthoritative =
+      type !== 'static' &&
+      (animatable !== undefined ||
+        (controller === undefined &&
+          type === 'kinematic' &&
+          (rigidBody?.kinematicMode ?? 'position') === 'position'))
+
+    this.trackedBodies.set(id.value, {
+      handle,
+      type,
+      shapeHandle,
+      interpolatePresentation,
+      ecsAuthoritative,
+    })
     if (this.physicsWorld) {
-      const pose = this.physicsWorld.getBodyTransform(handle)
-      this.presentationPoses.set(id.value, {
-        previous: clonePhysicsTransform(pose),
-        current: clonePhysicsTransform(pose),
-      })
+      const entityWorld = this.getPhysicsWorldForEntity(id)
+      const pose = entityWorld?.getBodyTransform(handle)
+      if (pose) {
+        this.presentationPoses.set(id.value, {
+          previous: clonePhysicsTransform(pose),
+          current: clonePhysicsTransform(pose),
+        })
+      }
       this.presentationSnapPending.delete(id.value)
     }
   }
@@ -304,12 +429,10 @@ export class PhysicsWorldSystem implements ISystem {
 
     const frameDelta = Number.isNaN(dt) || dt <= 0 ? 0 : Math.min(dt, this.maxFrameDelta)
     this.accumulator += frameDelta
-    if (this.accumulator > this.fixedTimestep * this.maxSubsteps) {
-      this.accumulator = this.fixedTimestep * this.maxSubsteps
-    }
 
+    let substeps = 0
     try {
-      let substeps = 0
+      this.pushEcsAuthoritativeTransforms(world)
       while (this.accumulator >= this.fixedTimestep - 1e-9 && substeps < this.maxSubsteps) {
         for (const action of this.queuedSubstepActions.values()) {
           action()
@@ -324,16 +447,30 @@ export class PhysicsWorldSystem implements ISystem {
       this.queuedSubstepActions.clear()
     }
 
+    if (substeps > 0) {
+      for (const slot of this.worldSlots.values()) {
+        if (slot.isPrimary) {
+          continue
+        }
+        for (let i = 0; i < substeps; i++) {
+          slot.world.step(this.fixedTimestep)
+        }
+      }
+    }
+
+    if (substeps >= this.maxSubsteps) {
+      this.accumulator = 0
+    }
+
     this.syncPhysicsTransforms(world)
   }
 
   private syncPhysicsTransforms(world: IWorld): void {
-    if (!this.physicsWorld) {
-      return
-    }
-
-    for (const [entityIdValue, { handle, type }] of this.trackedBodies) {
-      if (type !== 'dynamic' && type !== 'kinematic') {
+    for (const [entityIdValue, entry] of this.trackedBodies) {
+      if (entry.ecsAuthoritative) {
+        continue
+      }
+      if (entry.type !== 'dynamic' && entry.type !== 'kinematic') {
         continue
       }
 
@@ -343,7 +480,12 @@ export class PhysicsWorldSystem implements ISystem {
         continue
       }
 
-      const bodyTransform = this.physicsWorld.getBodyTransform(handle)
+      const entityPhysicsWorld = this.getPhysicsWorldForEntity(id)
+      if (!entityPhysicsWorld) {
+        continue
+      }
+
+      const bodyTransform = entityPhysicsWorld.getBodyTransform(entry.handle)
       world.addComponent(id, TransformComponent, {
         position: [...bodyTransform.position],
         rotation: [...bodyTransform.rotation],
@@ -353,18 +495,19 @@ export class PhysicsWorldSystem implements ISystem {
   }
 
   private advancePresentationHistoryBeforeStep(): void {
-    if (!this.physicsWorld) {
-      return
-    }
     for (const [entityIdValue, { handle, type }] of this.trackedBodies) {
       if (type !== 'dynamic' && type !== 'kinematic') {
+        continue
+      }
+      const entityPhysicsWorld = this.getPhysicsWorldForEntity(entityIdValue)
+      if (!entityPhysicsWorld) {
         continue
       }
       const history = this.presentationPoses.get(entityIdValue)
       if (history) {
         history.previous = clonePhysicsTransform(history.current)
       } else {
-        const pose = this.physicsWorld.getBodyTransform(handle)
+        const pose = entityPhysicsWorld.getBodyTransform(handle)
         this.presentationPoses.set(entityIdValue, {
           previous: clonePhysicsTransform(pose),
           current: clonePhysicsTransform(pose),
@@ -374,14 +517,15 @@ export class PhysicsWorldSystem implements ISystem {
   }
 
   private capturePresentationPosesAfterStep(): void {
-    if (!this.physicsWorld) {
-      return
-    }
     for (const [entityIdValue, { handle, type }] of this.trackedBodies) {
       if (type !== 'dynamic' && type !== 'kinematic') {
         continue
       }
-      const current = this.physicsWorld.getBodyTransform(handle)
+      const entityPhysicsWorld = this.getPhysicsWorldForEntity(entityIdValue)
+      if (!entityPhysicsWorld) {
+        continue
+      }
+      const current = entityPhysicsWorld.getBodyTransform(handle)
       const history = this.presentationPoses.get(entityIdValue)
       if (!history || this.presentationSnapPending.has(entityIdValue)) {
         this.presentationPoses.set(entityIdValue, {
@@ -395,7 +539,36 @@ export class PhysicsWorldSystem implements ISystem {
     }
   }
 
+  private pushEcsAuthoritativeTransforms(world: IWorld): void {
+    for (const [entityIdValue, entry] of this.trackedBodies) {
+      if (!entry.ecsAuthoritative) {
+        continue
+      }
+      const transform = world.getComponent(entityId(entityIdValue), TransformComponent)
+      if (!transform) {
+        continue
+      }
+      const entityPhysicsWorld = this.getPhysicsWorldForEntity(entityIdValue)
+      entityPhysicsWorld?.setBodyTransform(entry.handle, {
+        position: transform.position,
+        rotation: transform.rotation,
+      })
+    }
+  }
+
+  private resolveSlotForEntity(entityIdValue: string): WorldSlot | null {
+    const handleValue = this.entityWorld.get(entityIdValue) ?? PRIMARY_WORLD_HANDLE.value
+    return this.worldSlots.get(handleValue) ?? null
+  }
+
   private disposeBackend(): void {
+    for (const slot of this.worldSlots.values()) {
+      if (!slot.isPrimary) {
+        slot.backend.dispose()
+      }
+    }
+    this.worldSlots.clear()
+    this.entityWorld.clear()
     if (this.backend) {
       this.backend.dispose()
       this.backend = null

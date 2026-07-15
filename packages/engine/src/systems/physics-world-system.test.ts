@@ -7,8 +7,10 @@ import {
   physicsBodyHandle,
   physicsShapeHandle,
   resetStubPhysicsIds,
+  STUB_PHYSICS_CAPABILITIES,
   StubPhysicsBackend,
   type PhysicsBodyHandle,
+  type PhysicsShapeHandle,
   type PhysicsTransform,
   type RigidBodyDescriptor,
   type RaycastHit,
@@ -106,6 +108,11 @@ class GravityTestBackend implements IPhysicsBackend {
     this.assertInitialized()
   }
 
+  replaceShape(): PhysicsShapeHandle {
+    this.assertInitialized()
+    return physicsShapeHandle('shape-replaced')
+  }
+
   setBodyTransform(body: PhysicsBodyHandle, transform: PhysicsTransform): void {
     this.assertInitialized()
     const record = this.getBody(body)
@@ -156,6 +163,20 @@ class GravityTestBackend implements IPhysicsBackend {
     return null
   }
 
+  shapecast(): null {
+    this.assertInitialized()
+    return null
+  }
+
+  overlap(): [] {
+    this.assertInitialized()
+    return []
+  }
+
+  fork(options?: { gravity?: Vec3 }): IPhysicsBackend {
+    return new GravityTestBackend(options?.gravity)
+  }
+
   createRaycastVehicle(): IRaycastVehicle {
     throw new Error('not implemented in test backend')
   }
@@ -185,6 +206,46 @@ class GravityTestBackend implements IPhysicsBackend {
   setRevoluteMotorVelocity(): void {}
 
   setRevoluteMotorPosition(): void {}
+
+  createSceneJoint(): never {
+    throw new Error('not implemented in test backend')
+  }
+
+  capabilities() {
+    return STUB_PHYSICS_CAPABILITIES
+  }
+
+  setBodyEnabled(): void {
+    this.assertInitialized()
+  }
+
+  setShapeEnabled(): void {
+    this.assertInitialized()
+  }
+
+  wakeBody(): void {
+    this.assertInitialized()
+  }
+
+  clearForces(): void {
+    this.assertInitialized()
+  }
+
+  finalizeExplicitMass(body: PhysicsBodyHandle, targetMass: number): void {
+    this.assertInitialized()
+    const record = this.getBody(body)
+    if (record.descriptor.type === 'dynamic') {
+      record.descriptor = { ...record.descriptor, mass: targetMass }
+    }
+  }
+
+  drainCollisionEvents(): import('@haku/physics').PhysicsCollisionEvent[] {
+    return []
+  }
+
+  getDebugRenderBuffers(): null {
+    return null
+  }
 
   private getBody(handle: PhysicsBodyHandle) {
     const record = this.bodies.get(handle.value)
@@ -570,5 +631,59 @@ describe('interpolatePhysicsPose', () => {
     expect(halfway.rotation[2]).toBeCloseTo(Math.sin(Math.PI / 8))
     expect(halfway.rotation[3]).toBeCloseTo(Math.cos(Math.PI / 8))
     expect(Math.hypot(...halfway.rotation)).toBeCloseTo(1)
+  })
+})
+
+describe('PhysicsWorldSystem multi-world', () => {
+  beforeEach(() => {
+    resetStubPhysicsIds()
+  })
+
+  it('isolates forked worlds so gravity in one does not affect the other', () => {
+    const backend = new GravityTestBackend([0, -10, 0])
+    const system = new PhysicsWorldSystem({ fixedTimestep: 1 / 60, maxSubsteps: 10 })
+    system.setBackend(backend)
+
+    const worldA = system.createWorld({ gravity: [0, -10, 0] })
+    const worldB = system.createWorld({ gravity: [0, 0, 0] })
+
+    const physWorldA = system.getPhysicsWorldByHandle(worldA)!
+    const physWorldB = system.getPhysicsWorldByHandle(worldB)!
+
+    const bodyA = physWorldA.createBody({
+      type: 'dynamic',
+      transform: { position: [0, 10, 0], rotation: [0, 0, 0, 1] },
+    })
+    const bodyB = physWorldB.createBody({
+      type: 'dynamic',
+      transform: { position: [0, 10, 0], rotation: [0, 0, 0, 1] },
+    })
+
+    const ecsWorld = new World()
+    const idA = ecsWorld.createEntity('A')
+    const idB = ecsWorld.createEntity('B')
+    ecsWorld.addComponent(idA, TransformComponent, {
+      position: [0, 10, 0],
+      rotation: [0, 0, 0, 1],
+      scale: [1, 1, 1],
+    })
+    ecsWorld.addComponent(idB, TransformComponent, {
+      position: [0, 10, 0],
+      rotation: [0, 0, 0, 1],
+      scale: [1, 1, 1],
+    })
+
+    system.setEntityWorld(idA, worldA)
+    system.setEntityWorld(idB, worldB)
+    system.registerBody(idA, bodyA, 'dynamic', ecsWorld)
+    system.registerBody(idB, bodyB, 'dynamic', ecsWorld)
+
+    system.update(ecsWorld, 0.5)
+
+    const yA = ecsWorld.getComponent(idA, TransformComponent)?.position[1] ?? 10
+    const yB = ecsWorld.getComponent(idB, TransformComponent)?.position[1] ?? 10
+
+    expect(yA).toBeLessThan(10)
+    expect(yB).toBeCloseTo(10, 3)
   })
 })

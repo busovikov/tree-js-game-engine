@@ -1,334 +1,280 @@
-import type { EntityId, IWorld, ISystem } from '@haku/core'
+import type { IWorld, ISystem } from '@haku/core'
+import { entityId } from '@haku/core'
+import type { PhysicsProjectSettings } from '@haku/schema'
+import { defaultPhysicsProjectSettings } from '@haku/schema'
 import {
-  ColliderComponent,
-  StaticComponent,
-  TransformComponent,
-  PhysicsControllerComponent,
-  entityId,
-} from '@haku/core'
-import type { Collider, ControllerChassis, PhysicsController } from '@haku/schema'
-import { controllerChassisCollider, controllerNeedsChassis } from '@haku/schema'
-import {
-  createBodyWithShape,
-  destroyBodyWithShape,
-  type BodyWithShape,
-  type PhysicsShapeDescriptor,
-  type PhysicsTransform,
-  type Quat,
-  type RigidBodyDescriptor,
+  type PhysicsBodyHandle,
+  type PhysicsShapeHandle,
   type RigidBodyType,
-  type Vec3,
 } from '@haku/physics'
 import type { PhysicsWorldSystem } from './physics-world-system.js'
+import { bodyConfigSignature, collectBodyPlans, type BodyPlan } from './physics-body-plan.js'
 
-interface TrackedColliderBody {
-  bodyWithShape: BodyWithShape
+export {
+  colliderToPhysicsShape,
+  composeColliderLocalTransform,
+  composeColliderTransform,
+  controllerChassisColliderFromComponent,
+  vehicleChassisCollider,
+  resolveColliderDescriptor,
+  type ResolvedColliderDescriptor,
+} from './physics-collider-utils.js'
+
+/** Shapes the backend can size an explicit mass/inertia for analytically during attachShape. */
+const ANALYTIC_MASS_SHAPES = new Set(['box', 'sphere', 'capsule'])
+
+interface TrackedShape {
+  entityId: string
+  handle: PhysicsShapeHandle
+  enabled: boolean
+  signature: string
+}
+
+interface TrackedBody {
+  rootId: string
+  body: PhysicsBodyHandle
   type: RigidBodyType
+  signature: string
+  bodySignature: string
+  shapes: TrackedShape[]
+  bodyEnabled: boolean
+  registered: boolean
 }
 
-function quatMul(a: Quat, b: Quat): Quat {
-  const [ax, ay, az, aw] = a
-  const [bx, by, bz, bw] = b
-  return [
-    aw * bx + ax * bw + ay * bz - az * by,
-    aw * by - ax * bz + ay * bw + az * bx,
-    aw * bz + ax * by - ay * bx + az * bw,
-    aw * bw - ax * bx - ay * by - az * bz,
-  ]
-}
-
-function rotateVec3ByQuat([x, y, z]: Vec3, [qx, qy, qz, qw]: Quat): Vec3 {
-  const ix = qw * x + qy * z - qz * y
-  const iy = qw * y + qz * x - qx * z
-  const iz = qw * z + qx * y - qy * x
-  const iw = -qx * x - qy * y - qz * z
-  return [
-    ix * qw + iw * -qx + iy * -qz - iz * -qy,
-    iy * qw + iw * -qy + iz * -qx - ix * -qz,
-    iz * qw + iw * -qz + ix * -qy - iy * -qx,
-  ]
-}
-
-export function colliderToPhysicsShape(collider: Collider, scale: Vec3): PhysicsShapeDescriptor {
-  const sx = Math.abs(scale[0])
-  const sy = Math.abs(scale[1])
-  const sz = Math.abs(scale[2])
-
-  switch (collider.shape) {
-    case 'box':
-      return {
-        type: 'box',
-        halfExtents: [
-          collider.halfExtents[0] * sx,
-          collider.halfExtents[1] * sy,
-          collider.halfExtents[2] * sz,
-        ],
-      }
-    case 'sphere': {
-      const uniformScale = Math.max(sx, sy, sz)
-      return { type: 'sphere', radius: collider.radius * uniformScale }
-    }
-    case 'capsule':
-      return {
-        type: 'capsule',
-        radius: collider.radius * Math.max(sx, sz),
-        halfHeight: collider.halfHeight * sy,
-      }
-  }
-}
-
-export function composeColliderLocalTransform(
-  scale: Vec3,
-  collider: Collider,
-): PhysicsTransform {
-  const scaledOffset: Vec3 = [
-    collider.offset[0] * scale[0],
-    collider.offset[1] * scale[1],
-    collider.offset[2] * scale[2],
-  ]
-  return {
-    position: scaledOffset,
-    rotation: collider.rotation as Quat,
-  }
-}
-
-/** World-space physics transform with collider offset baked into body origin. */
-export function composeColliderTransform(
-  position: Vec3,
-  rotation: Quat,
-  scale: Vec3,
-  collider: Collider,
-): PhysicsTransform {
-  const scaledOffset: Vec3 = [
-    collider.offset[0] * scale[0],
-    collider.offset[1] * scale[1],
-    collider.offset[2] * scale[2],
-  ]
-  const rotatedOffset = rotateVec3ByQuat(scaledOffset, rotation)
-  return {
-    position: [
-      position[0] + rotatedOffset[0],
-      position[1] + rotatedOffset[1],
-      position[2] + rotatedOffset[2],
-    ],
-    rotation: quatMul(rotation, collider.rotation as Quat),
-  }
-}
-
-function resolveBodyType(world: IWorld, id: EntityId, collider: Collider): RigidBodyType {
-  if (collider.isStatic || world.hasComponent(id, StaticComponent)) {
-    return 'static'
-  }
-  return 'dynamic'
-}
-
-function resolveDynamicBodyParams(
-  world: IWorld,
-  id: EntityId,
-  bodyType: RigidBodyType,
-): Pick<RigidBodyDescriptor, 'mass' | 'angularDamping' | 'inertiaScalePitchRoll'> {
-  if (bodyType !== 'dynamic') {
-    return {}
-  }
-  const controller = world.getComponent(id, PhysicsControllerComponent)
-  if (controller && controllerNeedsChassis(controller.type)) {
-    if (
-      controller.type === 'custom-raycast' ||
-      controller.type === 'dynamic-raycast' ||
-      controller.type === 'arcade-vehicle' ||
-      controller.type === 'revolute-joint-vehicle'
-    ) {
-      if (
-        controller.type === 'dynamic-raycast' &&
-        controller.driveProfile === 'threejs-rapier'
-      ) {
-        return { mass: controller.chassis.mass }
-      }
-      return {
-        mass: controller.chassis.mass,
-        angularDamping: controller.chassis.angularDamping,
-        inertiaScalePitchRoll: controller.chassis.inertiaScale,
-      }
-    }
-  }
-  return { mass: 1 }
-}
-
-/** Implicit chassis box for vehicle-style {@link PhysicsControllerComponent}. */
-export function controllerChassisColliderFromComponent(
-  chassis: ControllerChassis,
-): Collider {
-  return controllerChassisCollider(chassis)
-}
-
-/** @deprecated use controllerChassisColliderFromComponent */
-export function vehicleChassisCollider(chassis: ControllerChassis): Collider {
-  return controllerChassisColliderFromComponent(chassis)
-}
-
-export interface ResolvedColliderDescriptor {
-  collider: Collider
-  source: 'explicit' | 'implicit-controller'
-  bodyTypeOverride?: RigidBodyType
+export interface PhysicsColliderSystemOptions {
+  physicsSettings?: PhysicsProjectSettings
 }
 
 /**
- * Resolves the collider owned by a physics controller without reading the world
- * or constructing backend/renderer objects.
- */
-export function resolveColliderDescriptor(
-  controller: PhysicsController | null | undefined,
-  explicitCollider: Collider | null | undefined,
-): ResolvedColliderDescriptor | null {
-  if (!controller) {
-    return explicitCollider ? { collider: explicitCollider, source: 'explicit' } : null
-  }
-
-  if (controllerNeedsChassis(controller.type)) {
-    if (controller.type === 'arcade-vehicle' && explicitCollider) {
-      return {
-        collider: explicitCollider,
-        source: 'explicit',
-        bodyTypeOverride: 'dynamic',
-      }
-    }
-    if (
-      controller.type === 'custom-raycast' ||
-      controller.type === 'dynamic-raycast' ||
-      controller.type === 'arcade-vehicle' ||
-      controller.type === 'revolute-joint-vehicle'
-    ) {
-      return {
-        collider: controllerChassisColliderFromComponent(controller.chassis),
-        source: 'implicit-controller',
-        bodyTypeOverride: 'dynamic',
-      }
-    }
-  }
-
-  if (controller.type === 'kinematic-character') {
-    return {
-      collider: {
-        shape: 'capsule',
-        radius: controller.capsuleRadius,
-        halfHeight: controller.capsuleHalfHeight,
-        isStatic: false,
-        offset: [0, controller.capsuleHalfHeight + controller.capsuleRadius, 0],
-        rotation: [0, 0, 0, 1],
-      },
-      source: 'implicit-controller',
-      bodyTypeOverride: 'kinematic',
-    }
-  }
-
-  return null
-}
-
-function resolveColliderForEntity(
-  world: IWorld,
-  id: EntityId,
-): { collider: Collider; bodyType: RigidBodyType } | null {
-  const controller = world.getComponent(id, PhysicsControllerComponent)
-  const explicitCollider = world.getComponent(id, ColliderComponent)
-  const resolved = resolveColliderDescriptor(controller, explicitCollider)
-  if (!resolved) {
-    return null
-  }
-
-  return {
-    collider: resolved.collider,
-    bodyType:
-      resolved.bodyTypeOverride ?? resolveBodyType(world, id, resolved.collider),
-  }
-}
-
-/**
- * Spawns Rapier bodies from {@link ColliderComponent} + {@link TransformComponent}
- * when play mode starts. Dynamic bodies are registered with {@link PhysicsWorldSystem}.
+ * Reconciles ECS collider/rigid-body state with the active physics backend each frame.
  */
 export class PhysicsColliderSystem implements ISystem {
   readonly order = 45
 
   private readonly physicsSystem: PhysicsWorldSystem
-  private readonly trackedBodies = new Map<string, TrackedColliderBody>()
-  private bootstrapped = false
+  private readonly physicsSettings: PhysicsProjectSettings
+  private readonly tracked = new Map<string, TrackedBody>()
+  private needsQueryRefresh = false
 
-  constructor(physicsSystem: PhysicsWorldSystem) {
+  constructor(
+    physicsSystem: PhysicsWorldSystem,
+    options: PhysicsColliderSystemOptions = {},
+  ) {
     this.physicsSystem = physicsSystem
+    this.physicsSettings = options.physicsSettings ?? defaultPhysicsProjectSettings()
   }
 
   update(world: IWorld): void {
-    if (this.bootstrapped) {
-      return
-    }
-    this.bootstrap(world)
-    this.bootstrapped = true
-  }
-
-  bootstrap(world: IWorld): void {
     const physicsWorld = this.physicsSystem.getPhysicsWorld()
     if (!physicsWorld) {
       return
     }
 
-    for (const id of world.query(TransformComponent)) {
-      const transform = world.getComponent(id, TransformComponent)
-      if (!transform) {
-        continue
-      }
+    const plans = collectBodyPlans(world, this.physicsSettings)
+    const planByRoot = new Map(plans.map((plan) => [plan.rootId.value, plan]))
 
-      const resolved = resolveColliderForEntity(world, id)
-      if (!resolved) {
-        continue
-      }
-
-      const { collider, bodyType } = resolved
-      const dynamicParams = resolveDynamicBodyParams(world, id, bodyType)
-      const entityTransform: PhysicsTransform = {
-        position: transform.position as Vec3,
-        rotation: transform.rotation as Quat,
-      }
-      const shape = {
-        ...colliderToPhysicsShape(collider, transform.scale as Vec3),
-        localTransform: composeColliderLocalTransform(transform.scale as Vec3, collider),
-      }
-
-      const bodyWithShape = createBodyWithShape(
-        physicsWorld,
-        {
-          type: bodyType,
-          transform: entityTransform,
-          ...dynamicParams,
-        },
-        shape,
-      )
-
-      this.trackedBodies.set(id.value, { bodyWithShape, type: bodyType })
-
-      if (bodyType !== 'static') {
-        this.physicsSystem.registerBody(id, bodyWithShape.body, bodyType, world, bodyWithShape.shape)
+    for (const rootId of [...this.tracked.keys()]) {
+      if (!planByRoot.has(rootId)) {
+        this.despawnTracked(rootId)
       }
     }
 
-    this.physicsSystem.prepareSceneQueries()
+    for (const plan of plans) {
+      const existing = this.tracked.get(plan.rootId.value)
+      if (!existing) {
+        this.spawnPlan(world, plan)
+        continue
+      }
+      if (existing.signature !== plan.signature) {
+        if (this.tryHotReloadShapes(plan, existing)) {
+          existing.signature = plan.signature
+          this.syncEnabled(plan, existing)
+          // Replaced/re-enabled shapes changed the collider set, so scene queries must refresh.
+          this.needsQueryRefresh = true
+          continue
+        }
+        this.despawnTracked(plan.rootId.value)
+        this.spawnPlan(world, plan)
+        continue
+      }
+      this.syncEnabled(plan, existing)
+    }
+
+    if (this.needsQueryRefresh) {
+      this.physicsSystem.prepareSceneQueries()
+      this.needsQueryRefresh = false
+    }
+  }
+
+  /** One-shot bootstrap for tests that call before first update. */
+  bootstrap(world: IWorld): void {
+    this.update(world)
   }
 
   dispose(): void {
-    const physicsWorld = this.physicsSystem.getPhysicsWorld()
-    if (physicsWorld) {
-      for (const { bodyWithShape } of this.trackedBodies.values()) {
-        destroyBodyWithShape(physicsWorld, bodyWithShape.body, bodyWithShape.shape)
-      }
+    for (const rootId of [...this.tracked.keys()]) {
+      this.despawnTracked(rootId)
     }
-
-    for (const [entityIdValue, { bodyWithShape, type }] of this.trackedBodies) {
-      if (type !== 'static') {
-        this.physicsSystem.unregisterBody(entityId(entityIdValue))
-      }
-      void bodyWithShape
-    }
-
-    this.trackedBodies.clear()
-    this.bootstrapped = false
+    this.tracked.clear()
+    this.needsQueryRefresh = false
   }
+
+  private spawnPlan(world: IWorld, plan: BodyPlan): void {
+    const physicsWorld = this.physicsSystem.getPhysicsWorldForEntity(plan.rootId)
+    if (!physicsWorld) {
+      return
+    }
+
+    const body = physicsWorld.createBody(plan.bodyDescriptor)
+    const shapes: TrackedShape[] = []
+
+    for (const shapePlan of plan.shapes) {
+      const handle = physicsWorld.attachShape(body, shapePlan.shape)
+      shapes.push({
+        entityId: shapePlan.entityId.value,
+        handle,
+        enabled: shapePlan.enabled,
+        signature: shapePlanSignature(shapePlan),
+      })
+      if (!shapePlan.enabled) {
+        physicsWorld.setShapeEnabled(handle, false)
+      }
+    }
+
+    if (!plan.bodyEnabled) {
+      physicsWorld.setBodyEnabled(body, false)
+    }
+
+    // The backend applies explicit mass analytically for a single primitive shape (box/sphere/
+    // capsule) during attachShape. Every other case — multiple shapes, or a single non-primitive
+    // shape (cylinder/convexHull/trimesh/…) — needs an explicit finalize, or the authored mass is
+    // silently replaced by the density-derived mass.
+    const singleShapeIsAnalytic =
+      plan.shapes.length === 1 && ANALYTIC_MASS_SHAPES.has(plan.shapes[0]!.shape.type)
+    if (
+      plan.bodyDescriptor.massMode !== 'autoFromColliders' &&
+      plan.bodyDescriptor.mass !== undefined &&
+      plan.shapes.length >= 1 &&
+      !singleShapeIsAnalytic
+    ) {
+      physicsWorld.finalizeExplicitMass(body, plan.bodyDescriptor.mass)
+    }
+
+    // Track static too so Inspector mid-play / joints can resolve handles for teleport.
+    this.physicsSystem.registerBody(
+      plan.rootId,
+      body,
+      plan.bodyType,
+      world,
+      shapes[0]?.handle,
+    )
+
+    this.tracked.set(plan.rootId.value, {
+      rootId: plan.rootId.value,
+      body,
+      type: plan.bodyType,
+      signature: plan.signature,
+      bodySignature: bodyConfigSignature(plan),
+      shapes,
+      bodyEnabled: plan.bodyEnabled,
+      registered: true,
+    })
+    this.needsQueryRefresh = true
+  }
+
+  private syncEnabled(plan: BodyPlan, tracked: TrackedBody): void {
+    const physicsWorld = this.physicsSystem.getPhysicsWorldForEntity(plan.rootId)
+    if (!physicsWorld) {
+      return
+    }
+
+    if (tracked.bodyEnabled !== plan.bodyEnabled) {
+      physicsWorld.setBodyEnabled(tracked.body, plan.bodyEnabled)
+      tracked.bodyEnabled = plan.bodyEnabled
+    }
+
+    for (let i = 0; i < plan.shapes.length; i++) {
+      const shapePlan = plan.shapes[i]
+      const trackedShape = tracked.shapes[i]
+      if (!shapePlan || !trackedShape) {
+        continue
+      }
+      if (trackedShape.enabled !== shapePlan.enabled) {
+        physicsWorld.setShapeEnabled(trackedShape.handle, shapePlan.enabled)
+        trackedShape.enabled = shapePlan.enabled
+      }
+    }
+  }
+
+  private tryHotReloadShapes(plan: BodyPlan, tracked: TrackedBody): boolean {
+    if (plan.shapes.length !== tracked.shapes.length) {
+      return false
+    }
+    if (bodyConfigSignature(plan) !== tracked.bodySignature) {
+      return false
+    }
+
+    // Pair shapes positionally, matching syncEnabled — all colliders in one array share the root
+    // entity id, so entity id alone can't disambiguate them. A positional entity-id mismatch means
+    // the contributing shape set changed structurally, so fall back to a full despawn/respawn.
+    for (let i = 0; i < plan.shapes.length; i++) {
+      if (plan.shapes[i]!.entityId.value !== tracked.shapes[i]!.entityId) {
+        return false
+      }
+    }
+
+    const physicsWorld = this.physicsSystem.getPhysicsWorldForEntity(plan.rootId)
+    if (!physicsWorld) {
+      return false
+    }
+
+    let changed = false
+    for (let i = 0; i < plan.shapes.length; i++) {
+      const shapePlan = plan.shapes[i]!
+      const trackedShape = tracked.shapes[i]!
+      const nextSignature = shapePlanSignature(shapePlan)
+      if (trackedShape.signature === nextSignature) {
+        continue
+      }
+      trackedShape.handle = physicsWorld.replaceShape(trackedShape.handle, shapePlan.shape)
+      trackedShape.signature = nextSignature
+      // A replaced shape starts from the backend's default enabled state, so re-assert the intended
+      // one here rather than relying on syncEnabled (which no-ops when the old/new flags match).
+      physicsWorld.setShapeEnabled(trackedShape.handle, shapePlan.enabled)
+      trackedShape.enabled = shapePlan.enabled
+      changed = true
+    }
+
+    return changed
+  }
+
+  private despawnTracked(rootId: string): void {
+    const tracked = this.tracked.get(rootId)
+    if (!tracked) {
+      return
+    }
+
+    const physicsWorld = this.physicsSystem.getPhysicsWorldForEntity(rootId)
+    if (physicsWorld) {
+      for (const shape of tracked.shapes) {
+        physicsWorld.detachShape(shape.handle)
+      }
+      physicsWorld.destroyBody(tracked.body)
+    }
+
+    if (tracked.registered) {
+      this.physicsSystem.unregisterBody(entityId(rootId))
+    }
+
+    this.tracked.delete(rootId)
+    this.needsQueryRefresh = true
+  }
+}
+
+function shapePlanSignature(shape: BodyPlan['shapes'][number]): string {
+  return JSON.stringify({
+    entityId: shape.entityId.value,
+    collider: shape.collider,
+    localTransform: shape.localTransform,
+  })
 }

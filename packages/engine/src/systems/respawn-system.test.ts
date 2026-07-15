@@ -5,7 +5,7 @@ import {
   PhysicsControllerComponent,
   World,
 } from '@haku/core'
-import { CustomRaycastControllerSchema } from '@haku/schema'
+import { CustomRaycastControllerSchema, ColliderSchema } from '@haku/schema'
 import type { Quat, Vec3 } from '@haku/schema'
 import { resetStubPhysicsIds, StubPhysicsBackend } from '@haku/physics'
 import { InputManager, type PointerCaptureTarget } from '../input/input-manager.js'
@@ -87,13 +87,10 @@ describe('RespawnSystem', () => {
       scale: [1, 1, 1],
     })
     world.addComponent(carId, PhysicsControllerComponent, DEFAULT_VEHICLE)
-    world.addComponent(carId, ColliderComponent, {
+    world.addComponent(carId, ColliderComponent, ColliderSchema.parse({
       shape: 'box',
       halfExtents: [0.9, 0.3, 1.55],
-      isStatic: false,
-      offset: [0, 0, 0],
-      rotation: [0, 0, 0, 1],
-    })
+    }))
 
     colliderSystem.bootstrap(world)
     vehicleController.bootstrap(world)
@@ -208,13 +205,10 @@ describe('RespawnSystem + InputBindingSystem', () => {
       scale: [1, 1, 1],
     })
     world.addComponent(carId, PhysicsControllerComponent, DEFAULT_VEHICLE)
-    world.addComponent(carId, ColliderComponent, {
+    world.addComponent(carId, ColliderComponent, ColliderSchema.parse({
       shape: 'box',
       halfExtents: [0.9, 0.3, 1.55],
-      isStatic: false,
-      offset: [0, 0, 0],
-      rotation: [0, 0, 0, 1],
-    })
+    }))
 
     colliderSystem.bootstrap(world)
     vehicleController.bootstrap(world)

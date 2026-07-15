@@ -6,7 +6,7 @@ import {
   PhysicsControllerComponent,
   World,
 } from '@haku/core'
-import { CustomRaycastControllerSchema } from '@haku/schema'
+import { CustomRaycastControllerSchema, ColliderSchema, ArcadeVehicleControllerSchema } from '@haku/schema'
 import type { Quat, Vec3 } from '@haku/schema'
 import { resetStubPhysicsIds, StubPhysicsBackend } from '@haku/physics'
 import { InputManager, type PointerCaptureTarget } from '../input/input-manager.js'
@@ -302,13 +302,10 @@ describe('ChaseCameraSystem integration (stub)', () => {
       rotation: [0, 0, 0, 1],
       scale: [1, 1, 1],
     })
-    world.addComponent(groundId, ColliderComponent, {
+    world.addComponent(groundId, ColliderComponent, ColliderSchema.parse({
       shape: 'box',
       halfExtents: [30, 0.1, 30],
-      isStatic: true,
-      offset: [0, 0, 0],
-      rotation: [0, 0, 0, 1],
-    })
+    }))
 
     const carId = world.createEntity('Car')
     world.addComponent(carId, TransformComponent, {
@@ -316,13 +313,10 @@ describe('ChaseCameraSystem integration (stub)', () => {
       rotation: [0, 0, 0, 1],
       scale: [1, 1, 1],
     })
-    world.addComponent(carId, ColliderComponent, {
+    world.addComponent(carId, ColliderComponent, ColliderSchema.parse({
       shape: 'box',
       halfExtents: [0.9, 0.3, 1.55],
-      isStatic: false,
-      offset: [0, 0, 0],
-      rotation: [0, 0, 0, 1],
-    })
+    }))
     world.addComponent(carId, PhysicsControllerComponent, INTEGRATION_DRIVE_VEHICLE)
 
     const cameraId = world.createEntity('ChaseCamera')
@@ -408,6 +402,16 @@ describe('ChaseCameraSystem integration (stub)', () => {
   it('raises airborne blend after jump leaves the ground', () => {
     const { world, physicsSystem, colliderSystem, vehicleSystem, chaseCamera, carId } =
       createVehicleCameraScene()
+
+    world.addComponent(
+      carId,
+      PhysicsControllerComponent,
+      ArcadeVehicleControllerSchema.parse({ type: 'arcade-vehicle', jumpImpulse: 5000 }),
+    )
+    colliderSystem.dispose()
+    vehicleSystem.dispose()
+    colliderSystem.bootstrap(world)
+    vehicleSystem.bootstrap(world)
 
     for (let i = 0; i < 30; i++) {
       vehicleSystem.update(world, 1 / 60)

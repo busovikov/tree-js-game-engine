@@ -15,6 +15,7 @@ import {
 import { DynamicRaycastPlugin } from '../controllers/builtin/dynamic-raycast-plugin.js'
 import { ArcadeVehiclePlugin } from '../controllers/builtin/arcade-vehicle-plugin.js'
 import { KinematicCharacterPlugin } from '../controllers/builtin/kinematic-character-plugin.js'
+import { CharacterBodyPlugin } from '../controllers/builtin/character-body-plugin.js'
 import { RevoluteJointVehiclePlugin } from '../controllers/builtin/revolute-joint-vehicle-plugin.js'
 
 export type { ControllerInput, ControllerRuntimeContext, ControllerPlugin } from '../controllers/registry.js'
@@ -56,6 +57,7 @@ export class PhysicsControllerSystem implements ISystem {
     this.registry.register(this.dynamicRaycast)
     this.registry.register(new ArcadeVehiclePlugin())
     this.registry.register(new KinematicCharacterPlugin())
+    this.registry.register(new CharacterBodyPlugin())
     this.registry.register(new RevoluteJointVehiclePlugin())
   }
 

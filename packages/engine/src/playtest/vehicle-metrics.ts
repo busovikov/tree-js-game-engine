@@ -1,5 +1,6 @@
 import type { IWorld } from '@haku/core'
-import { ColliderComponent, TransformComponent } from '@haku/core'
+import { ColliderComponent, RigidBodyComponent, TransformComponent } from '@haku/core'
+import { resolveBodyTypeFromComponents } from '@haku/schema'
 
 /**
  * Probes the top Y of the nearest static box collider under `(x, z)`.
@@ -13,7 +14,13 @@ export function estimateGroundTopY(world: IWorld, x: number, z: number): number 
   for (const id of world.query(TransformComponent, ColliderComponent)) {
     const collider = world.getComponent(id, ColliderComponent)
     const transform = world.getComponent(id, TransformComponent)
-    if (!collider || !transform || collider.shape !== 'box' || !collider.isStatic) {
+    const rigidBody = world.getComponent(id, RigidBodyComponent)
+    if (
+      !collider ||
+      !transform ||
+      collider.shape !== 'box' ||
+      resolveBodyTypeFromComponents(rigidBody) !== 'static'
+    ) {
       continue
     }
 

@@ -7,6 +7,7 @@ import {
 } from '@haku/core'
 import type {
   ArcadeVehicleController,
+  CharacterBodyController,
   DynamicRaycastController,
   KinematicCharacterController,
   RevoluteJointVehicleController,
@@ -350,15 +351,39 @@ export interface TrackedCharacter {
   grounded: boolean
 }
 
+type CharacterControllerData = KinematicCharacterController | CharacterBodyController
+
+function characterControllerOptions(data: CharacterControllerData) {
+  if (data.type === 'character-body') {
+    return {
+      offset: data.characterShapeOffset,
+      snapToGroundDistance: data.floorSnapLength,
+      autoStepMaxHeight: data.stepHeight,
+      autoStepMinWidth: data.autoStepMinWidth,
+      autoStepIncludeDynamicBodies: data.autoStepIncludeDynamicBodies,
+      applyImpulsesToDynamicBodies: data.applyImpulsesToDynamicBodies,
+    }
+  }
+  return {
+    offset: data.characterShapeOffset,
+    snapToGroundDistance: data.snapToGroundDistance,
+    autoStepMaxHeight: data.autoStepMaxHeight,
+    autoStepMinWidth: data.autoStepMinWidth,
+    autoStepIncludeDynamicBodies: data.autoStepIncludeDynamicBodies,
+    applyImpulsesToDynamicBodies: data.applyImpulsesToDynamicBodies,
+  }
+}
+
 export function bootstrapCharacter(
   world: IWorld,
   physicsWorld: IPhysicsWorld,
   physicsSystem: PhysicsWorldSystem,
   tracked: Map<string, TrackedCharacter>,
+  controllerType: 'kinematic-character' | 'character-body',
 ): void {
   for (const id of world.query(PhysicsControllerComponent, TransformComponent)) {
     const data = world.getComponent(id, PhysicsControllerComponent)
-    if (!data || data.type !== 'kinematic-character') {
+    if (!data || data.type !== controllerType) {
       continue
     }
     const bodyHandle = physicsSystem.getBodyHandle(id)
@@ -367,12 +392,7 @@ export function bootstrapCharacter(
       continue
     }
     const controller = physicsWorld.createCharacterController(bodyHandle, shapeHandle, {
-      offset: data.characterShapeOffset,
-      snapToGroundDistance: data.snapToGroundDistance,
-      autoStepMaxHeight: data.autoStepMaxHeight,
-      autoStepMinWidth: data.autoStepMinWidth,
-      autoStepIncludeDynamicBodies: data.autoStepIncludeDynamicBodies,
-      applyImpulsesToDynamicBodies: data.applyImpulsesToDynamicBodies,
+      ...characterControllerOptions(data),
     })
     tracked.set(id.value, {
       controller,
@@ -389,13 +409,14 @@ export function updateCharacter(
   tracked: Map<string, TrackedCharacter>,
   inputs: Map<string, ControllerInput>,
   dt: number,
+  controllerType: 'kinematic-character' | 'character-body',
 ): void {
   const cameraYaw = resolveCameraYaw(world)
 
   for (const [entityIdValue, state] of tracked) {
     const id = entityId(entityIdValue)
     const data = world.getComponent(id, PhysicsControllerComponent)
-    if (!data || data.enabled === false || data.type !== 'kinematic-character') {
+    if (!data || data.enabled === false || data.type !== controllerType) {
       continue
     }
 
@@ -454,14 +475,7 @@ export function updateCharacter(
       state.jumpCooldown = 0.25
     }
 
-    state.controller.configure({
-      offset: data.characterShapeOffset,
-      snapToGroundDistance: data.snapToGroundDistance,
-      autoStepMaxHeight: data.autoStepMaxHeight,
-      autoStepMinWidth: data.autoStepMinWidth,
-      autoStepIncludeDynamicBodies: data.autoStepIncludeDynamicBodies,
-      applyImpulsesToDynamicBodies: data.applyImpulsesToDynamicBodies,
-    })
+    state.controller.configure(characterControllerOptions(data))
 
     const result = state.controller.step(movement, dt)
     state.grounded = result.grounded
@@ -620,4 +634,4 @@ export function ensureArcadeTracked(
   }
 }
 
-export type { ArcadeVehicleController, KinematicCharacterController, RevoluteJointVehicleController }
+export type { ArcadeVehicleController, CharacterBodyController, KinematicCharacterController, RevoluteJointVehicleController }

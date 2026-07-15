@@ -3,7 +3,10 @@ import {
   LIGHT_DEFAULT_LOCAL_POSITION,
   LIGHT_DEFAULT_TARGET_POSITION,
   RenderSettingsSchema,
+  defaultPhysicsProjectSettings,
 } from '@haku/schema'
+
+const DEFAULT_PHYSICS_SETTINGS = defaultPhysicsProjectSettings()
 
 const SHADOWS_ON = RenderSettingsSchema.parse({
   features: { shadows: true },
@@ -112,6 +115,7 @@ export const directionalPositionInvarianceScene: SceneDocument = {
   ],
   prototypes: {},
   prefabs: {},
+  physicsSettings: DEFAULT_PHYSICS_SETTINGS,
   renderSettings: RenderSettingsSchema.parse({
     features: { shadows: false },
     ambient: { intensity: 0.15 },
@@ -175,6 +179,7 @@ export const shadowCastScene: SceneDocument = {
   ],
   prototypes: {},
   prefabs: {},
+  physicsSettings: DEFAULT_PHYSICS_SETTINGS,
   renderSettings: SHADOWS_ON,
 }
 
@@ -219,6 +224,7 @@ export const hemisphereScene: SceneDocument = {
   ],
   prototypes: {},
   prefabs: {},
+  physicsSettings: DEFAULT_PHYSICS_SETTINGS,
   renderSettings: RenderSettingsSchema.parse({
     features: { shadows: false, toneMapping: false },
     ambient: { intensity: 0 },
@@ -291,5 +297,6 @@ export const multiLightScene: SceneDocument = {
   ],
   prototypes: {},
   prefabs: {},
+  physicsSettings: DEFAULT_PHYSICS_SETTINGS,
   renderSettings: RenderSettingsSchema.parse({ ambient: { intensity: 0.05 } }),
 }
