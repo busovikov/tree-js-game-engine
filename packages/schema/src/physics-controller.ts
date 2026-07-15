@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { ColliderSchema, type Collider } from './collider.js'
 
 const Vec3Schema = z.tuple([z.number(), z.number(), z.number()])
 type Vec3 = z.infer<typeof Vec3Schema>
@@ -16,6 +17,7 @@ export const PhysicsControllerTypeSchema = z.enum([
   'arcade-vehicle',
   'revolute-joint-vehicle',
   'kinematic-character',
+  'character-body',
   'pointer-controls',
 ])
 export type PhysicsControllerType = z.infer<typeof PhysicsControllerTypeSchema>
@@ -186,6 +188,32 @@ export const KinematicCharacterControllerSchema = ControllerBaseSchema.extend({
 })
 export type KinematicCharacterController = z.infer<typeof KinematicCharacterControllerSchema>
 
+/** Godot-style CharacterBody3D — move_and_slide via Rapier KCC (tier-3). */
+export const CharacterBodyControllerSchema = ControllerBaseSchema.extend({
+  type: z.literal('character-body'),
+  capsuleRadius: z.number().positive().default(0.35),
+  capsuleHalfHeight: z.number().min(0).default(0.5),
+  moveSpeed: z.number().positive().default(5),
+  sprintMultiplier: z.number().positive().default(1.5),
+  floorMaxAngle: z.number().min(0).max(90).default(45),
+  floorSnapLength: z.number().min(0).default(0.1),
+  stepHeight: z.number().min(0).default(0.7),
+  snapToGroundDistance: z.number().min(0).default(0.1),
+  characterShapeOffset: z.number().min(0).default(0.1),
+  autoStepMaxHeight: z.number().min(0).default(0.7),
+  autoStepMinWidth: z.number().min(0).default(0.3),
+  autoStepIncludeDynamicBodies: z.boolean().default(true),
+  applyImpulsesToDynamicBodies: z.boolean().default(true),
+  accelerationTimeGrounded: z.number().positive().default(0.025),
+  accelerationTimeAirborne: z.number().positive().default(0.2),
+  velocityXZSmoothing: z.number().min(0).max(1).default(0.2),
+  velocityXZMin: z.number().min(0).default(0.0001),
+  maxJumpHeight: z.number().positive().default(4),
+  minJumpHeight: z.number().positive().default(1),
+  timeToJumpApex: z.number().positive().default(1),
+})
+export type CharacterBodyController = z.infer<typeof CharacterBodyControllerSchema>
+
 export const PointerConstraintTypeSchema = z.enum(['spherical', 'spring', 'rope'])
 export type PointerConstraintType = z.infer<typeof PointerConstraintTypeSchema>
 
@@ -206,6 +234,7 @@ export const PhysicsControllerSchema = z.discriminatedUnion('type', [
   ArcadeVehicleControllerSchema,
   RevoluteJointVehicleControllerSchema,
   KinematicCharacterControllerSchema,
+  CharacterBodyControllerSchema,
   PointerControlsControllerSchema,
 ])
 export type PhysicsController = z.infer<typeof PhysicsControllerSchema>
@@ -227,23 +256,14 @@ export function controllerWheelLocalPositions(
 }
 
 /** Implicit chassis box collider for vehicle-style physics controllers. */
-export function controllerChassisCollider(
-  chassis: ControllerChassis,
-): {
-  shape: 'box'
-  halfExtents: [number, number, number]
-  isStatic: false
-  offset: Vec3
-  rotation: [number, number, number, number]
-} {
+export function controllerChassisCollider(chassis: ControllerChassis): Collider {
   const [hx, hy, hz] = chassis.halfExtents
-  return {
+  return ColliderSchema.parse({
     shape: 'box',
     halfExtents: [hx, hy, hz],
-    isStatic: false,
     offset: [0, chassis.lift, 0],
     rotation: [0, 0, 0, 1],
-  }
+  })
 }
 
 /** Whether this controller type spawns an implicit chassis collider. */
@@ -258,7 +278,7 @@ export function controllerNeedsChassis(type: PhysicsControllerType): boolean {
 
 /** Whether this controller type spawns an implicit capsule collider. */
 export function controllerNeedsCapsule(type: PhysicsControllerType): boolean {
-  return type === 'kinematic-character'
+  return type === 'kinematic-character' || type === 'character-body'
 }
 
 /** @deprecated Use ControllerChassis — kept for migration from Vehicle. */

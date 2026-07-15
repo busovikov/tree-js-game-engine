@@ -158,6 +158,11 @@ export {
 import { MeshRendererSchema } from './mesh.js'
 import { StaticSchema } from './static.js'
 import { ColliderSchema } from './collider.js'
+import { RigidBodySchema } from './rigid-body.js'
+import { AnimatableBodySchema } from './animatable-body.js'
+import { PhysicsAreaSchema } from './physics-area.js'
+import { PhysicsJointSchema } from './physics-joint.js'
+import { CollidersSchema } from './colliders-array.js'
 import { PhysicsControllerSchema } from './physics-controller.js'
 import { TagSchema } from './tag.js'
 import { RenderingLayersSchema } from './rendering-layers.js'
@@ -168,15 +173,108 @@ export { StaticSchema, type Static } from './static.js'
 export {
   BoxColliderSchema,
   CapsuleColliderSchema,
+  CylinderColliderSchema,
+  ConvexHullColliderSchema,
+  TrimeshColliderSchema,
+  HeightfieldColliderSchema,
+  WorldBoundaryColliderSchema,
   ColliderSchema,
   ColliderShapeSchema,
+  ColliderBakeSourceSchema,
+  UnsupportedShapePolicySchema,
   SphereColliderSchema,
+  LEGACY_COLLIDER_FIELDS,
+  stripLegacyColliderFields,
   type BoxCollider,
   type CapsuleCollider,
+  type CylinderCollider,
+  type ConvexHullCollider,
+  type TrimeshCollider,
+  type HeightfieldCollider,
+  type WorldBoundaryCollider,
   type Collider,
   type ColliderShape,
+  type ColliderBakeSource,
+  type UnsupportedShapePolicy,
   type SphereCollider,
 } from './collider.js'
+
+export {
+  RigidBodySchema,
+  RigidBodyTypeSchema,
+  KinematicModeSchema,
+  MassModeSchema,
+  RigidBodyInterpolationSchema,
+  type RigidBody,
+  type RigidBodyType,
+  type KinematicMode,
+  type MassMode,
+  type RigidBodyInterpolation,
+} from './rigid-body.js'
+
+export {
+  PhysicsAreaSchema,
+  PhysicsAreaSpaceOverrideSchema,
+  type PhysicsArea,
+  type PhysicsAreaSpaceOverride,
+} from './physics-area.js'
+
+export {
+  PhysicsJointSchema,
+  PhysicsJointTypeSchema,
+  type PhysicsJoint,
+  type PhysicsJointType,
+} from './physics-joint.js'
+
+export {
+  CollidersSchema,
+  type Colliders,
+} from './colliders-array.js'
+
+export {
+  AnimatableBodySchema,
+  AnimatableBodySyncModeSchema,
+  type AnimatableBody,
+  type AnimatableBodySyncMode,
+} from './animatable-body.js'
+
+export { isNonUniformScale } from './physics-scale.js'
+
+export {
+  PhysicsMaterialSchema,
+  PhysicsMaterialCombineSchema,
+  type PhysicsMaterial,
+  type PhysicsMaterialCombine,
+} from './physics-material.js'
+
+export {
+  PhysicsProjectSettingsSchema,
+  MAX_PHYSICS_LAYERS,
+  DEFAULT_PHYSICS_MATERIAL_ID,
+  defaultPhysicsLayerNames,
+  defaultLayerCollisionMatrix,
+  defaultPhysicsMaterials,
+  defaultPhysicsProjectSettings,
+  bakeLayerCollisionGroups,
+  setLayerCollisionSymmetric,
+  resolveColliderPhysicsMaterial,
+  isValidPhysicsLayer,
+  type PhysicsProjectSettings,
+} from './physics-project-settings.js'
+
+export {
+  physicsMaterialCombineToRapier,
+  type RapierMaterialCombineRule,
+} from './physics-material-combine.js'
+
+export {
+  PhysicsValidationError,
+  validateEntityPhysicsComponents,
+  validateTrimeshOnDynamicBody,
+  validateWorldBoundaryBodyType,
+  resolveBodyTypeFromComponents,
+  type PhysicsEntityComponents,
+} from './physics-validation.js'
 
 export {
   PhysicsControllerSchema,
@@ -186,6 +284,7 @@ export {
   ArcadeVehicleControllerSchema,
   RevoluteJointVehicleControllerSchema,
   KinematicCharacterControllerSchema,
+  CharacterBodyControllerSchema,
   PointerControlsControllerSchema,
   PointerConstraintTypeSchema,
   ControllerChassisSchema,
@@ -207,6 +306,7 @@ export {
   type ArcadeVehicleController,
   type RevoluteJointVehicleController,
   type KinematicCharacterController,
+  type CharacterBodyController,
   type PointerControlsController,
   type PointerConstraintType,
   type DynamicRaycastDriveProfile,
@@ -311,13 +411,21 @@ export const SceneMetadataSchema = z.object({
 export type SceneMetadata = z.infer<typeof SceneMetadataSchema>
 
 import { RenderSettingsSchema, defaultRenderSettings } from './render-settings.js'
+import {
+  PhysicsProjectSettingsSchema,
+  defaultPhysicsProjectSettings,
+} from './physics-project-settings.js'
 
 export const SceneDocumentSchema = z.preprocess((input) => {
   if (typeof input !== 'object' || input === null) return input
-  if (!('renderSettings' in input)) {
-    return { ...input, renderSettings: defaultRenderSettings() }
+  let next = input as Record<string, unknown>
+  if (!('renderSettings' in next)) {
+    next = { ...next, renderSettings: defaultRenderSettings() }
   }
-  return input
+  if (!('physicsSettings' in next)) {
+    next = { ...next, physicsSettings: defaultPhysicsProjectSettings() }
+  }
+  return next
 }, z.object({
   schemaVersion: z.literal(1),
   metadata: SceneMetadataSchema,
@@ -325,6 +433,7 @@ export const SceneDocumentSchema = z.preprocess((input) => {
   prototypes: z.record(RenderPrototypeSchema).default({}),
   prefabs: z.record(PrefabDefinitionSchema).default({}),
   renderSettings: RenderSettingsSchema.default({}),
+  physicsSettings: PhysicsProjectSettingsSchema.default({}),
 }))
 export type SceneDocument = z.infer<typeof SceneDocumentSchema>
 
@@ -404,6 +513,11 @@ export const CORE_COMPONENT_IDS = [
   'Tag',
   'Static',
   'Collider',
+  'RigidBody',
+  'AnimatableBody',
+  'PhysicsArea',
+  'PhysicsJoint',
+  'Colliders',
   'PhysicsController',
   'RenderingLayers',
   'RenderTexture',
@@ -421,6 +535,11 @@ export const coreComponentSchemas = {
   Tag: TagSchema,
   Static: StaticSchema,
   Collider: ColliderSchema,
+  RigidBody: RigidBodySchema,
+  AnimatableBody: AnimatableBodySchema,
+  PhysicsArea: PhysicsAreaSchema,
+  PhysicsJoint: PhysicsJointSchema,
+  Colliders: CollidersSchema,
   PhysicsController: PhysicsControllerSchema,
   RenderingLayers: RenderingLayersSchema,
   RenderTexture: RenderTextureSchema,

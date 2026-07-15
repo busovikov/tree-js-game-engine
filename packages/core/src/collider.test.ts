@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   ColliderComponent,
+  RigidBodyComponent,
   coreComponents,
   getCoreComponent,
   globalComponentRegistry,
@@ -13,20 +14,28 @@ describe('ColliderComponent registry', () => {
     expect(getCoreComponent('Collider')).toBe(ColliderComponent)
   })
 
+  it('registers RigidBody with stable type id', () => {
+    expect(RigidBodyComponent.id).toBe('RigidBody')
+    expect(getCoreComponent('RigidBody')).toBe(RigidBodyComponent)
+  })
+
   it('appears in core component list', () => {
     const ids = coreComponents.map((c) => c.id)
     expect(ids).toContain('Collider')
+    expect(ids).toContain('RigidBody')
     expect(globalComponentRegistry.all().map((c) => c.id)).toContain('Collider')
   })
 
   it('provides box defaults via defaults()', () => {
     const data = ColliderComponent.defaults?.()
-    expect(data).toEqual({
+    expect(data).toMatchObject({
       shape: 'box',
       halfExtents: [0.5, 0.5, 0.5],
       offset: [0, 0, 0],
       rotation: [0, 0, 0, 1],
-      isStatic: true,
+      enabled: true,
+      isTrigger: false,
+      layer: 0,
     })
   })
 
@@ -34,10 +43,8 @@ describe('ColliderComponent registry', () => {
     const parsed = ColliderComponent.schema.parse({
       shape: 'sphere',
       radius: 0.75,
-      isStatic: false,
     })
     expect(parsed.shape).toBe('sphere')
     expect(parsed.radius).toBe(0.75)
-    expect(parsed.isStatic).toBe(false)
   })
 })

@@ -10,6 +10,7 @@ import {
   CustomRaycastSteeringSchema,
   DynamicRaycastControllerSchema,
   KinematicCharacterControllerSchema,
+  CharacterBodyControllerSchema,
   PhysicsControllerSchema,
   PointerControlsControllerSchema,
   RevoluteJointVehicleControllerSchema,
@@ -23,6 +24,7 @@ describe('PhysicsControllerSchema', () => {
     ['arcade-vehicle', ArcadeVehicleControllerSchema],
     ['revolute-joint-vehicle', RevoluteJointVehicleControllerSchema],
     ['kinematic-character', KinematicCharacterControllerSchema],
+    ['character-body', CharacterBodyControllerSchema],
     ['pointer-controls', PointerControlsControllerSchema],
   ] as const)('parses the %s discriminated variant', (type, schema) => {
     const controller = PhysicsControllerSchema.parse({ type })

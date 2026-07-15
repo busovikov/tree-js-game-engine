@@ -7,6 +7,11 @@ import {
   StaticSchema,
   TagSchema,
   ColliderSchema,
+  RigidBodySchema,
+  PhysicsAreaSchema,
+  PhysicsJointSchema,
+  CollidersSchema,
+  AnimatableBodySchema,
   PhysicsControllerSchema,
   TransformSchema,
   type Camera,
@@ -17,6 +22,11 @@ import {
   type Static,
   type Tag,
   type Collider,
+  type RigidBody,
+  type PhysicsArea,
+  type PhysicsJoint,
+  type Colliders,
+  type AnimatableBody,
   type PhysicsController,
   type Transform,
   RenderingLayersSchema,
@@ -79,6 +89,36 @@ export const ColliderComponent = {
   defaults: () => ColliderSchema.parse({ shape: 'box' }),
 } satisfies ComponentType<Collider>
 
+export const RigidBodyComponent = {
+  id: 'RigidBody',
+  schema: RigidBodySchema,
+  defaults: () => RigidBodySchema.parse({}),
+} satisfies ComponentType<RigidBody>
+
+export const PhysicsAreaComponent = {
+  id: 'PhysicsArea',
+  schema: PhysicsAreaSchema,
+  defaults: () => PhysicsAreaSchema.parse({}),
+} satisfies ComponentType<PhysicsArea>
+
+export const PhysicsJointComponent = {
+  id: 'PhysicsJoint',
+  schema: PhysicsJointSchema,
+  defaults: () => PhysicsJointSchema.parse({}),
+} satisfies ComponentType<PhysicsJoint>
+
+export const CollidersComponent = {
+  id: 'Colliders',
+  schema: CollidersSchema,
+  defaults: () => CollidersSchema.parse({}),
+} satisfies ComponentType<Colliders>
+
+export const AnimatableBodyComponent = {
+  id: 'AnimatableBody',
+  schema: AnimatableBodySchema,
+  defaults: () => AnimatableBodySchema.parse({}),
+} satisfies ComponentType<AnimatableBody>
+
 export const PhysicsControllerComponent = {
   id: 'PhysicsController',
   schema: PhysicsControllerSchema,
@@ -106,6 +146,11 @@ export const coreComponents = [
   TagComponent,
   StaticComponent,
   ColliderComponent,
+  RigidBodyComponent,
+  PhysicsAreaComponent,
+  PhysicsJointComponent,
+  CollidersComponent,
+  AnimatableBodyComponent,
   PhysicsControllerComponent,
   RenderingLayersComponent,
   RenderTextureComponent,
