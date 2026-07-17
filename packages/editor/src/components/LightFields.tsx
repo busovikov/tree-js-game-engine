@@ -68,7 +68,7 @@ function LightShadowOverrides({
         Per-light overrides. Leave on “Inherit” to use the scene Render Settings.
       </p>
 
-      <label className="mesh-field">
+      <label className="mesh-field" title="Shadow map resolution for this light — higher is sharper but more expensive.">
         <span className="mesh-field__label">Map Size</span>
         <select
           className="mesh-field__input"
@@ -87,7 +87,10 @@ function LightShadowOverrides({
         </select>
       </label>
 
-      <label className="mesh-field mesh-field--checkbox">
+      <label
+        className="mesh-field mesh-field--checkbox"
+        title="Override the scene-wide shadow bias for this light."
+      >
         <input
           type="checkbox"
           checked={bias !== undefined}
@@ -107,7 +110,10 @@ function LightShadowOverrides({
         />
       )}
 
-      <label className="mesh-field mesh-field--checkbox">
+      <label
+        className="mesh-field mesh-field--checkbox"
+        title="Override the scene-wide shadow normal bias for this light."
+      >
         <input
           type="checkbox"
           checked={normalBias !== undefined}
@@ -158,7 +164,7 @@ export const LightFields = memo(function LightFields({
   return (
     <div className="mesh-renderer-fields">
       <div className="mesh-renderer-fields__section">
-        <label className="mesh-field">
+        <label className="mesh-field" title="Light source kind: directional (sun), point (bulb), spot (cone), hemisphere (sky fill).">
           <span className="mesh-field__label">Type</span>
           <select
             className="mesh-field__input"
@@ -180,7 +186,7 @@ export const LightFields = memo(function LightFields({
           onChange={onTemperatureChange}
         />
 
-        <label className="mesh-field">
+        <label className="mesh-field" title="Light color. Manual edit clears the color temperature.">
           <span className="mesh-field__label">Color</span>
           <input
             type="color"
@@ -208,7 +214,10 @@ export const LightFields = memo(function LightFields({
           onChange={(intensity) => patch({ intensity: Math.max(0, intensity) })}
         />
 
-        <label className="mesh-field mesh-field--checkbox">
+        <label
+          className="mesh-field mesh-field--checkbox"
+          title="This light casts shadows (hemisphere lights never do)."
+        >
           <input
             type="checkbox"
             checked={'castShadow' in value ? value.castShadow : false}
@@ -278,7 +287,7 @@ export const LightFields = memo(function LightFields({
       {value.type === 'hemisphere' && (
         <div className="mesh-renderer-fields__section">
           <div className="mesh-renderer-fields__heading">Hemisphere</div>
-          <label className="mesh-field">
+          <label className="mesh-field" title="Color of light coming from above (sky).">
             <span className="mesh-field__label">Sky Color</span>
             <input
               type="color"
@@ -295,7 +304,7 @@ export const LightFields = memo(function LightFields({
               onChange={(e) => patch({ skyColor: e.target.value })}
             />
           </label>
-          <label className="mesh-field">
+          <label className="mesh-field" title="Color of light bouncing from below (ground).">
             <span className="mesh-field__label">Ground Color</span>
             <input
               type="color"

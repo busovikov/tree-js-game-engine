@@ -167,6 +167,7 @@ export const MATERIAL_PROPERTY_SPECS: Record<MaterialType, MaterialPropertySpec[
       min: 0,
       max: 1,
       step: 0.05,
+      hint: 'How metallic the surface appears (0–1).',
     },
     {
       key: 'roughness',
@@ -176,6 +177,7 @@ export const MATERIAL_PROPERTY_SPECS: Record<MaterialType, MaterialPropertySpec[
       min: 0,
       max: 1,
       step: 0.05,
+      hint: 'Surface roughness (0 = mirror, 1 = fully rough).',
     },
     {
       key: 'clearcoat',
@@ -186,6 +188,7 @@ export const MATERIAL_PROPERTY_SPECS: Record<MaterialType, MaterialPropertySpec[
       max: 1,
       step: 0.05,
       group: 'advanced',
+      hint: 'Extra glossy coating layer intensity (car paint effect).',
     },
     {
       key: 'clearcoatRoughness',
@@ -196,6 +199,7 @@ export const MATERIAL_PROPERTY_SPECS: Record<MaterialType, MaterialPropertySpec[
       max: 1,
       step: 0.05,
       group: 'advanced',
+      hint: 'Roughness of the clearcoat layer.',
     },
     {
       key: 'transmission',
@@ -206,6 +210,7 @@ export const MATERIAL_PROPERTY_SPECS: Record<MaterialType, MaterialPropertySpec[
       max: 1,
       step: 0.05,
       group: 'advanced',
+      hint: 'Light transmission for glass-like materials (0 = opaque, 1 = fully transmissive).',
     },
     {
       key: 'thickness',
@@ -215,6 +220,7 @@ export const MATERIAL_PROPERTY_SPECS: Record<MaterialType, MaterialPropertySpec[
       min: 0,
       step: 0.1,
       group: 'advanced',
+      hint: 'Volume thickness for refraction and attenuation.',
     },
     {
       key: 'ior',
@@ -225,6 +231,7 @@ export const MATERIAL_PROPERTY_SPECS: Record<MaterialType, MaterialPropertySpec[
       max: 2.5,
       step: 0.01,
       group: 'advanced',
+      hint: 'Index of refraction (1.5 ≈ glass, 1.33 ≈ water).',
     },
     {
       key: 'attenuationColor',
@@ -232,6 +239,7 @@ export const MATERIAL_PROPERTY_SPECS: Record<MaterialType, MaterialPropertySpec[
       kind: 'color',
       default: '#ffffff',
       group: 'advanced',
+      hint: 'Tint that light picks up while travelling through the volume.',
     },
     {
       key: 'attenuationDistance',
@@ -241,10 +249,11 @@ export const MATERIAL_PROPERTY_SPECS: Record<MaterialType, MaterialPropertySpec[
       min: 0,
       step: 0.1,
       group: 'advanced',
+      hint: 'Distance at which light is fully attenuated inside the volume (0 = off).',
     },
   ],
   toon: [
-    { key: 'color', label: 'Color', kind: 'color', default: '#6699ff' },
+    { key: 'color', label: 'Color', kind: 'color', default: '#6699ff', hint: 'Base color of the material.' },
     {
       key: 'opacity',
       label: 'Opacity',
@@ -253,16 +262,18 @@ export const MATERIAL_PROPERTY_SPECS: Record<MaterialType, MaterialPropertySpec[
       min: 0,
       max: 1,
       step: 0.05,
+      hint: 'Material opacity (0 = transparent, 1 = opaque).',
     },
     {
       key: 'transparent',
       label: 'Transparent',
       kind: 'boolean',
       default: false,
+      hint: 'Enable alpha blending for transparency.',
     },
   ],
   matcap: [
-    { key: 'color', label: 'Color', kind: 'color', default: '#6699ff' },
+    { key: 'color', label: 'Color', kind: 'color', default: '#6699ff', hint: 'Base color of the material.' },
     {
       key: 'opacity',
       label: 'Opacity',
@@ -271,6 +282,7 @@ export const MATERIAL_PROPERTY_SPECS: Record<MaterialType, MaterialPropertySpec[
       min: 0,
       max: 1,
       step: 0.05,
+      hint: 'Material opacity (0 = transparent, 1 = opaque).',
     },
   ],
   normal: [
@@ -279,6 +291,7 @@ export const MATERIAL_PROPERTY_SPECS: Record<MaterialType, MaterialPropertySpec[
       label: 'Flat Shading',
       kind: 'boolean',
       default: false,
+      hint: 'Shade each face flat instead of smooth interpolation.',
     },
     {
       key: 'opacity',
@@ -288,12 +301,14 @@ export const MATERIAL_PROPERTY_SPECS: Record<MaterialType, MaterialPropertySpec[
       min: 0,
       max: 1,
       step: 0.05,
+      hint: 'Material opacity (0 = transparent, 1 = opaque).',
     },
     {
       key: 'transparent',
       label: 'Transparent',
       kind: 'boolean',
       default: false,
+      hint: 'Enable alpha blending for transparency.',
     },
   ],
   depth: [
@@ -302,7 +317,7 @@ export const MATERIAL_PROPERTY_SPECS: Record<MaterialType, MaterialPropertySpec[
       label: 'Depth Packing',
       kind: 'number',
       default: 0,
-      hint: 'basic or rgba — stored as enum in schema',
+      hint: 'Depth encoding mode: basic or rgba (stored as enum in schema).',
     },
     {
       key: 'opacity',
@@ -312,6 +327,7 @@ export const MATERIAL_PROPERTY_SPECS: Record<MaterialType, MaterialPropertySpec[
       min: 0,
       max: 1,
       step: 0.05,
+      hint: 'Material opacity (0 = transparent, 1 = opaque).',
     },
   ],
 }

@@ -186,7 +186,7 @@ export const MeshRendererFields = memo(function MeshRendererFields({
               max={spec.max}
               step={spec.step ?? (Number.isInteger(spec.default) ? 1 : 0.1)}
               disabled={disabled}
-              hint={`${spec.label} geometry parameter.`}
+              hint={spec.hint ?? `${spec.label} geometry parameter.`}
               onChange={(num) => patchParam(spec.key, num)}
             />
           ))}
@@ -221,7 +221,7 @@ export const MeshRendererFields = memo(function MeshRendererFields({
           disabled={disabled}
         />
 
-        <label className="mesh-field mesh-field--checkbox">
+        <label className="mesh-field mesh-field--checkbox" title="This mesh casts shadows onto other objects.">
           <input
             type="checkbox"
             checked={value.castShadow}
@@ -230,7 +230,7 @@ export const MeshRendererFields = memo(function MeshRendererFields({
           />
           <span>Cast Shadow</span>
         </label>
-        <label className="mesh-field mesh-field--checkbox">
+        <label className="mesh-field mesh-field--checkbox" title="Shadows from other objects are drawn on this mesh.">
           <input
             type="checkbox"
             checked={value.receiveShadow}

@@ -65,7 +65,7 @@ function Vec3Fields({
           min={min}
           step={step ?? 0.01}
           disabled={disabled}
-          hint={`${label} component ${index}.`}
+          hint={`${label} — ${'XYZ'[index]} component.`}
           onChange={(num) => onAxisChange(index as 0 | 1 | 2, num)}
         />
       ))}
@@ -91,9 +91,15 @@ export const PhysicsControllerFields = memo(function PhysicsControllerFields({
 
   const typeSelector = (
     <>
-      <div style={{ color: '#aaa', fontSize: 12, marginBottom: 8 }}>Controller type</div>
+      <div
+        style={{ color: '#aaa', fontSize: 12, marginBottom: 8 }}
+        title="Controller preset: vehicle or character behavior driving this entity. Switching resets values to preset defaults."
+      >
+        Controller type
+      </div>
       <select
         className="mesh-renderer-fields__select"
+        title="Controller preset: vehicle or character behavior driving this entity. Switching resets values to preset defaults."
         value={value.type}
         disabled={disabled}
         onChange={(e) => setType(e.target.value as PhysicsControllerType)}
@@ -111,6 +117,7 @@ export const PhysicsControllerFields = memo(function PhysicsControllerFields({
         max={1}
         step={1}
         disabled={disabled}
+        hint="Controller active in play mode (1 = on, 0 = off)."
         onChange={(n) => patch({ enabled: n >= 0.5 })}
       />
       <label className="mesh-field mesh-field--checkbox" title="Whether play mode drives the scene camera to chase/follow this controller.">
@@ -130,11 +137,11 @@ export const PhysicsControllerFields = memo(function PhysicsControllerFields({
       <div className="mesh-renderer-fields">
         {typeSelector}
         <SectionHeading>Dynamic raycast (Rapier)</SectionHeading>
-        <NumberField label="accelerateForce" value={value.accelerateForce} min={0.001} step={0.1} disabled={disabled} onChange={(n) => patch({ accelerateForce: Math.max(0.001, n) })} />
-        <NumberField label="brakeForce" value={value.brakeForce} min={0} step={0.01} disabled={disabled} onChange={(n) => patch({ brakeForce: Math.max(0, n) })} />
-        <NumberField label="steerAngle" value={value.steerAngle} min={0.001} step={0.01} disabled={disabled} onChange={(n) => patch({ steerAngle: Math.max(0.001, n) })} />
-        <NumberField label="chassis.mass" value={value.chassis.mass} min={0.001} step={1} disabled={disabled} onChange={(n) => patch({ chassis: { ...value.chassis, mass: Math.max(0.001, n) } })} />
-        <NumberField label="wheels.radius" value={value.wheels.radius} min={0.001} step={0.01} disabled={disabled} onChange={(n) => patch({ wheels: { ...value.wheels, radius: Math.max(0.001, n) } })} />
+        <NumberField label="accelerateForce" value={value.accelerateForce} min={0.001} step={0.1} disabled={disabled} hint="Engine force applied on throttle input." onChange={(n) => patch({ accelerateForce: Math.max(0.001, n) })} />
+        <NumberField label="brakeForce" value={value.brakeForce} min={0} step={0.01} disabled={disabled} hint="Braking force applied on brake input." onChange={(n) => patch({ brakeForce: Math.max(0, n) })} />
+        <NumberField label="steerAngle" value={value.steerAngle} min={0.001} step={0.01} disabled={disabled} hint="Max steering angle of the front wheels (radians)." onChange={(n) => patch({ steerAngle: Math.max(0.001, n) })} />
+        <NumberField label="chassis.mass" value={value.chassis.mass} min={0.001} step={1} disabled={disabled} hint="Chassis mass in kg." onChange={(n) => patch({ chassis: { ...value.chassis, mass: Math.max(0.001, n) } })} />
+        <NumberField label="wheels.radius" value={value.wheels.radius} min={0.001} step={0.01} disabled={disabled} hint="Raycast wheel radius." onChange={(n) => patch({ wheels: { ...value.wheels, radius: Math.max(0.001, n) } })} />
       </div>
     )
   }
@@ -144,12 +151,12 @@ export const PhysicsControllerFields = memo(function PhysicsControllerFields({
       <div className="mesh-renderer-fields">
         {typeSelector}
         <SectionHeading>Arcade vehicle</SectionHeading>
-        <NumberField label="maxForwardSpeed" value={value.maxForwardSpeed} min={0.001} step={0.1} disabled={disabled} onChange={(n) => patch({ maxForwardSpeed: Math.max(0.001, n) })} />
-        <NumberField label="maxReverseSpeed" value={value.maxReverseSpeed} step={0.1} disabled={disabled} onChange={(n) => patch({ maxReverseSpeed: n })} />
-        <NumberField label="jumpImpulse" value={value.jumpImpulse} min={0.001} step={0.5} disabled={disabled} onChange={(n) => patch({ jumpImpulse: Math.max(0.001, n) })} />
-        <NumberField label="driftSteerRate" value={value.driftSteerRate} min={0.001} step={0.001} disabled={disabled} onChange={(n) => patch({ driftSteerRate: Math.max(0.001, n) })} />
-        <NumberField label="speedLerp" value={value.speedLerp} min={0} max={1} step={0.01} disabled={disabled} onChange={(n) => patch({ speedLerp: clamp01(n) })} />
-        <NumberField label="damping" value={value.damping} min={0.001} step={0.1} disabled={disabled} onChange={(n) => patch({ damping: Math.max(0.001, n) })} />
+        <NumberField label="maxForwardSpeed" value={value.maxForwardSpeed} min={0.001} step={0.1} disabled={disabled} hint="Top speed when driving forward (m/s)." onChange={(n) => patch({ maxForwardSpeed: Math.max(0.001, n) })} />
+        <NumberField label="maxReverseSpeed" value={value.maxReverseSpeed} step={0.1} disabled={disabled} hint="Top speed when reversing (m/s)." onChange={(n) => patch({ maxReverseSpeed: n })} />
+        <NumberField label="jumpImpulse" value={value.jumpImpulse} min={0.001} step={0.5} disabled={disabled} hint="Upward impulse applied on jump input." onChange={(n) => patch({ jumpImpulse: Math.max(0.001, n) })} />
+        <NumberField label="driftSteerRate" value={value.driftSteerRate} min={0.001} step={0.001} disabled={disabled} hint="How fast steering turns the vehicle while drifting." onChange={(n) => patch({ driftSteerRate: Math.max(0.001, n) })} />
+        <NumberField label="speedLerp" value={value.speedLerp} min={0} max={1} step={0.01} disabled={disabled} hint="Acceleration smoothing toward target speed (0 = slow, 1 = instant)." onChange={(n) => patch({ speedLerp: clamp01(n) })} />
+        <NumberField label="damping" value={value.damping} min={0.001} step={0.1} disabled={disabled} hint="Velocity damping — higher stops the vehicle faster." onChange={(n) => patch({ damping: Math.max(0.001, n) })} />
       </div>
     )
   }
@@ -159,12 +166,12 @@ export const PhysicsControllerFields = memo(function PhysicsControllerFields({
       <div className="mesh-renderer-fields">
         {typeSelector}
         <SectionHeading>Kinematic character</SectionHeading>
-        <NumberField label="capsuleRadius" value={value.capsuleRadius} min={0.001} step={0.01} disabled={disabled} onChange={(n) => patch({ capsuleRadius: Math.max(0.001, n) })} />
-        <NumberField label="capsuleHalfHeight" value={value.capsuleHalfHeight} min={0} step={0.01} disabled={disabled} onChange={(n) => patch({ capsuleHalfHeight: Math.max(0, n) })} />
-        <NumberField label="moveSpeed" value={value.moveSpeed} min={0.001} step={0.1} disabled={disabled} onChange={(n) => patch({ moveSpeed: Math.max(0.001, n) })} />
-        <NumberField label="sprintMultiplier" value={value.sprintMultiplier} min={0.001} step={0.1} disabled={disabled} onChange={(n) => patch({ sprintMultiplier: Math.max(0.001, n) })} />
-        <NumberField label="maxJumpHeight" value={value.maxJumpHeight} min={0.001} step={0.1} disabled={disabled} onChange={(n) => patch({ maxJumpHeight: Math.max(0.001, n) })} />
-        <NumberField label="snapToGroundDistance" value={value.snapToGroundDistance} min={0} step={0.01} disabled={disabled} onChange={(n) => patch({ snapToGroundDistance: Math.max(0, n) })} />
+        <NumberField label="capsuleRadius" value={value.capsuleRadius} min={0.001} step={0.01} disabled={disabled} hint="Radius of the character collision capsule." onChange={(n) => patch({ capsuleRadius: Math.max(0.001, n) })} />
+        <NumberField label="capsuleHalfHeight" value={value.capsuleHalfHeight} min={0} step={0.01} disabled={disabled} hint="Half-height of the capsule cylindrical section." onChange={(n) => patch({ capsuleHalfHeight: Math.max(0, n) })} />
+        <NumberField label="moveSpeed" value={value.moveSpeed} min={0.001} step={0.1} disabled={disabled} hint="Walking speed (m/s)." onChange={(n) => patch({ moveSpeed: Math.max(0.001, n) })} />
+        <NumberField label="sprintMultiplier" value={value.sprintMultiplier} min={0.001} step={0.1} disabled={disabled} hint="Move speed multiplier while sprinting." onChange={(n) => patch({ sprintMultiplier: Math.max(0.001, n) })} />
+        <NumberField label="maxJumpHeight" value={value.maxJumpHeight} min={0.001} step={0.1} disabled={disabled} hint="Peak jump height in meters." onChange={(n) => patch({ maxJumpHeight: Math.max(0.001, n) })} />
+        <NumberField label="snapToGroundDistance" value={value.snapToGroundDistance} min={0} step={0.01} disabled={disabled} hint="Max distance to stick the character to the ground when walking down slopes." onChange={(n) => patch({ snapToGroundDistance: Math.max(0, n) })} />
       </div>
     )
   }
@@ -174,13 +181,13 @@ export const PhysicsControllerFields = memo(function PhysicsControllerFields({
       <div className="mesh-renderer-fields">
         {typeSelector}
         <SectionHeading>Character body (move_and_slide)</SectionHeading>
-        <NumberField label="capsuleRadius" value={value.capsuleRadius} min={0.001} step={0.01} disabled={disabled} onChange={(n) => patch({ capsuleRadius: Math.max(0.001, n) })} />
-        <NumberField label="capsuleHalfHeight" value={value.capsuleHalfHeight} min={0} step={0.01} disabled={disabled} onChange={(n) => patch({ capsuleHalfHeight: Math.max(0, n) })} />
-        <NumberField label="moveSpeed" value={value.moveSpeed} min={0.001} step={0.1} disabled={disabled} onChange={(n) => patch({ moveSpeed: Math.max(0.001, n) })} />
-        <NumberField label="floorMaxAngle" value={value.floorMaxAngle} min={0} max={90} step={1} disabled={disabled} onChange={(n) => patch({ floorMaxAngle: Math.max(0, Math.min(90, n)) })} />
-        <NumberField label="floorSnapLength" value={value.floorSnapLength} min={0} step={0.01} disabled={disabled} onChange={(n) => patch({ floorSnapLength: Math.max(0, n) })} />
-        <NumberField label="stepHeight" value={value.stepHeight} min={0} step={0.05} disabled={disabled} onChange={(n) => patch({ stepHeight: Math.max(0, n) })} />
-        <NumberField label="maxJumpHeight" value={value.maxJumpHeight} min={0.001} step={0.1} disabled={disabled} onChange={(n) => patch({ maxJumpHeight: Math.max(0.001, n) })} />
+        <NumberField label="capsuleRadius" value={value.capsuleRadius} min={0.001} step={0.01} disabled={disabled} hint="Radius of the character collision capsule." onChange={(n) => patch({ capsuleRadius: Math.max(0.001, n) })} />
+        <NumberField label="capsuleHalfHeight" value={value.capsuleHalfHeight} min={0} step={0.01} disabled={disabled} hint="Half-height of the capsule cylindrical section." onChange={(n) => patch({ capsuleHalfHeight: Math.max(0, n) })} />
+        <NumberField label="moveSpeed" value={value.moveSpeed} min={0.001} step={0.1} disabled={disabled} hint="Walking speed (m/s)." onChange={(n) => patch({ moveSpeed: Math.max(0.001, n) })} />
+        <NumberField label="floorMaxAngle" value={value.floorMaxAngle} min={0} max={90} step={1} disabled={disabled} hint="Steepest slope (degrees) still treated as walkable floor." onChange={(n) => patch({ floorMaxAngle: Math.max(0, Math.min(90, n)) })} />
+        <NumberField label="floorSnapLength" value={value.floorSnapLength} min={0} step={0.01} disabled={disabled} hint="Max distance to snap the character down to the floor." onChange={(n) => patch({ floorSnapLength: Math.max(0, n) })} />
+        <NumberField label="stepHeight" value={value.stepHeight} min={0} step={0.05} disabled={disabled} hint="Max ledge height the character can step over." onChange={(n) => patch({ stepHeight: Math.max(0, n) })} />
+        <NumberField label="maxJumpHeight" value={value.maxJumpHeight} min={0.001} step={0.1} disabled={disabled} hint="Peak jump height in meters." onChange={(n) => patch({ maxJumpHeight: Math.max(0.001, n) })} />
       </div>
     )
   }
@@ -190,19 +197,30 @@ export const PhysicsControllerFields = memo(function PhysicsControllerFields({
       <div className="mesh-renderer-fields">
         {typeSelector}
         <SectionHeading>Pointer controls</SectionHeading>
-        <label className="mesh-field mesh-field--checkbox">
+        <label className="mesh-field mesh-field--checkbox" title="Allow dragging this body with the pointer in play mode.">
           <input type="checkbox" checked={value.draggable} disabled={disabled} onChange={(e) => patch({ draggable: e.target.checked })} />
           <span className="mesh-field__label">draggable</span>
         </label>
-        <div style={{ color: '#aaa', fontSize: 12, marginBottom: 4 }}>constraintType</div>
-        <select className="mesh-renderer-fields__select" value={value.constraintType} disabled={disabled} onChange={(e) => patch({ constraintType: e.target.value as typeof value.constraintType })}>
+        <div
+          style={{ color: '#aaa', fontSize: 12, marginBottom: 4 }}
+          title="How the pointer attaches to the body while dragging: rigid ball joint, spring, or rope."
+        >
+          constraintType
+        </div>
+        <select
+          className="mesh-renderer-fields__select"
+          title="How the pointer attaches to the body while dragging: rigid ball joint, spring, or rope."
+          value={value.constraintType}
+          disabled={disabled}
+          onChange={(e) => patch({ constraintType: e.target.value as typeof value.constraintType })}
+        >
           <option value="spherical">spherical</option>
           <option value="spring">spring</option>
           <option value="rope">rope</option>
         </select>
-        <NumberField label="springStiffness" value={value.springStiffness} min={0} step={1} disabled={disabled} onChange={(n) => patch({ springStiffness: Math.max(0, n) })} />
-        <NumberField label="springDamping" value={value.springDamping} min={0} step={0.1} disabled={disabled} onChange={(n) => patch({ springDamping: Math.max(0, n) })} />
-        <NumberField label="ropeLength" value={value.ropeLength} min={0.001} step={0.05} disabled={disabled} onChange={(n) => patch({ ropeLength: Math.max(0.001, n) })} />
+        <NumberField label="springStiffness" value={value.springStiffness} min={0} step={1} disabled={disabled} hint="Spring constraint stiffness — higher follows the pointer tighter." onChange={(n) => patch({ springStiffness: Math.max(0, n) })} />
+        <NumberField label="springDamping" value={value.springDamping} min={0} step={0.1} disabled={disabled} hint="Spring constraint damping — reduces oscillation while dragging." onChange={(n) => patch({ springDamping: Math.max(0, n) })} />
+        <NumberField label="ropeLength" value={value.ropeLength} min={0.001} step={0.05} disabled={disabled} hint="Max rope length between pointer and body." onChange={(n) => patch({ ropeLength: Math.max(0.001, n) })} />
       </div>
     )
   }
@@ -212,19 +230,19 @@ export const PhysicsControllerFields = memo(function PhysicsControllerFields({
       <div className="mesh-renderer-fields">
         {typeSelector}
         <SectionHeading>Revolute joint vehicle</SectionHeading>
-        <NumberField label="wheelRadius" value={value.wheelRadius} min={0.001} step={0.01} disabled={disabled} onChange={(n) => patch({ wheelRadius: Math.max(0.001, n) })} />
-        <NumberField label="wheelHalfHeight" value={value.wheelHalfHeight} min={0.001} step={0.01} disabled={disabled} onChange={(n) => patch({ wheelHalfHeight: Math.max(0.001, n) })} />
-        <NumberField label="wheelMass" value={value.wheelMass} min={0.001} max={value.chassis.mass} step={0.05} disabled={disabled} onChange={(n) => patch({ wheelMass: Math.min(value.chassis.mass, Math.max(0.001, n)) })} />
-        <NumberField label="hubMass" value={value.hubMass} min={0.001} max={value.chassis.mass} step={0.05} disabled={disabled} onChange={(n) => patch({ hubMass: Math.min(value.chassis.mass, Math.max(0.001, n)) })} />
-        <NumberField label="suspensionRestLength" value={value.suspensionRestLength} min={0} max={5} step={0.05} disabled={disabled} onChange={(n) => patch({ suspensionRestLength: Math.min(5, Math.max(0, n)) })} />
-        <NumberField label="suspensionStiffness" value={value.suspensionStiffness} min={0.001} step={10} disabled={disabled} onChange={(n) => patch({ suspensionStiffness: Math.max(0.001, n) })} />
-        <NumberField label="suspensionDamping" value={value.suspensionDamping} min={0.001} step={5} disabled={disabled} onChange={(n) => patch({ suspensionDamping: Math.max(0.001, n) })} />
-        <NumberField label="suspensionTravel" value={value.suspensionTravel} min={0.001} max={5} step={0.05} disabled={disabled} onChange={(n) => patch({ suspensionTravel: Math.min(5, Math.max(0.001, n)) })} />
-        <NumberField label="drivenTargetVelocity" value={value.drivenTargetVelocity} min={0.001} max={500} step={10} disabled={disabled} onChange={(n) => patch({ drivenTargetVelocity: Math.min(500, Math.max(0.001, n)) })} />
-        <NumberField label="drivenFactor" value={value.drivenFactor} min={0.001} step={10} disabled={disabled} onChange={(n) => patch({ drivenFactor: Math.max(0.001, n) })} />
-        <NumberField label="steerAngle" value={value.steerAngle} min={0.001} step={0.05} disabled={disabled} onChange={(n) => patch({ steerAngle: Math.max(0.001, n) })} />
-        <NumberField label="steerStiffness" value={value.steerStiffness} min={0.001} step={1} disabled={disabled} onChange={(n) => patch({ steerStiffness: Math.max(0.001, n) })} />
-        <NumberField label="steerDamping" value={value.steerDamping} min={0} step={0.5} disabled={disabled} onChange={(n) => patch({ steerDamping: Math.max(0, n) })} />
+        <NumberField label="wheelRadius" value={value.wheelRadius} min={0.001} step={0.01} disabled={disabled} hint="Wheel collider radius." onChange={(n) => patch({ wheelRadius: Math.max(0.001, n) })} />
+        <NumberField label="wheelHalfHeight" value={value.wheelHalfHeight} min={0.001} step={0.01} disabled={disabled} hint="Half-width of the wheel cylinder." onChange={(n) => patch({ wheelHalfHeight: Math.max(0.001, n) })} />
+        <NumberField label="wheelMass" value={value.wheelMass} min={0.001} max={value.chassis.mass} step={0.05} disabled={disabled} hint="Mass of each wheel body (capped by chassis mass)." onChange={(n) => patch({ wheelMass: Math.min(value.chassis.mass, Math.max(0.001, n)) })} />
+        <NumberField label="hubMass" value={value.hubMass} min={0.001} max={value.chassis.mass} step={0.05} disabled={disabled} hint="Mass of each steering hub body (capped by chassis mass)." onChange={(n) => patch({ hubMass: Math.min(value.chassis.mass, Math.max(0.001, n)) })} />
+        <NumberField label="suspensionRestLength" value={value.suspensionRestLength} min={0} max={5} step={0.05} disabled={disabled} hint="Suspension length at rest (m)." onChange={(n) => patch({ suspensionRestLength: Math.min(5, Math.max(0, n)) })} />
+        <NumberField label="suspensionStiffness" value={value.suspensionStiffness} min={0.001} step={10} disabled={disabled} hint="Suspension spring stiffness — higher holds the chassis firmer." onChange={(n) => patch({ suspensionStiffness: Math.max(0.001, n) })} />
+        <NumberField label="suspensionDamping" value={value.suspensionDamping} min={0.001} step={5} disabled={disabled} hint="Suspension damping — reduces bounce." onChange={(n) => patch({ suspensionDamping: Math.max(0.001, n) })} />
+        <NumberField label="suspensionTravel" value={value.suspensionTravel} min={0.001} max={5} step={0.05} disabled={disabled} hint="Max suspension compression/extension range (m)." onChange={(n) => patch({ suspensionTravel: Math.min(5, Math.max(0.001, n)) })} />
+        <NumberField label="drivenTargetVelocity" value={value.drivenTargetVelocity} min={0.001} max={500} step={10} disabled={disabled} hint="Target angular velocity of driven wheels at full throttle." onChange={(n) => patch({ drivenTargetVelocity: Math.min(500, Math.max(0.001, n)) })} />
+        <NumberField label="drivenFactor" value={value.drivenFactor} min={0.001} step={10} disabled={disabled} hint="Motor torque factor pushing wheels toward target velocity." onChange={(n) => patch({ drivenFactor: Math.max(0.001, n) })} />
+        <NumberField label="steerAngle" value={value.steerAngle} min={0.001} step={0.05} disabled={disabled} hint="Max steering angle of the hubs (radians)." onChange={(n) => patch({ steerAngle: Math.max(0.001, n) })} />
+        <NumberField label="steerStiffness" value={value.steerStiffness} min={0.001} step={1} disabled={disabled} hint="Steering motor stiffness — how fast hubs reach the target angle." onChange={(n) => patch({ steerStiffness: Math.max(0.001, n) })} />
+        <NumberField label="steerDamping" value={value.steerDamping} min={0} step={0.5} disabled={disabled} hint="Steering motor damping — smooths steering motion." onChange={(n) => patch({ steerDamping: Math.max(0, n) })} />
       </div>
     )
   }
@@ -263,9 +281,15 @@ export const PhysicsControllerFields = memo(function PhysicsControllerFields({
   return (
     <div className="mesh-renderer-fields">
       <div className="mesh-renderer-fields__section">
-        <div style={{ color: '#aaa', fontSize: 12, marginBottom: 8 }}>Controller type</div>
+        <div
+          style={{ color: '#aaa', fontSize: 12, marginBottom: 8 }}
+          title="Controller preset: vehicle or character behavior driving this entity. Switching resets values to preset defaults."
+        >
+          Controller type
+        </div>
         <select
           className="mesh-renderer-fields__select"
+          title="Controller preset: vehicle or character behavior driving this entity. Switching resets values to preset defaults."
           value={value.type}
           disabled={disabled}
           onChange={(e) => setType(e.target.value as PhysicsControllerType)}
@@ -382,6 +406,7 @@ export const PhysicsControllerFields = memo(function PhysicsControllerFields({
           min={0.001}
           step={1}
           disabled={disabled}
+          hint="Suspension spring stiffness — higher holds the chassis firmer."
           onChange={(stiffness) => patchSuspension({ stiffness: Math.max(0.001, stiffness) })}
         />
         <NumberField
@@ -390,6 +415,7 @@ export const PhysicsControllerFields = memo(function PhysicsControllerFields({
           min={0.001}
           step={0.01}
           disabled={disabled}
+          hint="Suspension length at rest (m)."
           onChange={(restLength) => patchSuspension({ restLength: Math.max(0.001, restLength) })}
         />
         <NumberField
@@ -398,6 +424,7 @@ export const PhysicsControllerFields = memo(function PhysicsControllerFields({
           min={0}
           step={0.01}
           disabled={disabled}
+          hint="Max suspension compression/extension range (m)."
           onChange={(maxTravel) => patchSuspension({ maxTravel: Math.max(0, maxTravel) })}
         />
         <NumberField
@@ -406,6 +433,7 @@ export const PhysicsControllerFields = memo(function PhysicsControllerFields({
           min={0.001}
           step={0.1}
           disabled={disabled}
+          hint="Tire grip — higher slips less in corners."
           onChange={(frictionSlip) => patchSuspension({ frictionSlip: Math.max(0.001, frictionSlip) })}
         />
         <NumberField
@@ -414,6 +442,7 @@ export const PhysicsControllerFields = memo(function PhysicsControllerFields({
           min={0.001}
           step={0.1}
           disabled={disabled}
+          hint="Damping while the suspension extends (rebound)."
           onChange={(dampingRelaxation) =>
             patchSuspension({ dampingRelaxation: Math.max(0.001, dampingRelaxation) })
           }
@@ -424,6 +453,7 @@ export const PhysicsControllerFields = memo(function PhysicsControllerFields({
           min={0.001}
           step={0.1}
           disabled={disabled}
+          hint="Damping while the suspension compresses."
           onChange={(dampingCompression) =>
             patchSuspension({ dampingCompression: Math.max(0.001, dampingCompression) })
           }
@@ -434,6 +464,7 @@ export const PhysicsControllerFields = memo(function PhysicsControllerFields({
           min={0}
           step={0.001}
           disabled={disabled}
+          hint="How much lateral force tilts the chassis (0 = no body roll)."
           onChange={(rollInfluence) => patchSuspension({ rollInfluence: Math.max(0, rollInfluence) })}
         />
       </div>
@@ -472,6 +503,7 @@ export const PhysicsControllerFields = memo(function PhysicsControllerFields({
           min={0.001}
           step={1}
           disabled={disabled}
+          hint="Braking force applied on brake input."
           onChange={(brakeForce) => patchBrakes({ brakeForce: Math.max(0.001, brakeForce) })}
         />
       </div>

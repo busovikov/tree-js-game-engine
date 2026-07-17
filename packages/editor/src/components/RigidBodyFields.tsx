@@ -195,9 +195,18 @@ export const RigidBodyFields = memo(function RigidBodyFields({
 
       {caps.axisLock && (value.type === 'dynamic' || value.type === 'kinematic') && (
         <div className="mesh-renderer-fields__section">
-          <div style={{ color: '#aaa', fontSize: 12, marginBottom: 4 }}>Lock position</div>
+          <div
+            style={{ color: '#aaa', fontSize: 12, marginBottom: 4 }}
+            title="Prevent physics from moving the body along selected axes."
+          >
+            Lock position
+          </div>
           {(['X', 'Y', 'Z'] as const).map((label, index) => (
-            <label key={`lock-pos-${label}`} className="mesh-field mesh-field--checkbox">
+            <label
+              key={`lock-pos-${label}`}
+              className="mesh-field mesh-field--checkbox"
+              title={`Freeze movement along the ${label} axis.`}
+            >
               <input
                 type="checkbox"
                 aria-label={`Lock position ${label}`}
@@ -208,9 +217,18 @@ export const RigidBodyFields = memo(function RigidBodyFields({
               <span className="mesh-field__label">{label}</span>
             </label>
           ))}
-          <div style={{ color: '#aaa', fontSize: 12, margin: '8px 0 4px' }}>Lock rotation</div>
+          <div
+            style={{ color: '#aaa', fontSize: 12, margin: '8px 0 4px' }}
+            title="Prevent physics from rotating the body around selected axes."
+          >
+            Lock rotation
+          </div>
           {(['X', 'Y', 'Z'] as const).map((label, index) => (
-            <label key={`lock-rot-${label}`} className="mesh-field mesh-field--checkbox">
+            <label
+              key={`lock-rot-${label}`}
+              className="mesh-field mesh-field--checkbox"
+              title={`Freeze rotation around the ${label} axis.`}
+            >
               <input
                 type="checkbox"
                 aria-label={`Lock rotation ${label}`}
@@ -226,7 +244,12 @@ export const RigidBodyFields = memo(function RigidBodyFields({
 
       {caps.centerOfMass && value.type === 'dynamic' && (
         <div className="mesh-renderer-fields__section">
-          <div style={{ color: '#aaa', fontSize: 12, marginBottom: 4 }}>Center of mass (local)</div>
+          <div
+            style={{ color: '#aaa', fontSize: 12, marginBottom: 4 }}
+            title="Shift the balance point of the body in local space."
+          >
+            Center of mass (local)
+          </div>
           {[0, 1, 2].map((index) => (
             <NumberField
               key={`com-${index}`}
@@ -234,7 +257,7 @@ export const RigidBodyFields = memo(function RigidBodyFields({
               value={value.centerOfMass?.[index] ?? 0}
               step={0.05}
               disabled={disabled}
-              hint="Local center-of-mass offset."
+              hint={`Center-of-mass local ${'XYZ'[index]} offset.`}
               onChange={(num) => patchCenterOfMass(index as 0 | 1 | 2, num)}
             />
           ))}

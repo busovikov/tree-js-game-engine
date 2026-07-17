@@ -38,7 +38,10 @@ export const CollidersFields = memo(function CollidersFields({
 
   return (
     <div className="mesh-renderer-fields">
-      <label className="mesh-field mesh-field--checkbox">
+      <label
+        className="mesh-field mesh-field--checkbox"
+        title="Disable all colliders in this component without removing them."
+      >
         <input
           type="checkbox"
           aria-label="Colliders enabled"
@@ -57,7 +60,12 @@ export const CollidersFields = memo(function CollidersFields({
         <div key={`collider-${index}`} className="mesh-renderer-fields__section">
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
             <span style={{ color: '#aaa', fontSize: 12 }}>Collider {index + 1}</span>
-            <button type="button" disabled={disabled} onClick={() => removeCollider(index)}>
+            <button
+              type="button"
+              title="Remove this collider from the list."
+              disabled={disabled}
+              onClick={() => removeCollider(index)}
+            >
               Remove
             </button>
           </div>
@@ -71,7 +79,12 @@ export const CollidersFields = memo(function CollidersFields({
         </div>
       ))}
 
-      <button type="button" disabled={disabled} onClick={addCollider}>
+      <button
+        type="button"
+        title="Append a new box collider to the list."
+        disabled={disabled}
+        onClick={addCollider}
+      >
         Add collider
       </button>
     </div>

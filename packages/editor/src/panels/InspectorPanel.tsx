@@ -53,6 +53,7 @@ import { EDITOR_PHYSICS_CAPABILITIES } from '../physics/editor-physics-capabilit
 import { currentMeshRevision, type ColliderBakeMode } from '../viewport/collider-mesh-bake.js'
 import { SchemaFields } from '../components/SchemaFields.js'
 import { InspectorComponentSection } from '../components/InspectorComponentSection.js'
+import { AddComponentMenu } from '../components/AddComponentMenu.js'
 import { normalizeMeshRenderer, normalizeMeshMaterial, defaultGeometryParams, isComponentEnabled, withComponentEnabled } from '@haku/schema'
 import { eulerAxisToQuat, quatToEulerDegrees } from '../transform/euler-degrees.js'
 import {
@@ -576,6 +577,24 @@ export const InspectorPanel = memo(function InspectorPanel() {
     [world, worldRevision],
   )
 
+  const addableItems = useMemo(() => {
+    if (!world || selectedIds.length === 0) return []
+    return ADDABLE_COMPONENTS.map(({ id, component, label }) => ({
+      id,
+      label,
+      disabled: selectedIds.every((entityId) => world.hasComponent(entityId, component)),
+    }))
+  }, [world, selectedIds, worldRevision])
+
+  const handleAddComponent = useCallback(
+    (id: string) => {
+      const entry = ADDABLE_COMPONENTS.find((item) => item.id === id)
+      if (!entry) return
+      addComponent(entry.component)
+    },
+    [addComponent],
+  )
+
   if (!world || selectedIds.length === 0) {
     return (
       <div className="haku-inspector haku-inspector--empty">
@@ -589,6 +608,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
 
   return (
     <div className="haku-inspector">
+      <div className="haku-inspector__scroll">
       <div className="haku-inspector__entity-header">
         <input
           type="text"
@@ -730,6 +750,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                   <button
                     type="button"
                     className="haku-inspector__active-camera-btn"
+                    title="Make this camera the one the scene renders through in play mode."
                     disabled={!canEdit}
                     onClick={() => commitActiveSceneCamera(targets[0]!)}
                   >
@@ -871,27 +892,12 @@ export const InspectorPanel = memo(function InspectorPanel() {
         )
       })}
 
+      </div>
+
       {canEdit && (
-        <section className="haku-inspector__add-section">
-          <h4 className="haku-inspector__add-title">Add Component</h4>
-          <div className="haku-inspector__add-buttons">
-            {ADDABLE_COMPONENTS.map(({ id, component, label }) => {
-              const allHave = selectedIds.every((entityId) => world.hasComponent(entityId, component))
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  disabled={allHave}
-                  data-testid={`add-component-${id.toLowerCase()}`}
-                  className={`haku-inspector__add-btn${allHave ? ' haku-inspector__add-btn--present' : ''}`}
-                  onClick={() => addComponent(component)}
-                >
-                  {label}
-                </button>
-              )
-            })}
-          </div>
-        </section>
+        <div className="haku-inspector__footer">
+          <AddComponentMenu items={addableItems} onAdd={handleAddComponent} />
+        </div>
       )}
     </div>
   )

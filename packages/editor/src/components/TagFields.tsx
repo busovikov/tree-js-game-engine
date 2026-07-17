@@ -105,6 +105,7 @@ export const TagFields = memo(function TagFields({
     <div className="haku-tag-fields">
       <div
         className={`haku-tag-fields__editor${disabled ? ' haku-tag-fields__editor--disabled' : ''}`}
+        title="Entity tags for grouping and script lookups. Space or blur commits a tag; Backspace removes the last one."
         onClick={focusInput}
       >
         {tags.map((tag, index) => (

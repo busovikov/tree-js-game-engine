@@ -3,6 +3,16 @@ import { coreComponentSchemas } from '@haku/schema'
 import { NumberField } from './NumberField.js'
 import './mesh-renderer-fields.css'
 
+// Human-readable tooltips for schema-driven fields, keyed by "ComponentId.fieldKey".
+const FIELD_HINTS: Record<string, string> = {
+  'ScriptRef.path': 'Project path of the script that runs on this entity in play mode.',
+  'ScriptRef.enabled': 'Disable the script without removing it.',
+}
+
+function fieldHint(componentId: string, key: string, fallback: string): string {
+  return FIELD_HINTS[`${componentId}.${key}`] ?? fallback
+}
+
 function StringField({
   label,
   value,
@@ -17,7 +27,7 @@ function StringField({
   hint?: string
 }) {
   return (
-    <label className="mesh-field">
+    <label className="mesh-field" title={hint}>
       <span className="mesh-field__label" title={hint}>
         {label}
       </span>
@@ -54,7 +64,10 @@ export const SchemaFields = memo(function SchemaFields({
         if (fieldSchema._def?.typeName === 'ZodTuple' && Array.isArray(value)) {
           return (
             <div key={key} style={{ marginBottom: 8 }}>
-              <div style={{ color: '#aaa', fontSize: 12, marginBottom: 4 }} title={`${key} vector components.`}>
+              <div
+                style={{ color: '#aaa', fontSize: 12, marginBottom: 4 }}
+                title={fieldHint(componentId, key, `${key} vector components.`)}
+              >
                 {key}
               </div>
               {value.map((n, i) => (
@@ -63,7 +76,7 @@ export const SchemaFields = memo(function SchemaFields({
                   label={`${key}[${i}]`}
                   value={Number(n)}
                   disabled={disabled}
-                  hint={`${key} component ${i}.`}
+                  hint={fieldHint(componentId, key, `${key} — ${'XYZW'[i] ?? i} component.`)}
                   onChange={(num) => {
                     const next = [...(value as number[])] as number[]
                     next[i] = num
@@ -82,7 +95,7 @@ export const SchemaFields = memo(function SchemaFields({
               label={key}
               value={value}
               disabled={disabled}
-              hint={`${key} property.`}
+              hint={fieldHint(componentId, key, `Numeric value of ${key}.`)}
               onChange={(num) => onChange({ ...data, [key]: num })}
             />
           )
@@ -95,7 +108,7 @@ export const SchemaFields = memo(function SchemaFields({
               label={key}
               value={value}
               disabled={disabled}
-              hint={`${key} property.`}
+              hint={fieldHint(componentId, key, `Text value of ${key}.`)}
               onChange={(str) => onChange({ ...data, [key]: str })}
             />
           )
@@ -104,8 +117,15 @@ export const SchemaFields = memo(function SchemaFields({
         if (fieldSchema._def?.typeName === 'ZodEnum' && typeof value === 'string') {
           const options = fieldSchema._def.values ?? []
           return (
-            <label key={key} className="mesh-field">
-              <span className="mesh-field__label" title={`${key} enum value.`}>
+            <label
+              key={key}
+              className="mesh-field"
+              title={fieldHint(componentId, key, `Selected mode for ${key}.`)}
+            >
+              <span
+                className="mesh-field__label"
+                title={fieldHint(componentId, key, `Selected mode for ${key}.`)}
+              >
                 {key}
               </span>
               <select

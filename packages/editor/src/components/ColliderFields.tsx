@@ -132,6 +132,7 @@ export const ColliderFields = memo(function ColliderFields({
         </p>
         <button
           type="button"
+          title="Generate collider geometry (convex hull or trimesh) from the visible render mesh."
           disabled={disabled || !colliderBakeService || !entityId}
           onClick={() => setBakeDialogOpen(true)}
         >
@@ -163,7 +164,10 @@ export const ColliderFields = memo(function ColliderFields({
 
       {isResizableColliderShape(value.shape) && (
         <div className="mesh-renderer-fields__section">
-          <label className="mesh-field mesh-field--checkbox">
+          <label
+            className="mesh-field mesh-field--checkbox"
+            title="Scale tool in the viewport resizes this collider instead of the entity transform."
+          >
             <input
               type="checkbox"
               aria-label="Resize collider in viewport"
@@ -273,7 +277,7 @@ export const ColliderFields = memo(function ColliderFields({
             label={`offset[${index}]`}
             value={component}
             disabled={disabled}
-            hint={`Collider offset component ${index}.`}
+            hint={`Collider local offset along ${'XYZ'[index]}.`}
             onChange={(num) => patchVec3('offset', index as 0 | 1 | 2, num)}
           />
         ))}
@@ -292,7 +296,7 @@ export const ColliderFields = memo(function ColliderFields({
               min={0.001}
               step={0.05}
               disabled={disabled}
-              hint={`Box half-extent component ${index}.`}
+              hint={`Box half-size along ${'XYZ'[index]}.`}
               onChange={(num) => patchHalfExtents(index as 0 | 1 | 2, num)}
             />
           ))}

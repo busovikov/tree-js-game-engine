@@ -84,12 +84,21 @@ export const PhysicsAreaFields = memo(function PhysicsAreaFields({
       </div>
 
       <div className="mesh-renderer-fields__section">
-        <div style={{ color: '#aaa', fontSize: 12, marginBottom: 4 }}>Gravity override (m/s²)</div>
+        <div
+          style={{ color: '#aaa', fontSize: 12, marginBottom: 4 }}
+          title="Replaces world gravity for dynamic bodies inside the area."
+        >
+          Gravity override (m/s²)
+        </div>
         <p className="mesh-renderer-fields__hint" style={{ marginBottom: 8 }}>
           Optional directional gravity applied to overlapping dynamic bodies.
         </p>
         {[0, 1, 2].map((index) => (
-          <label key={`gravity-${index}`} className="mesh-field">
+          <label
+            key={`gravity-${index}`}
+            className="mesh-field"
+            title={`Override gravity along ${'XYZ'[index]} (m/s²).`}
+          >
             <span className="mesh-field__label">{`gravity[${index}]`}</span>
             <input
               className="mesh-field__input"

@@ -31,7 +31,7 @@ export const NumberField = memo(function NumberField({
   const isDisabled = disabled || isMixed
 
   return (
-    <label className="mesh-field">
+    <label className="mesh-field" title={hint}>
       <DraggableNumberLabel
         className={labelClassName}
         value={value}
