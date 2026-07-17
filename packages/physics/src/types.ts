@@ -36,6 +36,12 @@ export interface RigidBodyDescriptor {
   lockPosition?: readonly [boolean, boolean, boolean]
   lockRotation?: readonly [boolean, boolean, boolean]
   centerOfMass?: Vec3
+  /**
+   * Extra velocity-solver iterations for this body's island (Rapier
+   * `RigidBody.setAdditionalSolverIterations`). Raises stability for stiff joint+contact systems
+   * such as jointed vehicles. Default 0.
+   */
+  additionalSolverIterations?: number
 }
 
 export interface PhysicsShapeSpawnOptions {

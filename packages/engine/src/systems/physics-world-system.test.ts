@@ -207,6 +207,10 @@ class GravityTestBackend implements IPhysicsBackend {
 
   setRevoluteMotorPosition(): void {}
 
+  createPrismaticSpringJoint(): never {
+    throw new Error('not implemented in test backend')
+  }
+
   createSceneJoint(): never {
     throw new Error('not implemented in test backend')
   }

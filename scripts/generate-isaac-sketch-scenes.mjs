@@ -676,56 +676,102 @@ function buildRevoluteJointVehicle() {
     return seed / 4294967296
   }
   const randBetween = (a, b) => rand() * (b - a) + a
+  // Drop the props off to the +X/+Z side — clear of the driving lane and the ramp/bumps (along −X),
+  // so nothing spawns overlapping a static box (which would trap Rapier with a penetration blow-up).
   const spherePositions = Array.from({ length: 5 }, () => [
-    randBetween(-5, -20),
+    randBetween(8, 22),
     randBetween(1, 5),
-    randBetween(-5, 5),
+    randBetween(8, 22),
   ])
   const sphereRadii = Array.from({ length: 5 }, () => randBetween(0.5, 1.2))
+
+  // A ~14° ramp ahead of the car (it drives toward −X) to show drive + suspension over a climb.
+  const rampTilt = [0, 0, Math.sin((7 * Math.PI) / 180), Math.cos((7 * Math.PI) / 180)]
+  // Obstacles (ramp/bumps/props) are opt-in: the revolute car's spring suspension is stable on its own
+  // but still marginal enough that a busy scene can tip it into a solver divergence. Re-enable with
+  // REVOLUTE_OBSTACLES=1 once the suspension is hardened to be fully scene-independent.
+  const INCLUDE_OBSTACLES = process.env.REVOLUTE_OBSTACLES === '1'
 
   const entities = [
     camera(camId, [30, 30, 0], 60),
     sun(eid(), [-10, 30, 20]),
     staticBox([0, -2, 0], [75, 1, 75], '#444444'),
-    entity(vehicleId, 'RevoluteVehicle', null, [
-      transform([0, 1, 0]),
-      {
-        type: 'PhysicsController',
-        data: {
-          type: 'revolute-joint-vehicle',
-          enabled: true,
-          chassis: { mass: 5, halfExtents: [1.75, 0.25, 0.75], lift: 0.5, angularDamping: 0.35, inertiaScale: 3 },
-          wheels: [
-            { axlePosition: [-1.2, -0.6, 0.7], wheelPosition: [-1.2, -0.6, 1], isSteered: true, isDriven: false },
-            { axlePosition: [-1.2, -0.6, -0.7], wheelPosition: [-1.2, -0.6, -1], isSteered: true, isDriven: false },
-            { axlePosition: [1.2, -0.6, 0.7], wheelPosition: [1.2, -0.6, 1], isSteered: false, isDriven: true },
-            { axlePosition: [1.2, -0.6, -0.7], wheelPosition: [1.2, -0.6, -1], isSteered: false, isDriven: true },
-          ],
-          wheelRadius: 0.125,
-          wheelHalfHeight: 0.125,
-          drivenTargetVelocity: 1000,
-          drivenFactor: 10,
-          steerAngle: 0.6,
-          steerStiffness: 100,
-          steerDamping: 10,
-        },
-      },
-      boxMesh(3.5, 0.5, 1.5, '#339af0'),
-    ]),
-    ...Array.from({ length: 12 }, (_, idx) =>
-      dynamicBox([-28, 0.2, 11 - idx * 2], [0.5, 1, 0.5], 'orange'),
-    ),
-    ...spherePositions.map(([x, y, z], idx) => {
-      const r = sphereRadii[idx]
-      return entity(eid(), `Sphere${idx}`, null, [
-        transform([x, y, z]),
-        sphereMesh(r, 'orange'),
+    ...(INCLUDE_OBSTACLES
+      ? [
+          // Ramp + low bumps to exercise the compliant suspension during manual testing.
+          staticBox([-16, -0.6, 0], [4, 0.4, 6], '#5c6b7a', rampTilt),
+          staticBox([-6, -0.95, 0], [0.6, 0.1, 6], '#6b5c7a'),
+          staticBox([-9, -0.95, 0], [0.6, 0.12, 6], '#6b5c7a'),
+        ]
+      : []),
+    (() => {
+      // Front wheels steer (knuckle about Y); rear wheels are driven (revolute about the lateral axle).
+      // Wide track / long base, mount at chassis bottom; each wheel hangs from a prismatic-Y spring
+      // strut so all four stay planted and the chassis rides level.
+      const wheelDefs = [
+        { wheelPosition: [-1.3, -0.2, 1.3], isSteered: true, isDriven: false },
+        { wheelPosition: [-1.3, -0.2, -1.3], isSteered: true, isDriven: false },
+        { wheelPosition: [1.3, -0.2, 1.3], isSteered: false, isDriven: true },
+        { wheelPosition: [1.3, -0.2, -1.3], isSteered: false, isDriven: true },
+      ]
+      const wheelRadius = 0.4
+      const wheelHalfHeight = 0.15
+      // Spawn just above rest: mount at chassis_y−0.2, wheels droop ~0.5 onto the platform (top y=−1).
+      return entity(vehicleId, 'RevoluteVehicle', null, [
+        transform([0, 0.2, 0]),
         {
-          type: 'Collider',
-          data: { shape: 'sphere', radius: r, isStatic: false, offset: [0, 0, 0], rotation: [0, 0, 0, 1] },
+          type: 'PhysicsController',
+          data: {
+            type: 'revolute-joint-vehicle',
+            enabled: true,
+            // Well-conditioned: heavy low-CoM chassis, high angular damping for yaw stability.
+            chassis: { mass: 40, halfExtents: [1.6, 0.2, 1.2], lift: 0, angularDamping: 4, inertiaScale: 6 },
+            wheels: wheelDefs,
+            wheelRadius,
+            wheelHalfHeight,
+            wheelMass: 1.5,
+            hubMass: 3,
+            suspensionRestLength: 0.5,
+            suspensionStiffness: 800,
+            suspensionDamping: 320,
+            suspensionTravel: 0.4,
+            drivenTargetVelocity: 40,
+            drivenFactor: 2500,
+            steerAngle: 0.5,
+            steerStiffness: 200000,
+            steerDamping: 20000,
+          },
         },
+        boxMesh(3.2, 0.4, 2.4, '#339af0'),
       ])
-    }),
+    })(),
+    // Wheel visuals — child meshes named Wheel0..3 (VehicleVisualSyncSystem drives them from the
+    // wheel bodies, in the same order as the controller `wheels[]`). Cylinders match the wheel colliders.
+    ...Array.from({ length: 4 }, (_, i) =>
+      entity(eid(), `Wheel${i}`, vehicleId, [
+        transform([0, 0, 0]),
+        cylinderMesh(0.4, 0.4, 0.3, '#212529'),
+      ]),
+    ),
+    // Unrelated dynamic props off to the side — the controller is indifferent to them (scene-independent).
+    ...(INCLUDE_OBSTACLES
+      ? [
+          ...Array.from({ length: 12 }, (_, idx) =>
+            dynamicBox([-28, 0.2, 11 - idx * 2], [0.5, 1, 0.5], 'orange'),
+          ),
+          ...spherePositions.map(([x, y, z], idx) => {
+            const r = sphereRadii[idx]
+            return entity(eid(), `Sphere${idx}`, null, [
+              transform([x, y, z]),
+              sphereMesh(r, 'orange'),
+              {
+                type: 'Collider',
+                data: { shape: 'sphere', radius: r, isStatic: false, offset: [0, 0, 0], rotation: [0, 0, 0, 1] },
+              },
+            ])
+          }),
+        ]
+      : []),
   ]
   return scene('Isaac — Revolute Joint Vehicle', camId, entities)
 }

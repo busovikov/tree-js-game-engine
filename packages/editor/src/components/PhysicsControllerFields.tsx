@@ -213,9 +213,18 @@ export const PhysicsControllerFields = memo(function PhysicsControllerFields({
         {typeSelector}
         <SectionHeading>Revolute joint vehicle</SectionHeading>
         <NumberField label="wheelRadius" value={value.wheelRadius} min={0.001} step={0.01} disabled={disabled} onChange={(n) => patch({ wheelRadius: Math.max(0.001, n) })} />
-        <NumberField label="drivenTargetVelocity" value={value.drivenTargetVelocity} min={0.001} step={10} disabled={disabled} onChange={(n) => patch({ drivenTargetVelocity: Math.max(0.001, n) })} />
-        <NumberField label="drivenFactor" value={value.drivenFactor} min={0.001} step={0.5} disabled={disabled} onChange={(n) => patch({ drivenFactor: Math.max(0.001, n) })} />
+        <NumberField label="wheelHalfHeight" value={value.wheelHalfHeight} min={0.001} step={0.01} disabled={disabled} onChange={(n) => patch({ wheelHalfHeight: Math.max(0.001, n) })} />
+        <NumberField label="wheelMass" value={value.wheelMass} min={0.001} max={value.chassis.mass} step={0.05} disabled={disabled} onChange={(n) => patch({ wheelMass: Math.min(value.chassis.mass, Math.max(0.001, n)) })} />
+        <NumberField label="hubMass" value={value.hubMass} min={0.001} max={value.chassis.mass} step={0.05} disabled={disabled} onChange={(n) => patch({ hubMass: Math.min(value.chassis.mass, Math.max(0.001, n)) })} />
+        <NumberField label="suspensionRestLength" value={value.suspensionRestLength} min={0} max={5} step={0.05} disabled={disabled} onChange={(n) => patch({ suspensionRestLength: Math.min(5, Math.max(0, n)) })} />
+        <NumberField label="suspensionStiffness" value={value.suspensionStiffness} min={0.001} step={10} disabled={disabled} onChange={(n) => patch({ suspensionStiffness: Math.max(0.001, n) })} />
+        <NumberField label="suspensionDamping" value={value.suspensionDamping} min={0.001} step={5} disabled={disabled} onChange={(n) => patch({ suspensionDamping: Math.max(0.001, n) })} />
+        <NumberField label="suspensionTravel" value={value.suspensionTravel} min={0.001} max={5} step={0.05} disabled={disabled} onChange={(n) => patch({ suspensionTravel: Math.min(5, Math.max(0.001, n)) })} />
+        <NumberField label="drivenTargetVelocity" value={value.drivenTargetVelocity} min={0.001} max={500} step={10} disabled={disabled} onChange={(n) => patch({ drivenTargetVelocity: Math.min(500, Math.max(0.001, n)) })} />
+        <NumberField label="drivenFactor" value={value.drivenFactor} min={0.001} step={10} disabled={disabled} onChange={(n) => patch({ drivenFactor: Math.max(0.001, n) })} />
         <NumberField label="steerAngle" value={value.steerAngle} min={0.001} step={0.05} disabled={disabled} onChange={(n) => patch({ steerAngle: Math.max(0.001, n) })} />
+        <NumberField label="steerStiffness" value={value.steerStiffness} min={0.001} step={1} disabled={disabled} onChange={(n) => patch({ steerStiffness: Math.max(0.001, n) })} />
+        <NumberField label="steerDamping" value={value.steerDamping} min={0} step={0.5} disabled={disabled} onChange={(n) => patch({ steerDamping: Math.max(0, n) })} />
       </div>
     )
   }

@@ -4,7 +4,13 @@ import type { PhysicsCollisionEvent } from './events.js'
 import type { IPhysicsBackend } from './backend.js'
 import { PhysicsNotInitializedError } from './errors.js'
 import type { PhysicsBodyHandle, PhysicsShapeHandle } from './handles.js'
-import type { PhysicsJointHandle, PointerJointConfig, RevoluteMotorJointConfig, SceneJointConfig } from './joints.js'
+import type {
+  PhysicsJointHandle,
+  PointerJointConfig,
+  PrismaticSpringJointConfig,
+  RevoluteMotorJointConfig,
+  SceneJointConfig,
+} from './joints.js'
 import type { IRaycastVehicle } from './raycast-vehicle.js'
 import type {
   PhysicsShapeDescriptor,
@@ -80,6 +86,16 @@ export class PhysicsWorld implements IPhysicsWorld {
   getBodyAngularVelocity(body: PhysicsBodyHandle): Vec3 {
     this.assertBackendReady()
     return this.backend.getBodyAngularVelocity(body)
+  }
+
+  setBodyLinearVelocity(body: PhysicsBodyHandle, velocity: Vec3): void {
+    this.assertBackendReady()
+    this.backend.setBodyLinearVelocity(body, velocity)
+  }
+
+  setBodyAngularVelocity(body: PhysicsBodyHandle, velocity: Vec3): void {
+    this.assertBackendReady()
+    this.backend.setBodyAngularVelocity(body, velocity)
   }
 
   applyImpulse(body: PhysicsBodyHandle, impulse: Vec3, worldPoint?: Vec3): void {
@@ -159,6 +175,11 @@ export class PhysicsWorld implements IPhysicsWorld {
   ): void {
     this.assertBackendReady()
     this.backend.setRevoluteMotorPosition(joint, angle, stiffness, damping)
+  }
+
+  createPrismaticSpringJoint(config: PrismaticSpringJointConfig): PhysicsJointHandle {
+    this.assertBackendReady()
+    return this.backend.createPrismaticSpringJoint(config)
   }
 
   createSceneJoint(config: SceneJointConfig): PhysicsJointHandle {

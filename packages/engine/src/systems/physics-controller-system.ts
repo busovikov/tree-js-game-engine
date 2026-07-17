@@ -1,6 +1,11 @@
 import type { EntityId, IWorld, ISystem } from '@haku/core'
 import { PhysicsControllerComponent } from '@haku/core'
-import type { IRaycastVehicle, IDynamicRaycastVehicle, IPhysicsWorld } from '@haku/physics'
+import type {
+  IRaycastVehicle,
+  IDynamicRaycastVehicle,
+  IPhysicsWorld,
+  PhysicsBodyHandle,
+} from '@haku/physics'
 import type { PhysicsWorldSystem } from './physics-world-system.js'
 import type { TrackedDynamicRaycast } from './physics-controller-runtime.js'
 import {
@@ -47,6 +52,7 @@ export class PhysicsControllerSystem implements ISystem {
   private readonly registry = new ControllerRegistry()
   private readonly customRaycast = new CustomRaycastPlugin()
   private readonly dynamicRaycast = new DynamicRaycastPlugin()
+  private readonly revoluteVehicle = new RevoluteJointVehiclePlugin()
   private readonly disabledControllers = new Set<string>()
   private bootstrapped = false
 
@@ -58,7 +64,7 @@ export class PhysicsControllerSystem implements ISystem {
     this.registry.register(new ArcadeVehiclePlugin())
     this.registry.register(new KinematicCharacterPlugin())
     this.registry.register(new CharacterBodyPlugin())
-    this.registry.register(new RevoluteJointVehiclePlugin())
+    this.registry.register(this.revoluteVehicle)
   }
 
   setControllerInput(id: EntityId, input: ControllerInput): void {
@@ -98,6 +104,11 @@ export class PhysicsControllerSystem implements ISystem {
 
   getDynamicRaycastVehicle(id: EntityId): IDynamicRaycastVehicle | undefined {
     return this.dynamicRaycast.getVehicle(id)
+  }
+
+  /** Runtime wheel rigid-body handles (spawn order) for a revolute-joint vehicle, for visual sync. */
+  getRevoluteWheelBodies(id: EntityId): PhysicsBodyHandle[] | undefined {
+    return this.revoluteVehicle.getWheelBodies(id)
   }
 
   getTrackedDynamicRaycast(id: EntityId): TrackedDynamicRaycast | undefined {

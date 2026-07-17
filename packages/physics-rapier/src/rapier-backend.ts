@@ -13,6 +13,7 @@ import {
   type PhysicsShapeHandle,
   type PhysicsWheelHandle,
   type PointerJointConfig,
+  type PrismaticSpringJointConfig,
   type RevoluteMotorJointConfig,
   type SceneJointConfig,
 } from '@haku/physics'
@@ -119,7 +120,7 @@ interface ShapeRecord {
 
 interface JointRecord {
   joint: RAPIER.ImpulseJoint
-  kind: 'pointer' | 'revolute' | 'scene'
+  kind: 'pointer' | 'revolute' | 'scene' | 'prismatic-spring'
   bodyA: PhysicsBodyHandle
   bodyB: PhysicsBodyHandle
 }
@@ -434,6 +435,10 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
 
   createBody(descriptor: RigidBodyDescriptor): PhysicsBodyHandle {
     const world = this.getWorld()
+    assertFiniteVec3(descriptor.transform.position, 'body position')
+    if (descriptor.type === 'dynamic') {
+      assertFiniteMass(descriptor.mass, 'body mass')
+    }
     const bodyDesc = this.createRigidBodyDesc(descriptor)
     const body = world.createRigidBody(bodyDesc)
   const explicitMass =
@@ -979,6 +984,9 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
 
   createRevoluteMotorJoint(config: RevoluteMotorJointConfig): PhysicsJointHandle {
     const world = this.getWorld()
+    assertFiniteVec3(config.anchorA, 'revolute joint anchorA')
+    assertFiniteVec3(config.anchorB, 'revolute joint anchorB')
+    assertNonZeroAxis(config.axis, 'revolute joint axis')
     const bodyA = this.getBodyRecord(config.bodyA).body
     const bodyB = this.getBodyRecord(config.bodyB).body
     const jointData = RAPIER.JointData.revolute(
@@ -1020,13 +1028,49 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
     revolute.configureMotorPosition(angle, stiffness, damping)
   }
 
+  createPrismaticSpringJoint(config: PrismaticSpringJointConfig): PhysicsJointHandle {
+    const world = this.getWorld()
+    assertFiniteVec3(config.anchorA, 'prismatic spring joint anchorA')
+    assertFiniteVec3(config.anchorB, 'prismatic spring joint anchorB')
+    assertNonZeroAxis(config.axis, 'prismatic spring joint axis')
+    const bodyA = this.getBodyRecord(config.bodyA).body
+    const bodyB = this.getBodyRecord(config.bodyB).body
+    const jointData = RAPIER.JointData.prismatic(
+      vec3ToRapier(config.anchorA),
+      vec3ToRapier(config.anchorB),
+      vec3ToRapier(config.axis),
+    )
+    const joint = world.createImpulseJoint(jointData, bodyA, bodyB, true) as RAPIER.PrismaticImpulseJoint
+    // Spring-damper along the slide axis: pull the separation toward restLength.
+    joint.configureMotorPosition(config.restLength, config.stiffness, config.damping)
+    if (config.limits) {
+      joint.setLimits(config.limits.min, config.limits.max)
+    }
+    const handle = physicsJointHandle(createId('joint'))
+    this.joints.set(handle.value, {
+      joint,
+      kind: 'prismatic-spring',
+      bodyA: config.bodyA,
+      bodyB: config.bodyB,
+    })
+    return handle
+  }
+
   createSceneJoint(config: SceneJointConfig): PhysicsJointHandle {
     const world = this.getWorld()
+    assertFiniteVec3(config.anchorA, 'scene joint anchorA')
+    assertFiniteVec3(config.anchorB, 'scene joint anchorB')
+    const axisVec = config.axis ?? [0, 1, 0]
+    if (config.type === 'revolute' || config.type === 'prismatic') {
+      assertNonZeroAxis(axisVec, `${config.type} joint axis`)
+    } else {
+      assertFiniteVec3(axisVec, 'scene joint axis')
+    }
     const bodyA = this.getBodyRecord(config.bodyA).body
     const bodyB = this.getBodyRecord(config.bodyB).body
     const anchorA = vec3ToRapier(config.anchorA)
     const anchorB = vec3ToRapier(config.anchorB)
-    const axis = vec3ToRapier(config.axis ?? [0, 1, 0])
+    const axis = vec3ToRapier(axisVec)
     const identityFrame = { x: 0, y: 0, z: 0, w: 1 }
 
     let jointData: RAPIER.JointData
@@ -1166,6 +1210,10 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
       bodyDesc.setEnabled(false)
     }
 
+    if (descriptor.additionalSolverIterations && descriptor.additionalSolverIterations > 0) {
+      bodyDesc.setAdditionalSolverIterations(Math.floor(descriptor.additionalSolverIterations))
+    }
+
     return bodyDesc
   }
 
@@ -1188,6 +1236,11 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
       const i = 0.4 * mass * shape.radius * shape.radius
       principal = [i, i, i]
     } else if (shape.type === 'capsule') {
+      const i = 0.5 * mass * shape.radius * shape.radius
+      principal = [i, i, i]
+    } else if (shape.type === 'cylinder') {
+      // Solid cylinder: about the long (Y) axis 0.5·m·r²; transverse (m/12)(3r²+(2h)²). Isotropic
+      // approximation keeps it well-conditioned for wheel bodies (matches the capsule treatment).
       const i = 0.5 * mass * shape.radius * shape.radius
       principal = [i, i, i]
     } else {
@@ -1380,6 +1433,30 @@ export class RapierPhysicsBackend implements IPhysicsBackend {
     world.timestep = 0
   world.step(this.eventQueue ?? undefined)
     world.timestep = dt
+  }
+}
+
+/**
+ * Rapier panics with an unrecoverable WASM `unreachable` trap when fed NaN/∞ (or a degenerate
+ * zero-length joint axis). These guards fail loudly with a catchable JS error at the boundary,
+ * before such values reach `world.step`.
+ */
+function assertFiniteVec3(vec: Vec3, label: string): void {
+  if (!Number.isFinite(vec[0]) || !Number.isFinite(vec[1]) || !Number.isFinite(vec[2])) {
+    throw new Error(`Non-finite ${label}: [${vec[0]}, ${vec[1]}, ${vec[2]}]`)
+  }
+}
+
+function assertNonZeroAxis(axis: Vec3, label: string): void {
+  assertFiniteVec3(axis, label)
+  if (Math.hypot(axis[0], axis[1], axis[2]) < 1e-6) {
+    throw new Error(`Degenerate (zero-length) ${label}: [${axis[0]}, ${axis[1]}, ${axis[2]}]`)
+  }
+}
+
+function assertFiniteMass(mass: number | undefined, label: string): void {
+  if (mass !== undefined && (!Number.isFinite(mass) || mass < 0)) {
+    throw new Error(`Invalid ${label}: ${mass}`)
   }
 }
 

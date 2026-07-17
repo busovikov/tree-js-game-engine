@@ -30,6 +30,7 @@ import type {
 import type {
   PhysicsJointHandle,
   PointerJointConfig,
+  PrismaticSpringJointConfig,
   RevoluteMotorJointConfig,
   SceneJointConfig,
 } from './joints.js'
@@ -100,7 +101,16 @@ interface StubSceneJointRecord {
   config: SceneJointConfig
 }
 
-type StubJointRecord = StubPointerJointRecord | StubRevoluteJointRecord | StubSceneJointRecord
+interface StubPrismaticSpringJointRecord {
+  kind: 'prismatic-spring'
+  config: PrismaticSpringJointConfig
+}
+
+type StubJointRecord =
+  | StubPointerJointRecord
+  | StubRevoluteJointRecord
+  | StubSceneJointRecord
+  | StubPrismaticSpringJointRecord
 
 class StubRaycastVehicle implements IRaycastVehicle {
   private readonly wheels = new Map<string, WheelRuntime>()
@@ -812,6 +822,15 @@ export class StubPhysicsBackend implements IPhysicsBackend {
     return handle
   }
 
+  createPrismaticSpringJoint(config: PrismaticSpringJointConfig): PhysicsJointHandle {
+    this.assertInitialized()
+    this.getBody(config.bodyA)
+    this.getBody(config.bodyB)
+    const handle = physicsJointHandle(createId('joint'))
+    this.joints.set(handle.value, { kind: 'prismatic-spring', config })
+    return handle
+  }
+
   /** Exposed for tests — total simulated time in seconds. */
   getSimulationTime(): number {
     return this.simulationTime
@@ -891,7 +910,7 @@ export class StubPhysicsBackend implements IPhysicsBackend {
         this.applyStubPointerJoint(record.config)
         continue
       }
-      if (record.kind === 'scene') {
+      if (record.kind === 'scene' || record.kind === 'prismatic-spring') {
         continue
       }
       this.applyStubRevoluteJoint(record, dt)

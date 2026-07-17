@@ -77,9 +77,19 @@ describe('PhysicsControllerSchema', () => {
     })
     expect(revolute).toMatchObject({
       wheelRadius: 0.4,
-      drivenTargetVelocity: 1_000,
+      wheelMass: 1.5,
+      hubMass: 3,
+      suspensionRestLength: 0.5,
+      suspensionStiffness: 800,
+      suspensionDamping: 320,
+      suspensionTravel: 0.4,
+      drivenTargetVelocity: 40,
+      drivenFactor: 2500,
+      steerStiffness: 200000,
     })
     expect(revolute.wheels).toHaveLength(4)
+    expect(revolute.wheels[0]).toMatchObject({ isSteered: true, isDriven: false })
+    expect(revolute.wheels[2]).toMatchObject({ isSteered: false, isDriven: true })
     expect(
       KinematicCharacterControllerSchema.parse({ type: 'kinematic-character' }),
     ).toMatchObject({
@@ -92,6 +102,24 @@ describe('PhysicsControllerSchema', () => {
       constraintType: 'spherical',
       ropeLength: 0.5,
     })
+  })
+
+  it('rejects non-finite / non-positive revolute wheel mass and drive velocity', () => {
+    expect(() =>
+      RevoluteJointVehicleControllerSchema.parse({ type: 'revolute-joint-vehicle', wheelMass: 0 }),
+    ).toThrow()
+    expect(() =>
+      RevoluteJointVehicleControllerSchema.parse({
+        type: 'revolute-joint-vehicle',
+        wheelMass: Number.POSITIVE_INFINITY,
+      }),
+    ).toThrow()
+    expect(() =>
+      RevoluteJointVehicleControllerSchema.parse({
+        type: 'revolute-joint-vehicle',
+        drivenTargetVelocity: Number.NaN,
+      }),
+    ).toThrow()
   })
 
   it('accepts the shared runtime-only physics handle', () => {

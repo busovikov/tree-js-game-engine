@@ -232,6 +232,109 @@ describe('@haku/physics-rapier RapierPhysicsBackend', () => {
     expect(backend.getWorldInternal().impulseJoints.len()).toBe(1)
   })
 
+  it('prismatic spring joint suspends a body near its rest length under gravity', async () => {
+    const backend = await createBackend()
+    // Kinematic anchor held aloft; dynamic body hangs from it via a stiff spring strut along Y.
+    const anchor = backend.createBody({
+      type: 'kinematic',
+      transform: { position: [0, 5, 0], rotation: [0, 0, 0, 1] },
+    })
+    const body = backend.createBody({
+      type: 'dynamic',
+      transform: { position: [0, 5, 0], rotation: [0, 0, 0, 1] },
+      mass: 1,
+    })
+    backend.attachShape(body, { type: 'sphere', radius: 0.2 })
+
+    backend.createPrismaticSpringJoint({
+      bodyA: anchor,
+      bodyB: body,
+      anchorA: [0, 0, 0],
+      anchorB: [0, 0, 0],
+      axis: [0, 1, 0],
+      restLength: 0,
+      stiffness: 400,
+      damping: 20,
+      limits: { min: -1, max: 1 },
+    })
+
+    for (let i = 0; i < 180; i++) {
+      backend.step(1 / 60)
+    }
+
+    const { position } = backend.getBodyTransform(body)
+    // Free-fall would drop it tens of metres; the spring holds it within the ±1 travel limit.
+    expect(Number.isFinite(position[1])).toBe(true)
+    expect(position[1]).toBeGreaterThan(3.5)
+    expect(position[1]).toBeLessThanOrEqual(5.001)
+  })
+
+  it('rejects a non-finite prismatic spring joint anchor before it reaches Rapier', async () => {
+    const backend = await createBackend()
+    const bodyA = backend.createBody({ type: 'dynamic', transform: identityTransform, mass: 1 })
+    const bodyB = backend.createBody({ type: 'dynamic', transform: identityTransform, mass: 1 })
+    expect(() =>
+      backend.createPrismaticSpringJoint({
+        bodyA,
+        bodyB,
+        anchorA: [0, 0, 0],
+        anchorB: [0, Number.NaN, 0],
+        axis: [0, 1, 0],
+        restLength: 0,
+        stiffness: 100,
+        damping: 10,
+      }),
+    ).toThrow()
+    expect(() =>
+      backend.createPrismaticSpringJoint({
+        bodyA,
+        bodyB,
+        anchorA: [0, 0, 0],
+        anchorB: [0, 0, 0],
+        axis: [0, 0, 0],
+        restLength: 0,
+        stiffness: 100,
+        damping: 10,
+      }),
+    ).toThrow()
+    expect(backend.getWorldInternal().impulseJoints.len()).toBe(0)
+  })
+
+  it('rejects non-finite / degenerate joint and body inputs before they reach Rapier', async () => {
+    const backend = await createBackend()
+    const bodyA = backend.createBody({ type: 'dynamic', transform: identityTransform, mass: 1 })
+    const bodyB = backend.createBody({ type: 'dynamic', transform: identityTransform, mass: 1 })
+
+    // NaN anchor would otherwise trip Rapier's `unreachable` WASM trap during step.
+    expect(() =>
+      backend.createRevoluteMotorJoint({
+        bodyA,
+        bodyB,
+        anchorA: [0, Number.NaN, 0],
+        anchorB: [0, 0, 0],
+        axis: [1, 0, 0],
+      }),
+    ).toThrow()
+
+    // Zero-length axis is a degenerate revolute basis.
+    expect(() =>
+      backend.createRevoluteMotorJoint({
+        bodyA,
+        bodyB,
+        anchorA: [0, 0, 0],
+        anchorB: [0, 0, 0],
+        axis: [0, 0, 0],
+      }),
+    ).toThrow()
+
+    // Non-finite body mass.
+    expect(() =>
+      backend.createBody({ type: 'dynamic', transform: identityTransform, mass: Number.POSITIVE_INFINITY }),
+    ).toThrow()
+
+    expect(backend.getWorldInternal().impulseJoints.len()).toBe(0)
+  })
+
   it('repeated full dispose is safe with body-owned resources', async () => {
     const backend = await createBackend()
     const body = backend.createBody({ type: 'kinematic', transform: identityTransform })

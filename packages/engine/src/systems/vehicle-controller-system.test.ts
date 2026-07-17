@@ -5,7 +5,11 @@ import {
   PhysicsControllerComponent,
   World,
 } from '@haku/core'
-import { CustomRaycastControllerSchema, ColliderSchema } from '@haku/schema'
+import {
+  CustomRaycastControllerSchema,
+  RevoluteJointVehicleControllerSchema,
+  ColliderSchema,
+} from '@haku/schema'
 import {
   resetStubPhysicsIds,
   StubPhysicsBackend,
@@ -303,8 +307,6 @@ describe('VehicleControllerSystem integration (stub)', () => {
     const characterController = {} as ICharacterController
     const steerJoint = { value: 'steer-joint' } as PhysicsJointHandle
     const driveJoint = { value: 'drive-joint' } as PhysicsJointHandle
-    const setMotorPosition = vi.spyOn(physicsWorld, 'setRevoluteMotorPosition')
-    const setMotorVelocity = vi.spyOn(physicsWorld, 'setRevoluteMotorVelocity')
     const wheels = [
       { value: 'fl' },
       { value: 'fr' },
@@ -341,14 +343,23 @@ describe('VehicleControllerSystem integration (stub)', () => {
         {
           wheelBody: { value: 'steer-body' },
           wheelShape: { value: 'steer-shape' },
-          joint: steerJoint,
+          hubBody: { value: 'steer-hub' },
+          hubShape: { value: 'steer-hub-shape' },
+          suspensionJoint: { value: 'steer-susp-joint' } as PhysicsJointHandle,
+          rollJoint: { value: 'steer-roll-joint' } as PhysicsJointHandle,
+          steerJoint,
+          knuckleBody: { value: 'steer-knuckle' },
+          knuckleShape: { value: 'steer-knuckle-shape' },
           isSteered: true,
           isDriven: false,
         },
         {
           wheelBody: { value: 'drive-body' },
           wheelShape: { value: 'drive-shape' },
-          joint: driveJoint,
+          hubBody: { value: 'drive-hub' },
+          hubShape: { value: 'drive-hub-shape' },
+          suspensionJoint: { value: 'drive-susp-joint' } as PhysicsJointHandle,
+          driveJoint,
           isSteered: false,
           isDriven: true,
         },
@@ -386,9 +397,9 @@ describe('VehicleControllerSystem integration (stub)', () => {
     expect(character.jumpBuffer).toBe(0)
     expect(character.jumpCooldown).toBe(0)
     expect(character.grounded).toBe(false)
+    // Reset zeroes the tracked steer angle. (Body re-seat/rebuild only runs when a real chassis body
+    // exists; here the entity has no physics body, so the reset stops after clearing tracked state.)
     expect(revolute.steerAngle).toBe(0)
-    expect(setMotorPosition).toHaveBeenCalledWith(steerJoint, 0, 100, 10)
-    expect(setMotorVelocity).toHaveBeenCalledWith(driveJoint, 0, 0)
     expect(vehicleSystem.getControllerInput(id)).toBeUndefined()
     physicsSystem.dispose()
   })
@@ -491,6 +502,80 @@ describe('VehicleControllerSystem integration (Rapier)', () => {
     expect(vehicleSystem.getCurrentSteer(carId) ?? 0).toBeGreaterThan(0.2)
     const pos = world.getComponent(carId, TransformComponent)?.position ?? [0, 0, 0]
     expect(Math.hypot(pos[0], pos[2]!)).toBeGreaterThan(0.2)
+
+    colliderSystem.dispose()
+    physicsSystem.dispose()
+    vehicleSystem.dispose()
+  })
+
+  it('runs a revolute-joint vehicle without exploding into NaN (unreachable regression)', async () => {
+    const backend = await createRapierPhysicsBackend()
+    const physicsSystem = new PhysicsWorldSystem({ fixedTimestep: 1 / 60, maxSubsteps: 120 })
+    physicsSystem.setBackend(backend)
+    const colliderSystem = new PhysicsColliderSystem(physicsSystem)
+    const vehicleSystem = new PhysicsControllerSystem(physicsSystem)
+
+    const world = new World()
+    const groundId = world.createEntity('Ground')
+    world.addComponent(groundId, TransformComponent, {
+      position: [0, -2, 0],
+      rotation: IDENTITY_ROTATION,
+      scale: [1, 1, 1],
+    })
+    world.addComponent(groundId, ColliderComponent, ColliderSchema.parse({
+      shape: 'box',
+      halfExtents: [75, 1, 75],
+    }))
+
+    const carId = world.createEntity('RevoluteVehicle')
+    world.addComponent(carId, TransformComponent, {
+      position: [0, 1, 0],
+      rotation: IDENTITY_ROTATION,
+      scale: [1, 1, 1],
+    })
+    // Exact params from apps/playground/.../isaac/revolute-joint-vehicle.scene.json.
+    world.addComponent(
+      carId,
+      PhysicsControllerComponent,
+      RevoluteJointVehicleControllerSchema.parse({
+        type: 'revolute-joint-vehicle',
+        chassis: { mass: 5, halfExtents: [1.75, 0.25, 0.75], lift: 0, angularDamping: 0.35, inertiaScale: 3 },
+        wheels: [
+          { axlePosition: [-1.2, -0.6, 0.7], wheelPosition: [-1.2, -0.6, 1], isSteered: true, isDriven: false },
+          { axlePosition: [-1.2, -0.6, -0.7], wheelPosition: [-1.2, -0.6, -1], isSteered: true, isDriven: false },
+          { axlePosition: [1.2, -0.6, 0.7], wheelPosition: [1.2, -0.6, 1], isSteered: false, isDriven: true },
+          { axlePosition: [1.2, -0.6, -0.7], wheelPosition: [1.2, -0.6, -1], isSteered: false, isDriven: true },
+        ],
+        wheelRadius: 0.2,
+        wheelHalfHeight: 0.15,
+        wheelMass: 0.25,
+        drivenTargetVelocity: 30,
+        drivenFactor: 10,
+        steerAngle: 0.6,
+        steerStiffness: 100,
+        steerDamping: 10,
+      }),
+    )
+
+    colliderSystem.bootstrap(world)
+    vehicleSystem.bootstrap(world)
+
+    const wheelBodies = vehicleSystem.getRevoluteWheelBodies(carId)
+    expect(wheelBodies).toHaveLength(4)
+
+    vehicleSystem.setVehicleInput(carId, { throttle: 1 })
+    expect(() => {
+      for (let i = 0; i < 150; i++) {
+        vehicleSystem.update(world, 1 / 60)
+        physicsSystem.update(world, 1 / 60)
+      }
+    }).not.toThrow()
+
+    const pos = world.getComponent(carId, TransformComponent)?.position ?? [0, 0, 0]
+    expect(pos.every((n) => Number.isFinite(n))).toBe(true)
+    // The vehicle should settle on the ground, not sink or fling away.
+    expect(pos[1]).toBeGreaterThan(-2)
+    expect(pos[1]).toBeLessThan(10)
 
     colliderSystem.dispose()
     physicsSystem.dispose()

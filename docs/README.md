@@ -12,6 +12,8 @@
 | [techstack.md](./techstack.md) | Choosing libraries, build tools, or package dependencies |
 | [architecture.md](./architecture.md) | System design, data flow, package boundaries |
 | [PHYSICS_COLLIDER_RIGIDBODY_DESIGN.md](./PHYSICS_COLLIDER_RIGIDBODY_DESIGN.md) | **Physics refactor** — Collider/RigidBody split, capabilities, layers, events, phases P1–P5 |
+| **[physics-controller-playbook.md](./physics-controller-playbook.md)** | **Adding/refactoring any physics controller** (vehicle, character) — lifecycle, test template, footguns, reset contract, assist pattern |
+| [revolute-joint-vehicle-handoff.md](./revolute-joint-vehicle-handoff.md) | Case study behind the playbook — the revolute vehicle rework, fixes, known limits |
 | [edge-cases.md](./edge-cases.md) | Failures, empty states, validation, security — **not happy-path only** |
 | [ui-kit.md](./ui-kit.md) | Editor UI patterns, components, how to add inspector fields |
 | [links.md](./links.md) | **Canonical refs** — official docs, internal API, read/write rules, migrations |

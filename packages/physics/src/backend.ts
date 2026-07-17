@@ -8,7 +8,13 @@ import type {
   CharacterControllerOptions,
   IDynamicRaycastVehicle,
 } from './physics-controllers.js'
-import type { PhysicsJointHandle, PointerJointConfig, RevoluteMotorJointConfig, SceneJointConfig } from './joints.js'
+import type {
+  PhysicsJointHandle,
+  PointerJointConfig,
+  PrismaticSpringJointConfig,
+  RevoluteMotorJointConfig,
+  SceneJointConfig,
+} from './joints.js'
 import type {
   PhysicsShapeDescriptor,
   PhysicsTransform,
@@ -95,6 +101,9 @@ export interface IPhysicsBackend {
     stiffness: number,
     damping: number,
   ): void
+
+  /** Compliant suspension strut: prismatic slide + spring position motor. */
+  createPrismaticSpringJoint(config: PrismaticSpringJointConfig): PhysicsJointHandle
 
   createSceneJoint(config: SceneJointConfig): PhysicsJointHandle
 

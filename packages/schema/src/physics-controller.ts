@@ -139,29 +139,56 @@ export const ArcadeVehicleControllerSchema = ControllerBaseSchema.extend({
 export type ArcadeVehicleController = z.infer<typeof ArcadeVehicleControllerSchema>
 
 const RevoluteWheelSchema = z.object({
-  axlePosition: Vec3Schema,
+  /** Chassis-local mount point — the wheel hub spawns here. */
   wheelPosition: Vec3Schema,
   isSteered: z.boolean().default(false),
   isDriven: z.boolean().default(false),
 })
 
-/** Isaac Mason `revolute-joint-vehicle` — revolute joints + motor drive. */
+/**
+ * Isaac Mason `revolute-joint-vehicle` — real rolling wheel bodies on joints with motor drive.
+ *
+ * Topology (well-conditioned for solver stability, see docs): each wheel hangs from the chassis on a
+ * compliant suspension strut (prismatic-Y spring) that absorbs impulse spikes. Rear wheels are driven
+ * by a bounded revolute velocity motor about the lateral axle; front wheels steer via a revolute-Y
+ * position motor on a hub and roll on a free revolute-Z. Masses are kept in a healthy ratio (chassis ≫
+ * wheels/hubs) so the constraint island stays stable independent of the rest of the scene.
+ */
 export const RevoluteJointVehicleControllerSchema = ControllerBaseSchema.extend({
   type: z.literal('revolute-joint-vehicle'),
   chassis: ControllerChassisSchema.default(() => ControllerChassisSchema.parse({})),
   wheels: z.array(RevoluteWheelSchema).length(4).default([
-    { axlePosition: [-1.2, -0.6, 0.7], wheelPosition: [-1.2, -0.6, 1], isSteered: true, isDriven: false },
-    { axlePosition: [-1.2, -0.6, -0.7], wheelPosition: [-1.2, -0.6, -1], isSteered: true, isDriven: false },
-    { axlePosition: [1.2, -0.6, 0.7], wheelPosition: [1.2, -0.6, 1], isSteered: false, isDriven: true },
-    { axlePosition: [1.2, -0.6, -0.7], wheelPosition: [1.2, -0.6, -1], isSteered: false, isDriven: true },
+    { wheelPosition: [-1.3, -0.2, 1.3], isSteered: true, isDriven: false },
+    { wheelPosition: [-1.3, -0.2, -1.3], isSteered: true, isDriven: false },
+    { wheelPosition: [1.3, -0.2, 1.3], isSteered: false, isDriven: true },
+    { wheelPosition: [1.3, -0.2, -1.3], isSteered: false, isDriven: true },
   ]),
   wheelRadius: z.number().positive().default(0.4),
   wheelHalfHeight: z.number().positive().default(0.15),
-  drivenTargetVelocity: z.number().positive().default(1000),
-  drivenFactor: z.number().positive().default(10),
-  steerAngle: z.number().positive().default(0.6),
-  steerStiffness: z.number().positive().default(100),
-  steerDamping: z.number().positive().default(10),
+  /** Per-wheel mass (kg). Well below chassis mass; the runtime also floors the ratio. */
+  wheelMass: z.number().finite().positive().default(1.5),
+  /** Suspension hub / steer-knuckle mass (kg). Heavier here gives the steer knuckle enough rotational
+   * inertia for the steer motor to hold the front wheels pointing (a light knuckle jitters). */
+  hubMass: z.number().finite().positive().default(3),
+  /** Suspension free droop (m) — how far a wheel hangs below its mount unloaded; the spring targets
+   * this and the vehicle's weight compresses it up. Keeps every wheel planted. */
+  suspensionRestLength: z.number().finite().min(0).default(0.5),
+  /** Suspension spring stiffness (position-motor stiffness). */
+  suspensionStiffness: z.number().finite().positive().default(800),
+  /** Suspension spring damping (position-motor damping). */
+  suspensionDamping: z.number().finite().positive().default(320),
+  /** Suspension compression travel (m) from droop before the (soft) stop engages. */
+  suspensionTravel: z.number().finite().positive().default(0.4),
+  /** Target wheel spin (rad/s) at full throttle. Runtime clamps magnitude to keep the solver stable. */
+  drivenTargetVelocity: z.number().finite().positive().default(40),
+  /** Drive motor strength (bounded velocity-motor max force). */
+  drivenFactor: z.number().positive().default(2500),
+  steerAngle: z.number().positive().default(0.5),
+  /** Steer position-motor stiffness on the front knuckles — only *points the wheels visually* (actual
+   * turning is the chassis yaw assist). Must be high: a weak motor lets the front wheel free-swivel
+   * (casters like a shopping-cart wheel). */
+  steerStiffness: z.number().positive().default(200000),
+  steerDamping: z.number().positive().default(20000),
 })
 export type RevoluteJointVehicleController = z.infer<typeof RevoluteJointVehicleControllerSchema>
 

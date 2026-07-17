@@ -37,6 +37,7 @@ export type {
   PhysicsJointHandle,
   PointerJointKind,
   PointerJointConfig,
+  PrismaticSpringJointConfig,
   RevoluteMotorJointConfig,
   SceneJointConfig,
 } from './joints.js'

@@ -7,6 +7,7 @@ import {
 import type { ControllerWheelSlot } from '@haku/schema'
 import { CONTROLLER_WHEEL_ORDER, normalizeMeshRenderer } from '@haku/schema'
 import type {
+  IPhysicsWorld,
   PhysicsTransform,
   Quat,
   Vec3,
@@ -21,6 +22,13 @@ import {
   isIsaacMasonWheelAsset,
   resolveVisualSteerAngle,
 } from '../vehicle-model-fit.js'
+
+/**
+ * Revolute wheel meshes are Y-axis cylinders; the wheel body spins about its local Z (the lateral
+ * axle), so post-rotate the body pose to bring the cylinder axis onto Z. Matches the collider's
+ * `WHEEL_AXIS_ROTATION` in physics-controller-runtime.ts (+90° about X).
+ */
+const REVOLUTE_WHEEL_MESH_ROTATION: Quat = [Math.SQRT1_2, 0, 0, Math.SQRT1_2]
 
 const WHEEL_SLOT_PATTERNS: Record<ControllerWheelSlot, RegExp[]> = {
   frontLeft: [/front.?left/i, /\bfl\b/i, /wheel0/i],
@@ -86,7 +94,16 @@ export class VehicleVisualSyncSystem implements ISystem {
 
     for (const id of world.query(PhysicsControllerComponent, TransformComponent)) {
       const controllerData = world.getComponent(id, PhysicsControllerComponent)
-      if (!controllerData?.enabled || controllerData.type !== 'custom-raycast') {
+      if (!controllerData?.enabled) {
+        continue
+      }
+
+      if (controllerData.type === 'revolute-joint-vehicle') {
+        this.syncRevoluteVehicle(world, id, physicsWorld)
+        continue
+      }
+
+      if (controllerData.type !== 'custom-raycast') {
         continue
       }
 
@@ -147,6 +164,49 @@ export class VehicleVisualSyncSystem implements ISystem {
           scale: [...wheelTransform.scale],
         })
       }
+    }
+  }
+
+  /**
+   * Revolute-joint vehicles spawn their wheels as independent rigid bodies (no raycast state), so
+   * their child wheel meshes track the wheel bodies' world transforms, expressed chassis-local.
+   */
+  private syncRevoluteVehicle(world: IWorld, id: EntityId, physicsWorld: IPhysicsWorld): void {
+    const chassisHandle = this.physicsSystem.getBodyHandle(id)
+    if (!chassisHandle) {
+      return
+    }
+    const wheelBodies = this.controllerSystem.getRevoluteWheelBodies(id)
+    if (!wheelBodies || wheelBodies.length === 0) {
+      return
+    }
+
+    const chassisTransform = physicsWorld.getBodyTransform(chassisHandle)
+    const slots = this.resolveWheelSlots(world, id)
+
+    for (let i = 0; i < CONTROLLER_WHEEL_ORDER.length && i < wheelBodies.length; i++) {
+      const slot = CONTROLLER_WHEEL_ORDER[i]!
+      const wheelEntityId = slots[slot]
+      const wheelBody = wheelBodies[i]
+      if (!wheelEntityId || !wheelBody) {
+        continue
+      }
+
+      const wheelWorld = physicsWorld.getBodyTransform(wheelBody)
+      const wheelTransform = world.getComponent(wheelEntityId, TransformComponent)
+      if (!wheelTransform) {
+        continue
+      }
+
+      const bodyLocalRotation = multiplyQuats(
+        conjugateQuat(chassisTransform.rotation),
+        wheelWorld.rotation,
+      )
+      world.addComponent(wheelEntityId, TransformComponent, {
+        position: worldPointToLocal(chassisTransform, wheelWorld.position),
+        rotation: multiplyQuats(bodyLocalRotation, REVOLUTE_WHEEL_MESH_ROTATION),
+        scale: [...wheelTransform.scale],
+      })
     }
   }
 

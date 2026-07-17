@@ -2,7 +2,13 @@ import type { PhysicsDebugRenderBuffers } from './debug-render.js'
 import type { PhysicsCollisionEvent } from './events.js'
 import type { PhysicsCapabilities } from './capabilities.js'
 import type { PhysicsBodyHandle, PhysicsShapeHandle } from './handles.js'
-import type { PhysicsJointHandle, PointerJointConfig, RevoluteMotorJointConfig, SceneJointConfig } from './joints.js'
+import type {
+  PhysicsJointHandle,
+  PointerJointConfig,
+  PrismaticSpringJointConfig,
+  RevoluteMotorJointConfig,
+  SceneJointConfig,
+} from './joints.js'
 import type { IRaycastVehicle } from './raycast-vehicle.js'
 import type { ICharacterController, IDynamicRaycastVehicle } from './physics-controllers.js'
 import type {
@@ -37,6 +43,8 @@ export interface IPhysicsWorld {
   getBodyTransform(body: PhysicsBodyHandle): PhysicsTransform
   getBodyLinearVelocity(body: PhysicsBodyHandle): Vec3
   getBodyAngularVelocity(body: PhysicsBodyHandle): Vec3
+  setBodyLinearVelocity(body: PhysicsBodyHandle, velocity: Vec3): void
+  setBodyAngularVelocity(body: PhysicsBodyHandle, velocity: Vec3): void
 
   applyImpulse(body: PhysicsBodyHandle, impulse: Vec3, worldPoint?: Vec3): void
   /** Accumulate force (and point torque) for exactly the next simulation step. */
@@ -67,6 +75,9 @@ export interface IPhysicsWorld {
     stiffness: number,
     damping: number,
   ): void
+
+  /** Compliant suspension strut: prismatic slide + spring position motor (see config). */
+  createPrismaticSpringJoint(config: PrismaticSpringJointConfig): PhysicsJointHandle
 
   createSceneJoint(config: SceneJointConfig): PhysicsJointHandle
 
