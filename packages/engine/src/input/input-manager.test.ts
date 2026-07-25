@@ -41,12 +41,17 @@ class MockEventTarget {
   }
 }
 
-function keyEvent(code: string, type: 'keydown' | 'keyup', repeat = false) {
+function keyEvent(
+  code: string,
+  type: 'keydown' | 'keyup',
+  repeat = false,
+  target: EventTarget | null = null,
+) {
   return {
     code,
     repeat,
     preventDefault: () => {},
-    target: null,
+    target,
     type,
   }
 }
@@ -135,6 +140,26 @@ describe('InputManager', () => {
       input.enable()
       keyboard.dispatch('keydown', keyEvent('KeyD', 'keydown'))
       expect(input.getActions().steer).toBe(1)
+    })
+
+    it('ignores controls from select fields and descendants of editable regions', () => {
+      const select = { tagName: 'SELECT' } as unknown as EventTarget
+      const editableParent = {
+        tagName: 'DIV',
+        isContentEditable: true,
+        parentElement: null,
+      }
+      const editableChild = {
+        tagName: 'SPAN',
+        isContentEditable: false,
+        parentElement: editableParent,
+      } as unknown as EventTarget
+
+      keyboard.dispatch('keydown', keyEvent('KeyW', 'keydown', false, select))
+      keyboard.dispatch('keydown', keyEvent('KeyD', 'keydown', false, editableChild))
+
+      expect(input.getActions().throttle).toBe(0)
+      expect(input.getActions().steer).toBe(0)
     })
   })
 

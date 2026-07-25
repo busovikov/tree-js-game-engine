@@ -50,8 +50,40 @@ for (const [action, codes] of Object.entries(KEY_BINDINGS) as [DirectionalKeyAct
 
 function isTypingTarget(target: EventTarget | null): boolean {
   if (!target || typeof target !== 'object') return false
-  const el = target as { tagName?: string; isContentEditable?: boolean }
-  return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable === true
+  let element: {
+    tagName?: string
+    isContentEditable?: boolean
+    parentElement?: unknown
+    getAttribute?(name: string): string | null
+  } | null = target as {
+    tagName?: string
+    isContentEditable?: boolean
+    parentElement?: unknown
+    getAttribute?(name: string): string | null
+  }
+
+  while (element) {
+    const tagName = element.tagName?.toUpperCase()
+    const role = element.getAttribute?.('role')
+    if (
+      tagName === 'INPUT' ||
+      tagName === 'TEXTAREA' ||
+      tagName === 'SELECT' ||
+      element.isContentEditable === true ||
+      role === 'textbox' ||
+      role === 'searchbox' ||
+      role === 'combobox' ||
+      role === 'spinbutton'
+    ) {
+      return true
+    }
+    element =
+      element.parentElement && typeof element.parentElement === 'object'
+        ? (element.parentElement as typeof element)
+        : null
+  }
+
+  return false
 }
 
 function axisFromHeld(codes: readonly string[], pressed: ReadonlySet<string>): number {
