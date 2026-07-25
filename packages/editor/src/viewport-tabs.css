@@ -57,6 +57,24 @@
   position: relative;
 }
 
+.haku-viewport-error {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  padding: 24px;
+  color: #d8dee9;
+  background: #15191f;
+  text-align: center;
+}
+
+.haku-viewport-error span {
+  max-width: 560px;
+  color: #9aa4b2;
+}
+
 .haku-hierarchy-camera-active {
   flex-shrink: 0;
   width: 22px;
