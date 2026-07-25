@@ -8,10 +8,12 @@ import {
 } from '@haku/engine/runtime'
 import { createRapierPhysicsBackend } from '@haku/physics-rapier'
 import project from '../haku.project.json'
+import { configurePlaygroundViewport } from './playground-viewport.js'
 
 async function main() {
   const canvas = document.getElementById('canvas') as HTMLCanvasElement
   const engine = new Engine({ canvas })
+  configurePlaygroundViewport(engine, canvas)
 
   const loaded = await SceneLoader.load(projectPathToUrl(project.entryScene))
   engine.loadWorld(
