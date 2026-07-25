@@ -8,11 +8,15 @@ interface SceneComponent {
   data?: {
     geometryType?: string;
     modelAsset?: string;
+    position?: [number, number, number];
+    rotation?: [number, number, number, number];
   };
 }
 
 interface SceneDocument {
+  metadata?: { activeCameraId?: string };
   entities?: Array<{
+    id?: string;
     name?: string;
     components?: SceneComponent[];
   }>;
@@ -53,5 +57,38 @@ describe('playground entry scene', () => {
       ) ?? [];
 
     expect(missingAssets).toEqual([]);
+  });
+
+  it('aims the active camera at the playable area', () => {
+    const playgroundRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+    const project = JSON.parse(
+      readFileSync(resolve(playgroundRoot, 'haku.project.json'), 'utf8'),
+    ) as { entryScene: string };
+    const scene = JSON.parse(
+      readFileSync(resolve(playgroundRoot, project.entryScene), 'utf8'),
+    ) as SceneDocument;
+    const camera = scene.entities?.find(
+      (entity) => entity.id === scene.metadata?.activeCameraId,
+    );
+    const transform = camera?.components?.find(
+      (component) => component.type === 'Transform',
+    )?.data;
+    const [px, py, pz] = transform?.position ?? [0, 0, 0];
+    const [qx, qy, qz, qw] = transform?.rotation ?? [0, 0, 0, 1];
+
+    const forward = [
+      -2 * (qx * qz + qw * qy),
+      -2 * (qy * qz - qw * qx),
+      -(1 - 2 * (qx * qx + qy * qy)),
+    ];
+    const toPlayArea = [0 - px, 4 - py, 2 - pz];
+    const length = Math.hypot(...toPlayArea);
+    const alignment =
+      (forward[0]! * toPlayArea[0]! +
+        forward[1]! * toPlayArea[1]! +
+        forward[2]! * toPlayArea[2]!) /
+      length;
+
+    expect(alignment).toBeGreaterThan(0.98);
   });
 });
