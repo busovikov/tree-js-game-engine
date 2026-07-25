@@ -85,6 +85,9 @@ export function commitSceneEdit(
   }
 
   applySceneSnapshot(after)
+  if (selectionOverride?.length && useEditorStore.getState().hierarchyFilterQuery) {
+    useEditorStore.getState().setHierarchyFilterQuery('')
+  }
   globalCommandBus.record(new SceneEditCommand(before, after))
 }
 
