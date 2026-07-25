@@ -1,6 +1,6 @@
 import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { readFileSync, statSync } from 'node:fs'
-import { basename, extname, join, normalize, resolve } from 'node:path'
+import { basename, dirname, extname, join, normalize, resolve, sep } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Plugin } from 'vite'
 import { scanPlaygroundAssets } from './playground-assets-manifest.js'
@@ -29,8 +29,21 @@ function resolveTargetFile(targetRoot: string, relativePath: string): string | n
   if (normalized.includes('..')) return null
   const fullPath = normalize(resolve(targetRoot, normalized))
   const root = normalize(resolve(targetRoot))
-  if (!fullPath.startsWith(root)) return null
+  if (fullPath !== root && !fullPath.startsWith(`${root}${sep}`)) return null
   return fullPath
+}
+
+export async function writeTargetTextFile(
+  targetRoot: string,
+  relativePath: string,
+  content: string,
+): Promise<void> {
+  const filePath = resolveTargetFile(targetRoot, relativePath)
+  if (!filePath || filePath === normalize(resolve(targetRoot))) {
+    throw new Error('Invalid target path')
+  }
+  await mkdir(dirname(filePath), { recursive: true })
+  await writeFile(filePath, content, 'utf8')
 }
 
 function vehicleLogPath(targetRoot: string): string {
@@ -113,6 +126,26 @@ async function handleDevRequest(
 
   if (pathname === '/__haku/dev/project.json') {
     sendFile(res, join(targetRoot, 'haku.project.json'))
+    return true
+  }
+
+  if (pathname === '/__haku/dev/file') {
+    if (req.method !== 'PUT') {
+      res.statusCode = 405
+      res.end('Method not allowed')
+      return true
+    }
+
+    const relativePath = req.headers['x-haku-file-path']
+    if (typeof relativePath !== 'string' || !relativePath.trim()) {
+      res.statusCode = 400
+      res.end('Missing X-Haku-File-Path header')
+      return true
+    }
+
+    await writeTargetTextFile(targetRoot, relativePath, await readRequestBody(req))
+    res.statusCode = 204
+    res.end()
     return true
   }
 

@@ -350,17 +350,23 @@ export class ProjectService {
 
     if (this.storage === 'native') {
       await nativeProjectStore.writeText(relativePath, json)
-    } else if (this.storage === 'memory' || this.storage === 'playground') {
+    } else if (
+      this.storage === 'memory' ||
+      this.storage === 'playground' ||
+      this.storage === 'dev-target'
+    ) {
       browserProjectStore.writeText(relativePath, json)
       if (this.storage === 'playground') {
         await this.writePlaygroundFileToDisk(relativePath, json)
+      } else if (this.storage === 'dev-target') {
+        await this.writeDevTargetFileToDisk(relativePath, json)
       }
     }
 
     sceneLog('save.success', { path: relativePath, storage: this.storage, bytes: json.length })
 
     const { useEditorStore } = await import('../store/editor-store.js')
-    useEditorStore.getState().setScene(relativePath, saved, world as World)
+    useEditorStore.getState().setSceneDocument(saved)
 
     return saved
   }
@@ -826,6 +832,19 @@ export class ProjectService {
     }
   }
 
+  private async writeDevTargetFileToDisk(relativePath: string, body: string): Promise<void> {
+    const res = await fetch('/__haku/dev/file', {
+      method: 'PUT',
+      headers: { 'X-Haku-File-Path': relativePath },
+      body,
+    })
+
+    if (!res.ok) {
+      const message = await res.text()
+      throw new Error(message || `Failed to write target file: ${relativePath}`)
+    }
+  }
+
   private async importPlaygroundAssetFromHttp(fullPath: string): Promise<void> {
     const url = projectPathToUrl(fullPath)
     modelLog('playground.import', { fullPath, url })
@@ -967,6 +986,8 @@ export class ProjectService {
       browserProjectStore.writeText(EDITOR_PROJECT_SETTINGS_PATH, json)
       if (this.storage === 'playground') {
         await this.writePlaygroundFileToDisk(EDITOR_PROJECT_SETTINGS_PATH, json)
+      } else if (this.storage === 'dev-target') {
+        await this.writeDevTargetFileToDisk(EDITOR_PROJECT_SETTINGS_PATH, json)
       }
     }
   }
