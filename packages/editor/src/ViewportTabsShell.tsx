@@ -3,6 +3,7 @@ import { useEditorStore } from './store/editor-store.js'
 import { projectService } from './services/project-service.js'
 import { ViewportPanel } from './panels/ViewportPanel.js'
 import { ViewportErrorBoundary } from './components/ViewportErrorBoundary.js'
+import { PlaygroundDemoBanner } from './components/PlaygroundDemoBanner.js'
 import './viewport-tabs.css'
 
 export const ViewportTabsShell = memo(function ViewportTabsShell() {
@@ -46,6 +47,7 @@ export const ViewportTabsShell = memo(function ViewportTabsShell() {
           <span className="haku-viewport-shell__play-badge">PLAYING</span>
         )}
       </div>
+      <PlaygroundDemoBanner scenePath={scenePath} />
       <div className="haku-viewport-shell__body">
         <ViewportErrorBoundary resetKey={`${scenePath ?? 'empty'}:${worldRevision}`}>
           <ViewportPanel />

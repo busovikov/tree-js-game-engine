@@ -50,6 +50,30 @@
   color: #7cfc9a;
 }
 
+.haku-demo-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 6px 10px;
+  border-bottom: 1px solid #3c3421;
+  background: #282319;
+  color: #d8c99c;
+  font-size: 12px;
+}
+
+.haku-demo-banner span {
+  overflow: hidden;
+  flex: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.haku-demo-banner a {
+  flex-shrink: 0;
+  color: #f0c96c;
+}
+
 .haku-viewport-shell__body {
   flex: 1;
   min-height: 0;
