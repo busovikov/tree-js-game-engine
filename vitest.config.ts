@@ -3,7 +3,12 @@ import { fileURLToPath } from 'node:url'
 
 export default {
   test: {
-    include: ['packages/**/src/**/*.test.ts', 'packages/**/src/**/*.test.tsx'],
+    include: [
+      'packages/**/src/**/*.test.ts',
+      'packages/**/src/**/*.test.tsx',
+      'apps/**/src/**/*.test.ts',
+      'apps/**/src/**/*.test.tsx',
+    ],
   },
   resolve: {
     alias: {

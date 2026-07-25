@@ -110,18 +110,22 @@
               1
             ],
             "scale": [
-              3,
-              3,
-              3
+              1,
+              1,
+              1
             ]
           }
         },
         {
           "type": "MeshRenderer",
           "data": {
-            "geometryType": "ModelGeometry",
-            "geometryParams": {},
-            "modelAsset": "models/rc-level.glb",
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 90,
+              "height": 1,
+              "depth": 90
+            },
+            "modelAsset": "",
             "material": {
               "color": "#ffffff",
               "opacity": 1,
@@ -410,9 +414,13 @@
         {
           "type": "MeshRenderer",
           "data": {
-            "geometryType": "ModelGeometry",
-            "geometryParams": {},
-            "modelAsset": "models/base.glb",
+            "geometryType": "BoxGeometry",
+            "geometryParams": {
+              "width": 1.8,
+              "height": 0.6,
+              "depth": 3.1
+            },
+            "modelAsset": "",
             "material": {
               "color": "#ffffff",
               "opacity": 1,
@@ -458,9 +466,14 @@
         {
           "type": "MeshRenderer",
           "data": {
-            "geometryType": "ModelGeometry",
-            "geometryParams": {},
-            "modelAsset": "models/front-left.glb",
+            "geometryType": "CylinderGeometry",
+            "geometryParams": {
+              "radiusTop": 0.3,
+              "radiusBottom": 0.3,
+              "height": 0.4,
+              "radialSegments": 16
+            },
+            "modelAsset": "",
             "material": {
               "color": "#ffffff",
               "opacity": 1,
@@ -506,9 +519,14 @@
         {
           "type": "MeshRenderer",
           "data": {
-            "geometryType": "ModelGeometry",
-            "geometryParams": {},
-            "modelAsset": "models/front-right.glb",
+            "geometryType": "CylinderGeometry",
+            "geometryParams": {
+              "radiusTop": 0.3,
+              "radiusBottom": 0.3,
+              "height": 0.4,
+              "radialSegments": 16
+            },
+            "modelAsset": "",
             "material": {
               "color": "#ffffff",
               "opacity": 1,
@@ -554,9 +572,14 @@
         {
           "type": "MeshRenderer",
           "data": {
-            "geometryType": "ModelGeometry",
-            "geometryParams": {},
-            "modelAsset": "models/back-left.glb",
+            "geometryType": "CylinderGeometry",
+            "geometryParams": {
+              "radiusTop": 0.3,
+              "radiusBottom": 0.3,
+              "height": 0.4,
+              "radialSegments": 16
+            },
+            "modelAsset": "",
             "material": {
               "color": "#ffffff",
               "opacity": 1,
@@ -602,9 +625,14 @@
         {
           "type": "MeshRenderer",
           "data": {
-            "geometryType": "ModelGeometry",
-            "geometryParams": {},
-            "modelAsset": "models/back-right.glb",
+            "geometryType": "CylinderGeometry",
+            "geometryParams": {
+              "radiusTop": 0.3,
+              "radiusBottom": 0.3,
+              "height": 0.4,
+              "radialSegments": 16
+            },
+            "modelAsset": "",
             "material": {
               "color": "#ffffff",
               "opacity": 1,
