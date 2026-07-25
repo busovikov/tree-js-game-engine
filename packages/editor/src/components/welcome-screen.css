@@ -1,0 +1,54 @@
+.haku-welcome {
+  display: grid;
+  height: 100%;
+  place-items: center;
+  padding: 32px;
+  color: #dfe3ef;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(61, 90, 254, 0.18), transparent 38%),
+    #151521;
+}
+
+.haku-welcome__card {
+  width: min(560px, 100%);
+  padding: 36px;
+  border: 1px solid #39394a;
+  border-radius: 12px;
+  background: rgba(30, 30, 46, 0.94);
+  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.35);
+}
+
+.haku-welcome__eyebrow {
+  color: #8da0ff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.haku-welcome h1 {
+  margin: 8px 0;
+  font-size: 30px;
+}
+
+.haku-welcome p,
+.haku-welcome small {
+  color: #a7adbd;
+}
+
+.haku-welcome__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 24px 0 12px;
+}
+
+.haku-welcome__actions button {
+  padding: 9px 14px;
+}
+
+.haku-welcome__primary {
+  border-color: #6178ff;
+  background: #3d5afe;
+  color: #fff;
+}

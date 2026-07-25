@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { setHakuLogSink } from '@haku/engine'
 import { EditorLayout } from './EditorLayout.js'
 import { MenuBar } from './components/MenuBar.js'
+import { WelcomeScreen } from './components/WelcomeScreen.js'
 import { RenderSettingsDialog } from './components/RenderSettingsDialog.js'
 import { PhysicsProjectSettingsDialog } from './components/PhysicsProjectSettingsDialog.js'
 import { commitSceneEdit } from './commands/scene-history.js'
@@ -21,6 +22,7 @@ import {
   handleDuplicateShortcut,
   handleTransformToolShortcut,
 } from './viewport/transform-tool-shortcuts.js'
+import { handleSaveShortcut } from './commands/editor-shortcuts.js'
 
 function pickProjectFolder(): Promise<FileList | null> {
   return new Promise((resolve) => {
@@ -48,6 +50,7 @@ export const EditorApp = memo(function EditorApp() {
   const exitPlayMode = useEditorStore((s) => s.exitPlayMode)
   const [renderSettingsOpen, setRenderSettingsOpen] = useState(false)
   const [physicsSettingsOpen, setPhysicsSettingsOpen] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
 
   useEffect(() => {
     setHakuLogSink(projectLogSink)
@@ -118,12 +121,19 @@ export const EditorApp = memo(function EditorApp() {
     const { world, sceneDocument, scenePath } = useEditorStore.getState()
     if (!world || !sceneDocument || !scenePath) return
 
+    setSaveStatus('saving')
     try {
       await projectService.saveScene(scenePath, world, sceneDocument)
+      setSaveStatus('saved')
     } catch (err) {
+      setSaveStatus('error')
       alert(err instanceof Error ? err.message : 'Failed to save scene')
     }
   }, [])
+
+  useEffect(() => {
+    if (isDirty) setSaveStatus('idle')
+  }, [isDirty])
 
   const onCreatePrefab = useCallback(() => {
     if (!primary) return
@@ -159,7 +169,18 @@ export const EditorApp = memo(function EditorApp() {
       if (handleDuplicateShortcut(event)) return
       if (handleTransformToolShortcut(event)) return
 
-      if (useEditorStore.getState().mode === 'play') return
+      const state = useEditorStore.getState()
+      if (
+        handleSaveShortcut(
+          event,
+          state.mode === 'edit' && !!state.scenePath && saveStatus !== 'saving',
+          () => void onSave(),
+        )
+      ) {
+        return
+      }
+
+      if (state.mode === 'play') return
       if (event.repeat) return
       if (!(event.metaKey || event.ctrlKey) || event.altKey) return
       if (event.key.toLowerCase() !== 'z') return
@@ -174,7 +195,7 @@ export const EditorApp = memo(function EditorApp() {
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [])
+  }, [onSave, saveStatus])
 
   const onRenderSettings = useCallback(() => {
     setRenderSettingsOpen(true)
@@ -216,7 +237,13 @@ export const EditorApp = memo(function EditorApp() {
             onClick: onCreateProject,
           },
           { id: 'open', label: 'Open…', onClick: onOpenProject },
-          { id: 'save', label: 'Save', disabled: !scenePath || mode === 'play', onClick: onSave },
+          {
+            id: 'save',
+            label: saveStatus === 'saving' ? 'Saving…' : 'Save',
+            shortcut: '⌘/Ctrl S',
+            disabled: !scenePath || mode === 'play' || saveStatus === 'saving',
+            onClick: onSave,
+          },
         ],
       },
       {
@@ -257,8 +284,11 @@ export const EditorApp = memo(function EditorApp() {
       onSave,
       sceneDocument,
       scenePath,
+      saveStatus,
     ],
   )
+
+  const hasPrefabs = Object.keys(sceneDocument?.prefabs ?? {}).length > 0
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
@@ -278,7 +308,7 @@ export const EditorApp = memo(function EditorApp() {
         <button type="button" onClick={onUndo} disabled={!globalCommandBus.canUndo() || mode === 'play'}>Undo</button>
         <button type="button" onClick={onRedo} disabled={!globalCommandBus.canRedo() || mode === 'play'}>Redo</button>
         <button type="button" onClick={onCreatePrefab} disabled={!primary || mode === 'play'}>Create Prefab</button>
-        <button type="button" onClick={onPlacePrefab} disabled={mode === 'play'}>Place Prefab</button>
+        <button type="button" onClick={onPlacePrefab} disabled={mode === 'play' || !hasPrefabs}>Place Prefab</button>
         {mode === 'edit' ? (
           <button type="button" onClick={enterPlayMode} disabled={!scenePath}>▶ Play</button>
         ) : (
@@ -287,9 +317,23 @@ export const EditorApp = memo(function EditorApp() {
         <span style={{ marginLeft: 'auto', color: '#888', fontSize: 12 }}>
           {scenePath ?? 'No scene loaded'}{isDirty ? ' *' : ''} · {mode}
         </span>
+        {saveStatus !== 'idle' && (
+          <span role="status" style={{ color: saveStatus === 'error' ? '#ff8a80' : '#8f9', fontSize: 12 }}>
+            {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? 'Saved' : 'Save failed'}
+          </span>
+        )}
       </header>
       <div style={{ flex: 1, minHeight: 0 }}>
-        <EditorLayout />
+        {scenePath ? (
+          <EditorLayout />
+        ) : (
+          <WelcomeScreen
+            canCreate={projectService.isFileSystemAccessSupported()}
+            onOpen={onOpenProject}
+            onCreate={onCreateProject}
+            onTryDemo={() => onLoadPlaygroundDemo(PLAYGROUND_DEMO_SCENES[0]!.scenePath)}
+          />
+        )}
       </div>
       <RenderSettingsDialog
         open={renderSettingsOpen}
