@@ -17,7 +17,7 @@ export const ViewportTabsShell = memo(function ViewportTabsShell() {
     setActiveViewportTab(tab)
     if (!scenePath) return
     const state = projectService.getSceneEditorState(scenePath)
-    void projectService.persistSceneWorkspace(scenePath, state.editorCamera, tab)
+    projectService.persistSceneWorkspaceInBackground(scenePath, state.editorCamera, tab)
   }
 
   return (

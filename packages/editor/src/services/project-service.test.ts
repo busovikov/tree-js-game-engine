@@ -2,15 +2,17 @@
  * @vitest-environment happy-dom
  */
 import { World } from '@haku/core'
+import { setHakuLogSink } from '@haku/engine'
 import { validateSceneDocument } from '@haku/schema'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { globalCommandBus } from '../commands/command-bus.js'
 import { useEditorStore } from '../store/editor-store.js'
 import { ProjectService } from './project-service.js'
 
-describe('ProjectService dev-target saving', () => {
+describe('ProjectService disk saving', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
+    setHakuLogSink(null)
     globalCommandBus.clear()
   })
 
@@ -47,5 +49,51 @@ describe('ProjectService dev-target saving', () => {
     )
     expect(useEditorStore.getState().selection).toEqual([selected])
     expect(globalCommandBus.canUndo()).toBe(true)
+  })
+
+  it('writes playground editor settings through the project file endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const service = new ProjectService()
+    ;(service as unknown as { storage: 'playground' }).storage = 'playground'
+
+    await service.saveEditorSettings()
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/__haku/project/file',
+      expect.objectContaining({
+        method: 'PUT',
+        headers: { 'X-Haku-File-Path': '.haku/editor.json' },
+      }),
+    )
+  })
+
+  it('contains and reports background workspace persistence failures', async () => {
+    const service = new ProjectService()
+    const write = vi.fn()
+    setHakuLogSink({ write })
+    vi.spyOn(service, 'persistSceneWorkspace').mockRejectedValue(new Error('disk unavailable'))
+
+    service.persistSceneWorkspaceInBackground(
+      'public/assets/scenes/main.scene.json',
+      {
+        position: [0, 0, 5],
+        target: [0, 0, 0],
+      },
+      'scene',
+    )
+
+    await vi.waitFor(() => {
+      expect(write).toHaveBeenCalledWith(
+        'error',
+        'scene',
+        'workspace.save.failed',
+        expect.objectContaining({
+          scenePath: 'public/assets/scenes/main.scene.json',
+          storage: 'memory',
+        }),
+      )
+    })
   })
 })

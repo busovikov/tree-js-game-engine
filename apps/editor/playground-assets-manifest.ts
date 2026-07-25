@@ -1,6 +1,6 @@
 import { appendFile, mkdir, readdir, writeFile } from 'node:fs/promises'
 import { spawn } from 'node:child_process'
-import { dirname, join, normalize, relative, resolve } from 'node:path'
+import { dirname, join, normalize, relative, resolve, sep } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Plugin } from 'vite'
 
@@ -74,11 +74,49 @@ async function readJsonBody(req: IncomingMessage): Promise<{ path?: string }> {
 
 function resolveProjectPath(projectRoot: string, relativePath: string): string | null {
   const normalized = relativePath.replace(/^\/+/, '').replace(/\\/g, '/')
-  if (normalized.includes('..')) return null
+  if (!normalized || normalized.split('/').includes('..')) return null
   const fullPath = normalize(resolve(projectRoot, normalized))
   const root = normalize(resolve(projectRoot))
-  if (!fullPath.startsWith(root)) return null
+  if (fullPath !== root && !fullPath.startsWith(`${root}${sep}`)) return null
   return fullPath
+}
+
+export async function writePlaygroundProjectTextFile(
+  projectRoot: string,
+  relativePath: string,
+  content: string,
+): Promise<void> {
+  const fullPath = resolveProjectPath(projectRoot, relativePath)
+  if (!fullPath || fullPath === normalize(resolve(projectRoot))) {
+    throw new Error('Invalid project path')
+  }
+
+  await mkdir(dirname(fullPath), { recursive: true })
+  await writeFile(fullPath, content, 'utf8')
+}
+
+async function handleProjectFile(
+  projectRoot: string,
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
+  if (req.method !== 'PUT') {
+    res.statusCode = 405
+    res.end('Method Not Allowed')
+    return
+  }
+
+  const relativePath = req.headers['x-haku-file-path']
+  if (typeof relativePath !== 'string' || !relativePath.trim()) {
+    res.statusCode = 400
+    res.end('Missing X-Haku-File-Path header')
+    return
+  }
+
+  const body = await readRequestBody(req)
+  await writePlaygroundProjectTextFile(projectRoot, relativePath, body.toString('utf8'))
+  res.statusCode = 204
+  res.end()
 }
 
 function revealInFileManager(fullPath: string): Promise<void> {
@@ -131,7 +169,11 @@ function openTerminalAt(fullPath: string): Promise<void> {
   })
 }
 
-async function handleShellReveal(projectRoot: string, req: IncomingMessage, res: ServerResponse): Promise<void> {
+async function handleShellReveal(
+  projectRoot: string,
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
   if (req.method !== 'POST') {
     res.statusCode = 405
     res.end('Method Not Allowed')
@@ -157,7 +199,11 @@ async function handleShellReveal(projectRoot: string, req: IncomingMessage, res:
   res.end()
 }
 
-async function handleShellTerminal(projectRoot: string, req: IncomingMessage, res: ServerResponse): Promise<void> {
+async function handleShellTerminal(
+  projectRoot: string,
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
   if (req.method !== 'POST') {
     res.statusCode = 405
     res.end('Method Not Allowed')
@@ -231,6 +277,17 @@ export function playgroundAssetsManifestPlugin(assetsRoot: string): Plugin {
           } catch (error) {
             res.statusCode = 500
             res.end(error instanceof Error ? error.message : 'Import failed')
+          }
+          return
+        }
+
+        if (pathname === '/__haku/project/file') {
+          try {
+            await handleProjectFile(playgroundRoot, req, res)
+          } catch (error) {
+            res.statusCode =
+              error instanceof Error && error.message === 'Invalid project path' ? 400 : 500
+            res.end(error instanceof Error ? error.message : 'Project file write failed')
           }
           return
         }

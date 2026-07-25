@@ -18,7 +18,14 @@ import {
 import { loadSceneDocument, saveSceneDocument } from '@haku/serializer'
 import type { EntityId, IWorld } from '@haku/core'
 import { MeshRendererComponent, World, getCoreComponent } from '@haku/core'
-import { clearModelCache, modelLog, modelLogError, modelLogUrl, sceneLog, sceneLogError } from '@haku/engine'
+import {
+  clearModelCache,
+  modelLog,
+  modelLogError,
+  modelLogUrl,
+  sceneLog,
+  sceneLogError,
+} from '@haku/engine'
 import { browserProjectStore } from './browser-project-store.js'
 import { isFileSystemAccessSupported, nativeProjectStore } from './native-project-store.js'
 import { loadPersonalizedProjectTemplate } from './project-template.js'
@@ -51,11 +58,15 @@ export class ProjectService {
   }
 
   isVirtualFs(): boolean {
-    return this.storage === 'memory' || this.storage === 'playground' || this.storage === 'dev-target'
+    return (
+      this.storage === 'memory' || this.storage === 'playground' || this.storage === 'dev-target'
+    )
   }
 
   private usesBrowserProjectStore(): boolean {
-    return this.storage === 'memory' || this.storage === 'playground' || this.storage === 'dev-target'
+    return (
+      this.storage === 'memory' || this.storage === 'playground' || this.storage === 'dev-target'
+    )
   }
 
   canSyncAssetsToDisk(): boolean {
@@ -65,7 +76,9 @@ export class ProjectService {
   /** Create a new project folder on disk and open it. */
   async createNewProject(): Promise<HakuProject> {
     if (!isFileSystemAccessSupported()) {
-      throw new Error('File System Access API is not supported in this browser. Use Chrome or Edge.')
+      throw new Error(
+        'File System Access API is not supported in this browser. Use Chrome or Edge.',
+      )
     }
 
     // Directory picker must run before prompt() to keep the browser user gesture.
@@ -87,16 +100,22 @@ export class ProjectService {
     this.manifest = await this.normalizeManifest(HakuProjectSchema.parse(JSON.parse(manifestRaw)))
 
     await this.loadEditorSettings()
-    sceneLog('project.open', { source: 'native-create', root: projectHandle.name, entryScene: this.manifest.entryScene })
+    sceneLog('project.open', {
+      source: 'native-create',
+      root: projectHandle.name,
+      entryScene: this.manifest.entryScene,
+    })
     const { world, document } = await this.loadScene(this.manifest.entryScene)
     const { useEditorStore } = await import('../store/editor-store.js')
     useEditorStore.getState().setProjectRoot(projectHandle.name)
-    useEditorStore.getState().setScene(
-      this.manifest.entryScene,
-      document,
-      world as World,
-      this.getSceneEditorState(this.manifest.entryScene).activeTab,
-    )
+    useEditorStore
+      .getState()
+      .setScene(
+        this.manifest.entryScene,
+        document,
+        world as World,
+        this.getSceneEditorState(this.manifest.entryScene).activeTab,
+      )
 
     return this.manifest
   }
@@ -104,7 +123,9 @@ export class ProjectService {
   /** Open project via File System Access API (read/write on disk). */
   async openFromDirectoryPicker(): Promise<HakuProject> {
     if (!isFileSystemAccessSupported()) {
-      throw new Error('File System Access API is not supported in this browser. Use Chrome or Edge.')
+      throw new Error(
+        'File System Access API is not supported in this browser. Use Chrome or Edge.',
+      )
     }
 
     const rootName = await nativeProjectStore.openDirectoryPicker()
@@ -117,16 +138,22 @@ export class ProjectService {
     this.manifest = await this.normalizeManifest(HakuProjectSchema.parse(JSON.parse(manifestRaw)))
 
     await this.loadEditorSettings()
-    sceneLog('project.open', { source: 'native', root: rootName, entryScene: this.manifest.entryScene })
+    sceneLog('project.open', {
+      source: 'native',
+      root: rootName,
+      entryScene: this.manifest.entryScene,
+    })
     const { world, document } = await this.loadScene(this.manifest.entryScene)
     const { useEditorStore } = await import('../store/editor-store.js')
     useEditorStore.getState().setProjectRoot(rootName)
-    useEditorStore.getState().setScene(
-      this.manifest.entryScene,
-      document,
-      world as World,
-      this.getSceneEditorState(this.manifest.entryScene).activeTab,
-    )
+    useEditorStore
+      .getState()
+      .setScene(
+        this.manifest.entryScene,
+        document,
+        world as World,
+        this.getSceneEditorState(this.manifest.entryScene).activeTab,
+      )
 
     return this.manifest
   }
@@ -143,16 +170,22 @@ export class ProjectService {
     this.manifest = await this.normalizeManifest(HakuProjectSchema.parse(JSON.parse(manifestRaw)))
 
     await this.loadEditorSettings()
-    sceneLog('project.open', { source: 'memory', root: rootName, entryScene: this.manifest.entryScene })
+    sceneLog('project.open', {
+      source: 'memory',
+      root: rootName,
+      entryScene: this.manifest.entryScene,
+    })
     const { world, document } = await this.loadScene(this.manifest.entryScene)
     const { useEditorStore } = await import('../store/editor-store.js')
     useEditorStore.getState().setProjectRoot(rootName)
-    useEditorStore.getState().setScene(
-      this.manifest.entryScene,
-      document,
-      world as World,
-      this.getSceneEditorState(this.manifest.entryScene).activeTab,
-    )
+    useEditorStore
+      .getState()
+      .setScene(
+        this.manifest.entryScene,
+        document,
+        world as World,
+        this.getSceneEditorState(this.manifest.entryScene).activeTab,
+      )
 
     return this.manifest
   }
@@ -163,7 +196,11 @@ export class ProjectService {
     this.assetBaseUrl = assetBaseUrl
     this.storage = rootPath === 'playground' ? 'playground' : 'memory'
     this.clearModelAssetCache()
-    sceneLog('project.open', { source: rootPath === 'playground' ? 'playground' : 'manifest', root: rootPath, entryScene: manifest.entryScene })
+    sceneLog('project.open', {
+      source: rootPath === 'playground' ? 'playground' : 'manifest',
+      root: rootPath,
+      entryScene: manifest.entryScene,
+    })
     return manifest
   }
 
@@ -185,12 +222,9 @@ export class ProjectService {
     const { world, document } = await this.loadScene(scenePath)
     const { useEditorStore } = await import('../store/editor-store.js')
     useEditorStore.getState().setProjectRoot('playground')
-    useEditorStore.getState().setScene(
-      scenePath,
-      document,
-      world as World,
-      this.getSceneEditorState(scenePath).activeTab,
-    )
+    useEditorStore
+      .getState()
+      .setScene(scenePath, document, world as World, this.getSceneEditorState(scenePath).activeTab)
     return { world, document }
   }
 
@@ -211,9 +245,7 @@ export class ProjectService {
     if (!manifestRes.ok) {
       throw new Error('Failed to load target haku.project.json')
     }
-    const manifest = await this.normalizeManifest(
-      HakuProjectSchema.parse(await manifestRes.json()),
-    )
+    const manifest = await this.normalizeManifest(HakuProjectSchema.parse(await manifestRes.json()))
 
     this.root = info.rootName
     this.manifest = manifest
@@ -233,12 +265,14 @@ export class ProjectService {
     const { world, document } = await this.loadScene(manifest.entryScene)
     const { useEditorStore } = await import('../store/editor-store.js')
     useEditorStore.getState().setProjectRoot(info.rootName)
-    useEditorStore.getState().setScene(
-      manifest.entryScene,
-      document,
-      world as World,
-      this.getSceneEditorState(manifest.entryScene).activeTab,
-    )
+    useEditorStore
+      .getState()
+      .setScene(
+        manifest.entryScene,
+        document,
+        world as World,
+        this.getSceneEditorState(manifest.entryScene).activeTab,
+      )
 
     return manifest
   }
@@ -335,7 +369,11 @@ export class ProjectService {
     }
   }
 
-  async saveScene(relativePath: string, world: IWorld, document: SceneDocument): Promise<SceneDocument> {
+  async saveScene(
+    relativePath: string,
+    world: IWorld,
+    document: SceneDocument,
+  ): Promise<SceneDocument> {
     const saved = saveSceneDocument(
       world,
       document.metadata,
@@ -375,7 +413,9 @@ export class ProjectService {
     import('../store/editor-store.js').then(({ useEditorStore }) => {
       const world = useEditorStore.getState().world
       if (world) {
-        useEditorStore.getState().setScene(useEditorStore.getState().scenePath ?? '', document, world)
+        useEditorStore
+          .getState()
+          .setScene(useEditorStore.getState().scenePath ?? '', document, world)
       }
     })
   }
@@ -448,12 +488,14 @@ export class ProjectService {
     }
   }
 
-  async resyncVirtualAssetsFromManifest(manifestUrl = '/assets/manifest.json', assetsDir?: string): Promise<void> {
+  async resyncVirtualAssetsFromManifest(
+    manifestUrl = '/assets/manifest.json',
+    assetsDir?: string,
+  ): Promise<void> {
     if (this.storage !== 'playground' && this.storage !== 'dev-target') return
     const root = assetsDir ?? this.getAssetsRoot()
     browserProjectStore.removeUnderPrefix(root)
-    const url =
-      this.storage === 'dev-target' ? '/__haku/dev/assets/manifest.json' : manifestUrl
+    const url = this.storage === 'dev-target' ? '/__haku/dev/assets/manifest.json' : manifestUrl
     await this.seedVirtualAssetsFromManifest(url, root)
   }
 
@@ -692,7 +734,13 @@ export class ProjectService {
 
     if (this.assetBaseUrl) {
       const url = `${this.assetBaseUrl}/${relativePath}`.replace(/\/+/g, '/')
-      modelLog('resolve.asset', { relativePath, fullPath, storage: this.storage, source: 'asset-base-url', url })
+      modelLog('resolve.asset', {
+        relativePath,
+        fullPath,
+        storage: this.storage,
+        source: 'asset-base-url',
+        url,
+      })
       return url
     }
 
@@ -819,7 +867,10 @@ export class ProjectService {
     return url
   }
 
-  private async writePlaygroundFileToDisk(relativePath: string, body: string | Blob): Promise<void> {
+  private async writePlaygroundFileToDisk(
+    relativePath: string,
+    body: string | Blob,
+  ): Promise<void> {
     const res = await fetch('/__haku/assets/import', {
       method: 'POST',
       headers: { 'X-Haku-Asset-Path': relativePath },
@@ -829,6 +880,22 @@ export class ProjectService {
     if (!res.ok) {
       const message = await res.text()
       throw new Error(message || `Failed to write file to disk: ${relativePath}`)
+    }
+  }
+
+  private async writePlaygroundProjectFileToDisk(
+    relativePath: string,
+    body: string,
+  ): Promise<void> {
+    const res = await fetch('/__haku/project/file', {
+      method: 'PUT',
+      headers: { 'X-Haku-File-Path': relativePath },
+      body,
+    })
+
+    if (!res.ok) {
+      const message = await res.text()
+      throw new Error(message || `Failed to write project file: ${relativePath}`)
     }
   }
 
@@ -876,7 +943,12 @@ export class ProjectService {
       }
 
       const url = this.cacheModelBlobUrl(fullPath, blob)
-      modelLog('blob.created', { fullPath, storage: this.storage, source: 'browser-store', url: modelLogUrl(url) })
+      modelLog('blob.created', {
+        fullPath,
+        storage: this.storage,
+        source: 'browser-store',
+        url: modelLogUrl(url),
+      })
       return url
     }
 
@@ -902,12 +974,18 @@ export class ProjectService {
   ): Promise<{ buffers?: Array<{ uri?: string }>; images?: Array<{ uri?: string }> }> {
     if (this.storage === 'native') {
       const text = await nativeProjectStore.readText(fullPath)
-      return JSON.parse(text) as { buffers?: Array<{ uri?: string }>; images?: Array<{ uri?: string }> }
+      return JSON.parse(text) as {
+        buffers?: Array<{ uri?: string }>
+        images?: Array<{ uri?: string }>
+      }
     }
 
     if (this.usesBrowserProjectStore()) {
       const text = await browserProjectStore.readText(fullPath)
-      return JSON.parse(text) as { buffers?: Array<{ uri?: string }>; images?: Array<{ uri?: string }> }
+      return JSON.parse(text) as {
+        buffers?: Array<{ uri?: string }>
+        images?: Array<{ uri?: string }>
+      }
     }
 
     throw new Error(`Cannot read glTF: ${fullPath}`)
@@ -985,7 +1063,7 @@ export class ProjectService {
     if (this.usesBrowserProjectStore()) {
       browserProjectStore.writeText(EDITOR_PROJECT_SETTINGS_PATH, json)
       if (this.storage === 'playground') {
-        await this.writePlaygroundFileToDisk(EDITOR_PROJECT_SETTINGS_PATH, json)
+        await this.writePlaygroundProjectFileToDisk(EDITOR_PROJECT_SETTINGS_PATH, json)
       } else if (this.storage === 'dev-target') {
         await this.writeDevTargetFileToDisk(EDITOR_PROJECT_SETTINGS_PATH, json)
       }
@@ -999,6 +1077,16 @@ export class ProjectService {
   ): Promise<void> {
     this.updateSceneEditorState(scenePath, { editorCamera, activeTab })
     await this.saveEditorSettings()
+  }
+
+  persistSceneWorkspaceInBackground(
+    scenePath: string,
+    editorCamera: SceneEditorState['editorCamera'],
+    activeTab: SceneEditorState['activeTab'],
+  ): void {
+    void this.persistSceneWorkspace(scenePath, editorCamera, activeTab).catch((error) => {
+      sceneLogError('workspace.save.failed', { scenePath, storage: this.storage }, error)
+    })
   }
 
   /** Upgrade legacy `assets/` manifest paths to on-disk `public/assets/`. */
@@ -1026,7 +1114,14 @@ export class ProjectService {
 
 function isBinaryFile(name: string): boolean {
   const ext = name.split('.').pop()?.toLowerCase()
-  return ext === 'glb' || ext === 'bin' || ext === 'png' || ext === 'jpg' || ext === 'jpeg' || ext === 'webp'
+  return (
+    ext === 'glb' ||
+    ext === 'bin' ||
+    ext === 'png' ||
+    ext === 'jpg' ||
+    ext === 'jpeg' ||
+    ext === 'webp'
+  )
 }
 
 function suggestDuplicateAssetName(originalName: string, existingNames: Set<string>): string {
@@ -1096,6 +1191,10 @@ export function assignPrototype(
   }
 }
 
-export function assignMeshPrototype(world: IWorld, targetId: EntityId, meshRenderer: import('@haku/schema').MeshRenderer): void {
+export function assignMeshPrototype(
+  world: IWorld,
+  targetId: EntityId,
+  meshRenderer: import('@haku/schema').MeshRenderer,
+): void {
   world.addComponent(targetId, MeshRendererComponent, meshRenderer)
 }
