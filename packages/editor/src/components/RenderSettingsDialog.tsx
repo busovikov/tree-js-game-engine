@@ -2,6 +2,7 @@ import { memo, useEffect, useState } from 'react'
 import type { RenderSettings } from '@haku/schema'
 import { defaultRenderSettings } from '@haku/schema'
 import { FeaturesTab, OutputTab, PostTab, ShadowsTab } from './render-settings/RenderSettingsTabs.js'
+import { useModalFocus } from './modal-focus.js'
 
 type TabId = 'features' | 'output' | 'shadows' | 'post'
 
@@ -25,6 +26,7 @@ export const RenderSettingsDialog = memo(function RenderSettingsDialog({
 }) {
   const [tab, setTab] = useState<TabId>('features')
   const [draft, setDraft] = useState<RenderSettings>(defaultRenderSettings())
+  const { dialogRef, onDialogKeyDown } = useModalFocus(open, onClose)
 
   useEffect(() => {
     if (open) {
@@ -42,8 +44,6 @@ export const RenderSettingsDialog = memo(function RenderSettingsDialog({
 
   return (
     <div
-      role="dialog"
-      aria-modal
       style={{
         position: 'fixed',
         inset: 0,
@@ -56,6 +56,12 @@ export const RenderSettingsDialog = memo(function RenderSettingsDialog({
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="haku-render-settings-title"
+        tabIndex={-1}
+        onKeyDown={onDialogKeyDown}
         style={{
           background: '#1e1e2e',
           border: '1px solid #444',
@@ -68,7 +74,7 @@ export const RenderSettingsDialog = memo(function RenderSettingsDialog({
         onClick={(e) => e.stopPropagation()}
       >
         <header style={{ padding: '12px 16px', borderBottom: '1px solid #333' }}>
-          <strong style={{ color: '#eee' }}>Render Settings</strong>
+          <strong id="haku-render-settings-title" style={{ color: '#eee' }}>Render Settings</strong>
         </header>
         <nav style={{ display: 'flex', gap: 4, padding: '8px 12px', borderBottom: '1px solid #333' }}>
           {TABS.map((t) => (

@@ -9,6 +9,7 @@ import {
   type PhysicsMaterial,
   type PhysicsProjectSettings,
 } from '@haku/schema'
+import { useModalFocus } from './modal-focus.js'
 
 export const PhysicsProjectSettingsDialog = memo(function PhysicsProjectSettingsDialog({
   open,
@@ -24,6 +25,7 @@ export const PhysicsProjectSettingsDialog = memo(function PhysicsProjectSettings
   const [draft, setDraft] = useState<PhysicsProjectSettings>(defaultPhysicsProjectSettings())
   const [selectedMaterialId, setSelectedMaterialId] = useState(DEFAULT_PHYSICS_MATERIAL_ID)
   const [newMaterialId, setNewMaterialId] = useState('')
+  const { dialogRef, onDialogKeyDown } = useModalFocus(open, onClose)
 
   useEffect(() => {
     if (open) {
@@ -105,9 +107,6 @@ export const PhysicsProjectSettingsDialog = memo(function PhysicsProjectSettings
 
   return (
     <div
-      role="dialog"
-      aria-modal
-      aria-label="Physics project settings"
       style={{
         position: 'fixed',
         inset: 0,
@@ -120,6 +119,12 @@ export const PhysicsProjectSettingsDialog = memo(function PhysicsProjectSettings
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="haku-physics-settings-title"
+        tabIndex={-1}
+        onKeyDown={onDialogKeyDown}
         style={{
           background: '#1e1e2e',
           border: '1px solid #444',
@@ -132,7 +137,7 @@ export const PhysicsProjectSettingsDialog = memo(function PhysicsProjectSettings
         onClick={(event) => event.stopPropagation()}
       >
         <header style={{ padding: '12px 16px', borderBottom: '1px solid #333' }}>
-          <strong style={{ color: '#eee' }}>Physics Settings</strong>
+          <strong id="haku-physics-settings-title" style={{ color: '#eee' }}>Physics Settings</strong>
         </header>
 
         <div style={{ padding: 16, overflow: 'auto', flex: 1, display: 'grid', gap: 16 }}>
