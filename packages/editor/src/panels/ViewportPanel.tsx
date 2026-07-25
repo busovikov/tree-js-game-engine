@@ -33,6 +33,7 @@ import { ScenePhysicsDebugDraw } from '../viewport/physics-debug-draw.js'
 import { startPlayModePhysics, type PlayModePhysicsSession } from '../viewport/play-mode-physics.js'
 import { installVehicleDebugHook } from '../viewport/vehicle-debug-hook.js'
 import { installPlayModePhysicsAccess } from '../viewport/play-mode-physics-access.js'
+import { detachGizmoBeforeWorldSync } from '../viewport/viewport-world-sync.js'
 
 function refreshGizmo(
   gizmo: TransformControls,
@@ -143,12 +144,6 @@ export const ViewportPanel = memo(function ViewportPanel() {
     )
     engine.backend.setModelLoadPreparer((path) => projectService.prepareModelLoad(path))
     engineRef.current = engine
-
-    const unsubscribeWorld = useEditorStore.subscribe((state, prev) => {
-      if (state.world !== prev.world || state.worldRevision !== prev.worldRevision) {
-        if (state.world) engine.setWorld(state.world)
-      }
-    })
 
     const editorCamera = engine.backend.getEditorCamera()
     const orbit = new OrbitControls(editorCamera, canvas)
@@ -261,7 +256,6 @@ export const ViewportPanel = memo(function ViewportPanel() {
     return () => {
       removePlayModePhysicsAccess()
       removeVehicleDebugHook()
-      unsubscribeWorld()
       observer.disconnect()
       cameraLookRef.current?.dispose()
       cameraLookRef.current = null
@@ -356,6 +350,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
   useEffect(() => {
     const engine = engineRef.current
     if (!engine || !world) return
+    detachGizmoBeforeWorldSync(gizmoRef.current)
     engine.loadWorld(
       world,
       sceneDocument?.prototypes ?? {},
@@ -395,6 +390,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
   useLayoutEffect(() => {
     const engine = engineRef.current
     if (!engine || !world) return
+    detachGizmoBeforeWorldSync(gizmoRef.current)
     engine.setWorld(world)
   }, [world, worldRevision])
 
@@ -404,6 +400,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
     engine.backend.sync.setPresentationTransformResolver(
       createDynamicRaycastWheelRestPoseResolver(world),
     )
+    detachGizmoBeforeWorldSync(gizmoRef.current)
     engine.setWorld(world)
     return () => {
       engine.backend.sync.setPresentationTransformResolver(null)
