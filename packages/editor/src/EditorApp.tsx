@@ -9,6 +9,7 @@ import { useEditorStore } from './store/editor-store.js'
 import { projectService } from './services/project-service.js'
 import { PLAYGROUND_DEMO_SCENES } from './services/playground-demos.js'
 import { projectLogSink } from './services/project-log-sink.js'
+import { confirmDiscardChanges, prepareBeforeUnload } from './services/unsaved-changes.js'
 import { globalCommandBus } from './commands/command-bus.js'
 import {
   createPrefab,
@@ -42,6 +43,7 @@ export const EditorApp = memo(function EditorApp() {
   const primary = primarySelection(selection)
   const sceneDocument = useEditorStore((s) => s.sceneDocument)
   const commandRevision = useEditorStore((s) => s.commandRevision)
+  const isDirty = useEditorStore((s) => s.isDirty)
   const enterPlayMode = useEditorStore((s) => s.enterPlayMode)
   const exitPlayMode = useEditorStore((s) => s.exitPlayMode)
   const [renderSettingsOpen, setRenderSettingsOpen] = useState(false)
@@ -64,6 +66,9 @@ export const EditorApp = memo(function EditorApp() {
   }, [])
 
   const onOpenProject = useCallback(async () => {
+    if (!confirmDiscardChanges(useEditorStore.getState().isDirty, window.confirm.bind(window))) {
+      return
+    }
     try {
       if (projectService.isFileSystemAccessSupported()) {
         await projectService.openFromDirectoryPicker()
@@ -80,6 +85,9 @@ export const EditorApp = memo(function EditorApp() {
   }, [])
 
   const onCreateProject = useCallback(async () => {
+    if (!confirmDiscardChanges(useEditorStore.getState().isDirty, window.confirm.bind(window))) {
+      return
+    }
     try {
       await projectService.createNewProject()
     } catch (err) {
@@ -89,12 +97,22 @@ export const EditorApp = memo(function EditorApp() {
   }, [])
 
   const onLoadPlaygroundDemo = useCallback(async (scenePath: string) => {
+    if (!confirmDiscardChanges(useEditorStore.getState().isDirty, window.confirm.bind(window))) {
+      return
+    }
     try {
       await projectService.openPlaygroundDemo(scenePath)
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to load demo scene')
     }
   }, [])
+
+  useEffect(() => {
+    if (!isDirty) return
+    const onBeforeUnload = (event: BeforeUnloadEvent) => prepareBeforeUnload(event, true)
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [isDirty])
 
   const onSave = useCallback(async () => {
     const { world, sceneDocument, scenePath } = useEditorStore.getState()
@@ -267,7 +285,7 @@ export const EditorApp = memo(function EditorApp() {
           <button type="button" onClick={exitPlayMode}>■ Stop</button>
         )}
         <span style={{ marginLeft: 'auto', color: '#888', fontSize: 12 }}>
-          {scenePath ?? 'No scene loaded'} · {mode}
+          {scenePath ?? 'No scene loaded'}{isDirty ? ' *' : ''} · {mode}
         </span>
       </header>
       <div style={{ flex: 1, minHeight: 0 }}>

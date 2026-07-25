@@ -4,10 +4,18 @@ export interface Command {
   merge?(other: Command): Command | null
 }
 
+interface HistoryEntry {
+  command: Command
+  beforeStateId: number
+  afterStateId: number
+}
+
 export class CommandBus {
-  private undoStack: Command[] = []
-  private redoStack: Command[] = []
+  private undoStack: HistoryEntry[] = []
+  private redoStack: HistoryEntry[] = []
   private listeners = new Set<() => void>()
+  private currentStateId = 0
+  private nextStateId = 1
 
   execute(command: Command): void {
     command.execute()
@@ -21,33 +29,47 @@ export class CommandBus {
 
   private push(command: Command, allowMerge: boolean): void {
     const last = allowMerge ? this.undoStack[this.undoStack.length - 1] : undefined
-    if (last?.merge) {
-      const merged = last.merge(command)
+    if (last?.command.merge) {
+      const merged = last.command.merge(command)
       if (merged) {
-        this.undoStack[this.undoStack.length - 1] = merged
+        const afterStateId = this.nextStateId++
+        this.undoStack[this.undoStack.length - 1] = {
+          command: merged,
+          beforeStateId: last.beforeStateId,
+          afterStateId,
+        }
+        this.currentStateId = afterStateId
         this.redoStack = []
         this.notify()
         return
       }
     }
-    this.undoStack.push(command)
+    const afterStateId = this.nextStateId++
+    this.undoStack.push({
+      command,
+      beforeStateId: this.currentStateId,
+      afterStateId,
+    })
+    this.currentStateId = afterStateId
     this.redoStack = []
     this.notify()
   }
 
   undo(): void {
-    const command = this.undoStack.pop()
-    if (!command) return
-    command.undo()
-    this.redoStack.push(command)
+    const entry = this.undoStack.pop()
+    if (!entry) return
+    entry.command.undo()
+    this.currentStateId = entry.beforeStateId
+    this.redoStack.push(entry)
     this.notify()
   }
 
   redo(): void {
-    const command = this.redoStack.pop()
-    if (!command) return
-    command.execute()
-    this.undoStack.push(command)
+    const entry = this.redoStack.pop()
+    if (!entry) return
+    entry.command.execute()
+    this.currentStateId = entry.afterStateId
+    this.undoStack.push(entry)
     this.notify()
   }
 
@@ -67,7 +89,12 @@ export class CommandBus {
   clear(): void {
     this.undoStack = []
     this.redoStack = []
+    this.currentStateId = this.nextStateId++
     this.notify()
+  }
+
+  getStateId(): number {
+    return this.currentStateId
   }
 
   private notify(): void {

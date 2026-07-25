@@ -31,6 +31,8 @@ interface EditorState {
   sceneDocument: SceneDocument | null
   world: World | null
   worldRevision: number
+  isDirty: boolean
+  savedCommandStateId: number
   selection: EntityId[]
   selectionAnchor: EntityId | null
   mode: EditorMode
@@ -56,6 +58,7 @@ interface EditorState {
   setProjectRoot: (root: string | null) => void
   setScene: (path: string, document: SceneDocument, world: World, viewportTab?: ViewportTab) => void
   setSceneDocument: (document: SceneDocument) => void
+  markSceneSaved: (document: SceneDocument) => void
   setSelection: (ids: EntityId[]) => void
   selectEntity: (id: EntityId, additive?: boolean) => void
   selectEntityRange: (ids: EntityId[]) => void
@@ -87,6 +90,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   sceneDocument: null,
   world: null,
   worldRevision: 0,
+  isDirty: false,
+  savedCommandStateId: globalCommandBus.getStateId(),
   selection: [],
   selectionAnchor: null,
   mode: 'edit',
@@ -117,6 +122,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       sceneDocument: document,
       world,
       worldRevision: s.worldRevision + 1,
+      isDirty: false,
+      savedCommandStateId: globalCommandBus.getStateId(),
       selection: [],
       selectionAnchor: null,
       activeViewportTab: viewportTab,
@@ -127,6 +134,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set((s) => ({
       sceneDocument: document,
       worldRevision: s.worldRevision + 1,
+    })),
+  markSceneSaved: (document) =>
+    set((s) => ({
+      sceneDocument: document,
+      worldRevision: s.worldRevision + 1,
+      isDirty: false,
+      savedCommandStateId: globalCommandBus.getStateId(),
     })),
   setSelection: (ids) => set({ selection: ids, selectionAnchor: ids[ids.length - 1] ?? null }),
   selectEntity: (id, additive = false) =>
@@ -194,7 +208,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 }))
 
 globalCommandBus.subscribe(() => {
-  useEditorStore.getState().bumpCommands()
+  useEditorStore.setState((state) => ({
+    commandRevision: state.commandRevision + 1,
+    isDirty: globalCommandBus.getStateId() !== state.savedCommandStateId,
+  }))
 })
 
 export function useSelectionStore() {

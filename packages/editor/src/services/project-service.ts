@@ -366,7 +366,7 @@ export class ProjectService {
     sceneLog('save.success', { path: relativePath, storage: this.storage, bytes: json.length })
 
     const { useEditorStore } = await import('../store/editor-store.js')
-    useEditorStore.getState().setSceneDocument(saved)
+    useEditorStore.getState().markSceneSaved(saved)
 
     return saved
   }

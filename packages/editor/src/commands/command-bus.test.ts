@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeEach } from 'vitest'
 import { MeshRendererComponent, TransformComponent, World } from '@haku/core'
+import { validateSceneDocument } from '@haku/schema'
 import { commitSceneEdit, commitTransformChange } from './scene-history.js'
 import { globalCommandBus } from './world-commands.js'
 import { useEditorStore } from '../store/editor-store.js'
@@ -77,5 +78,34 @@ describe('scene history', () => {
     globalCommandBus.undo()
 
     expect(useEditorStore.getState().world!.hasComponent(id, MeshRendererComponent)).toBe(false)
+  })
+
+  it('tracks dirty state across edits, saves, undo, and redo', () => {
+    const world = useEditorStore.getState().world!
+    const document = validateSceneDocument({
+      schemaVersion: 1,
+      metadata: { name: 'Dirty state' },
+      entities: [],
+    })
+    useEditorStore.getState().setScene('public/assets/scenes/main.scene.json', document, world)
+
+    expect(useEditorStore.getState().isDirty).toBe(false)
+
+    commitSceneEdit((draft) => {
+      draft.world.createEntity('Unsaved')
+    })
+    expect(useEditorStore.getState().isDirty).toBe(true)
+
+    globalCommandBus.undo()
+    expect(useEditorStore.getState().isDirty).toBe(false)
+
+    globalCommandBus.redo()
+    expect(useEditorStore.getState().isDirty).toBe(true)
+
+    useEditorStore.getState().markSceneSaved(document)
+    expect(useEditorStore.getState().isDirty).toBe(false)
+
+    globalCommandBus.undo()
+    expect(useEditorStore.getState().isDirty).toBe(true)
   })
 })
