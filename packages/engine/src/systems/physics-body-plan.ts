@@ -4,13 +4,22 @@ import {
   CollidersComponent,
   PhysicsAreaComponent,
   AnimatableBodyComponent,
-  PhysicsControllerComponent,
+  getControllerOnEntity,
   RigidBodyComponent,
   TransformComponent,
 } from '@haku/core'
-import type { AnimatableBody, Collider, PhysicsProjectSettings, RigidBody } from '@haku/schema'
+import type {
+  AnimatableBody,
+  Collider,
+  ControllerChassis,
+  ControllerComponentId,
+  DynamicRaycastController,
+  PhysicsProjectSettings,
+  RigidBody,
+} from '@haku/schema'
 import {
   bakeLayerCollisionGroups,
+  controllerNeedsChassis,
   defaultPhysicsProjectSettings,
   resolveBodyTypeFromComponents,
   resolveColliderPhysicsMaterial,
@@ -151,8 +160,8 @@ function hasAbsorbingColliderAncestor(world: IWorld, id: EntityId): boolean {
 }
 
 function isControllerSpawnBlocked(world: IWorld, id: EntityId): boolean {
-  const controller = world.getComponent(id, PhysicsControllerComponent)
-  return controller !== undefined && controller.enabled === false
+  const controller = getControllerOnEntity(world, id)
+  return controller !== undefined && controller.data.enabled === false
 }
 
 function resolveBodyTypeForRoot(
@@ -200,26 +209,20 @@ function resolveDynamicBodyParams(
     }
   }
 
-  const controller = world.getComponent(rootId, PhysicsControllerComponent)
-  if (controller && controller.type !== 'kinematic-character' && controller.type !== 'character-body') {
+  const controller = getControllerOnEntity(world, rootId)
+  if (controller && controllerNeedsChassis(controller.component.id as ControllerComponentId)) {
+    const chassisData = controller.data as { chassis: ControllerChassis }
     if (
-      controller.type === 'custom-raycast' ||
-      controller.type === 'dynamic-raycast' ||
-      controller.type === 'arcade-vehicle' ||
-      controller.type === 'revolute-joint-vehicle'
+      controller.component.id === 'DynamicRaycastController' &&
+      (controller.data as DynamicRaycastController).driveProfile === 'threejs-rapier'
     ) {
-      if (
-        controller.type === 'dynamic-raycast' &&
-        controller.driveProfile === 'threejs-rapier'
-      ) {
-        return { mass: controller.chassis.mass, kinematicMode: 'position' }
-      }
-      return {
-        mass: controller.chassis.mass,
-        angularDamping: controller.chassis.angularDamping,
-        inertiaScalePitchRoll: controller.chassis.inertiaScale,
-        kinematicMode: 'position',
-      }
+      return { mass: chassisData.chassis.mass, kinematicMode: 'position' }
+    }
+    return {
+      mass: chassisData.chassis.mass,
+      angularDamping: chassisData.chassis.angularDamping,
+      inertiaScalePitchRoll: chassisData.chassis.inertiaScale,
+      kinematicMode: 'position',
     }
   }
 
@@ -417,7 +420,7 @@ export function resolveBodyPlan(
     return null
   }
 
-  const controller = world.getComponent(rootId, PhysicsControllerComponent)
+  const controller = getControllerOnEntity(world, rootId)
   const physicsArea = world.getComponent(rootId, PhysicsAreaComponent)
   const animatable = world.getComponent(rootId, AnimatableBodyComponent)
   const explicitCollider = world.getComponent(rootId, ColliderComponent)
@@ -428,7 +431,7 @@ export function resolveBodyPlan(
   let bodyEnabled =
     (rigidBody?.enabled !== false) &&
     (animatable?.enabled !== false) &&
-    (controller === undefined || controller.enabled !== false)
+    (controller === undefined || controller.data.enabled !== false)
 
   const shapes: BodyShapePlan[] = []
 
@@ -532,7 +535,7 @@ export function findPhysicsBodyRoots(world: IWorld): EntityId[] {
     if (isControllerSpawnBlocked(world, id)) {
       continue
     }
-    const controller = world.getComponent(id, PhysicsControllerComponent)
+    const controller = getControllerOnEntity(world, id)
     const collider = world.getComponent(id, ColliderComponent)
     const colliders = world.getComponent(id, CollidersComponent)
     // A lone ColliderComponent under a collider-bearing ancestor is absorbed into that ancestor's

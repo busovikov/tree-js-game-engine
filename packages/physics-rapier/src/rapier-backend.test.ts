@@ -427,9 +427,6 @@ describe('@haku/physics-rapier RapierPhysicsBackend', () => {
 
   it('filters raycasts by layer mask', async () => {
     const backend = await createBackend()
-    const matrix = Array.from({ length: 16 }, (_, row) =>
-      Array.from({ length: 16 }, (_, col) => row === col),
-    )
 
     const layer0 = backend.createBody({
       type: 'static',

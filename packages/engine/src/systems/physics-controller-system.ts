@@ -1,5 +1,5 @@
-import type { EntityId, IWorld, ISystem } from '@haku/core'
-import { PhysicsControllerComponent } from '@haku/core'
+import type { EntityId, IWorld, ISystem, ComponentType } from '@haku/core'
+import { getCoreComponent } from '@haku/core'
 import type {
   IRaycastVehicle,
   IDynamicRaycastVehicle,
@@ -39,7 +39,7 @@ export type VehicleInput = ControllerInput
 export const vehicleWheelConfigs = raycastWheelConfigs
 
 /**
- * Drives entities with a {@link PhysicsControllerComponent} by delegating to registered
+ * Drives entities with a physics controller component by delegating to registered
  * {@link ControllerPlugin}s. Each controller kind (custom-raycast, dynamic-raycast, arcade,
  * kinematic-character, revolute-joint) is a plugin that owns its runtime state; this system
  * only orchestrates bootstrap/update/reset/dispose and the shared disabled-transition sweep.
@@ -172,10 +172,13 @@ export class PhysicsControllerSystem implements ISystem {
 
   private resetDisabledControllerTransitions(ctx: ControllerRuntimeContext): void {
     for (const plugin of this.registry.all()) {
+      const componentType = getCoreComponent(plugin.type) as
+        | ComponentType<{ enabled?: boolean }>
+        | undefined
       for (const entityIdValue of plugin.trackedIds()) {
         const id = { value: entityIdValue } as EntityId
-        const controller = ctx.world.getComponent(id, PhysicsControllerComponent)
-        const enabled = controller?.type === plugin.type && controller.enabled !== false
+        const controller = componentType ? ctx.world.getComponent(id, componentType) : undefined
+        const enabled = controller !== undefined && controller.enabled !== false
         if (enabled) {
           this.disabledControllers.delete(entityIdValue)
         } else if (!this.disabledControllers.has(entityIdValue)) {

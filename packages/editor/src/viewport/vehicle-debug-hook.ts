@@ -6,7 +6,7 @@ import {
   type VehicleDebugWindowApi,
 } from '@haku/engine'
 import type { IWorld } from '@haku/core'
-import { PhysicsControllerComponent } from '@haku/core'
+import { queryControllers } from '@haku/core'
 import type { VehiclePlayModeSession } from '@haku/engine'
 
 export interface VehicleDebugHookOptions {
@@ -36,7 +36,7 @@ export function installVehicleDebugHook(options: VehicleDebugHookOptions): () =>
     }
 
     let raycastVehicle
-    for (const id of world.query(PhysicsControllerComponent)) {
+    for (const id of queryControllers(world)) {
       const vehicle = session.controllerSystem.getRaycastVehicle(id)
       if (vehicle) {
         raycastVehicle = vehicle

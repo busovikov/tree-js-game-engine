@@ -8,9 +8,17 @@ import {
   RenderingLayersComponent,
   StaticComponent,
   TransformComponent,
-  PhysicsControllerComponent,
+  getControllerOnEntity,
+  hasAnyController,
 } from '@haku/core'
-import type { Light, MeshRenderer, PrefabDefinition, RenderSettings, Transform } from '@haku/schema'
+import type {
+  CustomRaycastController,
+  Light,
+  MeshRenderer,
+  PrefabDefinition,
+  RenderSettings,
+  Transform,
+} from '@haku/schema'
 import { LightSchema, defaultRenderSettings, isComponentEnabled, meshRendererKey, normalizeMeshRenderer, resolveLightColor, resolveShadowSettings, spotToThreeCone, isFeatureActive } from '@haku/schema'
 import * as THREE from 'three'
 import {
@@ -472,7 +480,7 @@ export class RenderSyncSystem implements ISystem {
       return model
     }
 
-    if (this.world.hasComponent(id, PhysicsControllerComponent) && isVehicleBodyModelAsset(modelAsset)) {
+    if (hasAnyController(this.world, id) && isVehicleBodyModelAsset(modelAsset)) {
       if (isIsaacMasonChassisAsset(modelAsset)) {
         return fitIsaacMasonChassisModel(model)
       }
@@ -482,13 +490,15 @@ export class RenderSyncSystem implements ISystem {
     const parentId = this.world.getParent(id)
     if (
       parentId &&
-      this.world.hasComponent(parentId, PhysicsControllerComponent) &&
+      hasAnyController(this.world, parentId) &&
       isVehicleWheelModelAsset(modelAsset)
     ) {
       if (isIsaacMasonWheelAsset(modelAsset)) {
-        const controller = this.world.getComponent(parentId, PhysicsControllerComponent)
+        const controller = getControllerOnEntity(this.world, parentId)
         const radius =
-          controller?.type === 'custom-raycast' ? controller.wheels.radius : undefined
+          controller?.component.id === 'CustomRaycastController'
+            ? (controller.data as CustomRaycastController).wheels.radius
+            : undefined
         const side = inferIsaacWheelSide(this.world.getEntityName(id) ?? '')
         return fitIsaacMasonWheelModel(model, { radius, side })
       }

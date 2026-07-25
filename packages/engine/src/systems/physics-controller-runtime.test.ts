@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { PhysicsControllerComponent, TransformComponent, World } from '@haku/core'
+import { ArcadeVehicleControllerComponent, TransformComponent, World } from '@haku/core'
 import { physicsBodyHandle } from '@haku/physics'
 import {
   updateArcadeVehicle,
@@ -18,10 +18,8 @@ function simulateArcadeSpeed(fps: 30 | 60 | 120): number {
   })
   world.addComponent(
     carId,
-    PhysicsControllerComponent,
-    PhysicsControllerComponent.schema.parse({
-      type: 'arcade-vehicle',
-    }),
+    ArcadeVehicleControllerComponent,
+    ArcadeVehicleControllerComponent.schema.parse({}),
   )
 
   const state: TrackedArcadeVehicle = { currentSpeed: 0, jumpCooldown: 0 }

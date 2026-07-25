@@ -2,9 +2,9 @@ import { describe, expect, it, beforeEach } from 'vitest'
 import * as THREE from 'three'
 import {
   ColliderComponent,
+  CustomRaycastControllerComponent,
   MeshRendererComponent,
   TransformComponent,
-  PhysicsControllerComponent,
   World,
 } from '@haku/core'
 import { CustomRaycastControllerSchema, MeshRendererSchema, ColliderSchema } from '@haku/schema'
@@ -28,7 +28,7 @@ import {
 } from './vehicle-visual-sync-system.js'
 import { VEHICLE_WHEEL_STEER_SIGN } from '../vehicle-model-fit.js'
 
-const INTEGRATION_DRIVE_VEHICLE = CustomRaycastControllerSchema.parse({ type: "custom-raycast", engine: { force: 800 } })
+const INTEGRATION_DRIVE_VEHICLE = CustomRaycastControllerSchema.parse({ engine: { force: 800 } })
 const IDENTITY: Quat = [0, 0, 0, 1]
 
 function wheelState(overrides: Partial<WheelState> = {}): WheelState {
@@ -192,7 +192,7 @@ describe('VehicleVisualSyncSystem integration (stub)', () => {
       shape: 'box',
       halfExtents: [0.9, 0.3, 1.55],
     }))
-    world.addComponent(carId, PhysicsControllerComponent, INTEGRATION_DRIVE_VEHICLE)
+    world.addComponent(carId, CustomRaycastControllerComponent, INTEGRATION_DRIVE_VEHICLE)
 
     const wheelIds = (['frontLeft', 'frontRight', 'backLeft', 'backRight'] as const).map(
       (slot) => {

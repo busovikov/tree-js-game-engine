@@ -339,10 +339,9 @@ function buildCustomRaycast() {
     entity(vehicleId, 'Vehicle', null, [
       transform([0, 5, 0]),
       {
-        type: 'PhysicsController',
+        type: 'CustomRaycastController',
         data: {
-          type: 'custom-raycast',
-          enabled: true,
+                    enabled: true,
           chassis: {
             mass: 150,
             halfExtents: [1, 0.55, 2.35],
@@ -453,10 +452,9 @@ function buildDynamicRaycast() {
     entity(vehicleId, 'Vehicle', null, [
       transform([-7, 2, -130], quatY(Math.PI / 2)),
       {
-        type: 'PhysicsController',
+        type: 'DynamicRaycastController',
         data: {
-          type: 'dynamic-raycast',
-          enabled: true,
+                    enabled: true,
           chassis: {
             mass: 250,
             halfExtents: [0.8, 0.2, 0.4],
@@ -518,10 +516,9 @@ function buildArcadeVehicle() {
     entity(eid(), 'ArcadeVehicle', null, [
       transform([15, 2, 0]),
       {
-        type: 'PhysicsController',
+        type: 'ArcadeVehicleController',
         data: {
-          type: 'arcade-vehicle',
-          enabled: true,
+                    enabled: true,
           maxForwardSpeed: 8,
           maxReverseSpeed: -1,
           jumpImpulse: 12,
@@ -567,10 +564,9 @@ function buildKinematicCharacter() {
     entity(playerId, 'Player', null, [
       transform([20, 5, -50]),
       {
-        type: 'PhysicsController',
+        type: 'KinematicCharacterController',
         data: {
-          type: 'kinematic-character',
-          enabled: true,
+                    enabled: true,
           capsuleRadius: 0.5,
           capsuleHalfHeight: 1,
           moveSpeed: 1,
@@ -623,8 +619,8 @@ function buildPointerControls() {
       mesh,
       { type: 'Collider', data: collider },
       {
-        type: 'PhysicsController',
-        data: { type: 'pointer-controls', enabled: true, draggable: true, constraintType: 'spherical' },
+        type: 'PointerControlsController',
+        data: { enabled: true, draggable: true, constraintType: 'spherical' },
       },
     ])
 
@@ -720,10 +716,9 @@ function buildRevoluteJointVehicle() {
       return entity(vehicleId, 'RevoluteVehicle', null, [
         transform([0, 0.2, 0]),
         {
-          type: 'PhysicsController',
+          type: 'RevoluteJointVehicleController',
           data: {
-            type: 'revolute-joint-vehicle',
-            enabled: true,
+                        enabled: true,
             // Well-conditioned: heavy low-CoM chassis, high angular damping for yaw stability.
             chassis: { mass: 40, halfExtents: [1.6, 0.2, 1.2], lift: 0, angularDamping: 4, inertiaScale: 6 },
             wheels: wheelDefs,

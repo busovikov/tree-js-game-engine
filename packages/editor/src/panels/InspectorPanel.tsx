@@ -7,7 +7,13 @@ import {
   ScriptRefComponent,
   TagComponent,
   TransformComponent,
-  PhysicsControllerComponent,
+  CustomRaycastControllerComponent,
+  DynamicRaycastControllerComponent,
+  ArcadeVehicleControllerComponent,
+  RevoluteJointVehicleControllerComponent,
+  KinematicCharacterControllerComponent,
+  CharacterBodyControllerComponent,
+  PointerControlsControllerComponent,
   RigidBodyComponent,
   PhysicsAreaComponent,
   AnimatableBodyComponent,
@@ -24,11 +30,17 @@ import type {
   MeshMaterial,
   MeshRenderer,
   PhysicsArea,
-  PhysicsController,
   PhysicsJoint,
   Colliders,
   RigidBody,
   Transform,
+  CustomRaycastController,
+  DynamicRaycastController,
+  ArcadeVehicleController,
+  RevoluteJointVehicleController,
+  KinematicCharacterController,
+  CharacterBodyController,
+  PointerControlsController,
 } from '@haku/schema'
 import { ColliderSchema, isNonUniformScale, resolveActiveCameraId } from '@haku/schema'
 import { sanitizeComponentDataForPersistence } from '@haku/serializer'
@@ -46,7 +58,22 @@ import { ColliderFields, normalizeCollider } from '../components/ColliderFields.
 import { RigidBodyFields, normalizeRigidBody } from '../components/RigidBodyFields.js'
 import { PhysicsAreaFields, normalizePhysicsArea } from '../components/PhysicsAreaFields.js'
 import { AnimatableBodyFields, normalizeAnimatableBody } from '../components/AnimatableBodyFields.js'
-import { PhysicsControllerFields, normalizePhysicsController } from '../components/PhysicsControllerFields.js'
+import {
+  CustomRaycastControllerFields,
+  DynamicRaycastControllerFields,
+  ArcadeVehicleControllerFields,
+  RevoluteJointVehicleControllerFields,
+  KinematicCharacterControllerFields,
+  CharacterBodyControllerFields,
+  PointerControlsControllerFields,
+  normalizeCustomRaycastController,
+  normalizeDynamicRaycastController,
+  normalizeArcadeVehicleController,
+  normalizeRevoluteJointVehicleController,
+  normalizeKinematicCharacterController,
+  normalizeCharacterBodyController,
+  normalizePointerControlsController,
+} from '../components/PhysicsControllerFields.js'
 import { PhysicsJointFields, normalizePhysicsJoint } from '../components/PhysicsJointFields.js'
 import { CollidersFields, normalizeColliders } from '../components/CollidersFields.js'
 import { EDITOR_PHYSICS_CAPABILITIES } from '../physics/editor-physics-capabilities.js'
@@ -83,10 +110,23 @@ const COMPONENT_MAP = {
   AnimatableBody: AnimatableBodyComponent,
   PhysicsJoint: PhysicsJointComponent,
   Colliders: CollidersComponent,
-  PhysicsController: PhysicsControllerComponent,
+  CustomRaycastController: CustomRaycastControllerComponent,
+  DynamicRaycastController: DynamicRaycastControllerComponent,
+  ArcadeVehicleController: ArcadeVehicleControllerComponent,
+  RevoluteJointVehicleController: RevoluteJointVehicleControllerComponent,
+  KinematicCharacterController: KinematicCharacterControllerComponent,
+  CharacterBodyController: CharacterBodyControllerComponent,
+  PointerControlsController: PointerControlsControllerComponent,
 } as const
 
 const HIDDEN_COMPONENTS = new Set(['Tag', 'Static', 'Transform'])
+
+const CHASSIS_CONTROLLER_IDS = new Set([
+  'CustomRaycastController',
+  'DynamicRaycastController',
+  'ArcadeVehicleController',
+  'RevoluteJointVehicleController',
+])
 
 const ADDABLE_COMPONENTS = [
   { id: 'Camera' as const, component: CameraComponent, label: 'Camera' },
@@ -98,8 +138,19 @@ const ADDABLE_COMPONENTS = [
   { id: 'AnimatableBody' as const, component: AnimatableBodyComponent, label: 'Animatable Body' },
   { id: 'PhysicsJoint' as const, component: PhysicsJointComponent, label: 'Physics Joint' },
   { id: 'Colliders' as const, component: CollidersComponent, label: 'Colliders' },
-  { id: 'PhysicsController' as const, component: PhysicsControllerComponent, label: 'Physics Controller' },
 ]
+
+const ADDABLE_CONTROLLER_COMPONENTS = [
+  { id: 'CustomRaycastController' as const, component: CustomRaycastControllerComponent, label: 'Custom Raycast' },
+  { id: 'DynamicRaycastController' as const, component: DynamicRaycastControllerComponent, label: 'Dynamic Raycast' },
+  { id: 'ArcadeVehicleController' as const, component: ArcadeVehicleControllerComponent, label: 'Arcade Vehicle' },
+  { id: 'RevoluteJointVehicleController' as const, component: RevoluteJointVehicleControllerComponent, label: 'Revolute Joint Vehicle' },
+  { id: 'KinematicCharacterController' as const, component: KinematicCharacterControllerComponent, label: 'Kinematic Character' },
+  { id: 'CharacterBodyController' as const, component: CharacterBodyControllerComponent, label: 'Character Body' },
+  { id: 'PointerControlsController' as const, component: PointerControlsControllerComponent, label: 'Pointer Controls' },
+]
+
+const ALL_ADDABLE = [...ADDABLE_COMPONENTS, ...ADDABLE_CONTROLLER_COMPONENTS]
 
 function InspectorSeparator() {
   return <hr className="haku-inspector__separator" />
@@ -434,11 +485,77 @@ export const InspectorPanel = memo(function InspectorPanel() {
     [forEachSelected],
   )
 
-  const updatePhysicsController = useCallback(
-    (after: PhysicsController) => {
+  const updateCustomRaycastController = useCallback(
+    (after: CustomRaycastController) => {
       forEachSelected((id, draftWorld) => {
-        if (draftWorld.hasComponent(id, PhysicsControllerComponent)) {
-          draftWorld.addComponent(id, PhysicsControllerComponent, after)
+        if (draftWorld.hasComponent(id, CustomRaycastControllerComponent)) {
+          draftWorld.addComponent(id, CustomRaycastControllerComponent, after)
+        }
+      })
+    },
+    [forEachSelected],
+  )
+
+  const updateDynamicRaycastController = useCallback(
+    (after: DynamicRaycastController) => {
+      forEachSelected((id, draftWorld) => {
+        if (draftWorld.hasComponent(id, DynamicRaycastControllerComponent)) {
+          draftWorld.addComponent(id, DynamicRaycastControllerComponent, after)
+        }
+      })
+    },
+    [forEachSelected],
+  )
+
+  const updateArcadeVehicleController = useCallback(
+    (after: ArcadeVehicleController) => {
+      forEachSelected((id, draftWorld) => {
+        if (draftWorld.hasComponent(id, ArcadeVehicleControllerComponent)) {
+          draftWorld.addComponent(id, ArcadeVehicleControllerComponent, after)
+        }
+      })
+    },
+    [forEachSelected],
+  )
+
+  const updateRevoluteJointVehicleController = useCallback(
+    (after: RevoluteJointVehicleController) => {
+      forEachSelected((id, draftWorld) => {
+        if (draftWorld.hasComponent(id, RevoluteJointVehicleControllerComponent)) {
+          draftWorld.addComponent(id, RevoluteJointVehicleControllerComponent, after)
+        }
+      })
+    },
+    [forEachSelected],
+  )
+
+  const updateKinematicCharacterController = useCallback(
+    (after: KinematicCharacterController) => {
+      forEachSelected((id, draftWorld) => {
+        if (draftWorld.hasComponent(id, KinematicCharacterControllerComponent)) {
+          draftWorld.addComponent(id, KinematicCharacterControllerComponent, after)
+        }
+      })
+    },
+    [forEachSelected],
+  )
+
+  const updateCharacterBodyController = useCallback(
+    (after: CharacterBodyController) => {
+      forEachSelected((id, draftWorld) => {
+        if (draftWorld.hasComponent(id, CharacterBodyControllerComponent)) {
+          draftWorld.addComponent(id, CharacterBodyControllerComponent, after)
+        }
+      })
+    },
+    [forEachSelected],
+  )
+
+  const updatePointerControlsController = useCallback(
+    (after: PointerControlsController) => {
+      forEachSelected((id, draftWorld) => {
+        if (draftWorld.hasComponent(id, PointerControlsControllerComponent)) {
+          draftWorld.addComponent(id, PointerControlsControllerComponent, after)
         }
       })
     },
@@ -586,9 +703,18 @@ export const InspectorPanel = memo(function InspectorPanel() {
     }))
   }, [world, selectedIds, worldRevision])
 
+  const controllerMenuItems = useMemo(() => {
+    if (!world || selectedIds.length === 0) return []
+    return ADDABLE_CONTROLLER_COMPONENTS.map(({ id, component, label }) => ({
+      id,
+      label,
+      disabled: selectedIds.every((entityId) => world.hasComponent(entityId, component)),
+    }))
+  }, [world, selectedIds, worldRevision])
+
   const handleAddComponent = useCallback(
     (id: string) => {
-      const entry = ADDABLE_COMPONENTS.find((item) => item.id === id)
+      const entry = ALL_ADDABLE.find((item) => item.id === id)
       if (!entry) return
       addComponent(entry.component)
     },
@@ -714,7 +840,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
 
         const enabledMixed = mergeComponentEnabled(component, targets)
 
-        const isPhysicsController = key === 'PhysicsController'
+        const isChassisController = CHASSIS_CONTROLLER_IDS.has(key)
 
         return (
           <InspectorComponentSection
@@ -723,8 +849,8 @@ export const InspectorPanel = memo(function InspectorPanel() {
             badge={
               isActiveCamera ? (
                 <span className="haku-inspector__active-camera-badge">Active</span>
-              ) : isPhysicsController ? (
-                <span className="haku-inspector__implicit-collider-badge" title="Physics chassis box is built into Physics Controller">
+              ) : isChassisController ? (
+                <span className="haku-inspector__implicit-collider-badge" title="Physics chassis box is built into this controller">
                   Chassis
                 </span>
               ) : undefined
@@ -856,11 +982,47 @@ export const InspectorPanel = memo(function InspectorPanel() {
                 disabled={mode === 'play'}
                 onChange={isMulti ? undefined : updateAnimatableBody}
               />
-            ) : key === 'PhysicsController' ? (
-              <PhysicsControllerFields
-                value={normalizePhysicsController(data)}
+            ) : key === 'CustomRaycastController' ? (
+              <CustomRaycastControllerFields
+                value={normalizeCustomRaycastController(data)}
                 disabled={mode === 'play'}
-                onChange={isMulti ? undefined : updatePhysicsController}
+                onChange={isMulti ? undefined : updateCustomRaycastController}
+              />
+            ) : key === 'DynamicRaycastController' ? (
+              <DynamicRaycastControllerFields
+                value={normalizeDynamicRaycastController(data)}
+                disabled={mode === 'play'}
+                onChange={isMulti ? undefined : updateDynamicRaycastController}
+              />
+            ) : key === 'ArcadeVehicleController' ? (
+              <ArcadeVehicleControllerFields
+                value={normalizeArcadeVehicleController(data)}
+                disabled={mode === 'play'}
+                onChange={isMulti ? undefined : updateArcadeVehicleController}
+              />
+            ) : key === 'RevoluteJointVehicleController' ? (
+              <RevoluteJointVehicleControllerFields
+                value={normalizeRevoluteJointVehicleController(data)}
+                disabled={mode === 'play'}
+                onChange={isMulti ? undefined : updateRevoluteJointVehicleController}
+              />
+            ) : key === 'KinematicCharacterController' ? (
+              <KinematicCharacterControllerFields
+                value={normalizeKinematicCharacterController(data)}
+                disabled={mode === 'play'}
+                onChange={isMulti ? undefined : updateKinematicCharacterController}
+              />
+            ) : key === 'CharacterBodyController' ? (
+              <CharacterBodyControllerFields
+                value={normalizeCharacterBodyController(data)}
+                disabled={mode === 'play'}
+                onChange={isMulti ? undefined : updateCharacterBodyController}
+              />
+            ) : key === 'PointerControlsController' ? (
+              <PointerControlsControllerFields
+                value={normalizePointerControlsController(data)}
+                disabled={mode === 'play'}
+                onChange={isMulti ? undefined : updatePointerControlsController}
               />
             ) : key === 'PhysicsJoint' ? (
               <PhysicsJointFields
@@ -896,7 +1058,11 @@ export const InspectorPanel = memo(function InspectorPanel() {
 
       {canEdit && (
         <div className="haku-inspector__footer">
-          <AddComponentMenu items={addableItems} onAdd={handleAddComponent} />
+          <AddComponentMenu
+            items={addableItems}
+            groups={[{ id: 'controllers', label: 'Controllers', items: controllerMenuItems }]}
+            onAdd={handleAddComponent}
+          />
         </div>
       )}
     </div>

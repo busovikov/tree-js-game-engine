@@ -3,7 +3,7 @@
  */
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
 import { fireEvent, render, screen, cleanup } from '@testing-library/react'
-import { ColliderComponent, TransformComponent, PhysicsControllerComponent, World } from '@haku/core'
+import { ColliderComponent, TransformComponent, CustomRaycastControllerComponent, World } from '@haku/core'
 import { commitSceneEdit } from '../commands/scene-history.js'
 import { globalCommandBus } from '../commands/world-commands.js'
 import { useEditorStore } from '../store/editor-store.js'
@@ -40,10 +40,16 @@ describe('Vehicle inspector via commitSceneEdit', () => {
     const id = useEditorStore.getState().selection[0]!
 
     commitSceneEdit((draft) => {
-      draft.world.addComponent(id, PhysicsControllerComponent, PhysicsControllerComponent.defaults?.() ?? {})
+      draft.world.addComponent(
+        id,
+        CustomRaycastControllerComponent,
+        CustomRaycastControllerComponent.defaults?.() ?? {},
+      )
     })
 
-    const vehicle = useEditorStore.getState().world!.getComponent(id, PhysicsControllerComponent)
+    const vehicle = useEditorStore
+      .getState()
+      .world!.getComponent(id, CustomRaycastControllerComponent)
     expect(vehicle?.chassis.mass).toBe(250)
     expect(vehicle?.wheels.radius).toBe(0.42)
     expect(vehicle?.enabled).toBe(true)
@@ -52,14 +58,20 @@ describe('Vehicle inspector via commitSceneEdit', () => {
   it('removes vehicle component', () => {
     const id = useEditorStore.getState().selection[0]!
     commitSceneEdit((draft) => {
-      draft.world.addComponent(id, PhysicsControllerComponent, PhysicsControllerComponent.defaults?.() ?? {})
+      draft.world.addComponent(
+        id,
+        CustomRaycastControllerComponent,
+        CustomRaycastControllerComponent.defaults?.() ?? {},
+      )
     })
 
     commitSceneEdit((draft) => {
-      draft.world.removeComponent(id, PhysicsControllerComponent)
+      draft.world.removeComponent(id, CustomRaycastControllerComponent)
     })
 
-    expect(useEditorStore.getState().world!.hasComponent(id, PhysicsControllerComponent)).toBe(false)
+    expect(
+      useEditorStore.getState().world!.hasComponent(id, CustomRaycastControllerComponent),
+    ).toBe(false)
   })
 
   it('removes collider component', () => {

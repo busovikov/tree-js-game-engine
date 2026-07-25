@@ -1,7 +1,7 @@
 import type { EntityId, IWorld, ISystem } from '@haku/core'
 import {
   CameraComponent,
-  PhysicsControllerComponent,
+  PointerControlsControllerComponent,
   TransformComponent,
 } from '@haku/core'
 import type { IPhysicsWorld, PhysicsBodyHandle, PhysicsJointHandle, Vec3 } from '@haku/physics'
@@ -95,13 +95,8 @@ export class PointerControlsSystem implements ISystem {
     }
 
     const { entityId, point, bodyHandle } = hit
-    const controller = sceneWorld.getComponent(entityId, PhysicsControllerComponent)
-    if (
-      !controller ||
-      controller.type !== 'pointer-controls' ||
-      !controller.enabled ||
-      !controller.draggable
-    ) {
+    const controller = sceneWorld.getComponent(entityId, PointerControlsControllerComponent)
+    if (!controller || !controller.enabled || !controller.draggable) {
       return
     }
 

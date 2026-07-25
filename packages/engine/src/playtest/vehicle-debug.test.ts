@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { TransformComponent, PhysicsControllerComponent, World } from '@haku/core'
+import { TransformComponent, CustomRaycastControllerComponent, World } from '@haku/core'
 import { collectVehicleDebugSnapshot, VehicleDebugLogger, type VehicleDebugLogRecord } from './vehicle-debug.js'
 import type { PhysicsControllerSystem } from '../systems/physics-controller-system.js'
 import type { PhysicsWorldSystem } from '../systems/physics-world-system.js'
@@ -34,7 +34,7 @@ describe('collectVehicleDebugSnapshot', () => {
       rotation: [0, 0, 0, 1],
       scale: [1, 1, 1],
     })
-    world.addComponent(id, PhysicsControllerComponent, PhysicsControllerComponent.defaults?.() ?? {})
+    world.addComponent(id, CustomRaycastControllerComponent, CustomRaycastControllerComponent.defaults?.() ?? {})
 
     const raycastVehicle = {
       getWheelStates: () => [
@@ -73,7 +73,7 @@ describe('collectVehicleDebugSnapshot', () => {
       rotation: [0, 0, 0, 1],
       scale: [1, 1, 1],
     })
-    world.addComponent(id, PhysicsControllerComponent, PhysicsControllerComponent.defaults?.() ?? {})
+    world.addComponent(id, CustomRaycastControllerComponent, CustomRaycastControllerComponent.defaults?.() ?? {})
 
     const previous = collectVehicleDebugSnapshot(
       world,

@@ -1,8 +1,9 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest'
 import {
   ColliderComponent,
+  CustomRaycastControllerComponent,
+  RevoluteJointVehicleControllerComponent,
   TransformComponent,
-  PhysicsControllerComponent,
   World,
 } from '@haku/core'
 import {
@@ -30,9 +31,8 @@ import {
   vehicleWheelConfigs,
 } from './vehicle-controller-system.js'
 
-const DEFAULT_VEHICLE = CustomRaycastControllerSchema.parse({ type: 'custom-raycast' })
+const DEFAULT_VEHICLE = CustomRaycastControllerSchema.parse({})
 const INTEGRATION_DRIVE_VEHICLE = CustomRaycastControllerSchema.parse({
-  type: 'custom-raycast',
   engine: { force: 800 },
 })
 const IDENTITY_ROTATION: Quat = [0, 0, 0, 1]
@@ -40,7 +40,6 @@ const IDENTITY_ROTATION: Quat = [0, 0, 0, 1]
 describe('computeIsaacDriveControlState', () => {
   it('matches sketch maxForce/maxSteer/maxBrake (1:1 port, no speed cap, no jump)', () => {
     const vehicle = CustomRaycastControllerSchema.parse({
-      type: 'custom-raycast',
       engine: { force: 30 },
       steering: { maxSteer: 10 },
       brakes: { brakeForce: 2 },
@@ -93,7 +92,7 @@ describe('computeIsaacDriveControlState', () => {
 })
 
 describe('vehicleWheelConfigs', () => {
-  it('maps PhysicsControllerComponent suspension and wheel layout to four WheelConfig entries', () => {
+  it('maps CustomRaycastControllerComponent suspension and wheel layout to four WheelConfig entries', () => {
     const configs = vehicleWheelConfigs(DEFAULT_VEHICLE)
     expect(configs).toHaveLength(4)
     expect(configs[0]?.localPosition).toEqual([
@@ -144,7 +143,7 @@ describe('VehicleControllerSystem integration (stub)', () => {
       shape: 'box',
       halfExtents: [0.9, 0.3, 1.55],
     }))
-    world.addComponent(carId, PhysicsControllerComponent, INTEGRATION_DRIVE_VEHICLE)
+    world.addComponent(carId, CustomRaycastControllerComponent, INTEGRATION_DRIVE_VEHICLE)
 
     colliderSystem.bootstrap(world)
     vehicleSystem.bootstrap(world)
@@ -233,8 +232,8 @@ describe('VehicleControllerSystem integration (stub)', () => {
     })
     world.addComponent(
       carId,
-      PhysicsControllerComponent,
-      CustomRaycastControllerSchema.parse({ type: 'custom-raycast', enabled: false }),
+      CustomRaycastControllerComponent,
+      CustomRaycastControllerSchema.parse({ enabled: false }),
     )
 
     const vehicle = {
@@ -375,9 +374,9 @@ describe('VehicleControllerSystem integration (stub)', () => {
     }
     internals.customRaycast.tracked.set(id.value, custom)
     internals.dynamicRaycast.tracked.set(id.value, dynamic)
-    internals.registry.get('arcade-vehicle')?.tracked.set(id.value, arcade)
-    internals.registry.get('kinematic-character')?.tracked.set(id.value, character)
-    internals.registry.get('revolute-joint-vehicle')?.tracked.set(id.value, revolute)
+    internals.registry.get('ArcadeVehicleController')?.tracked.set(id.value, arcade)
+    internals.registry.get('KinematicCharacterController')?.tracked.set(id.value, character)
+    internals.registry.get('RevoluteJointVehicleController')?.tracked.set(id.value, revolute)
     vehicleSystem.setControllerInput(id, { throttle: 1, jump: true })
 
     vehicleSystem.resetControllerState(world, id)
@@ -442,7 +441,7 @@ describe('VehicleControllerSystem integration (Rapier)', () => {
       shape: 'box',
       halfExtents: [0.9, 0.3, 1.55],
     }))
-    world.addComponent(carId, PhysicsControllerComponent, INTEGRATION_DRIVE_VEHICLE)
+    world.addComponent(carId, CustomRaycastControllerComponent, INTEGRATION_DRIVE_VEHICLE)
 
     colliderSystem.bootstrap(world)
     vehicleSystem.bootstrap(world)
@@ -486,7 +485,7 @@ describe('VehicleControllerSystem integration (Rapier)', () => {
       rotation: [0, 0, 0, 1],
       scale: [1, 1, 1],
     })
-    world.addComponent(carId, PhysicsControllerComponent, INTEGRATION_DRIVE_VEHICLE)
+    world.addComponent(carId, CustomRaycastControllerComponent, INTEGRATION_DRIVE_VEHICLE)
 
     colliderSystem.bootstrap(world)
     vehicleSystem.bootstrap(world)
@@ -536,9 +535,8 @@ describe('VehicleControllerSystem integration (Rapier)', () => {
     // Exact params from apps/playground/.../isaac/revolute-joint-vehicle.scene.json.
     world.addComponent(
       carId,
-      PhysicsControllerComponent,
+      RevoluteJointVehicleControllerComponent,
       RevoluteJointVehicleControllerSchema.parse({
-        type: 'revolute-joint-vehicle',
         chassis: { mass: 5, halfExtents: [1.75, 0.25, 0.75], lift: 0, angularDamping: 0.35, inertiaScale: 3 },
         wheels: [
           { axlePosition: [-1.2, -0.6, 0.7], wheelPosition: [-1.2, -0.6, 1], isSteered: true, isDriven: false },

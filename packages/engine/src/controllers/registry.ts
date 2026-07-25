@@ -1,5 +1,6 @@
 import type { EntityId, IWorld } from '@haku/core'
 import type { IPhysicsWorld } from '@haku/physics'
+import type { ControllerComponentId } from '@haku/schema'
 import type { PhysicsWorldSystem } from '../systems/physics-world-system.js'
 
 /** Programmatic drive input consumed by controller plugins (throttle/steer/jump/…). */
@@ -37,8 +38,8 @@ export interface ControllerRuntimeContext {
  * This replaces the hardcoded per-type switch in {@link PhysicsControllerSystem}.
  */
 export interface ControllerPlugin {
-  /** Discriminated `PhysicsController.type` this plugin handles. */
-  readonly type: string
+  /** Controller component id (e.g. `CustomRaycastController`) this plugin handles. */
+  readonly type: ControllerComponentId
   /** Create runtime state for matching entities on play-mode entry. */
   bootstrap(ctx: ControllerRuntimeContext): void
   /** Advance one frame — apply input to physics. */

@@ -1,7 +1,7 @@
 import type { EntityId, IWorld, ISystem } from '@haku/core'
 import {
   CameraComponent,
-  PhysicsControllerComponent,
+  DynamicRaycastControllerComponent,
   TransformComponent,
 } from '@haku/core'
 import type { Vec3 } from '@haku/schema'
@@ -90,13 +90,9 @@ export class ThreeJsFollowCameraSystem implements ISystem {
     if (this.controlledEntity) {
       return this.controlledEntity
     }
-    for (const id of world.query(PhysicsControllerComponent, TransformComponent)) {
-      const controller = world.getComponent(id, PhysicsControllerComponent)
-      if (
-        controller?.enabled &&
-        controller.type === 'dynamic-raycast' &&
-        controller.driveProfile === 'threejs-rapier'
-      ) {
+    for (const id of world.query(DynamicRaycastControllerComponent, TransformComponent)) {
+      const controller = world.getComponent(id, DynamicRaycastControllerComponent)
+      if (controller?.enabled && controller.driveProfile === 'threejs-rapier') {
         return id
       }
     }
@@ -122,18 +118,14 @@ export function usesThreeJsFollowCamera(world: IWorld, controlledEntity: EntityI
   if (!vehicleId) {
     return false
   }
-  const controller = world.getComponent(vehicleId, PhysicsControllerComponent)
-  return controller?.type === 'dynamic-raycast' && controller.driveProfile === 'threejs-rapier'
+  const controller = world.getComponent(vehicleId, DynamicRaycastControllerComponent)
+  return controller?.driveProfile === 'threejs-rapier'
 }
 
 function findThreeJsRapierVehicle(world: IWorld): EntityId | null {
-  for (const id of world.query(PhysicsControllerComponent)) {
-    const controller = world.getComponent(id, PhysicsControllerComponent)
-    if (
-      controller?.enabled &&
-      controller.type === 'dynamic-raycast' &&
-      controller.driveProfile === 'threejs-rapier'
-    ) {
+  for (const id of world.query(DynamicRaycastControllerComponent)) {
+    const controller = world.getComponent(id, DynamicRaycastControllerComponent)
+    if (controller?.enabled && controller.driveProfile === 'threejs-rapier') {
       return id
     }
   }

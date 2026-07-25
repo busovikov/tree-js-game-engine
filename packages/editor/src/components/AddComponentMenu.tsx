@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
+import { memo, useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import './add-component-menu.css'
 
@@ -6,6 +6,12 @@ export type AddComponentMenuItem = {
   id: string
   label: string
   disabled: boolean
+}
+
+export type AddComponentMenuGroup = {
+  id: string
+  label: string
+  items: AddComponentMenuItem[]
 }
 
 function menuPosition(trigger: HTMLElement): CSSProperties {
@@ -16,12 +22,34 @@ function menuPosition(trigger: HTMLElement): CSSProperties {
   }
 }
 
+function AddComponentSubmenu({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="haku-add-component-menu__submenu">
+      <button
+        type="button"
+        className="haku-add-component-menu__item haku-add-component-menu__item--submenu"
+        aria-haspopup="menu"
+      >
+        <span>{label}</span>
+        <span className="haku-add-component-menu__arrow" aria-hidden="true">
+          ›
+        </span>
+      </button>
+      <div className="haku-add-component-menu__flyout" role="menu">
+        {children}
+      </div>
+    </div>
+  )
+}
+
 export const AddComponentMenu = memo(function AddComponentMenu({
   items,
+  groups = [],
   onAdd,
   disabled,
 }: {
   items: AddComponentMenuItem[]
+  groups?: AddComponentMenuGroup[]
   onAdd: (id: string) => void
   disabled?: boolean
 }) {
@@ -87,6 +115,20 @@ export const AddComponentMenu = memo(function AddComponentMenu({
     [onAdd],
   )
 
+  const renderItem = ({ id, label, disabled: itemDisabled }: AddComponentMenuItem) => (
+    <button
+      key={id}
+      type="button"
+      role="menuitem"
+      disabled={itemDisabled}
+      data-testid={`add-component-${id.toLowerCase()}`}
+      className={`haku-add-component-menu__item${itemDisabled ? ' haku-add-component-menu__item--present' : ''}`}
+      onClick={() => run(id)}
+    >
+      {label}
+    </button>
+  )
+
   return (
     <div className="haku-add-component-menu">
       <button
@@ -118,18 +160,14 @@ export const AddComponentMenu = memo(function AddComponentMenu({
             style={dropdownStyle}
             role="menu"
           >
-            {items.map(({ id, label, disabled: itemDisabled }) => (
-              <button
-                key={id}
-                type="button"
-                role="menuitem"
-                disabled={itemDisabled}
-                data-testid={`add-component-${id.toLowerCase()}`}
-                className={`haku-add-component-menu__item${itemDisabled ? ' haku-add-component-menu__item--present' : ''}`}
-                onClick={() => run(id)}
-              >
-                {label}
-              </button>
+            {items.map(renderItem)}
+            {groups.length > 0 && items.length > 0 && (
+              <div className="haku-add-component-menu__separator" role="separator" />
+            )}
+            {groups.map((group) => (
+              <AddComponentSubmenu key={group.id} label={group.label}>
+                {group.items.map(renderItem)}
+              </AddComponentSubmenu>
             ))}
           </div>,
           document.body,

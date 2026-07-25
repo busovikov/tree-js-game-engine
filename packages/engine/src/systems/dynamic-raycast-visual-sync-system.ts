@@ -2,7 +2,7 @@ import type { EntityId, IWorld, ISystem } from '@haku/core'
 import {
   MeshRendererComponent,
   TransformComponent,
-  PhysicsControllerComponent,
+  DynamicRaycastControllerComponent,
 } from '@haku/core'
 import type { ControllerWheelSlot, Transform } from '@haku/schema'
 import { CONTROLLER_WHEEL_ORDER, controllerWheelLocalPositions } from '@haku/schema'
@@ -156,9 +156,9 @@ export function createDynamicRaycastWheelRestPoseResolver(
 ): (entityId: EntityId, source: Transform) => Transform {
   const restPoses = new Map<string, Pick<Transform, 'position' | 'rotation'>>()
 
-  for (const id of world.query(PhysicsControllerComponent, TransformComponent)) {
-    const controller = world.getComponent(id, PhysicsControllerComponent)
-    if (!controller?.enabled || controller.type !== 'dynamic-raycast') {
+  for (const id of world.query(DynamicRaycastControllerComponent, TransformComponent)) {
+    const controller = world.getComponent(id, DynamicRaycastControllerComponent)
+    if (!controller?.enabled) {
       continue
     }
 
@@ -237,9 +237,9 @@ export class DynamicRaycastVisualSyncSystem implements ISystem {
       return
     }
 
-    for (const id of world.query(PhysicsControllerComponent, TransformComponent)) {
-      const controller = world.getComponent(id, PhysicsControllerComponent)
-      if (!controller?.enabled || controller.type !== 'dynamic-raycast') {
+    for (const id of world.query(DynamicRaycastControllerComponent, TransformComponent)) {
+      const controller = world.getComponent(id, DynamicRaycastControllerComponent)
+      if (!controller?.enabled) {
         continue
       }
 

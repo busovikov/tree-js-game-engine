@@ -10,7 +10,19 @@ const PositiveVec3Schema = z.tuple([
   z.number().positive(),
 ])
 
-/** Isaac Mason Rapier sketch controller kinds. */
+/** Component type ids for the seven physics controller kinds. */
+export const CONTROLLER_COMPONENT_IDS = [
+  'CustomRaycastController',
+  'DynamicRaycastController',
+  'ArcadeVehicleController',
+  'RevoluteJointVehicleController',
+  'KinematicCharacterController',
+  'CharacterBodyController',
+  'PointerControlsController',
+] as const
+export type ControllerComponentId = (typeof CONTROLLER_COMPONENT_IDS)[number]
+
+/** @deprecated Legacy kebab-case discriminant — used only by scene migration. */
 export const PhysicsControllerTypeSchema = z.enum([
   'custom-raycast',
   'dynamic-raycast',
@@ -21,6 +33,19 @@ export const PhysicsControllerTypeSchema = z.enum([
   'pointer-controls',
 ])
 export type PhysicsControllerType = z.infer<typeof PhysicsControllerTypeSchema>
+
+export const LEGACY_CONTROLLER_TYPE_TO_COMPONENT_ID: Record<
+  PhysicsControllerType,
+  ControllerComponentId
+> = {
+  'custom-raycast': 'CustomRaycastController',
+  'dynamic-raycast': 'DynamicRaycastController',
+  'arcade-vehicle': 'ArcadeVehicleController',
+  'revolute-joint-vehicle': 'RevoluteJointVehicleController',
+  'kinematic-character': 'KinematicCharacterController',
+  'character-body': 'CharacterBodyController',
+  'pointer-controls': 'PointerControlsController',
+}
 
 /** Chassis rigid-body parameters shared by vehicle-style controllers. */
 export const ControllerChassisSchema = z.object({
@@ -84,7 +109,6 @@ const ControllerBaseSchema = z.object({
  * https://github.com/isaac-mason/sketches/tree/main/sketches/rapier/custom-raycast-vehicle
  */
 export const CustomRaycastControllerSchema = ControllerBaseSchema.extend({
-  type: z.literal('custom-raycast'),
   chassis: ControllerChassisSchema.default(() => ControllerChassisSchema.parse({})),
   wheels: ControllerWheelsSchema.default(() => ControllerWheelsSchema.parse({})),
   suspension: ControllerSuspensionSchema.default(() => ControllerSuspensionSchema.parse({})),
@@ -100,7 +124,6 @@ export type DynamicRaycastDriveProfile = z.infer<typeof DynamicRaycastDriveProfi
 
 /** Rapier `DynamicRaycastVehicleController` (Isaac sketch + Three.js example). */
 export const DynamicRaycastControllerSchema = ControllerBaseSchema.extend({
-  type: z.literal('dynamic-raycast'),
   driveProfile: DynamicRaycastDriveProfileSchema.default('default'),
   chassis: ControllerChassisSchema.default(() => ControllerChassisSchema.parse({})),
   wheels: ControllerWheelsSchema.default(() => ControllerWheelsSchema.parse({})),
@@ -125,7 +148,6 @@ export type DynamicRaycastController = z.infer<typeof DynamicRaycastControllerSc
 
 /** Isaac Mason `arcade-vehicle-controller` — impulse arcade drive + drift. */
 export const ArcadeVehicleControllerSchema = ControllerBaseSchema.extend({
-  type: z.literal('arcade-vehicle'),
   chassis: ControllerChassisSchema.default(() => ControllerChassisSchema.parse({})),
   wheels: ControllerWheelsSchema.default(() => ControllerWheelsSchema.parse({})),
   maxForwardSpeed: z.number().positive().default(8),
@@ -155,7 +177,6 @@ const RevoluteWheelSchema = z.object({
  * wheels/hubs) so the constraint island stays stable independent of the rest of the scene.
  */
 export const RevoluteJointVehicleControllerSchema = ControllerBaseSchema.extend({
-  type: z.literal('revolute-joint-vehicle'),
   chassis: ControllerChassisSchema.default(() => ControllerChassisSchema.parse({})),
   wheels: z.array(RevoluteWheelSchema).length(4).default([
     { wheelPosition: [-1.3, -0.2, 1.3], isSteered: true, isDriven: false },
@@ -194,7 +215,6 @@ export type RevoluteJointVehicleController = z.infer<typeof RevoluteJointVehicle
 
 /** Isaac Mason `kinematic-character-controller` — Rapier KinematicCharacterController. */
 export const KinematicCharacterControllerSchema = ControllerBaseSchema.extend({
-  type: z.literal('kinematic-character'),
   capsuleRadius: z.number().positive().default(0.35),
   capsuleHalfHeight: z.number().min(0).default(0.5),
   moveSpeed: z.number().positive().default(1),
@@ -217,7 +237,6 @@ export type KinematicCharacterController = z.infer<typeof KinematicCharacterCont
 
 /** Godot-style CharacterBody3D — move_and_slide via Rapier KCC (tier-3). */
 export const CharacterBodyControllerSchema = ControllerBaseSchema.extend({
-  type: z.literal('character-body'),
   capsuleRadius: z.number().positive().default(0.35),
   capsuleHalfHeight: z.number().min(0).default(0.5),
   moveSpeed: z.number().positive().default(5),
@@ -246,7 +265,6 @@ export type PointerConstraintType = z.infer<typeof PointerConstraintTypeSchema>
 
 /** Isaac Mason `pointer-controls` — drag dynamic bodies with pointer joints. */
 export const PointerControlsControllerSchema = ControllerBaseSchema.extend({
-  type: z.literal('pointer-controls'),
   draggable: z.boolean().default(true),
   constraintType: PointerConstraintTypeSchema.default('spherical'),
   springStiffness: z.number().min(0).default(20),
@@ -255,16 +273,24 @@ export const PointerControlsControllerSchema = ControllerBaseSchema.extend({
 })
 export type PointerControlsController = z.infer<typeof PointerControlsControllerSchema>
 
-export const PhysicsControllerSchema = z.discriminatedUnion('type', [
-  CustomRaycastControllerSchema,
-  DynamicRaycastControllerSchema,
-  ArcadeVehicleControllerSchema,
-  RevoluteJointVehicleControllerSchema,
-  KinematicCharacterControllerSchema,
-  CharacterBodyControllerSchema,
-  PointerControlsControllerSchema,
-])
-export type PhysicsController = z.infer<typeof PhysicsControllerSchema>
+export type AnyPhysicsController =
+  | CustomRaycastController
+  | DynamicRaycastController
+  | ArcadeVehicleController
+  | RevoluteJointVehicleController
+  | KinematicCharacterController
+  | CharacterBodyController
+  | PointerControlsController
+
+export const CONTROLLER_COMPONENT_SCHEMAS = {
+  CustomRaycastController: CustomRaycastControllerSchema,
+  DynamicRaycastController: DynamicRaycastControllerSchema,
+  ArcadeVehicleController: ArcadeVehicleControllerSchema,
+  RevoluteJointVehicleController: RevoluteJointVehicleControllerSchema,
+  KinematicCharacterController: KinematicCharacterControllerSchema,
+  CharacterBodyController: CharacterBodyControllerSchema,
+  PointerControlsController: PointerControlsControllerSchema,
+} as const
 
 export const CONTROLLER_WHEEL_ORDER = ['frontLeft', 'frontRight', 'backLeft', 'backRight'] as const
 export type ControllerWheelSlot = (typeof CONTROLLER_WHEEL_ORDER)[number]
@@ -293,19 +319,26 @@ export function controllerChassisCollider(chassis: ControllerChassis): Collider 
   })
 }
 
-/** Whether this controller type spawns an implicit chassis collider. */
-export function controllerNeedsChassis(type: PhysicsControllerType): boolean {
-  return (
-    type === 'custom-raycast' ||
-    type === 'dynamic-raycast' ||
-    type === 'arcade-vehicle' ||
-    type === 'revolute-joint-vehicle'
-  )
+const CHASSIS_CONTROLLER_IDS = new Set<ControllerComponentId>([
+  'CustomRaycastController',
+  'DynamicRaycastController',
+  'ArcadeVehicleController',
+  'RevoluteJointVehicleController',
+])
+
+const CAPSULE_CONTROLLER_IDS = new Set<ControllerComponentId>([
+  'KinematicCharacterController',
+  'CharacterBodyController',
+])
+
+/** Whether this controller component spawns an implicit chassis collider. */
+export function controllerNeedsChassis(componentId: ControllerComponentId): boolean {
+  return CHASSIS_CONTROLLER_IDS.has(componentId)
 }
 
-/** Whether this controller type spawns an implicit capsule collider. */
-export function controllerNeedsCapsule(type: PhysicsControllerType): boolean {
-  return type === 'kinematic-character' || type === 'character-body'
+/** Whether this controller component spawns an implicit capsule collider. */
+export function controllerNeedsCapsule(componentId: ControllerComponentId): boolean {
+  return CAPSULE_CONTROLLER_IDS.has(componentId)
 }
 
 /** @deprecated Use ControllerChassis — kept for migration from Vehicle. */

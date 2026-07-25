@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import {
   ColliderComponent,
+  RevoluteJointVehicleControllerComponent,
   RigidBodyComponent,
   TransformComponent,
-  PhysicsControllerComponent,
   World,
 } from '@haku/core'
 import { RevoluteJointVehicleControllerSchema, ColliderSchema, RigidBodySchema } from '@haku/schema'
@@ -104,9 +104,8 @@ async function drive(options: DriveOptions = {}): Promise<DriveResult> {
   })
   world.addComponent(
     car,
-    PhysicsControllerComponent,
+    RevoluteJointVehicleControllerComponent,
     RevoluteJointVehicleControllerSchema.parse({
-      type: 'revolute-joint-vehicle',
       // Well-conditioned: heavy low-CoM chassis, wide track, high angular damping (yaw stability).
       chassis: { mass: 40, halfExtents: [1.6, 0.2, 1.2], lift: 0, angularDamping: 4, inertiaScale: 6 },
       // schema defaults already lay the wheels out wide (front steered, rear driven).

@@ -1,5 +1,5 @@
 import type { EntityId, IWorld, ISystem } from '@haku/core'
-import { TransformComponent, PhysicsControllerComponent } from '@haku/core'
+import { TransformComponent, getControllerOnEntity, queryControllers } from '@haku/core'
 import type { Quat, Vec3 } from '@haku/schema'
 import type { PhysicsTransform } from '@haku/physics'
 import type { PhysicsWorldSystem } from './physics-world-system.js'
@@ -16,7 +16,7 @@ export interface SpawnPose {
 export interface RespawnSystemOptions {
   /** Y threshold for automatic respawn. Default: {@link DEFAULT_RESPAWN_FALL_Y}. */
   fallThresholdY?: number
-  /** Controlled vehicle; otherwise first enabled {@link PhysicsControllerComponent}. */
+  /** Controlled vehicle; otherwise first enabled physics controller. */
   controlledEntity?: EntityId | null
 }
 
@@ -101,12 +101,12 @@ export class RespawnSystem implements ISystem {
   }
 
   private captureSpawnPoses(world: IWorld): void {
-    for (const id of world.query(PhysicsControllerComponent, TransformComponent)) {
+    for (const id of queryControllers(world)) {
       if (this.spawnPoses.has(id.value)) {
         continue
       }
-      const controller = world.getComponent(id, PhysicsControllerComponent)
-      if (controller?.enabled === false) {
+      const controller = getControllerOnEntity(world, id)
+      if (controller?.data.enabled === false) {
         continue
       }
       const transform = world.getComponent(id, TransformComponent)
@@ -144,9 +144,9 @@ export class RespawnSystem implements ISystem {
       return this.controlledEntity
     }
 
-    for (const id of world.query(PhysicsControllerComponent)) {
-      const controller = world.getComponent(id, PhysicsControllerComponent)
-      if (controller?.enabled !== false) {
+    for (const id of queryControllers(world)) {
+      const controller = getControllerOnEntity(world, id)
+      if (controller && controller.data.enabled !== false) {
         this.controlledEntity = id
         return id
       }

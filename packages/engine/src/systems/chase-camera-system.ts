@@ -2,7 +2,8 @@ import type { EntityId, IWorld, ISystem } from '@haku/core'
 import {
   CameraComponent,
   TransformComponent,
-  PhysicsControllerComponent,
+  getControllerOnEntity,
+  queryControllers,
 } from '@haku/core'
 import type { Quat, Vec3 } from '@haku/schema'
 import type { InputManager } from '../input/input-manager.js'
@@ -513,9 +514,9 @@ export class ChaseCameraSystem implements ISystem {
       return this.controlledEntity
     }
 
-    for (const id of world.query(PhysicsControllerComponent)) {
-      const vehicle = world.getComponent(id, PhysicsControllerComponent)
-      if (vehicle?.enabled !== false) {
+    for (const id of queryControllers(world)) {
+      const vehicle = getControllerOnEntity(world, id)
+      if (vehicle && vehicle.data.enabled !== false) {
         this.controlledEntity = id
         return id
       }

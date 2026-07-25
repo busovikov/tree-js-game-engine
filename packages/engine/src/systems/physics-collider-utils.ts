@@ -1,5 +1,17 @@
-import type { Collider, ControllerChassis, PhysicsController } from '@haku/schema'
-import { controllerChassisCollider, controllerNeedsChassis, ColliderSchema } from '@haku/schema'
+import type { ControllerOnEntity } from '@haku/core'
+import type {
+  ArcadeVehicleController,
+  Collider,
+  ControllerChassis,
+  ControllerComponentId,
+  KinematicCharacterController,
+} from '@haku/schema'
+import {
+  controllerChassisCollider,
+  controllerNeedsCapsule,
+  controllerNeedsChassis,
+  ColliderSchema,
+} from '@haku/schema'
 import type { PhysicsShapeDescriptor, PhysicsTransform, Quat, RigidBodyType, Vec3 } from '@haku/physics'
 
 function quatMul(a: Quat, b: Quat): Quat {
@@ -156,10 +168,10 @@ export interface ResolvedColliderDescriptor {
 }
 
 export function resolveColliderDescriptor(
-  controller: PhysicsController | null | undefined,
+  controller: ControllerOnEntity | null | undefined,
   explicitCollider: Collider | null | undefined,
 ): ResolvedColliderDescriptor | null {
-  if (controller?.enabled === false) {
+  if (controller?.data.enabled === false) {
     return null
   }
 
@@ -167,31 +179,26 @@ export function resolveColliderDescriptor(
     return explicitCollider ? { collider: explicitCollider, source: 'explicit' } : null
   }
 
-  if (controllerNeedsChassis(controller.type)) {
-    if (controller.type === 'arcade-vehicle' && explicitCollider) {
+  const componentId = controller.component.id as ControllerComponentId
+
+  if (controllerNeedsChassis(componentId)) {
+    if (componentId === 'ArcadeVehicleController' && explicitCollider) {
       return {
         collider: explicitCollider,
         source: 'explicit',
         bodyTypeOverride: 'dynamic',
       }
     }
-    if (
-      controller.type === 'custom-raycast' ||
-      controller.type === 'dynamic-raycast' ||
-      controller.type === 'arcade-vehicle' ||
-      controller.type === 'revolute-joint-vehicle'
-    ) {
-      return {
-        collider: controllerChassisColliderFromComponent(controller.chassis),
-        source: 'implicit-controller',
-        bodyTypeOverride: 'dynamic',
-      }
+    const chassis = (controller.data as ArcadeVehicleController).chassis
+    return {
+      collider: controllerChassisColliderFromComponent(chassis),
+      source: 'implicit-controller',
+      bodyTypeOverride: 'dynamic',
     }
   }
 
-  if (controller.type === 'kinematic-character' || controller.type === 'character-body') {
-    const capsuleRadius = controller.capsuleRadius
-    const capsuleHalfHeight = controller.capsuleHalfHeight
+  if (controllerNeedsCapsule(componentId)) {
+    const { capsuleRadius, capsuleHalfHeight } = controller.data as KinematicCharacterController
     return {
       collider: ColliderSchema.parse({
         shape: 'capsule',

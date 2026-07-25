@@ -1,5 +1,5 @@
 import type { EntityId, IWorld, ISystem } from '@haku/core'
-import { PhysicsControllerComponent } from '@haku/core'
+import { getControllerOnEntity, queryControllers } from '@haku/core'
 import type { InputActions } from '../input/input-actions.js'
 import type { InputManager } from '../input/input-manager.js'
 import type { PhysicsControllerSystem, ControllerInput } from './physics-controller-system.js'
@@ -85,9 +85,9 @@ export class InputBindingSystem implements ISystem {
       return this.controlledEntity
     }
 
-    for (const id of world.query(PhysicsControllerComponent)) {
-      const controller = world.getComponent(id, PhysicsControllerComponent)
-      if (controller?.enabled !== false) {
+    for (const id of queryControllers(world)) {
+      const controller = getControllerOnEntity(world, id)
+      if (controller && controller.data.enabled !== false) {
         this.controlledEntity = id
         return id
       }

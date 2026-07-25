@@ -9,7 +9,7 @@ import {
 
 /** Rapier `DynamicRaycastVehicleController` controller (Isaac sketch + Three.js example). */
 export class DynamicRaycastPlugin implements ControllerPlugin {
-  readonly type = 'dynamic-raycast'
+  readonly type = 'DynamicRaycastController' as const
   private readonly tracked = new Map<string, TrackedDynamicRaycast>()
 
   bootstrap(ctx: ControllerRuntimeContext): void {

@@ -9,7 +9,7 @@ import {
 
 /** Isaac Mason `arcade-vehicle-controller` — impulse arcade drive + drift. */
 export class ArcadeVehiclePlugin implements ControllerPlugin {
-  readonly type = 'arcade-vehicle'
+  readonly type = 'ArcadeVehicleController' as const
   private readonly tracked = new Map<string, TrackedArcadeVehicle>()
 
   bootstrap(ctx: ControllerRuntimeContext): void {

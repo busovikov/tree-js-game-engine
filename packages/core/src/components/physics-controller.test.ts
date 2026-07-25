@@ -1,39 +1,38 @@
 import { describe, expect, it } from 'vitest'
 import {
-  PhysicsControllerComponent,
+  CONTROLLER_COMPONENTS,
+  CustomRaycastControllerComponent,
   coreComponents,
   getCoreComponent,
-  globalComponentRegistry,
-} from '../index.js'
-import { PhysicsControllerSchema } from '@haku/schema'
+} from '../components.js'
+import { globalComponentRegistry } from '../registry.js'
 
-describe('PhysicsControllerComponent registry', () => {
-  it('registers with id PhysicsController', () => {
-    expect(PhysicsControllerComponent.id).toBe('PhysicsController')
-    expect(getCoreComponent('PhysicsController')).toBe(PhysicsControllerComponent)
-    expect(globalComponentRegistry.get('PhysicsController')).toBe(PhysicsControllerComponent)
+describe('controller components registry', () => {
+  it('registers all seven controller component ids', () => {
+    for (const component of CONTROLLER_COMPONENTS) {
+      expect(getCoreComponent(component.id)).toBe(component)
+      expect(globalComponentRegistry.get(component.id)).toBe(component)
+      expect(coreComponents.map((entry) => entry.id)).toContain(component.id)
+    }
   })
 
-  it('appears in the public core component collections', () => {
-    expect(coreComponents.map((component) => component.id)).toContain('PhysicsController')
-    expect(globalComponentRegistry.all().map((component) => component.id)).toContain(
-      'PhysicsController',
-    )
+  it('no longer registers PhysicsController', () => {
+    expect(getCoreComponent('PhysicsController')).toBeUndefined()
+    expect(globalComponentRegistry.get('PhysicsController')).toBeUndefined()
   })
 
-  it('defaults to custom-raycast controller', () => {
-    const data = PhysicsControllerComponent.defaults?.()
-    expect(data?.type).toBe('custom-raycast')
+  it('provides CustomRaycastController defaults without nested type', () => {
+    const data = CustomRaycastControllerComponent.defaults?.()
+    expect(data).toBeDefined()
+    expect(data).not.toHaveProperty('type')
     expect(data?.enabled).toBe(true)
-  })
+    expect(data?.chassis.mass).toBe(250)
 
-  it('parses custom-raycast controller data', () => {
-    const parsed = PhysicsControllerComponent.schema.parse({
-      type: 'custom-raycast',
-      engine: { force: 42 },
+    const parsed = CustomRaycastControllerComponent.schema.parse({
+      engine: { force: 40 },
+      physicsHandle: 'runtime-only',
     })
-    expect(parsed.type).toBe('custom-raycast')
-    expect(parsed.engine.force).toBe(42)
-    expect(PhysicsControllerSchema.parse(parsed)).toEqual(parsed)
+    expect(parsed.engine.force).toBe(40)
+    expect(parsed.physicsHandle).toBe('runtime-only')
   })
 })

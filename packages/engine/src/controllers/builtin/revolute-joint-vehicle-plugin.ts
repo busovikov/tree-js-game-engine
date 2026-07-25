@@ -11,7 +11,7 @@ import {
 
 /** Isaac Mason `revolute-joint-vehicle` — revolute joints + motor drive. */
 export class RevoluteJointVehiclePlugin implements ControllerPlugin {
-  readonly type = 'revolute-joint-vehicle'
+  readonly type = 'RevoluteJointVehicleController' as const
   private readonly tracked = new Map<string, TrackedRevoluteVehicle>()
 
   bootstrap(ctx: ControllerRuntimeContext): void {

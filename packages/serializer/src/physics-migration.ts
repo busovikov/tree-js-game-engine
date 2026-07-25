@@ -1,5 +1,7 @@
 import {
   ColliderSchema,
+  LEGACY_CONTROLLER_TYPE_TO_COMPONENT_ID,
+  PhysicsControllerTypeSchema,
   RigidBodySchema,
   stripLegacyColliderFields,
   type ComponentRecord,
@@ -14,6 +16,12 @@ const RUNTIME_COLLIDER_FIELDS = [
 
 const RUNTIME_RIGID_BODY_FIELDS = ['physicsBodyHandle'] as const
 
+const RUNTIME_CONTROLLER_FIELDS = [
+  'physicsBodyHandle',
+  'physicsHandle',
+  'physicsVehicleHandle',
+] as const
+
 function hasComponent(components: ComponentRecord[], type: string): boolean {
   return components.some((c) => c.type === type)
 }
@@ -26,20 +34,44 @@ function findComponent(
 }
 
 /**
- * Migrates legacy Collider (`isStatic`, runtime handles) to Collider v2 + optional RigidBody.
+ * Lift legacy `PhysicsController` + nested `data.type` into a dedicated controller component.
+ * Drops removed `custom-spring` controllers. Strips the nested `type` field from data.
+ */
+function migratePhysicsControllers(components: ComponentRecord[]): ComponentRecord[] {
+  const next: ComponentRecord[] = []
+  for (const comp of components) {
+    if (comp.type !== 'PhysicsController') {
+      next.push(comp)
+      continue
+    }
+
+    const raw = { ...(comp.data as Record<string, unknown>) }
+    const legacyType = raw.type
+    if (legacyType === 'custom-spring') {
+      continue
+    }
+
+    const parsedType = PhysicsControllerTypeSchema.safeParse(legacyType)
+    if (!parsedType.success) {
+      continue
+    }
+
+    delete raw.type
+    next.push({
+      type: LEGACY_CONTROLLER_TYPE_TO_COMPONENT_ID[parsedType.data],
+      data: raw,
+    })
+  }
+  return next
+}
+
+/**
+ * Migrates legacy Collider (`isStatic`, runtime handles) to Collider v2 + optional RigidBody,
+ * and splits PhysicsController into per-kind controller components.
  * Called before component schema parse on scene load.
  */
 export function migrateEntityComponents(components: ComponentRecord[]): ComponentRecord[] {
-  // The `custom-spring` controller was removed from the schema. Drop it so legacy scenes/prefabs
-  // that still reference it load instead of throwing an "invalid discriminator" ZodError.
-  const withoutCustomSpring = components.filter(
-    (comp) =>
-      !(
-        comp.type === 'PhysicsController' &&
-        (comp.data as Record<string, unknown>)?.type === 'custom-spring'
-      ),
-  )
-  components = withoutCustomSpring
+  components = migratePhysicsControllers(components)
 
   const colliderRecord = findComponent(components, 'Collider')
   if (!colliderRecord) {
@@ -112,5 +144,11 @@ export function parseMigratedRigidBodyData(data: Record<string, unknown>) {
 export const RUNTIME_COMPONENT_FIELDS = {
   Collider: [...RUNTIME_COLLIDER_FIELDS],
   RigidBody: [...RUNTIME_RIGID_BODY_FIELDS],
-  PhysicsController: ['physicsBodyHandle', 'physicsHandle', 'physicsVehicleHandle'],
+  CustomRaycastController: [...RUNTIME_CONTROLLER_FIELDS],
+  DynamicRaycastController: [...RUNTIME_CONTROLLER_FIELDS],
+  ArcadeVehicleController: [...RUNTIME_CONTROLLER_FIELDS],
+  RevoluteJointVehicleController: [...RUNTIME_CONTROLLER_FIELDS],
+  KinematicCharacterController: [...RUNTIME_CONTROLLER_FIELDS],
+  CharacterBodyController: [...RUNTIME_CONTROLLER_FIELDS],
+  PointerControlsController: [...RUNTIME_CONTROLLER_FIELDS],
 } as const satisfies Record<string, readonly string[]>

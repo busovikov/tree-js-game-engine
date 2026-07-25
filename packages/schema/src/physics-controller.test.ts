@@ -11,32 +11,31 @@ import {
   DynamicRaycastControllerSchema,
   KinematicCharacterControllerSchema,
   CharacterBodyControllerSchema,
-  PhysicsControllerSchema,
   PointerControlsControllerSchema,
   RevoluteJointVehicleControllerSchema,
+  controllerNeedsCapsule,
+  controllerNeedsChassis,
   controllerWheelLocalPositions,
 } from './physics-controller.js'
 
-describe('PhysicsControllerSchema', () => {
+describe('controller component schemas', () => {
   it.each([
-    ['custom-raycast', CustomRaycastControllerSchema],
-    ['dynamic-raycast', DynamicRaycastControllerSchema],
-    ['arcade-vehicle', ArcadeVehicleControllerSchema],
-    ['revolute-joint-vehicle', RevoluteJointVehicleControllerSchema],
-    ['kinematic-character', KinematicCharacterControllerSchema],
-    ['character-body', CharacterBodyControllerSchema],
-    ['pointer-controls', PointerControlsControllerSchema],
-  ] as const)('parses the %s discriminated variant', (type, schema) => {
-    const controller = PhysicsControllerSchema.parse({ type })
+    ['CustomRaycastController', CustomRaycastControllerSchema],
+    ['DynamicRaycastController', DynamicRaycastControllerSchema],
+    ['ArcadeVehicleController', ArcadeVehicleControllerSchema],
+    ['RevoluteJointVehicleController', RevoluteJointVehicleControllerSchema],
+    ['KinematicCharacterController', KinematicCharacterControllerSchema],
+    ['CharacterBodyController', CharacterBodyControllerSchema],
+    ['PointerControlsController', PointerControlsControllerSchema],
+  ] as const)('parses defaults for %s', (_id, schema) => {
+    const controller = schema.parse({})
 
-    expect(controller).toEqual(schema.parse({ type }))
     expect(controller.enabled).toBe(true)
     expect(controller.physicsHandle).toBeUndefined()
   })
 
   it('applies custom-raycast grouped defaults and preserves partial overrides', () => {
     const controller = CustomRaycastControllerSchema.parse({
-      type: 'custom-raycast',
       engine: { force: 45 },
     })
 
@@ -62,19 +61,17 @@ describe('PhysicsControllerSchema', () => {
   })
 
   it('applies defaults specific to every non-custom-raycast variant', () => {
-    expect(DynamicRaycastControllerSchema.parse({ type: 'dynamic-raycast' })).toMatchObject({
+    expect(DynamicRaycastControllerSchema.parse({})).toMatchObject({
       driveProfile: 'default',
       accelerateForce: 2,
       steerLerp: 0.25,
     })
-    expect(ArcadeVehicleControllerSchema.parse({ type: 'arcade-vehicle' })).toMatchObject({
+    expect(ArcadeVehicleControllerSchema.parse({})).toMatchObject({
       maxForwardSpeed: 8,
       maxReverseSpeed: -1,
       speedLerp: 0.03,
     })
-    const revolute = RevoluteJointVehicleControllerSchema.parse({
-      type: 'revolute-joint-vehicle',
-    })
+    const revolute = RevoluteJointVehicleControllerSchema.parse({})
     expect(revolute).toMatchObject({
       wheelRadius: 0.4,
       wheelMass: 1.5,
@@ -90,14 +87,12 @@ describe('PhysicsControllerSchema', () => {
     expect(revolute.wheels).toHaveLength(4)
     expect(revolute.wheels[0]).toMatchObject({ isSteered: true, isDriven: false })
     expect(revolute.wheels[2]).toMatchObject({ isSteered: false, isDriven: true })
-    expect(
-      KinematicCharacterControllerSchema.parse({ type: 'kinematic-character' }),
-    ).toMatchObject({
+    expect(KinematicCharacterControllerSchema.parse({})).toMatchObject({
       capsuleRadius: 0.35,
       moveSpeed: 1,
       velocityXZSmoothing: 0.2,
     })
-    expect(PointerControlsControllerSchema.parse({ type: 'pointer-controls' })).toMatchObject({
+    expect(PointerControlsControllerSchema.parse({})).toMatchObject({
       draggable: true,
       constraintType: 'spherical',
       ropeLength: 0.5,
@@ -105,26 +100,21 @@ describe('PhysicsControllerSchema', () => {
   })
 
   it('rejects non-finite / non-positive revolute wheel mass and drive velocity', () => {
-    expect(() =>
-      RevoluteJointVehicleControllerSchema.parse({ type: 'revolute-joint-vehicle', wheelMass: 0 }),
-    ).toThrow()
+    expect(() => RevoluteJointVehicleControllerSchema.parse({ wheelMass: 0 })).toThrow()
     expect(() =>
       RevoluteJointVehicleControllerSchema.parse({
-        type: 'revolute-joint-vehicle',
         wheelMass: Number.POSITIVE_INFINITY,
       }),
     ).toThrow()
     expect(() =>
       RevoluteJointVehicleControllerSchema.parse({
-        type: 'revolute-joint-vehicle',
         drivenTargetVelocity: Number.NaN,
       }),
     ).toThrow()
   })
 
   it('accepts the shared runtime-only physics handle', () => {
-    const controller = PhysicsControllerSchema.parse({
-      type: 'pointer-controls',
+    const controller = PointerControlsControllerSchema.parse({
       physicsHandle: 'pointer-joint-7',
     })
 
@@ -142,9 +132,11 @@ describe('PhysicsControllerSchema', () => {
     ])
   })
 
-  it('rejects unknown or missing discriminators', () => {
-    expect(() => PhysicsControllerSchema.parse({ type: 'vehicle' })).toThrow()
-    expect(() => PhysicsControllerSchema.parse({})).toThrow()
+  it('classifies chassis vs capsule controller ids', () => {
+    expect(controllerNeedsChassis('CustomRaycastController')).toBe(true)
+    expect(controllerNeedsChassis('KinematicCharacterController')).toBe(false)
+    expect(controllerNeedsCapsule('CharacterBodyController')).toBe(true)
+    expect(controllerNeedsCapsule('PointerControlsController')).toBe(false)
   })
 
   it('rejects invalid shared vehicle parameter groups', () => {
@@ -157,13 +149,13 @@ describe('PhysicsControllerSchema', () => {
   })
 
   it.each([
-    ['custom-raycast', { engine: { force: 0 } }],
-    ['dynamic-raycast', { accelerateForce: 0 }],
-    ['arcade-vehicle', { speedLerp: 1.1 }],
-    ['revolute-joint-vehicle', { wheels: [] }],
-    ['kinematic-character', { velocityXZSmoothing: -0.1 }],
-    ['pointer-controls', { ropeLength: 0 }],
-  ] as const)('rejects invalid %s controller data', (type, invalidData) => {
-    expect(() => PhysicsControllerSchema.parse({ type, ...invalidData })).toThrow()
+    [CustomRaycastControllerSchema, { engine: { force: 0 } }],
+    [DynamicRaycastControllerSchema, { accelerateForce: 0 }],
+    [ArcadeVehicleControllerSchema, { speedLerp: 1.1 }],
+    [RevoluteJointVehicleControllerSchema, { wheels: [] }],
+    [KinematicCharacterControllerSchema, { velocityXZSmoothing: -0.1 }],
+    [PointerControlsControllerSchema, { ropeLength: 0 }],
+  ] as const)('rejects invalid controller data', (schema, invalidData) => {
+    expect(() => schema.parse(invalidData)).toThrow()
   })
 })

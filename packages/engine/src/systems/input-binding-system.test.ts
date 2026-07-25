@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
+  ArcadeVehicleControllerComponent,
   ColliderComponent,
+  CustomRaycastControllerComponent,
   TransformComponent,
-  PhysicsControllerComponent,
   World,
 } from '@haku/core'
 import { CustomRaycastControllerSchema, ColliderSchema, ArcadeVehicleControllerSchema } from '@haku/schema'
@@ -16,7 +17,7 @@ import {
 } from './input-binding-system.js'
 import { PhysicsControllerSystem } from './vehicle-controller-system.js'
 
-const INTEGRATION_DRIVE_VEHICLE = CustomRaycastControllerSchema.parse({ type: "custom-raycast", engine: { force: 800 } })
+const INTEGRATION_DRIVE_VEHICLE = CustomRaycastControllerSchema.parse({ engine: { force: 800 } })
 
 type Listener = (event: unknown) => void
 
@@ -132,7 +133,7 @@ describe('InputBindingSystem', () => {
       shape: 'box',
       halfExtents: [0.9, 0.3, 1.55],
     }))
-    world.addComponent(carId, PhysicsControllerComponent, INTEGRATION_DRIVE_VEHICLE)
+    world.addComponent(carId, CustomRaycastControllerComponent, INTEGRATION_DRIVE_VEHICLE)
 
     colliderSystem.bootstrap(world)
     vehicleSystem.bootstrap(world)
@@ -192,10 +193,11 @@ describe('InputBindingSystem', () => {
   })
 
   it('applies jump pulse from Space keydown', () => {
+    world.removeComponent(carId, CustomRaycastControllerComponent)
     world.addComponent(
       carId,
-      PhysicsControllerComponent,
-      ArcadeVehicleControllerSchema.parse({ type: 'arcade-vehicle', jumpImpulse: 5000 }),
+      ArcadeVehicleControllerComponent,
+      ArcadeVehicleControllerSchema.parse({ jumpImpulse: 5000 }),
     )
     colliderSystem.dispose()
     vehicleSystem.dispose()

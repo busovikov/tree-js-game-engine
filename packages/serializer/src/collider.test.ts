@@ -81,6 +81,7 @@ describe('Collider serializer round-trip', () => {
       { type: 'PhysicsController', data: { type: 'custom-spring', stiffness: 10 } },
     ])
     expect(migrated.some((c) => c.type === 'PhysicsController')).toBe(false)
+    expect(migrated.some((c) => c.type.endsWith('Controller'))).toBe(false)
     // A scene document containing it must load without throwing.
     expect(() =>
       loadSceneDocument({

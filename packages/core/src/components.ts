@@ -12,7 +12,13 @@ import {
   PhysicsJointSchema,
   CollidersSchema,
   AnimatableBodySchema,
-  PhysicsControllerSchema,
+  CustomRaycastControllerSchema,
+  DynamicRaycastControllerSchema,
+  ArcadeVehicleControllerSchema,
+  RevoluteJointVehicleControllerSchema,
+  KinematicCharacterControllerSchema,
+  CharacterBodyControllerSchema,
+  PointerControlsControllerSchema,
   TransformSchema,
   type Camera,
   type Light,
@@ -27,14 +33,21 @@ import {
   type PhysicsJoint,
   type Colliders,
   type AnimatableBody,
-  type PhysicsController,
+  type CustomRaycastController,
+  type DynamicRaycastController,
+  type ArcadeVehicleController,
+  type RevoluteJointVehicleController,
+  type KinematicCharacterController,
+  type CharacterBodyController,
+  type PointerControlsController,
+  type AnyPhysicsController,
   type Transform,
   RenderingLayersSchema,
   RenderTextureSchema,
   type RenderingLayers,
   type RenderTexture,
 } from '@haku/schema'
-import type { ComponentType } from './types.js'
+import type { ComponentType, EntityId, IWorld } from './types.js'
 import { globalComponentRegistry } from './registry.js'
 
 export const TransformComponent = {
@@ -119,11 +132,98 @@ export const AnimatableBodyComponent = {
   defaults: () => AnimatableBodySchema.parse({}),
 } satisfies ComponentType<AnimatableBody>
 
-export const PhysicsControllerComponent = {
-  id: 'PhysicsController',
-  schema: PhysicsControllerSchema,
-  defaults: () => PhysicsControllerSchema.parse({ type: 'custom-raycast' }),
-} satisfies ComponentType<PhysicsController>
+export const CustomRaycastControllerComponent = {
+  id: 'CustomRaycastController',
+  schema: CustomRaycastControllerSchema,
+  defaults: () => CustomRaycastControllerSchema.parse({}),
+} satisfies ComponentType<CustomRaycastController>
+
+export const DynamicRaycastControllerComponent = {
+  id: 'DynamicRaycastController',
+  schema: DynamicRaycastControllerSchema,
+  defaults: () => DynamicRaycastControllerSchema.parse({}),
+} satisfies ComponentType<DynamicRaycastController>
+
+export const ArcadeVehicleControllerComponent = {
+  id: 'ArcadeVehicleController',
+  schema: ArcadeVehicleControllerSchema,
+  defaults: () => ArcadeVehicleControllerSchema.parse({}),
+} satisfies ComponentType<ArcadeVehicleController>
+
+export const RevoluteJointVehicleControllerComponent = {
+  id: 'RevoluteJointVehicleController',
+  schema: RevoluteJointVehicleControllerSchema,
+  defaults: () => RevoluteJointVehicleControllerSchema.parse({}),
+} satisfies ComponentType<RevoluteJointVehicleController>
+
+export const KinematicCharacterControllerComponent = {
+  id: 'KinematicCharacterController',
+  schema: KinematicCharacterControllerSchema,
+  defaults: () => KinematicCharacterControllerSchema.parse({}),
+} satisfies ComponentType<KinematicCharacterController>
+
+export const CharacterBodyControllerComponent = {
+  id: 'CharacterBodyController',
+  schema: CharacterBodyControllerSchema,
+  defaults: () => CharacterBodyControllerSchema.parse({}),
+} satisfies ComponentType<CharacterBodyController>
+
+export const PointerControlsControllerComponent = {
+  id: 'PointerControlsController',
+  schema: PointerControlsControllerSchema,
+  defaults: () => PointerControlsControllerSchema.parse({}),
+} satisfies ComponentType<PointerControlsController>
+
+/** All physics controller component types (one kind each). */
+export const CONTROLLER_COMPONENTS = [
+  CustomRaycastControllerComponent,
+  DynamicRaycastControllerComponent,
+  ArcadeVehicleControllerComponent,
+  RevoluteJointVehicleControllerComponent,
+  KinematicCharacterControllerComponent,
+  CharacterBodyControllerComponent,
+  PointerControlsControllerComponent,
+] as const
+
+export type ControllerComponentType = (typeof CONTROLLER_COMPONENTS)[number]
+
+export type ControllerOnEntity = {
+  component: ControllerComponentType
+  data: AnyPhysicsController
+}
+
+/** First physics controller on an entity, if any. */
+export function getControllerOnEntity(
+  world: IWorld,
+  id: EntityId,
+): ControllerOnEntity | undefined {
+  for (const component of CONTROLLER_COMPONENTS) {
+    const data = world.getComponent(id, component as ComponentType<AnyPhysicsController>)
+    if (data) {
+      return { component, data }
+    }
+  }
+  return undefined
+}
+
+/** Whether the entity has any physics controller component. */
+export function hasAnyController(world: IWorld, id: EntityId): boolean {
+  return CONTROLLER_COMPONENTS.some((component) =>
+    world.hasComponent(id, component as ComponentType),
+  )
+}
+
+/** Iterate all entities that have any physics controller. */
+export function* queryControllers(world: IWorld): IterableIterator<EntityId> {
+  const seen = new Set<string>()
+  for (const component of CONTROLLER_COMPONENTS) {
+    for (const id of world.query(component as ComponentType)) {
+      if (seen.has(id.value)) continue
+      seen.add(id.value)
+      yield id
+    }
+  }
+}
 
 export const RenderingLayersComponent = {
   id: 'RenderingLayers',
@@ -151,7 +251,7 @@ export const coreComponents = [
   PhysicsJointComponent,
   CollidersComponent,
   AnimatableBodyComponent,
-  PhysicsControllerComponent,
+  ...CONTROLLER_COMPONENTS,
   RenderingLayersComponent,
   RenderTextureComponent,
 ] as const

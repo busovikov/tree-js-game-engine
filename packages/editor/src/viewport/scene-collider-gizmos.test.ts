@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
   ColliderComponent,
-  PhysicsControllerComponent,
+  CustomRaycastControllerComponent,
+  DynamicRaycastControllerComponent,
+  ArcadeVehicleControllerComponent,
+  RevoluteJointVehicleControllerComponent,
+  KinematicCharacterControllerComponent,
+  PointerControlsControllerComponent,
   World,
+  type ComponentType,
   type EntityId,
 } from '@haku/core'
 import {
@@ -14,7 +20,6 @@ import {
   PointerControlsControllerSchema,
   RevoluteJointVehicleControllerSchema,
   type Collider,
-  type PhysicsController,
 } from '@haku/schema'
 import * as THREE from 'three'
 import { SceneColliderGizmos } from './scene-collider-gizmos.js'
@@ -27,12 +32,13 @@ const explicitSphere: Collider = {
 }
 
 function syncControllerGizmo(
-  controller: PhysicsController,
+  component: ComponentType,
+  data: unknown,
   explicitCollider?: Collider,
 ): THREE.LineSegments | undefined {
   const world = new World()
   const id = world.createEntity('Controller')
-  world.addComponent(id, PhysicsControllerComponent, controller)
+  world.addComponent(id, component, data)
   if (explicitCollider) {
     world.addComponent(id, ColliderComponent, explicitCollider)
   }
@@ -72,14 +78,23 @@ function expectGeometrySize(
 
 describe('SceneColliderGizmos controller parity', () => {
   it.each([
-    ['custom-raycast', CustomRaycastControllerSchema.parse({ type: 'custom-raycast' })],
-    ['dynamic-raycast', DynamicRaycastControllerSchema.parse({ type: 'dynamic-raycast' })],
     [
-      'revolute-joint-vehicle',
-      RevoluteJointVehicleControllerSchema.parse({ type: 'revolute-joint-vehicle' }),
+      'CustomRaycastController',
+      CustomRaycastControllerComponent,
+      CustomRaycastControllerSchema.parse({}),
     ],
-  ])('renders the implicit chassis for %s despite a redundant collider', (_type, controller) => {
-    const lines = syncControllerGizmo(controller, explicitSphere)
+    [
+      'DynamicRaycastController',
+      DynamicRaycastControllerComponent,
+      DynamicRaycastControllerSchema.parse({}),
+    ],
+    [
+      'RevoluteJointVehicleController',
+      RevoluteJointVehicleControllerComponent,
+      RevoluteJointVehicleControllerSchema.parse({}),
+    ],
+  ])('renders the implicit chassis for %s despite a redundant collider', (_id, component, controller) => {
+    const lines = syncControllerGizmo(component, controller, explicitSphere)
 
     expect(lines).toBeDefined()
     expectGeometrySize(lines!, controller.chassis.halfExtents.map((value) => value * 2) as [
@@ -93,9 +108,13 @@ describe('SceneColliderGizmos controller parity', () => {
   })
 
   it('renders the authored arcade collider with its local transform and explicit styling', () => {
-    const controller = ArcadeVehicleControllerSchema.parse({ type: 'arcade-vehicle' })
+    const controller = ArcadeVehicleControllerSchema.parse({})
 
-    const lines = syncControllerGizmo(controller, explicitSphere)
+    const lines = syncControllerGizmo(
+      ArcadeVehicleControllerComponent,
+      controller,
+      explicitSphere,
+    )
 
     expect(lines).toBeDefined()
     expect(geometrySize(lines!).toArray()).toEqual(
@@ -113,11 +132,10 @@ describe('SceneColliderGizmos controller parity', () => {
 
   it('renders the arcade chassis fallback as implicit', () => {
     const controller = ArcadeVehicleControllerSchema.parse({
-      type: 'arcade-vehicle',
       chassis: { halfExtents: [1, 0.4, 2], lift: 0.6 },
     })
 
-    const lines = syncControllerGizmo(controller)
+    const lines = syncControllerGizmo(ArcadeVehicleControllerComponent, controller)
 
     expectGeometrySize(lines!, [2, 0.8, 4])
     expect(lines!.position.toArray()).toEqual([0, 0.6, 0])
@@ -126,12 +144,15 @@ describe('SceneColliderGizmos controller parity', () => {
 
   it('renders the implicit kinematic capsule at the exact runtime offset', () => {
     const controller = KinematicCharacterControllerSchema.parse({
-      type: 'kinematic-character',
       capsuleRadius: 0.4,
       capsuleHalfHeight: 0.75,
     })
 
-    const lines = syncControllerGizmo(controller, explicitSphere)
+    const lines = syncControllerGizmo(
+      KinematicCharacterControllerComponent,
+      controller,
+      explicitSphere,
+    )
 
     expect(lines).toBeDefined()
     expect(geometrySize(lines!).y).toBeCloseTo(2.3, 5)
@@ -140,10 +161,14 @@ describe('SceneColliderGizmos controller parity', () => {
     expect(lines!.userData.hakuImplicitCollider).toBe(true)
   })
 
-  it.each([
-    ['pointer-controls', PointerControlsControllerSchema.parse({ type: 'pointer-controls' })],
-  ])('renders no collider for non-collider controller %s', (_type, controller) => {
-    expect(syncControllerGizmo(controller, explicitSphere)).toBeUndefined()
+  it('renders no collider for PointerControlsController', () => {
+    expect(
+      syncControllerGizmo(
+        PointerControlsControllerComponent,
+        PointerControlsControllerSchema.parse({}),
+        explicitSphere,
+      ),
+    ).toBeUndefined()
   })
 
   it('renders colliders for unselected entities when showAll is enabled', () => {

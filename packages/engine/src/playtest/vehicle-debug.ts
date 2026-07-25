@@ -1,5 +1,5 @@
 import type { EntityId, IWorld } from '@haku/core'
-import { TransformComponent, PhysicsControllerComponent } from '@haku/core'
+import { TransformComponent, CustomRaycastControllerComponent } from '@haku/core'
 import type { CustomRaycastController } from '@haku/schema'
 import type { IRaycastVehicle, Vec3 } from '@haku/physics'
 import { vehicleChassisCollider } from '../systems/physics-collider-system.js'
@@ -182,8 +182,8 @@ function resolveLevelEntityScale(world: IWorld): number | null {
 }
 
 function findVehicleId(world: IWorld, vehicleName?: string): EntityId | null {
-  for (const id of world.query(PhysicsControllerComponent, TransformComponent)) {
-    const data = world.getComponent(id, PhysicsControllerComponent)
+  for (const id of world.query(CustomRaycastControllerComponent, TransformComponent)) {
+    const data = world.getComponent(id, CustomRaycastControllerComponent)
     if (!data?.enabled) {
       continue
     }
@@ -258,9 +258,9 @@ export function collectVehicleDebugSnapshot(
     return null
   }
 
-  const vehicleData = world.getComponent(vehicleId, PhysicsControllerComponent)
+  const vehicleData = world.getComponent(vehicleId, CustomRaycastControllerComponent)
   const transform = world.getComponent(vehicleId, TransformComponent)
-  if (!vehicleData || !transform || vehicleData.type !== 'custom-raycast') {
+  if (!vehicleData || !transform) {
     return null
   }
   const raycastController = vehicleData

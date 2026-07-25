@@ -2,9 +2,10 @@ import type { EntityId, IWorld, ISystem } from '@haku/core'
 import {
   MeshRendererComponent,
   TransformComponent,
-  PhysicsControllerComponent,
+  getControllerOnEntity,
+  queryControllers,
 } from '@haku/core'
-import type { ControllerWheelSlot } from '@haku/schema'
+import type { ControllerWheelSlot, CustomRaycastController } from '@haku/schema'
 import { CONTROLLER_WHEEL_ORDER, normalizeMeshRenderer } from '@haku/schema'
 import type {
   IPhysicsWorld,
@@ -92,20 +93,24 @@ export class VehicleVisualSyncSystem implements ISystem {
       return
     }
 
-    for (const id of world.query(PhysicsControllerComponent, TransformComponent)) {
-      const controllerData = world.getComponent(id, PhysicsControllerComponent)
-      if (!controllerData?.enabled) {
+    for (const id of queryControllers(world)) {
+      if (!world.hasComponent(id, TransformComponent)) {
+        continue
+      }
+      const controller = getControllerOnEntity(world, id)
+      if (!controller || controller.data.enabled === false) {
         continue
       }
 
-      if (controllerData.type === 'revolute-joint-vehicle') {
+      if (controller.component.id === 'RevoluteJointVehicleController') {
         this.syncRevoluteVehicle(world, id, physicsWorld)
         continue
       }
 
-      if (controllerData.type !== 'custom-raycast') {
+      if (controller.component.id !== 'CustomRaycastController') {
         continue
       }
+      const controllerData = controller.data as CustomRaycastController
 
       const raycastVehicle = this.controllerSystem.getRaycastVehicle(id)
       if (!raycastVehicle) {

@@ -1,5 +1,5 @@
 import type { EntityId, IWorld } from '@haku/core'
-import { ColliderComponent, PhysicsControllerComponent } from '@haku/core'
+import { ColliderComponent, getControllerOnEntity } from '@haku/core'
 import { resolveColliderDescriptor } from '@haku/engine'
 import type { Collider } from '@haku/schema'
 import * as THREE from 'three'
@@ -143,7 +143,7 @@ export class SceneColliderGizmos {
       const isSelected = options.selectedIds.has(id.value)
       if (!options.showAll && !isSelected) continue
 
-      const vehicle = world.getComponent(id, PhysicsControllerComponent)
+      const vehicle = getControllerOnEntity(world, id)
       const explicitCollider = world.getComponent(id, ColliderComponent)
       const resolved = resolveColliderDescriptor(vehicle, explicitCollider)
       if (!resolved) continue

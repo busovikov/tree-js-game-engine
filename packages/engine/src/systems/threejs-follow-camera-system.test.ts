@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   CameraComponent,
-  PhysicsControllerComponent,
+  DynamicRaycastControllerComponent,
   TransformComponent,
   World,
 } from '@haku/core'
@@ -28,8 +28,7 @@ describe('ThreeJsFollowCameraSystem', () => {
       scale: [1, 1, 1],
     })
     world.addComponent(cameraId, CameraComponent, { fov: 60, near: 0.1, far: 100, enabled: true })
-    world.addComponent(vehicleId, PhysicsControllerComponent, DynamicRaycastControllerSchema.parse({
-      type: 'dynamic-raycast',
+    world.addComponent(vehicleId, DynamicRaycastControllerComponent, DynamicRaycastControllerSchema.parse({
       enabled: true,
       driveProfile: 'threejs-rapier',
     }))
@@ -56,8 +55,7 @@ describe('ThreeJsFollowCameraSystem', () => {
   it('detects threejs-rapier profile', () => {
     const world = new World()
     const vehicleId = world.createEntity('Car')
-    world.addComponent(vehicleId, PhysicsControllerComponent, DynamicRaycastControllerSchema.parse({
-      type: 'dynamic-raycast',
+    world.addComponent(vehicleId, DynamicRaycastControllerComponent, DynamicRaycastControllerSchema.parse({
       enabled: true,
       driveProfile: 'threejs-rapier',
     }))

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it, beforeEach } from 'vitest'
-import { PhysicsControllerComponent, TransformComponent } from '@haku/core'
+import { RevoluteJointVehicleControllerComponent, TransformComponent } from '@haku/core'
 import { loadSceneDocument } from '@haku/serializer'
 import { createRapierPhysicsBackend, resetRapierPhysicsIds } from '@haku/physics-rapier'
 import { PhysicsWorldSystem, PHYSICS_CATCH_UP_POLICY } from './physics-world-system.js'
@@ -44,7 +44,7 @@ describe('revolute-joint-vehicle scene (full play-mode pipeline, driven + steere
     const query = new PhysicsQuerySystem(physicsSystem)
     const visualSync = new VehicleVisualSyncSystem(physicsSystem, controller)
 
-    const vehicleId = [...world.query(PhysicsControllerComponent)][0]
+    const vehicleId = [...world.query(RevoluteJointVehicleControllerComponent)][0]
     expect(vehicleId).toBeDefined()
 
     const yaw = (): number => {

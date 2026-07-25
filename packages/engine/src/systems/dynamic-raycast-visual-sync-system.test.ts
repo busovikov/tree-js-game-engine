@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  DynamicRaycastControllerComponent,
   MeshRendererComponent,
-  PhysicsControllerComponent,
   TransformComponent,
   World,
 } from '@haku/core'
@@ -73,9 +73,8 @@ describe('dynamic raycast wheel visual helpers', () => {
     })
     world.addComponent(
       vehicleId,
-      PhysicsControllerComponent,
+      DynamicRaycastControllerComponent,
       DynamicRaycastControllerSchema.parse({
-        type: 'dynamic-raycast',
         enabled: true,
         driveProfile: 'threejs-rapier',
       }),

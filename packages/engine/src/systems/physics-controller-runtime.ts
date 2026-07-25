@@ -1,13 +1,18 @@
-import type { IWorld, EntityId } from '@haku/core'
+import type { IWorld, EntityId, ComponentType } from '@haku/core'
 import {
+  ArcadeVehicleControllerComponent,
   CameraComponent,
-  PhysicsControllerComponent,
+  CharacterBodyControllerComponent,
+  DynamicRaycastControllerComponent,
+  KinematicCharacterControllerComponent,
+  RevoluteJointVehicleControllerComponent,
   TransformComponent,
   entityId,
 } from '@haku/core'
 import type {
   ArcadeVehicleController,
   CharacterBodyController,
+  ControllerComponentId,
   DynamicRaycastController,
   KinematicCharacterController,
   RevoluteJointVehicleController,
@@ -190,9 +195,9 @@ export function bootstrapDynamicRaycast(
   physicsSystem: PhysicsWorldSystem,
   tracked: Map<string, TrackedDynamicRaycast>,
 ): void {
-  for (const id of world.query(PhysicsControllerComponent, TransformComponent)) {
-    const controller = world.getComponent(id, PhysicsControllerComponent)
-    if (!controller || controller.type !== 'dynamic-raycast') {
+  for (const id of world.query(DynamicRaycastControllerComponent, TransformComponent)) {
+    const controller = world.getComponent(id, DynamicRaycastControllerComponent)
+    if (!controller) {
       continue
     }
     const bodyHandle = physicsSystem.getBodyHandle(id)
@@ -282,12 +287,8 @@ export function updateDynamicRaycast(
 ): void {
   for (const [entityIdValue, state] of tracked) {
     const id = entityId(entityIdValue)
-    const controller = world.getComponent(id, PhysicsControllerComponent)
-    if (
-      !controller ||
-      controller.enabled === false ||
-      controller.type !== 'dynamic-raycast'
-    ) {
+    const controller = world.getComponent(id, DynamicRaycastControllerComponent)
+    if (!controller || controller.enabled === false) {
       continue
     }
     const input = inputs.get(entityIdValue) ?? {}
@@ -334,12 +335,8 @@ export function updateArcadeVehicle(
 ): void {
   for (const [entityIdValue, state] of tracked) {
     const id = entityId(entityIdValue)
-    const controller = world.getComponent(id, PhysicsControllerComponent)
-    if (
-      !controller ||
-      controller.enabled === false ||
-      controller.type !== 'arcade-vehicle'
-    ) {
+    const controller = world.getComponent(id, ArcadeVehicleControllerComponent)
+    if (!controller || controller.enabled === false) {
       continue
     }
     const bodyHandle = physicsSystem.getBodyHandle(id)
@@ -415,25 +412,39 @@ export interface TrackedCharacter {
 }
 
 type CharacterControllerData = KinematicCharacterController | CharacterBodyController
+type CharacterComponentId = Extract<
+  ControllerComponentId,
+  'KinematicCharacterController' | 'CharacterBodyController'
+>
 
-function characterControllerOptions(data: CharacterControllerData) {
-  if (data.type === 'character-body') {
+const CHARACTER_COMPONENT_BY_ID = {
+  KinematicCharacterController: KinematicCharacterControllerComponent,
+  CharacterBodyController: CharacterBodyControllerComponent,
+} satisfies Record<CharacterComponentId, { id: string }>
+
+function characterControllerOptions(
+  data: CharacterControllerData,
+  controllerType: CharacterComponentId,
+) {
+  if (controllerType === 'CharacterBodyController') {
+    const characterBody = data as CharacterBodyController
     return {
-      offset: data.characterShapeOffset,
-      snapToGroundDistance: data.floorSnapLength,
-      autoStepMaxHeight: data.stepHeight,
-      autoStepMinWidth: data.autoStepMinWidth,
-      autoStepIncludeDynamicBodies: data.autoStepIncludeDynamicBodies,
-      applyImpulsesToDynamicBodies: data.applyImpulsesToDynamicBodies,
+      offset: characterBody.characterShapeOffset,
+      snapToGroundDistance: characterBody.floorSnapLength,
+      autoStepMaxHeight: characterBody.stepHeight,
+      autoStepMinWidth: characterBody.autoStepMinWidth,
+      autoStepIncludeDynamicBodies: characterBody.autoStepIncludeDynamicBodies,
+      applyImpulsesToDynamicBodies: characterBody.applyImpulsesToDynamicBodies,
     }
   }
+  const kinematic = data as KinematicCharacterController
   return {
-    offset: data.characterShapeOffset,
-    snapToGroundDistance: data.snapToGroundDistance,
-    autoStepMaxHeight: data.autoStepMaxHeight,
-    autoStepMinWidth: data.autoStepMinWidth,
-    autoStepIncludeDynamicBodies: data.autoStepIncludeDynamicBodies,
-    applyImpulsesToDynamicBodies: data.applyImpulsesToDynamicBodies,
+    offset: kinematic.characterShapeOffset,
+    snapToGroundDistance: kinematic.snapToGroundDistance,
+    autoStepMaxHeight: kinematic.autoStepMaxHeight,
+    autoStepMinWidth: kinematic.autoStepMinWidth,
+    autoStepIncludeDynamicBodies: kinematic.autoStepIncludeDynamicBodies,
+    applyImpulsesToDynamicBodies: kinematic.applyImpulsesToDynamicBodies,
   }
 }
 
@@ -442,11 +453,12 @@ export function bootstrapCharacter(
   physicsWorld: IPhysicsWorld,
   physicsSystem: PhysicsWorldSystem,
   tracked: Map<string, TrackedCharacter>,
-  controllerType: 'kinematic-character' | 'character-body',
+  controllerType: CharacterComponentId,
 ): void {
-  for (const id of world.query(PhysicsControllerComponent, TransformComponent)) {
-    const data = world.getComponent(id, PhysicsControllerComponent)
-    if (!data || data.type !== controllerType) {
+  const component = CHARACTER_COMPONENT_BY_ID[controllerType] as ComponentType<CharacterControllerData>
+  for (const id of world.query(component, TransformComponent)) {
+    const data = world.getComponent(id, component)
+    if (!data) {
       continue
     }
     const bodyHandle = physicsSystem.getBodyHandle(id)
@@ -455,7 +467,7 @@ export function bootstrapCharacter(
       continue
     }
     const controller = physicsWorld.createCharacterController(bodyHandle, shapeHandle, {
-      ...characterControllerOptions(data),
+      ...characterControllerOptions(data, controllerType),
     })
     tracked.set(id.value, {
       controller,
@@ -472,14 +484,15 @@ export function updateCharacter(
   tracked: Map<string, TrackedCharacter>,
   inputs: Map<string, ControllerInput>,
   dt: number,
-  controllerType: 'kinematic-character' | 'character-body',
+  controllerType: CharacterComponentId,
 ): void {
   const cameraYaw = resolveCameraYaw(world)
+  const component = CHARACTER_COMPONENT_BY_ID[controllerType] as ComponentType<CharacterControllerData>
 
   for (const [entityIdValue, state] of tracked) {
     const id = entityId(entityIdValue)
-    const data = world.getComponent(id, PhysicsControllerComponent)
-    if (!data || data.enabled === false || data.type !== controllerType) {
+    const data = world.getComponent(id, component)
+    if (!data || data.enabled === false) {
       continue
     }
 
@@ -538,7 +551,7 @@ export function updateCharacter(
       state.jumpCooldown = 0.25
     }
 
-    state.controller.configure(characterControllerOptions(data))
+    state.controller.configure(characterControllerOptions(data, controllerType))
 
     const result = state.controller.step(movement, dt)
     state.grounded = result.grounded
@@ -741,9 +754,9 @@ export function bootstrapRevoluteVehicle(
   physicsSystem: PhysicsWorldSystem,
   tracked: Map<string, TrackedRevoluteVehicle>,
 ): void {
-  for (const id of world.query(PhysicsControllerComponent, TransformComponent)) {
-    const data = world.getComponent(id, PhysicsControllerComponent)
-    if (!data || data.type !== 'revolute-joint-vehicle') {
+  for (const id of world.query(RevoluteJointVehicleControllerComponent, TransformComponent)) {
+    const data = world.getComponent(id, RevoluteJointVehicleControllerComponent)
+    if (!data) {
       continue
     }
     const chassisHandle = physicsSystem.getBodyHandle(id)
@@ -770,12 +783,8 @@ export function updateRevoluteVehicle(
 ): void {
   for (const [entityIdValue, state] of tracked) {
     const id = entityId(entityIdValue)
-    const data = world.getComponent(id, PhysicsControllerComponent)
-    if (
-      !data ||
-      data.enabled === false ||
-      data.type !== 'revolute-joint-vehicle'
-    ) {
+    const data = world.getComponent(id, RevoluteJointVehicleControllerComponent)
+    if (!data || data.enabled === false) {
       continue
     }
     const input = inputs.get(entityIdValue) ?? {}
@@ -892,10 +901,10 @@ export function resetRevoluteVehicle(
     return
   }
   state.steerAngle = 0
-  const data = world.getComponent(id, PhysicsControllerComponent)
+  const data = world.getComponent(id, RevoluteJointVehicleControllerComponent)
   const chassisHandle = physicsSystem.getBodyHandle(id)
   const chassisTransform = physicsSystem.getBodyTransform(id)
-  if (!data || data.type !== 'revolute-joint-vehicle' || !chassisHandle || !chassisTransform) {
+  if (!data || !chassisHandle || !chassisTransform) {
     return
   }
   // Dispose the old sub-bodies FIRST so the chassis is joint-free, then re-seat it cleanly (the
@@ -914,9 +923,9 @@ export function ensureArcadeTracked(
   world: IWorld,
   tracked: Map<string, TrackedArcadeVehicle>,
 ): void {
-  for (const id of world.query(PhysicsControllerComponent)) {
-    const data = world.getComponent(id, PhysicsControllerComponent)
-    if (!data || data.enabled === false || data.type !== 'arcade-vehicle') {
+  for (const id of world.query(ArcadeVehicleControllerComponent)) {
+    const data = world.getComponent(id, ArcadeVehicleControllerComponent)
+    if (!data || data.enabled === false) {
       continue
     }
     if (!tracked.has(id.value)) {

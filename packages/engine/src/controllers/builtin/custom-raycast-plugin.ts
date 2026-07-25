@@ -1,5 +1,5 @@
 import type { EntityId } from '@haku/core'
-import { PhysicsControllerComponent, TransformComponent } from '@haku/core'
+import { CustomRaycastControllerComponent, TransformComponent } from '@haku/core'
 import type { CustomRaycastController } from '@haku/schema'
 import { controllerWheelLocalPositions } from '@haku/schema'
 import type { IRaycastVehicle, PhysicsWheelHandle, WheelConfig } from '@haku/physics'
@@ -83,13 +83,13 @@ export function computeIsaacDriveControlState(ctx: DriveControlContext): DriveCo
  * constant brake). Rear-wheel drive with grounded gating on steer/engine force.
  */
 export class CustomRaycastPlugin implements ControllerPlugin {
-  readonly type = 'custom-raycast'
+  readonly type = 'CustomRaycastController' as const
   private readonly tracked = new Map<string, TrackedCustomRaycast>()
 
   bootstrap(ctx: ControllerRuntimeContext): void {
-    for (const id of ctx.world.query(PhysicsControllerComponent, TransformComponent)) {
-      const controllerData = ctx.world.getComponent(id, PhysicsControllerComponent)
-      if (!controllerData || controllerData.type !== 'custom-raycast') {
+    for (const id of ctx.world.query(CustomRaycastControllerComponent, TransformComponent)) {
+      const controllerData = ctx.world.getComponent(id, CustomRaycastControllerComponent)
+      if (!controllerData) {
         continue
       }
       const bodyHandle = ctx.physicsSystem.getBodyHandle(id)
@@ -115,12 +115,8 @@ export class CustomRaycastPlugin implements ControllerPlugin {
   update(ctx: ControllerRuntimeContext, _dt: number): void {
     for (const [entityIdValue, tracked] of this.tracked) {
       const id = { value: entityIdValue } as EntityId
-      const controllerData = ctx.world.getComponent(id, PhysicsControllerComponent)
-      if (
-        !controllerData ||
-        controllerData.enabled === false ||
-        controllerData.type !== 'custom-raycast'
-      ) {
+      const controllerData = ctx.world.getComponent(id, CustomRaycastControllerComponent)
+      if (!controllerData || controllerData.enabled === false) {
         continue
       }
 

@@ -122,10 +122,9 @@ function buildScene() {
     entity(vehicleId, 'Car', null, [
       transform([0, 1, 0]),
       {
-        type: 'PhysicsController',
+        type: 'DynamicRaycastController',
         data: {
-          type: 'dynamic-raycast',
-          enabled: true,
+                    enabled: true,
           // Matches the original three.js example: a fixed OrbitControls camera the
           // user drives freely, not an automatic chase/follow camera.
           followCamera: false,

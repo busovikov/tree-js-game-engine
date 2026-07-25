@@ -163,7 +163,15 @@ import { AnimatableBodySchema } from './animatable-body.js'
 import { PhysicsAreaSchema } from './physics-area.js'
 import { PhysicsJointSchema } from './physics-joint.js'
 import { CollidersSchema } from './colliders-array.js'
-import { PhysicsControllerSchema } from './physics-controller.js'
+import {
+  ArcadeVehicleControllerSchema,
+  CharacterBodyControllerSchema,
+  CustomRaycastControllerSchema,
+  DynamicRaycastControllerSchema,
+  KinematicCharacterControllerSchema,
+  PointerControlsControllerSchema,
+  RevoluteJointVehicleControllerSchema,
+} from './physics-controller.js'
 import { TagSchema } from './tag.js'
 import { RenderingLayersSchema } from './rendering-layers.js'
 import { RenderTextureSchema } from './render-texture.js'
@@ -277,7 +285,9 @@ export {
 } from './physics-validation.js'
 
 export {
-  PhysicsControllerSchema,
+  CONTROLLER_COMPONENT_IDS,
+  CONTROLLER_COMPONENT_SCHEMAS,
+  LEGACY_CONTROLLER_TYPE_TO_COMPONENT_ID,
   PhysicsControllerTypeSchema,
   CustomRaycastControllerSchema,
   DynamicRaycastControllerSchema,
@@ -299,8 +309,9 @@ export {
   controllerChassisCollider,
   controllerNeedsChassis,
   controllerNeedsCapsule,
-  type PhysicsController,
+  type ControllerComponentId,
   type PhysicsControllerType,
+  type AnyPhysicsController,
   type CustomRaycastController,
   type DynamicRaycastController,
   type ArcadeVehicleController,
@@ -518,7 +529,13 @@ export const CORE_COMPONENT_IDS = [
   'PhysicsArea',
   'PhysicsJoint',
   'Colliders',
-  'PhysicsController',
+  'CustomRaycastController',
+  'DynamicRaycastController',
+  'ArcadeVehicleController',
+  'RevoluteJointVehicleController',
+  'KinematicCharacterController',
+  'CharacterBodyController',
+  'PointerControlsController',
   'RenderingLayers',
   'RenderTexture',
 ] as const
@@ -540,7 +557,13 @@ export const coreComponentSchemas = {
   PhysicsArea: PhysicsAreaSchema,
   PhysicsJoint: PhysicsJointSchema,
   Colliders: CollidersSchema,
-  PhysicsController: PhysicsControllerSchema,
+  CustomRaycastController: CustomRaycastControllerSchema,
+  DynamicRaycastController: DynamicRaycastControllerSchema,
+  ArcadeVehicleController: ArcadeVehicleControllerSchema,
+  RevoluteJointVehicleController: RevoluteJointVehicleControllerSchema,
+  KinematicCharacterController: KinematicCharacterControllerSchema,
+  CharacterBodyController: CharacterBodyControllerSchema,
+  PointerControlsController: PointerControlsControllerSchema,
   RenderingLayers: RenderingLayersSchema,
   RenderTexture: RenderTextureSchema,
 } as const

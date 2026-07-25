@@ -1,5 +1,5 @@
 import type { EntityId, IWorld } from '@haku/core'
-import { entityId, PhysicsControllerComponent } from '@haku/core'
+import { entityId, getControllerOnEntity, queryControllers } from '@haku/core'
 import type { Engine } from './engine.js'
 import { InputManager, type InputManagerOptions } from './input/index.js'
 import { ChaseCameraSystem } from './systems/chase-camera-system.js'
@@ -13,7 +13,7 @@ import { VehicleVisualSyncSystem } from './systems/vehicle-visual-sync-system.js
 import { DynamicRaycastVisualSyncSystem } from './systems/dynamic-raycast-visual-sync-system.js'
 
 export interface VehiclePlayModeOptions {
-  /** Explicit vehicle entity; otherwise first enabled PhysicsControllerComponent is used. */
+  /** Explicit vehicle entity; otherwise first enabled physics controller is used. */
   controlledEntityId?: EntityId | string
   /** Scene camera entity; otherwise first enabled CameraComponent is used. */
   cameraEntityId?: EntityId | string
@@ -167,19 +167,19 @@ export function startVehiclePlayMode(
 /**
  * Whether play mode should drive the scene camera to chase/follow the controlled vehicle.
  * Defaults to true (existing behavior) unless the resolved controller explicitly opts out
- * via `PhysicsControllerComponent.followCamera === false`.
+ * via `followCamera === false`.
  */
 function resolveFollowCameraPreference(world: IWorld, controlledEntity: EntityId | null): boolean {
   const targetId = controlledEntity ?? findFirstEnabledController(world)
   if (!targetId) return true
-  const controller = world.getComponent(targetId, PhysicsControllerComponent)
-  return controller?.followCamera !== false
+  const controller = getControllerOnEntity(world, targetId)
+  return controller?.data.followCamera !== false
 }
 
 function findFirstEnabledController(world: IWorld): EntityId | null {
-  for (const id of world.query(PhysicsControllerComponent)) {
-    const controller = world.getComponent(id, PhysicsControllerComponent)
-    if (controller?.enabled !== false) {
+  for (const id of queryControllers(world)) {
+    const controller = getControllerOnEntity(world, id)
+    if (controller && controller.data.enabled !== false) {
       return id
     }
   }

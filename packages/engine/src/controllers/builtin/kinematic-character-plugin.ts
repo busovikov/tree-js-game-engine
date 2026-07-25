@@ -8,15 +8,15 @@ import {
 
 /** Isaac Mason `kinematic-character-controller` — Rapier KinematicCharacterController. */
 export class KinematicCharacterPlugin implements ControllerPlugin {
-  readonly type = 'kinematic-character'
+  readonly type = 'KinematicCharacterController' as const
   private readonly tracked = new Map<string, TrackedCharacter>()
 
   bootstrap(ctx: ControllerRuntimeContext): void {
-    bootstrapCharacter(ctx.world, ctx.physicsWorld, ctx.physicsSystem, this.tracked, 'kinematic-character')
+    bootstrapCharacter(ctx.world, ctx.physicsWorld, ctx.physicsSystem, this.tracked, this.type)
   }
 
   update(ctx: ControllerRuntimeContext, dt: number): void {
-    updateCharacter(ctx.world, this.tracked, ctx.inputs, dt, 'kinematic-character')
+    updateCharacter(ctx.world, this.tracked, ctx.inputs, dt, this.type)
   }
 
   resetEntity(_ctx: ControllerRuntimeContext, id: EntityId): void {

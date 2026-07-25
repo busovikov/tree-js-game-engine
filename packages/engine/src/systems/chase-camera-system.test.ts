@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
+  ArcadeVehicleControllerComponent,
   CameraComponent,
   ColliderComponent,
+  CustomRaycastControllerComponent,
   TransformComponent,
-  PhysicsControllerComponent,
   World,
 } from '@haku/core'
 import { CustomRaycastControllerSchema, ColliderSchema, ArcadeVehicleControllerSchema } from '@haku/schema'
@@ -33,7 +34,7 @@ import { PhysicsWorldSystem } from './physics-world-system.js'
 import { PhysicsControllerSystem } from './vehicle-controller-system.js'
 
 const IDENTITY_ROTATION: Quat = [0, 0, 0, 1]
-const INTEGRATION_DRIVE_VEHICLE = CustomRaycastControllerSchema.parse({ type: "custom-raycast", engine: { force: 800 } })
+const INTEGRATION_DRIVE_VEHICLE = CustomRaycastControllerSchema.parse({ engine: { force: 800 } })
 
 function vehicleState(overrides: Partial<{
   position: Vec3
@@ -317,7 +318,7 @@ describe('ChaseCameraSystem integration (stub)', () => {
       shape: 'box',
       halfExtents: [0.9, 0.3, 1.55],
     }))
-    world.addComponent(carId, PhysicsControllerComponent, INTEGRATION_DRIVE_VEHICLE)
+    world.addComponent(carId, CustomRaycastControllerComponent, INTEGRATION_DRIVE_VEHICLE)
 
     const cameraId = world.createEntity('ChaseCamera')
     world.addComponent(cameraId, TransformComponent, {
@@ -403,10 +404,11 @@ describe('ChaseCameraSystem integration (stub)', () => {
     const { world, physicsSystem, colliderSystem, vehicleSystem, chaseCamera, carId } =
       createVehicleCameraScene()
 
+    world.removeComponent(carId, CustomRaycastControllerComponent)
     world.addComponent(
       carId,
-      PhysicsControllerComponent,
-      ArcadeVehicleControllerSchema.parse({ type: 'arcade-vehicle', jumpImpulse: 5000 }),
+      ArcadeVehicleControllerComponent,
+      ArcadeVehicleControllerSchema.parse({ jumpImpulse: 5000 }),
     )
     colliderSystem.dispose()
     vehicleSystem.dispose()

@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   ColliderComponent,
+  CustomRaycastControllerComponent,
   TransformComponent,
-  PhysicsControllerComponent,
   World,
 } from '@haku/core'
 import { CustomRaycastControllerSchema, ColliderSchema } from '@haku/schema'
@@ -18,7 +18,7 @@ import {
 } from './respawn-system.js'
 import { PhysicsControllerSystem } from './vehicle-controller-system.js'
 
-const DEFAULT_VEHICLE = CustomRaycastControllerSchema.parse({ type: "custom-raycast" })
+const DEFAULT_VEHICLE = CustomRaycastControllerSchema.parse({})
 const IDENTITY_ROTATION: Quat = [0, 0, 0, 1]
 
 type Listener = (event: unknown) => void
@@ -86,7 +86,7 @@ describe('RespawnSystem', () => {
       rotation: [...spawnRotation],
       scale: [1, 1, 1],
     })
-    world.addComponent(carId, PhysicsControllerComponent, DEFAULT_VEHICLE)
+    world.addComponent(carId, CustomRaycastControllerComponent, DEFAULT_VEHICLE)
     world.addComponent(carId, ColliderComponent, ColliderSchema.parse({
       shape: 'box',
       halfExtents: [0.9, 0.3, 1.55],
@@ -204,7 +204,7 @@ describe('RespawnSystem + InputBindingSystem', () => {
       rotation: IDENTITY_ROTATION,
       scale: [1, 1, 1],
     })
-    world.addComponent(carId, PhysicsControllerComponent, DEFAULT_VEHICLE)
+    world.addComponent(carId, CustomRaycastControllerComponent, DEFAULT_VEHICLE)
     world.addComponent(carId, ColliderComponent, ColliderSchema.parse({
       shape: 'box',
       halfExtents: [0.9, 0.3, 1.55],

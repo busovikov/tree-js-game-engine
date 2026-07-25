@@ -1,5 +1,5 @@
 import type { EntityId, IWorld, ISystem } from '@haku/core'
-import { entityId, AnimatableBodyComponent, PhysicsControllerComponent, RigidBodyComponent, TransformComponent } from '@haku/core'
+import { entityId, AnimatableBodyComponent, hasAnyController, RigidBodyComponent, TransformComponent } from '@haku/core'
 import type { Transform } from '@haku/schema'
 import type {
   IPhysicsBackend,
@@ -377,7 +377,7 @@ export class PhysicsWorldSystem implements ISystem {
 
     const rigidBody = world?.getComponent(id, RigidBodyComponent)
     const animatable = world?.getComponent(id, AnimatableBodyComponent)
-    const controller = world?.getComponent(id, PhysicsControllerComponent)
+    const hasController = world !== undefined && hasAnyController(world, id)
     // Static bodies are tracked for handle lookup / teleport only — they never drive ECS pose.
     const interpolatePresentation =
       type === 'static'
@@ -391,7 +391,7 @@ export class PhysicsWorldSystem implements ISystem {
     const ecsAuthoritative =
       type !== 'static' &&
       (animatable !== undefined ||
-        (controller === undefined &&
+        (!hasController &&
           type === 'kinematic' &&
           (rigidBody?.kinematicMode ?? 'position') === 'position'))
 
