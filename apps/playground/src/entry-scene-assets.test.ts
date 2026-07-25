@@ -82,7 +82,7 @@ describe('playground entry scene', () => {
       -2 * (qy * qz - qw * qx),
       -(1 - 2 * (qx * qx + qy * qy)),
     ];
-    const toPlayArea = [0 - px, 10 - py, 5 - pz];
+    const toPlayArea = [0 - px, 3 - py, 5 - pz];
     const length = Math.hypot(...toPlayArea);
     const alignment =
       (forward[0]! * toPlayArea[0]! +
