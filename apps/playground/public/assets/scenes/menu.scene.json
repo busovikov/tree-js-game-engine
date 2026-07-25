@@ -348,6 +348,7 @@
           "type": "PhysicsController",
           "data": {
             "type": "custom-raycast",
+            "followCamera": false,
             "chassis": {
               "mass": 250,
               "halfExtents": [

@@ -10,6 +10,7 @@ interface SceneComponent {
     modelAsset?: string;
     position?: [number, number, number];
     rotation?: [number, number, number, number];
+    followCamera?: boolean;
   };
 }
 
@@ -90,5 +91,15 @@ describe('playground entry scene', () => {
       length;
 
     expect(alignment).toBeGreaterThan(0.98);
+    const controllers =
+      scene.entities?.flatMap((entity) =>
+        (entity.components ?? []).filter(
+          (component) => component.type === 'PhysicsController',
+        ),
+      ) ?? [];
+    expect(controllers.length).toBeGreaterThan(0);
+    expect(controllers.every((component) => component.data?.followCamera === false)).toBe(
+      true,
+    );
   });
 });
