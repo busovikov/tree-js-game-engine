@@ -427,6 +427,18 @@ describe('headless graph compiler', () => {
       graphId: uid(900),
       nodeId: uid(101),
     })
+
+    nodes.register(definition(1, []))
+    const valid = compileGraph(
+      graph([
+        node(101, 6, [], 'FixedGameplay', { target: { node: uid(102) } }),
+        node(102, 1, []),
+      ]),
+      { types, nodes },
+    )
+    expect(valid.diagnostics.map((item) => item.code)).toEqual([
+      'node.missing-capability',
+    ])
   })
 
   it('records effect causes and removes unreachable nodes through liveness analysis', () => {

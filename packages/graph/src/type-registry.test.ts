@@ -172,4 +172,66 @@ describe('data type registry', () => {
       ),
     ).toThrow(/Duplicate enum value/)
   })
+
+  it('builds runtime schemas for enum, tagged-union, and constrained-alias project types', () => {
+    const registry = createBuiltinTypeRegistry()
+    const status = defineVisualDataType(
+      {
+        schemaVersion: 1,
+        id: '41000000-0000-4000-8000-000000000110',
+        name: 'Status',
+        version: '1',
+        shape: { kind: 'enum', values: ['idle', 'running'] },
+        metadata: {},
+      },
+      registry,
+    )
+    const message = defineVisualDataType(
+      {
+        schemaVersion: 1,
+        id: '41000000-0000-4000-8000-000000000111',
+        name: 'Message',
+        version: '1',
+        shape: {
+          kind: 'tagged-union',
+          discriminator: 'kind',
+          variants: [
+            {
+              tag: 'score',
+              fields: [{ name: 'value', type: namedType(NUMBER_TYPE) }],
+            },
+            {
+              tag: 'done',
+              fields: [{ name: 'success', type: namedType(BOOL_TYPE) }],
+            },
+          ],
+        },
+        metadata: {},
+      },
+      registry,
+    )
+    const positiveNumber = defineVisualDataType(
+      {
+        schemaVersion: 1,
+        id: '41000000-0000-4000-8000-000000000112',
+        name: 'PositiveNumber',
+        version: '1',
+        shape: {
+          kind: 'alias',
+          target: namedType(NUMBER_TYPE),
+          constraints: { min: 0 },
+        },
+        metadata: {},
+      },
+      registry,
+    )
+
+    expect(status.runtimeSchema.parse('running')).toBe('running')
+    expect(message.runtimeSchema.parse({ kind: 'score', value: 4 })).toEqual({
+      kind: 'score',
+      value: 4,
+    })
+    expect(positiveNumber.runtimeSchema.parse(1)).toBe(1)
+    expect(() => positiveNumber.runtimeSchema.parse(-1)).toThrow()
+  })
 })
