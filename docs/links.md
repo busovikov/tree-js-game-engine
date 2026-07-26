@@ -89,6 +89,7 @@
 | `validateProjectManifest(data)`, `ProjectManifestSchema` | `haku.project.json` read gate |
 | `ProjectAssetIndex` | Resolve a typed UUID reference to its manifest entry/path |
 | `AssetRegistry`, `AssetTypeDescriptor` | Decentralized asset-type registration |
+| `validateProjectAssetComposition()` | Production registry + manifest/reference gate |
 | `dependencyClosure()` | Deterministic dependency-first traversal |
 | `AssetDiagnosticError` | Structured manifest/reference diagnostics |
 
@@ -107,9 +108,10 @@
 
 | Export | Purpose |
 | ------ | ------- |
-| `loadSceneDocument(input, { expandPrefabs? })` | JSON → `World` |
-| `saveSceneDocument(world, metadata, prototypes, prefabs, renderSettings)` | **Write gate** → `SceneDocument` |
-| `roundtripSceneDocument(doc)` | Test helper |
+| `loadSceneDocument(input, { expandPrefabs?, prefabAssets, componentRegistry })` | JSON → `World` |
+| `saveSceneDocument(world, metadata, prototypes, renderSettings, physicsSettings, componentRegistry)` | **Write gate** → `SceneDocument` |
+| `registerSerializedAssetTypes(registry)` | Scene/prefab descriptor contribution |
+| `roundtripSceneDocument(doc, componentRegistry)` | Test helper |
 | `validateSceneDocument` | Re-export from schema |
 
 **Node only:** `@haku/serializer/node` — [`node.ts`](../packages/serializer/src/node.ts) — `loadSceneDocumentFromFile(path)`.
@@ -166,10 +168,10 @@ WRITE: world + metadata → saveSceneDocument() → JSON.stringify → projectSe
 | Step | API | Package |
 | ---- | --- | ------- |
 | Validate only | `validateSceneDocument(unknown)` | `@haku/schema` |
-| Hydrate world | `loadSceneDocument(doc, { expandPrefabs })` | `@haku/serializer` |
-| Serialize | `saveSceneDocument(world, metadata, prototypes, prefabs, renderSettings)` | `@haku/serializer` |
-| HTTP load (runtime) | `SceneLoader.load(url)` | `@haku/engine/runtime` |
-| Push to engine | `engine.loadWorld(world, prototypes, prefabs, renderSettings, activeCameraId)` | `@haku/engine` |
+| Hydrate world | `loadSceneDocument(doc, { expandPrefabs, prefabAssets, componentRegistry })` | `@haku/serializer` |
+| Serialize | `saveSceneDocument(world, metadata, prototypes, renderSettings, physicsSettings, componentRegistry)` | `@haku/serializer` |
+| HTTP load (runtime) | `loadProjectPrefabAssets(manifest)` → `SceneLoader.load(url, fetch, prefabAssets)` | `@haku/engine/runtime` |
+| Push to engine | `engine.loadWorld(world, prototypes, prefabAssets, renderSettings, activeCameraId)` | `@haku/engine` |
 | Live edit (no save) | `engine.setWorld(world)` | `@haku/engine` |
 
 **Example scene:** [`examples/minimal.scene.json`](../examples/minimal.scene.json)

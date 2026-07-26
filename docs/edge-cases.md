@@ -52,7 +52,7 @@ Manual viewport checks **supplement** automated tests — never replace them.
 | **Filter no match** | Hierarchy filter active, zero visible | `No entities match filter` | `HierarchyPanel` |
 | **No model assets** | Asset dir empty | Model picker: `No model assets in project` | `ModelPickerDialog` |
 | **No camera in scene** | Zero `Camera` components | `resolveActiveCameraId()` → `null`; editor falls back to orbit camera | `scene-camera.ts` |
-| **No prefabs** | `prefabs` map empty | Place prefab menu → alert `No prefabs in scene` | `EditorApp.tsx` |
+| **No prefabs** | Manifest has no prefab assets | Place prefab menu → alert `No prefab assets in project` | `EditorApp.tsx` |
 | **No model reference** | `MeshRenderer.modelAsset` omitted | Primitive renderers work; `ModelGeometry` has no model to load | `render-sync-system.ts` |
 | **Empty folder picker** | `fileList.length === 0` | `No files selected` | `browser-project-store.ts` |
 | **Selection outline** | No targets | Outline pass skipped (no GPU alloc) | `editor-selection-outline.ts` |
@@ -234,7 +234,7 @@ These are final unless the user explicitly asks to change them. Full rationale i
 | Editor UI | React 18 + Zustand — never in engine/playground |
 | Scene format | JSON v1, UUID entity IDs, quaternion rotation |
 | Render model | Simulation ≠ Presentation; `RenderSyncSystem` owns Three.js |
-| Prefabs | Required from v1 — `prefabId` + overrides |
+| Prefabs | Manifest UUID asset reference + component-keyed overrides |
 | Spatial index | Out of scope — no culling optimizations unless requested |
 | Testing scope | Minimal but **must include failure paths** — not happy-path only |
 
@@ -437,9 +437,12 @@ New features should be **scene-backed** (`RenderSettings`, components) so playgr
 ## Prefabs
 
 **Accepted:**
-- Create prefab: extract subtree → `prefabs` map in scene document
-- Place instance: `PrefabInstance` component + resolver at load
-- Overrides keyed by component type name
+- Create prefab: extract subtree → separate `*.prefab.json` asset + manifest UUID entry
+- Place instance: typed `PrefabInstance.prefab` asset reference + injected UUID resolver at load
+- Overrides keyed by UUID component type
+
+Scene documents never embed prefab definitions. Missing and type-mismatched prefab references
+fail with structured asset diagnostics.
 
 **Gap:** Deep override paths, nested prefab variants — keep v1 simple.
 

@@ -59,9 +59,9 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
 | Capability                   | Status                    | Current evidence and target gap                                                                                                                                                                                                          |
 | ---------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Scene documents              | **Ready for current v1**  | Zod validation, load/save, hierarchy, render/physics settings, and roundtrip tests exist. Target deliberately replaces the format; no compatibility layer is required.                                                                   |
-| Entity and component model   | **Partial**               | `World`, stable entity UUIDs, hierarchy, queries, plain component data, and a global core registry exist. No `activeSelf`/`activeInHierarchy`, package-owned schemas, or project custom components.                                      |
-| Prefabs                      | **Partial**               | Scene-embedded prefab definitions, instances, overrides, and expansion exist. References are string IDs, not universal `AssetId`s.                                                                                                       |
-| Asset system                 | **Awkward**               | Project paths and browser file access work; model URLs are resolved by path. There is no universal UUID manifest, typed asset registry, or dependency closure for export.                                                                |
+| Entity and component model   | **Partial**               | `World`, stable entity UUIDs, hierarchy, queries, plain component data, package-owned schemas, and composition-root registries exist. No `activeSelf`/`activeInHierarchy` or project custom components.                                    |
+| Prefabs                      | **Ready for current v1**  | Prefabs are standalone manifest assets referenced by typed UUID, with component-ID overrides and load-time expansion. Deep override paths and nested variants remain intentionally deferred.                                               |
+| Asset system                 | **Ready as a foundation** | Universal UUID manifests, typed references, package-contributed descriptors, structured diagnostics, path-independent identity, and deterministic dependency closure exist. Static export remains a later milestone.                     |
 | Runtime scheduler            | **Partial**               | Systems are sorted by numeric `order`. `PhysicsWorldSystem` owns a bounded fixed-step accumulator and interpolation. There are no named phases, shared scheduler queues, pause/single-step contract, or fixed-domain graph execution.    |
 | Gameplay node system         | **Absent**                | The existing `RenderGraph` orchestrates render passes only. There is no gameplay graph asset, compiler, dataflow, flow/event execution, node registry, or node editor.                                                                   |
 | Script/custom-node runtime   | **Absent**                | `ScriptRef` has schema/editor presence, but no runtime executor or safe SDK. The create template contains only a future-facing stub.                                                                                                     |
@@ -81,12 +81,10 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
 | Production export            | **Absent**                | Vite applications can be built conventionally, but there is no editor function that resolves reachable assets and downloads a self-contained static HTML5 ZIP.                                                                           |
 | Rendering                    | **Ready and evolving**    | Three.js backend, RenderSync, shadows/settings, render targets, post pipeline, and render-only RenderGraph exist. Bounce Run should use the backend offered by Haku and preserve the render roadmap boundaries.                          |
 
-## Current versus target
+## Current versus remaining target
 
 | Current contract                | Target contract                                                              |
 | ------------------------------- | ---------------------------------------------------------------------------- |
-| Path-based resource references  | Stable UUID `AssetId` plus universal manifest for every asset                |
-| Central core component union    | Minimal base envelope plus package/project `ComponentRegistry`               |
 | Numeric system `order`          | One named, multi-phase `EngineScheduler` owning frame/fixed time             |
 | Physics system owns accumulator | Scheduler commands exactly one physics step per fixed substep                |
 | Render-only graph               | Separate typed gameplay graph compiler and interpreter                       |
@@ -101,9 +99,6 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
 
 - **Central refactor risk:** scheduler ownership changes the engine loop and every existing
   physics/controller consumer. It must be an isolated early stage with parity tests.
-- **Registry transition risk:** universal assets and decentralized component schemas affect
-  scene files, examples, templates, editor, serializer, and runtime together. Compatibility
-  is intentionally not preserved; every broken consumer must be fixed in the same stage.
 - **Graph-runtime risk:** checkpoint, async policy, effects, and multi-domain execution are
   fundamental contracts. They cannot be added as editor-only conveniences after gameplay.
 - **Browser toolchain risk:** TypeScript, bundling, custom code, and sandbox messaging must

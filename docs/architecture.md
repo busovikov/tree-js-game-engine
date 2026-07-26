@@ -110,8 +110,8 @@ Top-level shape (`packages/schema/src/index.ts`):
   "metadata": { "name": "Level01" },
   "entities": [ /* EntityRecord[] */ ],
   "prototypes": { /* RenderPrototype map */ },
-  "prefabs": { /* PrefabDefinition map */ },
-  "renderSettings": { /* optional, merged with defaults */ }
+  "renderSettings": { /* optional, merged with defaults */ },
+  "physicsSettings": { /* optional, merged with defaults */ }
 }
 ```
 
@@ -122,14 +122,17 @@ Top-level shape (`packages/schema/src/index.ts`):
   "name": "MainCamera",
   "parent": null,
   "components": [
-    { "type": "Transform", "data": { "position": [0,2,5], "rotation": [0,0,0,1], "scale": [1,1,1] } }
+    { "type": "40000000-0000-4000-8000-000000000001", "data": { "position": [0,2,5], "rotation": [0,0,0,1], "scale": [1,1,1] } }
   ]
 }
 ```
 
-**References:** `{ "$ref": "entity:uuid" }`, `{ "$ref": "asset:path" }`, `{ "$ref": "prefab:id" }`
+**References:** entity references use `{ "$ref": "entity:uuid" }`; asset references use
+`{ "$ref": "asset-uuid", "type": "asset-type-uuid" }`.
 
-**Prefabs:** `PrefabInstance` component with `prefabId` + `overrides`; expanded at load time.
+**Prefabs:** standalone manifest assets containing `{ "entities": [...] }`.
+`PrefabInstance` stores a typed UUID asset reference plus optional overrides; serializer and
+runtime resolve it through the production asset registry and injected prefab asset map.
 
 ---
 

@@ -35,7 +35,7 @@ The program is done only when:
 | ID   | Milestone                                                       | Depends on | Status                                   |
 | ---- | --------------------------------------------------------------- | ---------- | ---------------------------------------- |
 | M01  | Audit and target documentation                                  | —          | Complete with the documentation baseline |
-| M02  | Asset IDs, manifests, and decentralized registries              | M01        | Pending                                  |
+| M02  | Asset IDs, manifests, and decentralized registries              | M01        | Partial — Chrome smoke pending               |
 | M03  | World activation, lifecycle, and unified scheduler              | M02        | Pending                                  |
 | M04  | Graph schema, type/effect system, and compiler                  | M03        | Pending                                  |
 | M05  | Graph interpreter, domains, queues, and tracing                 | M04        | Pending                                  |
@@ -87,13 +87,15 @@ Scope:
 
 Acceptance:
 
-- [ ] Moving an asset path does not change its ID or break references.
-- [ ] All available repository assets use manifest UUIDs; no legacy path-reference branch.
-- [ ] Unknown/duplicate/type-mismatched IDs fail with structured diagnostics.
-- [ ] Serializer/editor/runtime use the same registries.
-- [ ] Dependency closure is deterministic and tested.
+- [x] Moving an asset path does not change its ID or break references.
+- [x] All available repository assets use manifest UUIDs; no legacy path-reference branch.
+- [x] Unknown/duplicate/type-mismatched IDs fail with structured diagnostics.
+- [x] Serializer/editor/runtime use the same registries.
+- [x] Dependency closure is deterministic and tested.
 - [ ] All repository builds/tests and existing demos are green after the breaking change.
-- [ ] Public docs and generated/example manifests match actual schemas.
+      Automated gates pass; the required installed-Chrome demo smoke remains pending because
+      Chrome control was unavailable in the completing agent session.
+- [x] Public docs and generated/example manifests match actual schemas.
 
 ## M03 — World activation, lifecycle, and unified scheduler
 
