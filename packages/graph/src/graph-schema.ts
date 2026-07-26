@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { SCHEDULER_PHASES } from '@haku/core'
 
 export type JsonValue =
   | null
@@ -111,6 +112,7 @@ export const GraphNodeSchema = z
     callsites: z.array(GraphCallsiteSchema),
     properties: z.record(JsonValueSchema),
     layout: GraphNodeLayoutSchema,
+    domain: z.enum(SCHEDULER_PHASES).optional(),
   })
   .strict()
 

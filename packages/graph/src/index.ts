@@ -112,3 +112,16 @@ export {
   type GraphDiagnosticLocation,
   type GraphDiagnosticSeverity,
 } from './diagnostics.js'
+
+export {
+  compileGraph,
+  executionPlanAsJson,
+  isExecutionPlanCompatible,
+  type CompileGraphOptions,
+  type ExecutionPlanConnection,
+  type ExecutionPlanNode,
+  type ExecutionPlanSubgraph,
+  type GraphCompileResult,
+  type GraphExecutionPlan,
+  type PlanConnectionOperation,
+} from './compiler.js'
