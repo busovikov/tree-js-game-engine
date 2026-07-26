@@ -5,6 +5,7 @@ import {
   type GraphCallsite,
   type GraphConnection,
   type GraphNode,
+  type GraphPublicInterface,
   type JsonValue,
   type TypeExpression,
 } from './graph-schema.js'
@@ -37,6 +38,7 @@ export interface ExecutionPlanNode {
   readonly id: string
   readonly nodeType: string
   readonly version: string
+  readonly kind: NodeDefinition['contract']['kind']
   readonly domain: SchedulerPhase
   readonly order: number
   readonly typeArguments: Readonly<Record<string, TypeExpression>>
@@ -44,6 +46,8 @@ export interface ExecutionPlanNode {
   readonly reads: NodeDefinition['contract']['reads']
   readonly writes: NodeDefinition['contract']['writes']
   readonly effects: NodeDefinition['contract']['effects']
+  readonly execution: NodeDefinition['contract']['execution']
+  readonly exportedState: NodeDefinition['contract']['exportedState']
   readonly checkpoint: ReturnType<typeof analyzeNodeCheckpointEligibility>
 }
 
@@ -68,6 +72,7 @@ export interface GraphExecutionPlan {
   readonly planFingerprint: string
   readonly nodes: readonly ExecutionPlanNode[]
   readonly connections: readonly ExecutionPlanConnection[]
+  readonly publicInterface: GraphPublicInterface
   readonly subgraphs: readonly ExecutionPlanSubgraph[]
   readonly checkpointEligible: boolean
 }
@@ -848,6 +853,7 @@ function compileInternal(
       id,
       nodeType: analysis.definition.contract.id,
       version: analysis.definition.contract.version,
+      kind: analysis.definition.contract.kind,
       domain: analysis.domain,
       order,
       typeArguments: analysis.typeArguments,
@@ -855,6 +861,8 @@ function compileInternal(
       reads: analysis.definition.contract.reads,
       writes: analysis.definition.contract.writes,
       effects: analysis.definition.contract.effects,
+      execution: analysis.definition.contract.execution,
+      exportedState: analysis.definition.contract.exportedState,
       checkpoint: analyzeNodeCheckpointEligibility(analysis.definition),
     }
   })
@@ -867,6 +875,7 @@ function compileInternal(
     connections: planConnections.filter(
       (connection) => live.has(connection.from.node) && live.has(connection.to.node),
     ),
+    publicInterface: asset.graph.publicInterface,
     subgraphs,
     checkpointEligible: planNodes.every((node) => node.checkpoint.eligible),
   }

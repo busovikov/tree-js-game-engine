@@ -121,6 +121,7 @@ describe('headless graph compiler', () => {
     expect(first.diagnostics).toEqual([])
     expect(first.plan).toEqual(second.plan)
     expect(first.plan?.nodes).toEqual([])
+    expect(first.plan?.publicInterface).toEqual({ ports: [] })
     expect(isExecutionPlanCompatible(first.plan!, types, nodes)).toBe(true)
   })
 
@@ -199,6 +200,11 @@ describe('headless graph compiler', () => {
     ])
     expect(result.plan?.nodes.find((item) => item.id === uid(102))?.typeArguments).toEqual({
       T: namedType(NUMBER_TYPE),
+    })
+    expect(result.plan?.nodes.find((item) => item.id === uid(102))).toMatchObject({
+      execution: 'sync',
+      exportedState: [],
+      kind: 'builtin',
     })
   })
 
