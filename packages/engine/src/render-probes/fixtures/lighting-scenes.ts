@@ -42,6 +42,7 @@ function cubeEntity(
     id,
     name,
     parent: null,
+    activeSelf: true,
     components: [
       { type: '40000000-0000-4000-8000-000000000001', data: { position, rotation: [0, 0, 0, 1], scale: [1, 1, 1] } },
       {
@@ -67,6 +68,7 @@ export const directionalPositionInvarianceScene: SceneDocument = {
       id: '11111111-1111-4111-8111-111111111101',
       name: 'Sun',
       parent: null,
+      activeSelf: true,
       components: [
         {
           type: '40000000-0000-4000-8000-000000000001',
@@ -93,6 +95,7 @@ export const directionalPositionInvarianceScene: SceneDocument = {
       id: '11111111-1111-4111-8111-111111111104',
       name: 'Ground',
       parent: null,
+      activeSelf: true,
       components: [
         {
           type: '40000000-0000-4000-8000-000000000001',
@@ -140,6 +143,7 @@ export const shadowCastScene: SceneDocument = {
       id: '22222222-2222-4222-8222-222222222201',
       name: 'Sun',
       parent: null,
+      activeSelf: true,
       components: [
         {
           type: '40000000-0000-4000-8000-000000000001',
@@ -161,6 +165,7 @@ export const shadowCastScene: SceneDocument = {
       id: '22222222-2222-4222-8222-222222222203',
       name: 'Ground',
       parent: null,
+      activeSelf: true,
       components: [
         {
           type: '40000000-0000-4000-8000-000000000001',
@@ -192,6 +197,7 @@ export const hemisphereScene: SceneDocument = {
       id: '33333333-3333-4333-8333-333333333301',
       name: 'SkyFill',
       parent: null,
+      activeSelf: true,
       components: [
         { type: '40000000-0000-4000-8000-000000000001', data: { position: [0, 5, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] } },
         {
@@ -209,6 +215,7 @@ export const hemisphereScene: SceneDocument = {
       id: '33333333-3333-4333-8333-333333333302',
       name: 'Sphere',
       parent: null,
+      activeSelf: true,
       components: [
         { type: '40000000-0000-4000-8000-000000000001', data: { position: [0, 1, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] } },
         {
@@ -239,6 +246,7 @@ export const multiLightScene: SceneDocument = {
       id: '44444444-4444-4444-8444-444444444401',
       name: 'Sun',
       parent: null,
+      activeSelf: true,
       components: [
         {
           type: '40000000-0000-4000-8000-000000000001',
@@ -259,6 +267,7 @@ export const multiLightScene: SceneDocument = {
       id: '44444444-4444-4444-8444-444444444402',
       name: 'Point',
       parent: null,
+      activeSelf: true,
       components: [
         { type: '40000000-0000-4000-8000-000000000001', data: { position: [-4, 2, 2], rotation: [0, 0, 0, 1], scale: [1, 1, 1] } },
         {
@@ -271,6 +280,7 @@ export const multiLightScene: SceneDocument = {
       id: '44444444-4444-4444-8444-444444444403',
       name: 'Spot',
       parent: null,
+      activeSelf: true,
       components: [
         {
           type: '40000000-0000-4000-8000-000000000001',

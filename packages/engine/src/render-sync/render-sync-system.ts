@@ -153,7 +153,7 @@ export class RenderSyncSystem implements ISystem {
     const alive = new Set<string>()
     this.shadowCasterCount = 0
 
-    for (const id of this.world.getAllEntities()) {
+    for (const id of this.world.query(TransformComponent)) {
       alive.add(id.value)
       const transform = this.world.getComponent(id, TransformComponent)
       if (!transform) continue
@@ -245,7 +245,7 @@ export class RenderSyncSystem implements ISystem {
   private syncSceneHierarchy(): void {
     if (!this.world) return
 
-    for (const id of this.world.getAllEntities()) {
+    for (const id of this.world.query(TransformComponent)) {
       const state = this.entityStates.get(id.value)
       if (!state) continue
 

@@ -69,4 +69,30 @@ describe('RenderSyncSystem presentation poses', () => {
     expect(sync.getObject3D(id)?.position.x).toBe(10)
     expect(world.getComponent(id, TransformComponent)?.position).toEqual([10, 0, 0])
   })
+
+  it('removes inactive hierarchy objects and restores them on activation', () => {
+    const world = new World()
+    const parent = world.createEntity('Parent')
+    const child = world.createEntity('Child')
+    world.setParent(child, parent)
+    for (const id of [parent, child]) {
+      world.addComponent(id, TransformComponent, TransformComponent.defaults())
+    }
+    const scene = new THREE.Scene()
+    const sync = new RenderSyncSystem(scene)
+    sync.attach(world)
+    expect(sync.getObject3D(parent)).toBeDefined()
+    expect(sync.getObject3D(child)).toBeDefined()
+
+    world.setActiveSelf(parent, false)
+    sync.update(world)
+    expect(sync.getObject3D(parent)).toBeUndefined()
+    expect(sync.getObject3D(child)).toBeUndefined()
+    expect(scene.children).toHaveLength(0)
+
+    world.setActiveSelf(parent, true)
+    sync.update(world)
+    expect(sync.getObject3D(parent)).toBeDefined()
+    expect(sync.getObject3D(child)?.parent).toBe(sync.getObject3D(parent))
+  })
 })

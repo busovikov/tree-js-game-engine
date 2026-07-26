@@ -97,6 +97,7 @@ export const EntityRecordSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
   parent: z.string().uuid().nullable(),
+  activeSelf: z.boolean().default(true),
   components: z.array(ComponentRecordSchema),
 })
 export type EntityRecord = z.infer<typeof EntityRecordSchema>

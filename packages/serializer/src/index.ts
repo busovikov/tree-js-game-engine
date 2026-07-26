@@ -138,14 +138,17 @@ function expandPrefabInstance(
 
   for (const record of prefab.entities) {
     const newId = idMap.get(record.id)!
-    world.createEntity(record.name, newId)
-    addMigratedComponents(world, newId, record.components, registry)
+    world.createEntity(record.name, newId, record.activeSelf)
   }
 
   for (const record of prefab.entities) {
     const newId = idMap.get(record.id)!
     const parentId = record.parent ? idMap.get(record.parent) ?? null : parent
     world.setParent(newId, parentId)
+  }
+
+  for (const record of prefab.entities) {
+    addMigratedComponents(world, idMap.get(record.id)!, record.components, registry)
   }
 
   const root = prefab.entities.find((e) => e.parent === null)
@@ -162,7 +165,11 @@ function loadEntityRecords(
   registry: ComponentRegistry,
 ): void {
   for (const record of records) {
-    world.createEntity(record.name, entityId(record.id))
+    world.createEntity(record.name, entityId(record.id), record.activeSelf)
+  }
+
+  for (const record of records) {
+    world.setParent(entityId(record.id), record.parent ? entityId(record.parent) : null)
   }
 
   for (const record of records) {
@@ -189,10 +196,6 @@ function loadEntityRecords(
       }
     }
     addMigratedComponents(world, id, migratedRecord.components, registry)
-  }
-
-  for (const record of records) {
-    world.setParent(entityId(record.id), record.parent ? entityId(record.parent) : null)
   }
 }
 
@@ -245,6 +248,7 @@ export function saveSceneDocument(
       id: id.value,
       name: world.getEntityName(id) ?? 'Entity',
       parent: world.getParent(id)?.value ?? null,
+      activeSelf: world.getActiveSelf(id),
       components,
     })
   }

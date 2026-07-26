@@ -1406,6 +1406,7 @@ export function extractPrefabSubtree(
   const entities = ids.map((id) => ({
     id: id.value,
     name: world.getEntityName(id) ?? 'Entity',
+    activeSelf: world.getActiveSelf(id),
     parent: (() => {
       const p = world.getParent(id)
       if (!p) return null

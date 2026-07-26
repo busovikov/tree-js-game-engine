@@ -361,7 +361,9 @@ function collectCompoundColliders(
     }
 
     for (const child of world.getChildren(id)) {
-      queue.push(child)
+      if (world.isActiveInHierarchy(child)) {
+        queue.push(child)
+      }
     }
   }
 }
@@ -410,6 +412,9 @@ export function resolveBodyPlan(
   rootId: EntityId,
   physicsSettings: PhysicsProjectSettings = defaultPhysicsProjectSettings(),
 ): BodyPlan | null {
+  if (!world.isActiveInHierarchy(rootId)) {
+    return null
+  }
   if (isControllerSpawnBlocked(world, rootId)) {
     return null
   }
@@ -510,6 +515,9 @@ export function resolveBodyPlan(
 export function findPhysicsBodyRoots(world: IWorld): EntityId[] {
   const roots: EntityId[] = []
   for (const id of world.getAllEntities()) {
+    if (!world.isActiveInHierarchy(id)) {
+      continue
+    }
     if (world.hasComponent(id, RigidBodyComponent)) {
       roots.push(id)
       continue

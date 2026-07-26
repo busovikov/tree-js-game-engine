@@ -30,6 +30,25 @@ export interface ComponentDefinition<T = unknown> {
     readonly assetType: AssetTypeId
     readonly optional?: boolean
   }[]
+  readonly lifecycle?: ComponentLifecycleHooks<T>
+}
+
+export interface ComponentLifecycleContext<T = unknown> {
+  readonly world: IWorld
+  readonly entity: EntityId
+  readonly component: ComponentDefinition<T>
+  readonly data: T
+}
+
+export interface ComponentLifecycleHooks<T = unknown> {
+  readonly create?: (context: ComponentLifecycleContext<T>) => void
+  readonly activate?: (context: ComponentLifecycleContext<T>) => void
+  readonly deactivate?: (context: ComponentLifecycleContext<T>) => void
+  readonly destroy?: (context: ComponentLifecycleContext<T>) => void
+}
+
+export interface ComponentTypeReference {
+  readonly id: ComponentTypeId | string
 }
 
 export interface ComponentRegistry {
@@ -40,17 +59,20 @@ export interface ComponentRegistry {
 }
 
 export interface IWorld {
-  createEntity(name?: string, id?: EntityId): EntityId
+  createEntity(name?: string, id?: EntityId, activeSelf?: boolean): EntityId
   destroyEntity(id: EntityId): void
   hasEntity(id: EntityId): boolean
   getEntityName(id: EntityId): string | undefined
   setEntityName(id: EntityId, name: string): void
   getAllEntities(): readonly EntityId[]
+  getActiveSelf(id: EntityId): boolean
+  setActiveSelf(id: EntityId, active: boolean): void
+  isActiveInHierarchy(id: EntityId): boolean
 
   addComponent<T>(id: EntityId, type: ComponentDefinition<T>, data: T): void
-  removeComponent(id: EntityId, type: ComponentDefinition): void
+  removeComponent(id: EntityId, type: ComponentTypeReference): void
   getComponent<T>(id: EntityId, type: ComponentDefinition<T>): T | undefined
-  hasComponent(id: EntityId, type: ComponentDefinition): boolean
+  hasComponent(id: EntityId, type: ComponentTypeReference): boolean
   getComponentTypes(id: EntityId): readonly string[]
 
   setParent(child: EntityId, parent: EntityId | null): void
@@ -63,7 +85,8 @@ export interface IWorld {
     mode: 'before' | 'after' | 'child',
   ): void
 
-  query(...types: ComponentDefinition[]): Iterable<EntityId>
+  query(...types: ComponentTypeReference[]): Iterable<EntityId>
+  queryIncludingInactive(...types: ComponentTypeReference[]): Iterable<EntityId>
 }
 
 export interface ISystem {

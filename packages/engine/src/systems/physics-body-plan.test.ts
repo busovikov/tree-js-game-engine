@@ -103,6 +103,32 @@ describe('physics-body-plan', () => {
     expect(plans[0]?.shapes).toHaveLength(2)
   })
 
+  it('excludes inactive roots and inactive compound children from physics plans', () => {
+    const world = new World()
+    const rootId = world.createEntity('Compound')
+    world.addComponent(rootId, TransformComponent, TransformComponent.defaults())
+    world.addComponent(rootId, RigidBodyComponent, RigidBodySchema.parse({ type: 'dynamic' }))
+    world.addComponent(
+      rootId,
+      ColliderComponent,
+      ColliderSchema.parse({ shape: 'box', halfExtents: [1, 1, 1] }),
+    )
+    const childId = world.createEntity('Disabled child collider')
+    world.setParent(childId, rootId)
+    world.addComponent(childId, TransformComponent, TransformComponent.defaults())
+    world.addComponent(
+      childId,
+      ColliderComponent,
+      ColliderSchema.parse({ shape: 'sphere', radius: 0.5 }),
+    )
+    world.setActiveSelf(childId, false)
+
+    expect(collectBodyPlans(world)[0]?.shapes).toHaveLength(1)
+
+    world.setActiveSelf(rootId, false)
+    expect(collectBodyPlans(world)).toEqual([])
+  })
+
   it('stops compound collection at nested RigidBody roots', () => {
     const world = new World()
     const rootId = world.createEntity('Root')
