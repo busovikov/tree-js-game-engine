@@ -63,9 +63,9 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
 | Entity and component model   | **Ready as a foundation** | `World`, stable entity UUIDs, hierarchy, active-state propagation, inactive-aware queries, deterministic component lifecycle hooks, plain component data, package-owned schemas, and composition-root registries exist. Project custom components remain deferred. |
 | Prefabs                      | **Ready for current v1**  | Prefabs are standalone manifest assets referenced by typed UUID, with component-ID overrides and load-time expansion. Deep override paths and nested variants remain intentionally deferred.                                               |
 | Asset system                 | **Ready as a foundation** | Universal UUID manifests, typed references, package-contributed descriptors, structured diagnostics, path-independent identity, and deterministic dependency closure exist. Static export remains a later milestone.                     |
-| Runtime scheduler            | **Ready as a foundation** | `EngineScheduler` owns named frame/fixed phases, deterministic local ordering and typed queued commands, bounded fixed-step catch-up, tick/frame numbering, interpolation alpha, pause, and single-step. Fixed-domain graph execution remains deferred. |
-| Gameplay node system         | **Partial**                | `@haku/graph` provides strict graph assets, registered types/nodes/effects, generics, structured diagnostics, deterministic headless compilation, liveness/cycle/domain/subgraph analysis, and registry-bound plans. Execution and the node editor remain deferred to M05 and M07. |
-| Script/custom-node runtime   | **Partial**                | The metadata-only Custom Node SDK declares ports, domains, capabilities, resources, effects, liveness, async/checkpoint policies, and capability-gated context types. It deliberately has no executor until M05. |
+| Runtime scheduler            | **Ready as a foundation** | `EngineScheduler` owns named frame/fixed phases, deterministic local ordering and typed queued commands, bounded fixed-step catch-up, tick/frame numbering, interpolation alpha, pause, and single-step. `@haku/graph-runtime` enters every domain through this scheduler and owns no second loop. |
+| Gameplay node system         | **Partial**                | `@haku/graph` provides strict graph assets, registered types/nodes/effects, generics, diagnostics, and deterministic plans. `@haku/graph-runtime` adds instances, lazy snapshots, flow/event queues, public APIs, subgraphs, scoped async work, tracing, errors, and runaway guards. Checkpoint/rewind and the editor remain M06–M07. |
+| Script/custom-node runtime   | **Partial**                | Metadata-only Custom Node declarations are paired with type/version-bound runtime adapters behind a replaceable `ExecutionBackend`. Browser project-code compilation and sandboxing remain M08. |
 | Rapier integration           | **Ready as a foundation** | Abstract and Rapier packages support dynamic/static/kinematic bodies, CCD, layers, material properties, multiple worlds, joints, and debug rendering. Gameplay bindings and graph effects still need to be designed.                     |
 | Collision and trigger events | **Ready as a foundation** | Collision/trigger events and contact manifolds are supported; editor Play mode exposes contact buffers. No graph event bindings or landing/bounce controller exists.                                                                     |
 | Physics queries              | **Ready as a foundation** | Raycast, shapecast, and overlap exist in the abstract API and Rapier backend. Node/Custom Node SDK bindings are absent.                                                                                                                  |
@@ -86,10 +86,10 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
 
 | Current contract                | Target contract                                                              |
 | ------------------------------- | ---------------------------------------------------------------------------- |
-| Named multi-phase scheduler     | Add compiled graph execution to the existing frame/fixed domains             |
-| Scheduler-owned accumulator     | Preserve exactly one physics step per fixed substep across graph integration |
-| Typed gameplay graph compiler   | Add the replaceable interpreter, graph instances, queues, and tracing in M05 |
-| Metadata-only Custom Node SDK   | Add capability-gated execution in M05, then browser project code in M08      |
+| Named multi-phase scheduler     | Graph flow/events now use every existing frame/fixed domain                  |
+| Scheduler-owned accumulator     | Graph runtime adds no loop or accumulator                                    |
+| Typed gameplay graph compiler   | Add checkpoint/rewind in M06 and the graph editor in M07                     |
+| Runtime adapter boundary        | Add browser project-code compilation and sandboxing in M08                   |
 | Hierarchy activation foundation | Build pooling and graph lifecycle integrations on the existing contract      |
 | No runtime pooling              | Package-level pool built on entity activation and baseline reset             |
 | Editor React UI only            | Separate production DOM UI subsystem and UI assets                           |
@@ -101,8 +101,9 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
 - **Scheduler integration risk:** the central scheduler refactor is complete; later graph,
   replay, and checkpoint work must reuse its phases, fixed tick, and typed queues rather
   than create a second loop or accumulator.
-- **Graph-runtime risk:** checkpoint, async policy, effects, and multi-domain execution are
-  fundamental contracts. They cannot be added as editor-only conveniences after gameplay.
+- **Graph-runtime risk:** multi-domain execution and structured task ownership now have
+  headless coverage. Checkpoint async policies, effect reconciliation, and persistence remain
+  fundamental M06 contracts and cannot be added as editor-only conveniences.
 - **Browser toolchain risk:** TypeScript, bundling, custom code, and sandbox messaging must
   remain local without requiring a daemon or sending project files to Haku servers.
 - **Isolation risk:** trusted project code still must not receive editor DOM or file handles.

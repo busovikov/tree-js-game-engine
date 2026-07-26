@@ -38,7 +38,7 @@ The program is done only when:
 | M02  | Asset IDs, manifests, and decentralized registries              | M01        | Complete                                 |
 | M03  | World activation, lifecycle, and unified scheduler              | M02        | Complete                                 |
 | M04  | Graph schema, type/effect system, and compiler                  | M03        | Complete                                 |
-| M05  | Graph interpreter, domains, queues, and tracing                 | M04        | Pending                                  |
+| M05  | Graph interpreter, domains, queues, and tracing                 | M04        | Complete                                 |
 | M06  | Checkpoint, rewind, async policies, and persistence hooks       | M05        | Pending                                  |
 | M07  | Minimal graph editor and diagnostic scene                       | M06        | Pending                                  |
 | M08  | Browser project TypeScript/build/trust tooling                  | M07        | Pending                                  |
@@ -152,14 +152,14 @@ Scope:
 
 Acceptance:
 
-- [ ] Identical plans/inputs produce deterministic order and trace.
-- [ ] Data caching and invalidation use a stable tick snapshot.
-- [ ] Cross-domain work is asynchronous and never reentrant.
-- [ ] Async children cannot silently detach from their scope.
-- [ ] Stop/deactivate/destroy cancels owned tasks and subscriptions.
-- [ ] Headless execution covers lifecycle, subgraph, event fan-out, loops, errors, and
+- [x] Identical plans/inputs produce deterministic order and trace.
+- [x] Data caching and invalidation use a stable tick snapshot.
+- [x] Cross-domain work is asynchronous and never reentrant.
+- [x] Async children cannot silently detach from their scope.
+- [x] Stop/deactivate/destroy cancels owned tasks and subscriptions.
+- [x] Headless execution covers lifecycle, subgraph, event fan-out, loops, errors, and
       cancellation.
-- [ ] Interpreter is replaceable through an execution-backend interface.
+- [x] Interpreter is replaceable through an execution-backend interface.
 
 ## M06 — Checkpoint, rewind, async policies, and persistence hooks
 

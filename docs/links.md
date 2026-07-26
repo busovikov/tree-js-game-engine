@@ -121,6 +121,17 @@
 | `isExecutionPlanCompatible()` | Reject a plan when node/type registry contracts change |
 | `GraphDiagnosticError`, `GraphDiagnostic` | Exact graph/node/port diagnostics and causal chains |
 
+### `@haku/graph-runtime` — `packages/graph-runtime/src/index.ts`
+
+| Export | Purpose |
+| ------ | ------- |
+| `GraphInstance` | Compiled-plan instance lifecycle, public parameters/outputs/events, subgraphs, cancellation, and deterministic trace |
+| `ExecutionBackend` | Replaceable plan-execution boundary |
+| `NodeRuntimeRegistry`, `InterpreterExecutionBackend` | Type/version-bound runtime adapter dispatch |
+| `NodeExecutionRequest`, `NodeExecutionResult` | Stable snapshot data/resource reads, scoped child tasks, flow/events, and exported state |
+| `GraphRuntimeError`, `GraphRuntimeLimits` | Structured runtime failures and runaway budget |
+| `ResourceSnapshotProvider` | Headless declared-resource snapshot adapter |
+
 ### `@haku/serializer` — `packages/serializer/src/index.ts`
 
 | Export | Purpose |

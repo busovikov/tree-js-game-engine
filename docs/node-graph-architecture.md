@@ -24,7 +24,7 @@
 @haku/core            IWorld, activation, lifecycle, scheduler contracts
 @haku/serializer      registry-driven scene/project serialization
 @haku/graph           graph assets, types, effects, compiler, plan contracts
-@haku/graph-runtime   interpreter, instances, queues, checkpoint/rewind
+@haku/graph-runtime   interpreter, instances, queues; checkpoint/rewind begins in M06
 @haku/pool            EntityPool component and PoolSystem
 @haku/ui              UI asset model and production DOM renderer
 @haku/audio           audio contracts, assets, mixer, headless backend
@@ -96,11 +96,12 @@ The graph JSON is the sole editable source of truth. It contains stable UUIDs fo
 node instances, ports/callsites, public interface declarations, layout metadata, and node
 properties. Compiled artifacts are build cache and are not committed.
 
-Implemented in M04: `@haku/graph` owns the strict graph/public-interface/callsite schemas,
+Implemented in M04–M05: `@haku/graph` owns the strict graph/public-interface/callsite schemas,
 graph asset descriptor, registered data and node contracts, structured diagnostics, and
-headless compiler. Haku-owned layout metadata is plain JSON; React Flow state is rejected
-even when nested in generic metadata. Plans contain no execution closures and are invalid
-when their combined node/type registry fingerprint changes.
+headless compiler. Plans now retain the public interface and node runtime metadata required
+by `@haku/graph-runtime`. Haku-owned layout metadata is plain JSON; React Flow state is
+rejected even when nested in generic metadata. Plans contain no execution closures and are
+invalid when their combined node/type registry fingerprint changes.
 
 ```text
 Graph JSON
@@ -160,9 +161,10 @@ Every node type declares:
 - checkpoint and result-persistence policies;
 - optional lifecycle, reconciliation, task serialization, and migration hooks.
 
-M04 exposes the declaration and capability-context contracts only. Node definitions contain
-no executable callback; interpreter dispatch, capability injection, lifecycle, queues, and
-task ownership begin in M05.
+Node definitions remain metadata-only and contain no executable callback. M05 adds
+type/version-bound runtime adapters behind `ExecutionBackend`, lifecycle dispatch, queues,
+declared resource snapshots, and structured task ownership without changing authoring
+definitions.
 
 Custom TypeScript nodes execute through a restricted `NodeExecutionContext`, not engine
 internals. It exposes versioned world, assets, scene, scheduler, events, state, seeded random,
@@ -203,9 +205,9 @@ Render
 ```
 
 Existing engine systems use phase plus local order. `PhysicsWorldSystem` no longer owns an
-accumulator; the scheduler commands exactly one physics step per fixed substep. Later graph
-milestones integrate lifecycle, activation, UI/event, and async-continuation work into these
-explicit scheduler domains rather than adding a second loop.
+accumulator; the scheduler commands exactly one physics step per fixed substep. M05 graph
+flow/event work enters every existing phase through the scheduler queue and owns no clock or
+accumulator. Later service nodes use these explicit domains rather than adding a second loop.
 
 Cross-domain calls are never synchronously reentrant. They enter typed queues with source
 tick, source phase, stable sequence, and payload. Incoming action state is snapshotted for
@@ -228,6 +230,12 @@ Structured concurrency is mandatory. An ordinary async flow node holds its branc
 completion. Child tasks belong to an explicit execution scope; detached/background work
 requires a dedicated node/service with lifecycle, cancellation, effects, and checkpoint
 metadata.
+
+Implemented in M05: `GraphInstance` freezes public parameters and declared resource values
+per execution snapshot, lazily caches data-node results by scheduler frame/tick plus typed
+invalidation revisions, and exposes read-only declared state through same-instance
+`NodeRef`. Subgraphs are compiled child plans with isolated public parameters/outputs.
+Flow/event fan-out preserves plan order; cross-domain and all event work is scheduler queued.
 
 ## Diagnostics
 

@@ -122,6 +122,19 @@ Manual viewport checks **supplement** automated tests — never replace them.
 | Unknown/external effect or dynamic resource read | Plan remains compilable but checkpoint-ineligible with causal reasons |
 | Plan registry fingerprint differs at load | Plan is incompatible and must be recompiled |
 
+### Gameplay graph runtime
+
+| Input | Result |
+| ----- | ------ |
+| Cross-domain flow or any event fan-out | Enqueue through `EngineScheduler` in compiled connection order; never synchronously reenter the target |
+| Parameter or declared resource changes during data evaluation | Current execution keeps its frozen snapshot; the next snapshot observes the incremented invalidation revision |
+| Async node starts child work | Child must use the execution scope; downstream flow waits for all owned children |
+| Graph instance deactivates, stops, or is destroyed | Abort owned tasks, invalidate queued continuations, clear subscriptions, and suppress cancelled flow |
+| Flow/event feedback exceeds the configured step budget | Throw `GraphRuntimeError` with `runtime.runaway` and graph/node/domain/tick context |
+| Runtime adapter throws | Wrap as `runtime.node-error` and append a deterministic error trace entry |
+| Subgraph compiled plan is missing or has the wrong graph ID | Reject before executing the child |
+| Runtime `NodeRef` targets another/unknown instance node or undeclared state | Reject; return only cloned declared exported state |
+
 ### Hierarchy / world invariants
 
 | Action | Result |
