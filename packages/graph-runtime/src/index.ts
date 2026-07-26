@@ -55,6 +55,9 @@ export interface NodeExecutionRequest {
   runSubgraph(
     invocation: SubgraphInvocation,
   ): SubgraphExecutionResult | Promise<SubgraphExecutionResult>
+  spawnChild<T>(
+    task: (signal: AbortSignal) => Promise<T>,
+  ): Promise<T>
 }
 
 export interface NodeExecutionResult {
@@ -70,12 +73,31 @@ export interface ExecutionBackend {
   execute(
     request: NodeExecutionRequest,
   ): NodeExecutionResult | Promise<NodeExecutionResult>
+  lifecycle?(request: NodeLifecycleRequest): void
+}
+
+export type NodeLifecycleAction =
+  | 'create'
+  | 'activate'
+  | 'deactivate'
+  | 'stop'
+  | 'destroy'
+
+export interface NodeLifecycleRequest {
+  readonly action: NodeLifecycleAction
+  readonly instanceId: string
+  readonly graphId: string
+  readonly node: ExecutionPlanNode
+  readonly signal: AbortSignal
 }
 
 export type ExecutionTraceKind =
   | 'node-start'
   | 'node-complete'
   | 'queue'
+  | 'task-start'
+  | 'task-complete'
+  | 'task-cancel'
 
 export interface ExecutionTraceEntry {
   readonly kind: ExecutionTraceKind
@@ -103,9 +125,16 @@ export interface ResourceSnapshotProvider {
   snapshot(resource: string): unknown
 }
 
+export type GraphInstanceStatus =
+  | 'inactive'
+  | 'active'
+  | 'stopped'
+  | 'destroyed'
+
 interface QueuedFlow {
   readonly nodeId: string
   readonly inputCallsiteId: string
+  readonly generation: number
 }
 
 interface SnapshotState extends ExecutionSnapshot {
@@ -129,7 +158,7 @@ export class GraphInstance {
   private readonly publicPorts: ReadonlyMap<string, GraphPublicPort>
   private readonly subgraphPlans: ReadonlyMap<string, GraphExecutionPlan>
   private readonly resources?: ResourceSnapshotProvider
-  private readonly abortController = new AbortController()
+  private scopeController = new AbortController()
   private readonly traceEntries: ExecutionTraceEntry[] = []
   private readonly parameters = new Map<string, unknown>()
   private readonly outputs = new Map<string, unknown>()
@@ -138,10 +167,13 @@ export class GraphInstance {
   private readonly dataCache = new Map<string, NodeExecutionResult>()
   private readonly resourceVersions = new Map<string, number>()
   private readonly childInstances: GraphInstance[] = []
+  private readonly ownedTasks = new Set<Promise<unknown>>()
   private nextTraceSequence = 0
   private nextSnapshotId = 0
   private parameterRevision = 0
   private nextSubgraphSequence = 0
+  private generation = 0
+  private _status: GraphInstanceStatus = 'inactive'
 
   constructor(options: GraphInstanceOptions) {
     if (options.plan.registryFingerprint !== options.registryFingerprint) {
@@ -159,10 +191,15 @@ export class GraphInstance {
     this.publicPorts = new Map(
       options.plan.publicInterface.ports.map((port) => [port.id, port]),
     )
+    this.runLifecycle('create', options.plan.nodes)
   }
 
   get trace(): readonly ExecutionTraceEntry[] {
     return this.traceEntries
+  }
+
+  get status(): GraphInstanceStatus {
+    return this._status
   }
 
   setParameter(portId: string, value: unknown): void {
@@ -203,14 +240,64 @@ export class GraphInstance {
     }
   }
 
-  start(nodeId: string): void {
+  activate(): void {
+    if (this._status === 'destroyed') {
+      throw new Error(`Cannot activate a destroyed graph instance ${this.id}`)
+    }
+    if (this._status === 'active') return
+    this.scopeController = new AbortController()
+    this.generation += 1
+    this._status = 'active'
+    this.runLifecycle('activate', this.plan.nodes)
+  }
+
+  deactivate(): void {
+    if (this._status === 'destroyed' || this._status === 'inactive') return
+    this.cancelScope()
+    this.runLifecycle('deactivate', [...this.plan.nodes].reverse())
+    this._status = 'inactive'
+  }
+
+  stop(): void {
+    if (this._status === 'destroyed') return
+    this.cancelScope()
+    this.runLifecycle('stop', [...this.plan.nodes].reverse())
+    this._status = 'stopped'
+  }
+
+  destroy(): void {
+    if (this._status === 'destroyed') return
+    this.cancelScope()
+    this.runLifecycle('destroy', [...this.plan.nodes].reverse())
+    for (const child of this.childInstances) child.destroy()
+    this._status = 'destroyed'
+  }
+
+  async idle(): Promise<void> {
+    await Promise.all([...this.ownedTasks])
+  }
+
+  start(nodeId: string): void | Promise<void> {
+    if (this._status === 'destroyed') {
+      throw new Error(`Cannot start a destroyed graph instance ${this.id}`)
+    }
+    if (this._status !== 'active') this.activate()
     const node = this.nodes.get(nodeId)
     if (!node) {
       throw new Error(`Graph ${this.plan.graphId} has no executable node ${nodeId}`)
     }
     this.requireSubgraphPlan(node)
     const snapshot = this.createSnapshot(node.domain)
-    this.executeNode(nodeId, undefined, snapshot, { steps: 0 })
+    const execution = this.executeNode(
+      nodeId,
+      undefined,
+      snapshot,
+      { steps: 0 },
+    )
+    if (!(execution instanceof Promise)) return
+    const task = execution.then(() => undefined)
+    this.trackOwnedTask(task)
+    return task
   }
 
   private executeNode(
@@ -218,11 +305,12 @@ export class GraphInstance {
     input: NodeExecutionInput | undefined,
     snapshot: SnapshotState,
     budget: ExecutionBudget,
-  ): NodeExecutionResult {
+  ): NodeExecutionResult | Promise<NodeExecutionResult> {
     const node = this.nodes.get(nodeId)
     if (!node) {
       throw new Error(`Graph ${this.plan.graphId} has no executable node ${nodeId}`)
     }
+    const childTasks: Promise<unknown>[] = []
     const request: NodeExecutionRequest = {
       instanceId: this.id,
       graphId: this.plan.graphId,
@@ -232,7 +320,7 @@ export class GraphInstance {
       tickNumber: snapshot.tickNumber,
       frameNumber: snapshot.frameNumber,
       snapshot,
-      signal: this.abortController.signal,
+      signal: this.scopeController.signal,
       getParameter: (portId) => this.readParameter(snapshot, portId),
       readResource: (resource) =>
         this.readResource(node, snapshot, resource),
@@ -242,16 +330,44 @@ export class GraphInstance {
         this.readNodeRef(reference, exportedName),
       runSubgraph: (invocation) =>
         this.runSubgraph(node, invocation),
+      spawnChild: (task) => {
+        const child = this.spawnChild(node, task)
+        childTasks.push(child)
+        return child
+      },
     }
     this.record('node-start', node)
     const result = this.backend.execute(request)
-    if (result instanceof Promise) {
-      throw new Error('Async graph nodes require an execution scope')
+    if (result instanceof Promise || childTasks.length > 0) {
+      return this.finishAsyncNode(
+        node,
+        result,
+        childTasks,
+        snapshot,
+        budget,
+      )
     }
+    return this.completeNode(node, result, snapshot, budget)
+  }
+
+  private completeNode(
+    node: ExecutionPlanNode,
+    result: NodeExecutionResult,
+    snapshot: SnapshotState,
+    budget: ExecutionBudget,
+  ): NodeExecutionResult | Promise<NodeExecutionResult> {
+    if (this.scopeController.signal.aborted) return {}
     this.applyResult(node, result)
     this.record('node-complete', node)
+    const routed: Array<void | Promise<unknown>> = []
     for (const outputCallsiteId of result.flow ?? []) {
-      this.followFlow(node, outputCallsiteId, snapshot, budget)
+      routed.push(this.followFlow(node, outputCallsiteId, snapshot, budget))
+    }
+    const pending = routed.filter(
+      (item): item is Promise<unknown> => item instanceof Promise,
+    )
+    if (pending.length > 0) {
+      return Promise.all(pending).then(() => result)
     }
     return result
   }
@@ -261,7 +377,7 @@ export class GraphInstance {
     outputCallsiteId: string,
     snapshot: SnapshotState,
     budget: ExecutionBudget,
-  ): void {
+  ): void | Promise<unknown> {
     const connections = this.plan.connections.filter(
       (connection) =>
         connection.from.node === node.id &&
@@ -269,7 +385,8 @@ export class GraphInstance {
         (connection.operation === 'flow' ||
           connection.operation === 'queue-flow'),
     )
-    for (const connection of connections) {
+    let pending: Promise<unknown> | undefined
+    const follow = (connection: (typeof connections)[number]): void | Promise<unknown> => {
       const target = this.nodes.get(connection.to.node)
       if (!target) {
         throw new Error(
@@ -277,7 +394,7 @@ export class GraphInstance {
         )
       }
       if (connection.operation === 'flow') {
-        this.executeNode(
+        const execution = this.executeNode(
           target.id,
           {
             callsiteId: connection.to.callsite,
@@ -286,19 +403,26 @@ export class GraphInstance {
           snapshot,
           budget,
         )
-        continue
+        return execution instanceof Promise ? execution : undefined
       }
       const payload: QueuedFlow = {
         nodeId: target.id,
         inputCallsiteId: connection.to.callsite,
+        generation: this.generation,
       }
       this.record('queue', target, connection.id)
       this.scheduler.enqueue(
         target.domain,
         payload,
         (command: SchedulerCommand<QueuedFlow>) => {
+          if (
+            command.payload.generation !== this.generation ||
+            this._status !== 'active'
+          ) {
+            return
+          }
           const queuedSnapshot = this.createSnapshot(target.domain)
-          this.executeNode(
+          const execution = this.executeNode(
             command.payload.nodeId,
             {
               callsiteId: command.payload.inputCallsiteId,
@@ -307,8 +431,113 @@ export class GraphInstance {
             queuedSnapshot,
             { steps: 0 },
           )
+          if (execution instanceof Promise) {
+            this.trackOwnedTask(execution)
+          }
         },
       )
+      return undefined
+    }
+    for (const connection of connections) {
+      if (pending) {
+        pending = pending.then(() => follow(connection))
+      } else {
+        const result = follow(connection)
+        if (result instanceof Promise) pending = result
+      }
+    }
+    return pending
+  }
+
+  private async finishAsyncNode(
+    node: ExecutionPlanNode,
+    result: NodeExecutionResult | Promise<NodeExecutionResult>,
+    childTasks: readonly Promise<unknown>[],
+    snapshot: SnapshotState,
+    budget: ExecutionBudget,
+  ): Promise<NodeExecutionResult> {
+    this.record('task-start', node)
+    try {
+      const resolved = await awaitAbortable(
+        Promise.resolve(result),
+        this.scopeController.signal,
+      )
+      await awaitAbortable(
+        Promise.all(childTasks),
+        this.scopeController.signal,
+      )
+      if (this.scopeController.signal.aborted) {
+        this.record('task-cancel', node)
+        return {}
+      }
+      const completed = this.completeNode(node, resolved, snapshot, budget)
+      const finalResult =
+        completed instanceof Promise ? await completed : completed
+      this.record('task-complete', node)
+      return finalResult
+    } catch (error) {
+      if (this.scopeController.signal.aborted) {
+        this.record('task-cancel', node)
+        return {}
+      }
+      throw error
+    }
+  }
+
+  private spawnChild<T>(
+    node: ExecutionPlanNode,
+    task: (signal: AbortSignal) => Promise<T>,
+  ): Promise<T> {
+    const signal = this.scopeController.signal
+    this.record('task-start', node)
+    let result: Promise<T>
+    try {
+      result = Promise.resolve(task(signal))
+    } catch (error) {
+      result = Promise.reject(error)
+    }
+    return awaitAbortable(result, signal).then(
+      (value) => {
+        this.record('task-complete', node)
+        return value
+      },
+      (error: unknown) => {
+        if (signal.aborted) {
+          this.record('task-cancel', node)
+          return undefined as T
+        }
+        throw error
+      },
+    )
+  }
+
+  private trackOwnedTask(task: Promise<unknown>): void {
+    this.ownedTasks.add(task)
+    void task.then(
+      () => this.ownedTasks.delete(task),
+      () => this.ownedTasks.delete(task),
+    )
+  }
+
+  private cancelScope(): void {
+    this.generation += 1
+    this.scopeController.abort()
+    this.subscribers.clear()
+    for (const child of this.childInstances) child.deactivate()
+  }
+
+  private runLifecycle(
+    action: NodeLifecycleAction,
+    nodes: readonly ExecutionPlanNode[],
+  ): void {
+    for (const node of nodes) {
+      this.backend.lifecycle?.({
+        action,
+        instanceId: this.id,
+        graphId: this.plan.graphId,
+        node,
+        signal: this.scopeController.signal,
+      })
     }
   }
 
@@ -343,7 +572,18 @@ export class GraphInstance {
     const cacheKey = `${source.id}:${snapshot.key}`
     let result = this.dataCache.get(cacheKey)
     if (!result) {
-      result = this.executeNode(source.id, undefined, snapshot, budget)
+      const execution = this.executeNode(
+        source.id,
+        undefined,
+        snapshot,
+        budget,
+      )
+      if (execution instanceof Promise) {
+        throw new Error(
+          `Lazy data node ${source.id} must complete synchronously`,
+        )
+      }
+      result = execution
       this.dataCache.set(cacheKey, result)
     }
     return cloneValue(result.data?.[connection.from.callsite])
@@ -410,7 +650,7 @@ export class GraphInstance {
   private runSubgraph(
     node: ExecutionPlanNode,
     invocation: SubgraphInvocation,
-  ): SubgraphExecutionResult {
+  ): SubgraphExecutionResult | Promise<SubgraphExecutionResult> {
     const descriptor = this.plan.subgraphs.find(
       (subgraph) => subgraph.nodeId === node.id,
     )
@@ -441,18 +681,23 @@ export class GraphInstance {
     )) {
       child.setParameter(portId, value)
     }
-    child.start(invocation.entryNodeId)
-    const outputs = Object.fromEntries(
-      plan.publicInterface.ports
-        .filter(
-          (port) => port.direction === 'output' && port.kind === 'data',
-        )
-        .map((port) => [port.id, child.getOutput(port.id)]),
-    )
-    return {
-      instanceId: child.id,
-      outputs,
+    const collect = (): SubgraphExecutionResult => {
+      const outputs = Object.fromEntries(
+        plan.publicInterface.ports
+          .filter(
+            (port) => port.direction === 'output' && port.kind === 'data',
+          )
+          .map((port) => [port.id, child.getOutput(port.id)]),
+      )
+      return {
+        instanceId: child.id,
+        outputs,
+      }
     }
+    const execution = child.start(invocation.entryNodeId)
+    return execution instanceof Promise
+      ? execution.then(collect)
+      : collect()
   }
 
   private requireSubgraphPlan(node: ExecutionPlanNode): void {
@@ -539,4 +784,29 @@ export class GraphInstance {
 
 function cloneValue<T>(value: T): T {
   return structuredClone(value)
+}
+
+function awaitAbortable<T>(
+  promise: Promise<T>,
+  signal: AbortSignal,
+): Promise<T> {
+  if (signal.aborted) {
+    return Promise.reject(new Error('Graph execution cancelled'))
+  }
+  return new Promise<T>((resolve, reject) => {
+    const abort = (): void => {
+      reject(new Error('Graph execution cancelled'))
+    }
+    signal.addEventListener('abort', abort, { once: true })
+    void promise.then(
+      (value) => {
+        signal.removeEventListener('abort', abort)
+        resolve(value)
+      },
+      (error: unknown) => {
+        signal.removeEventListener('abort', abort)
+        reject(error)
+      },
+    )
+  })
 }
