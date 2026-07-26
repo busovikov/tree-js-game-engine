@@ -4,6 +4,7 @@ import {
   type SchedulerPhase,
 } from '@haku/core'
 import {
+  type CheckpointStateScope,
   type ExecutionPlanNode,
   type GraphExecutionPlan,
   type GraphPublicPort,
@@ -101,6 +102,13 @@ export interface NodeExecutionResult {
   readonly publicOutputs?: Readonly<Record<string, unknown>>
   readonly publicEvents?: Readonly<Record<string, unknown>>
   readonly exportedState?: Readonly<Record<string, unknown>>
+  readonly effects?: readonly CheckpointEffectRecord[]
+}
+
+export interface CheckpointEffectRecord {
+  readonly id: string
+  readonly kind: string
+  readonly payload?: unknown
 }
 
 export interface ExecutionBackend {
@@ -165,6 +173,9 @@ export type NodeLifecycleAction =
   | 'deactivate'
   | 'stop'
   | 'destroy'
+  | 'before-rewind'
+  | 'after-rewind'
+  | 'resume-from-checkpoint'
 
 export interface NodeLifecycleRequest {
   readonly action: NodeLifecycleAction
@@ -217,11 +228,19 @@ export interface GraphInstanceOptions {
   readonly expectedPlanFingerprint?: string
   readonly subgraphPlans?: ReadonlyMap<string, GraphExecutionPlan>
   readonly resources?: ResourceSnapshotProvider
+  readonly effects?: CheckpointEffectReconciler
   readonly limits?: Partial<GraphRuntimeLimits>
 }
 
 export interface ResourceSnapshotProvider {
   snapshot(resource: string): unknown
+  restore?(resource: string, value: unknown): void
+  recompute?(resources: readonly string[]): void
+}
+
+export interface CheckpointEffectReconciler {
+  apply(record: CheckpointEffectRecord): void
+  reconcile(records: readonly CheckpointEffectRecord[]): void
 }
 
 export interface GraphRuntimeLimits {
@@ -235,6 +254,7 @@ export type GraphInstanceStatus =
   | 'destroyed'
 
 interface QueuedInvocation {
+  readonly instanceId: string
   readonly nodeId: string
   readonly inputCallsiteId: string
   readonly generation: number
@@ -254,6 +274,27 @@ interface ExecutionBudget {
 
 type EventSubscriber = (value: unknown) => void
 
+export interface GraphCheckpoint {
+  readonly id: string
+  readonly label: string
+  readonly graphId: string
+  readonly instanceId: string
+  readonly checkpointNodeId: string
+  readonly planFingerprint: string
+  readonly tickNumber: number
+  readonly frameNumber: number
+  readonly queueSequence: number
+  readonly scope: CheckpointStateScope
+}
+
+interface ActiveGraphCheckpoint extends GraphCheckpoint {
+  readonly parameters: ReadonlyMap<string, unknown>
+  readonly outputs: ReadonlyMap<string, unknown>
+  readonly exportedState: ReadonlyMap<string, ReadonlyMap<string, unknown>>
+  readonly resources: ReadonlyMap<string, unknown>
+  readonly effects: readonly CheckpointEffectRecord[]
+}
+
 export class GraphInstance {
   readonly id: string
   readonly plan: GraphExecutionPlan
@@ -264,6 +305,7 @@ export class GraphInstance {
   private readonly publicPorts: ReadonlyMap<string, GraphPublicPort>
   private readonly subgraphPlans: ReadonlyMap<string, GraphExecutionPlan>
   private readonly resources?: ResourceSnapshotProvider
+  private readonly effectReconciler?: CheckpointEffectReconciler
   private readonly limits: GraphRuntimeLimits
   private scopeController = new AbortController()
   private readonly traceEntries: ExecutionTraceEntry[] = []
@@ -275,12 +317,16 @@ export class GraphInstance {
   private readonly resourceVersions = new Map<string, number>()
   private readonly childInstances: GraphInstance[] = []
   private readonly ownedTasks = new Set<Promise<unknown>>()
+  private readonly effectJournal = new Map<string, CheckpointEffectRecord>()
+  private readonly deliveredEffectIds = new Set<string>()
   private nextTraceSequence = 0
   private nextSnapshotId = 0
   private parameterRevision = 0
   private nextSubgraphSequence = 0
   private generation = 0
   private _status: GraphInstanceStatus = 'inactive'
+  private activeCheckpoint?: ActiveGraphCheckpoint
+  private nextCheckpointSequence = 0
 
   constructor(options: GraphInstanceOptions) {
     if (options.plan.registryFingerprint !== options.registryFingerprint) {
@@ -302,6 +348,7 @@ export class GraphInstance {
     this.backend = options.backend
     this.subgraphPlans = options.subgraphPlans ?? new Map()
     this.resources = options.resources
+    this.effectReconciler = options.effects
     this.limits = {
       maxStepsPerExecution: options.limits?.maxStepsPerExecution ?? 1_000,
     }
@@ -326,10 +373,127 @@ export class GraphInstance {
     return this._status
   }
 
+  get checkpoint(): GraphCheckpoint | undefined {
+    if (!this.activeCheckpoint) return undefined
+    const {
+      parameters: _parameters,
+      outputs: _outputs,
+      exportedState: _exportedState,
+      resources: _resources,
+      effects: _effects,
+      ...record
+    } = this.activeCheckpoint
+    return record
+  }
+
   setParameter(portId: string, value: unknown): void {
     const port = this.requirePublicPort(portId, 'input', 'data')
     this.parameters.set(port.id, cloneValue(value))
     this.parameterRevision += 1
+  }
+
+  getParameter(portId: string): unknown {
+    const port = this.requirePublicPort(portId, 'input', 'data')
+    return cloneValue(this.parameters.get(port.id))
+  }
+
+  createCheckpoint(checkpointNodeId: string, label: string): GraphCheckpoint {
+    const metadata = this.plan.checkpoints.find(
+      (checkpoint) => checkpoint.nodeId === checkpointNodeId,
+    )
+    if (!metadata) {
+      throw new Error(`Unknown checkpoint node ${checkpointNodeId}`)
+    }
+    if (!metadata.eligible) {
+      throw new Error(
+        `Checkpoint ${checkpointNodeId} is ineligible: ${metadata.dependencies
+          .flatMap((dependency) => dependency.causalChain)
+          .join(' -> ')}`,
+      )
+    }
+    if (metadata.stateScope.unbounded) {
+      throw new Error(`Checkpoint ${checkpointNodeId} has an unbounded state scope`)
+    }
+    const scopedNodes = new Set(metadata.stateScope.nodes)
+    const record: ActiveGraphCheckpoint = {
+      id: `${this.id}:checkpoint:${this.nextCheckpointSequence++}`,
+      label,
+      graphId: this.plan.graphId,
+      instanceId: this.id,
+      checkpointNodeId,
+      planFingerprint: this.plan.planFingerprint,
+      tickNumber: this.scheduler.tickNumber,
+      frameNumber: this.scheduler.frameNumber,
+      queueSequence: this.scheduler.captureQueueSequence(),
+      scope: cloneValue(metadata.stateScope),
+      parameters: cloneMap(this.parameters),
+      outputs: cloneMap(this.outputs),
+      exportedState: new Map(
+        [...this.exportedState]
+          .filter(([nodeId]) => scopedNodes.has(nodeId))
+          .map(([nodeId, state]) => [nodeId, cloneMap(state)]),
+      ),
+      resources: new Map(
+        metadata.stateScope.resources.map((resource) => [
+          resource,
+          cloneValue(this.resources?.snapshot(resource)),
+        ]),
+      ),
+      effects: [...this.effectJournal.values()]
+        .filter((effect) => {
+          const nodeId = effectNodeId(effect)
+          return nodeId !== undefined && scopedNodes.has(nodeId)
+        })
+        .map(cloneValue)
+        .sort((left, right) => left.id.localeCompare(right.id)),
+    }
+    this.activeCheckpoint = record
+    return this.checkpoint!
+  }
+
+  rewind(): void {
+    const checkpoint = this.activeCheckpoint
+    if (!checkpoint) throw new Error(`Graph instance ${this.id} has no active checkpoint`)
+    if (checkpoint.planFingerprint !== this.plan.planFingerprint) {
+      throw new Error(`Checkpoint ${checkpoint.id} has an incompatible plan fingerprint`)
+    }
+    const scopedNodes = new Set(checkpoint.scope.nodes)
+    this.runLifecycle(
+      'before-rewind',
+      this.plan.nodes.filter((node) => scopedNodes.has(node.id)),
+    )
+    this.generation += 1
+    this.scopeController.abort()
+    this.scopeController = new AbortController()
+    this.scheduler.removeQueuedAfter(
+      checkpoint.queueSequence,
+      (command) =>
+        isQueuedInvocation(command.payload) &&
+        command.payload.instanceId === this.id,
+    )
+    replaceMap(this.parameters, checkpoint.parameters)
+    replaceMap(this.outputs, checkpoint.outputs)
+    for (const nodeId of scopedNodes) this.exportedState.delete(nodeId)
+    for (const [nodeId, state] of checkpoint.exportedState) {
+      this.exportedState.set(nodeId, cloneMap(state))
+    }
+    for (const [resource, value] of checkpoint.resources) {
+      if (!this.resources?.restore) {
+        throw new Error(`Resource ${resource} does not support checkpoint restore`)
+      }
+      this.resources.restore(resource, cloneValue(value))
+    }
+    this.dataCache.clear()
+    this.resources?.recompute?.(checkpoint.scope.resources)
+    this.effectJournal.clear()
+    for (const effect of checkpoint.effects) {
+      this.effectJournal.set(effect.id, cloneValue(effect))
+    }
+    this.effectReconciler?.reconcile(checkpoint.effects.map(cloneValue))
+    this.runLifecycle(
+      'after-rewind',
+      this.plan.nodes.filter((node) => scopedNodes.has(node.id)),
+    )
   }
 
   invalidateResource(resource: string): void {
@@ -578,6 +742,7 @@ export class GraphInstance {
         return execution instanceof Promise ? execution : undefined
       }
       const payload: QueuedInvocation = {
+        instanceId: this.id,
         nodeId: target.id,
         inputCallsiteId: connection.to.callsite,
         generation: this.generation,
@@ -644,6 +809,7 @@ export class GraphInstance {
         )
       }
       const payload: QueuedInvocation = {
+        instanceId: this.id,
         nodeId: target.id,
         inputCallsiteId: connection.to.callsite,
         generation: this.generation,
@@ -864,6 +1030,16 @@ export class GraphInstance {
     node: ExecutionPlanNode,
     result: NodeExecutionResult,
   ): void {
+    for (const effect of [...(result.effects ?? [])]
+      .map((record) => ({ ...cloneValue(record), nodeId: node.id }))
+      .sort((left, right) => left.id.localeCompare(right.id))) {
+      if (!effect.id) throw new Error(`Node ${node.id} emitted an effect without an ID`)
+      this.effectJournal.set(effect.id, effect)
+      if (!this.deliveredEffectIds.has(effect.id)) {
+        this.deliveredEffectIds.add(effect.id)
+        this.effectReconciler?.apply(effect)
+      }
+    }
     if (result.exportedState) {
       const declared = new Set(node.exportedState.map((entry) => entry.name))
       const state = new Map<string, unknown>()
@@ -1050,6 +1226,26 @@ export class GraphInstance {
 
 function cloneValue<T>(value: T): T {
   return structuredClone(value)
+}
+
+function cloneMap<K, V>(source: ReadonlyMap<K, V>): Map<K, V> {
+  return new Map([...source].map(([key, value]) => [key, cloneValue(value)]))
+}
+
+function replaceMap<K, V>(target: Map<K, V>, source: ReadonlyMap<K, V>): void {
+  target.clear()
+  for (const [key, value] of source) target.set(key, cloneValue(value))
+}
+
+function isQueuedInvocation(value: unknown): value is QueuedInvocation {
+  return typeof value === 'object' &&
+    value !== null &&
+    typeof (value as Partial<QueuedInvocation>).instanceId === 'string' &&
+    typeof (value as Partial<QueuedInvocation>).nodeId === 'string'
+}
+
+function effectNodeId(record: CheckpointEffectRecord): string | undefined {
+  return (record as CheckpointEffectRecord & { readonly nodeId?: string }).nodeId
 }
 
 function runtimeAdapterKey(nodeType: string, version: string): string {
