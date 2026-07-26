@@ -1,6 +1,8 @@
 import type { EntityId, IWorld, ISystem } from '@haku/core'
 import {
+  CustomRaycastControllerComponent,
   MeshRendererComponent,
+  RevoluteJointVehicleControllerComponent,
   TransformComponent,
   getControllerOnEntity,
   queryControllers,
@@ -102,12 +104,12 @@ export class VehicleVisualSyncSystem implements ISystem {
         continue
       }
 
-      if (controller.component.id === 'RevoluteJointVehicleController') {
+      if (controller.component.id === RevoluteJointVehicleControllerComponent.id) {
         this.syncRevoluteVehicle(world, id, physicsWorld)
         continue
       }
 
-      if (controller.component.id !== 'CustomRaycastController') {
+      if (controller.component.id !== CustomRaycastControllerComponent.id) {
         continue
       }
       const controllerData = controller.data as CustomRaycastController

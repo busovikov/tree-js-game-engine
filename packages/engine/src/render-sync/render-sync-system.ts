@@ -2,6 +2,7 @@ import type { EntityId, IWorld, ISystem } from '@haku/core'
 import { entityId } from '@haku/core'
 import {
   CameraComponent,
+  CustomRaycastControllerComponent,
   LightComponent,
   MeshRendererComponent,
   PrefabInstanceComponent,
@@ -310,8 +311,8 @@ export class RenderSyncSystem implements ISystem {
     if (!prefab) return group
 
     for (const record of prefab.entities) {
-      const meshComp = record.components.find((c) => c.type === 'MeshRenderer')
-      const transformComp = record.components.find((c) => c.type === 'Transform')
+      const meshComp = record.components.find((c) => c.type === MeshRendererComponent.id)
+      const transformComp = record.components.find((c) => c.type === TransformComponent.id)
       if (!meshComp || !transformComp) continue
 
       const data = meshComp.data as MeshRenderer
@@ -496,7 +497,7 @@ export class RenderSyncSystem implements ISystem {
       if (isIsaacMasonWheelAsset(modelAsset)) {
         const controller = getControllerOnEntity(this.world, parentId)
         const radius =
-          controller?.component.id === 'CustomRaycastController'
+          controller?.component.id === CustomRaycastControllerComponent.id
             ? (controller.data as CustomRaycastController).wheels.radius
             : undefined
         const side = inferIsaacWheelSide(this.world.getEntityName(id) ?? '')

@@ -7,6 +7,11 @@ import {
   type ComponentRecord,
   type EntityRecord,
 } from '@haku/schema'
+import {
+  ColliderComponent,
+  RigidBodyComponent,
+  StaticComponent,
+} from '@haku/core'
 
 const RUNTIME_COLLIDER_FIELDS = [
   'physicsBodyHandle',
@@ -73,7 +78,7 @@ function migratePhysicsControllers(components: ComponentRecord[]): ComponentReco
 export function migrateEntityComponents(components: ComponentRecord[]): ComponentRecord[] {
   components = migratePhysicsControllers(components)
 
-  const colliderRecord = findComponent(components, 'Collider')
+  const colliderRecord = findComponent(components, ColliderComponent.id)
   if (!colliderRecord) {
     return components
   }
@@ -84,14 +89,14 @@ export function migrateEntityComponents(components: ComponentRecord[]): Componen
 
   const migratedColliderData = stripLegacyColliderFields(raw)
   const next: ComponentRecord[] = components.map((comp) => {
-    if (comp.type !== 'Collider') {
+    if (comp.type !== ColliderComponent.id) {
       return comp
     }
-    return { type: 'Collider', data: migratedColliderData }
+    return { type: '40000000-0000-4000-8000-000000000009', data: migratedColliderData }
   })
 
-  const hasRigidBody = hasComponent(next, 'RigidBody')
-  const hasStaticComponent = hasComponent(next, 'Static')
+  const hasRigidBody = hasComponent(next, RigidBodyComponent.id)
+  const hasStaticComponent = hasComponent(next, StaticComponent.id)
 
   if (!hasRigidBody) {
     let rigidBodyData: Record<string, unknown> | null = null
@@ -110,15 +115,15 @@ export function migrateEntityComponents(components: ComponentRecord[]): Componen
       if (legacyBodyHandle && legacyIsStatic === false) {
         rigidBodyData.physicsBodyHandle = legacyBodyHandle
       }
-      next.push({ type: 'RigidBody', data: rigidBodyData })
+      next.push({ type: '40000000-0000-4000-8000-000000000010', data: rigidBodyData })
     }
   } else if (legacyBodyHandle) {
-    const rbIdx = next.findIndex((c) => c.type === 'RigidBody')
+    const rbIdx = next.findIndex((c) => c.type === RigidBodyComponent.id)
     if (rbIdx >= 0) {
       const rbData = { ...(next[rbIdx].data as Record<string, unknown>) }
       if (!rbData.physicsBodyHandle) {
         rbData.physicsBodyHandle = legacyBodyHandle
-        next[rbIdx] = { type: 'RigidBody', data: rbData }
+        next[rbIdx] = { type: '40000000-0000-4000-8000-000000000010', data: rbData }
       }
     }
   }

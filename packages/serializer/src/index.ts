@@ -2,8 +2,10 @@ import {
   World,
   ColliderComponent,
   RigidBodyComponent,
+  PrefabInstanceComponent,
+  createCoreComponentRegistry,
   entityId,
-  getCoreComponent,
+  type ComponentRegistry,
   type ComponentType,
   type EntityId,
   type IWorld,
@@ -29,10 +31,10 @@ import {
 } from './physics-migration.js'
 
 export function sanitizeComponentDataForPersistence(
-  typeId: string,
+  typeName: string,
   data: Record<string, unknown>,
 ): Record<string, unknown> {
-  const fields = RUNTIME_COMPONENT_FIELDS[typeId as keyof typeof RUNTIME_COMPONENT_FIELDS]
+  const fields = RUNTIME_COMPONENT_FIELDS[typeName as keyof typeof RUNTIME_COMPONENT_FIELDS]
   if (!fields) return data
 
   const sanitized = { ...data }
@@ -42,20 +44,17 @@ export function sanitizeComponentDataForPersistence(
   return sanitized
 }
 
-function getComponentType(typeId: string): ComponentType {
-  const type = getCoreComponent(typeId)
-  if (!type) throw new Error(`Unknown component type: ${typeId}`)
-  return type
+function getComponentType(registry: ComponentRegistry, typeId: string): ComponentType {
+  return registry.require(typeId)
 }
 
-function parseComponentData(typeId: string, data: Record<string, unknown>): unknown {
-  if (typeId === 'Collider') {
+function parseComponentData(type: ComponentType, data: Record<string, unknown>): unknown {
+  if (type.id === ColliderComponent.id) {
     return parseMigratedColliderData(data)
   }
-  if (typeId === 'RigidBody') {
+  if (type.id === RigidBodyComponent.id) {
     return parseMigratedRigidBodyData(data)
   }
-  const type = getComponentType(typeId)
   return type.schema.parse(data)
 }
 
@@ -72,12 +71,13 @@ function addMigratedComponents(
   world: IWorld,
   id: EntityId,
   components: ComponentRecord[],
+  registry: ComponentRegistry,
 ): void {
   const migrated = migrateEntityComponents(components)
   for (const comp of migrated) {
-    if (comp.type === 'PrefabInstance') continue
-    const type = getComponentType(comp.type)
-    world.addComponent(id, type, parseComponentData(comp.type, comp.data as Record<string, unknown>))
+    if (comp.type === PrefabInstanceComponent.id) continue
+    const type = getComponentType(registry, comp.type)
+    world.addComponent(id, type, parseComponentData(type, comp.data as Record<string, unknown>))
   }
   validateEntityPhysics(world, id)
 }
@@ -86,10 +86,11 @@ function applyOverrides(
   entity: EntityId,
   world: IWorld,
   overrides: Record<string, Record<string, unknown>> | undefined,
+  registry: ComponentRegistry,
 ): void {
   if (!overrides) return
   for (const [typeId, patch] of Object.entries(overrides)) {
-    const type = getComponentType(typeId)
+    const type = getComponentType(registry, typeId)
     const existing = world.getComponent(entity, type) ?? type.defaults?.() ?? {}
     world.addComponent(entity, type, { ...existing, ...patch })
   }
@@ -102,6 +103,7 @@ function expandPrefabInstance(
   overrides: Record<string, Record<string, unknown>> | undefined,
   prefabs: Record<string, PrefabDefinition>,
   idMap: Map<string, EntityId>,
+  registry: ComponentRegistry,
 ): void {
   const prefab = prefabs[prefabId]
   if (!prefab) throw new Error(`Prefab not found: ${prefabId}`)
@@ -114,7 +116,7 @@ function expandPrefabInstance(
   for (const record of prefab.entities) {
     const newId = idMap.get(record.id)!
     world.createEntity(record.name, newId)
-    addMigratedComponents(world, newId, record.components)
+    addMigratedComponents(world, newId, record.components, registry)
   }
 
   for (const record of prefab.entities) {
@@ -125,7 +127,7 @@ function expandPrefabInstance(
 
   const root = prefab.entities.find((e) => e.parent === null)
   if (root) {
-    applyOverrides(idMap.get(root.id)!, world, overrides)
+    applyOverrides(idMap.get(root.id)!, world, overrides, registry)
   }
 }
 
@@ -134,6 +136,7 @@ function loadEntityRecords(
   records: EntityRecord[],
   prefabs: Record<string, PrefabDefinition>,
   expandPrefabs: boolean,
+  registry: ComponentRegistry,
 ): void {
   for (const record of records) {
     world.createEntity(record.name, entityId(record.id))
@@ -143,18 +146,18 @@ function loadEntityRecords(
     const id = entityId(record.id)
     const migratedRecord = migrateEntityRecord(record)
     for (const comp of migratedRecord.components) {
-      if (comp.type === 'PrefabInstance') {
+      if (comp.type === PrefabInstanceComponent.id) {
         const data = PrefabInstanceSchema.parse(comp.data)
         if (expandPrefabs) {
-          expandPrefabInstance(world, id, data.prefabId, data.overrides, prefabs, new Map())
+          expandPrefabInstance(world, id, data.prefabId, data.overrides, prefabs, new Map(), registry)
         } else {
-          const type = getComponentType('PrefabInstance')
+          const type = getComponentType(registry, PrefabInstanceComponent.id)
           world.addComponent(id, type, data)
         }
         continue
       }
     }
-    addMigratedComponents(world, id, migratedRecord.components)
+    addMigratedComponents(world, id, migratedRecord.components, registry)
   }
 
   for (const record of records) {
@@ -164,12 +167,13 @@ function loadEntityRecords(
 
 export function loadSceneDocument(
   input: unknown,
-  options: { expandPrefabs?: boolean } = {},
+  options: { expandPrefabs?: boolean; componentRegistry?: ComponentRegistry } = {},
 ): World {
   const expandPrefabs = options.expandPrefabs ?? true
+  const componentRegistry = options.componentRegistry ?? createCoreComponentRegistry()
   const doc = validateSceneDocument(input)
   const world = new World()
-  loadEntityRecords(world, doc.entities, doc.prefabs, expandPrefabs)
+  loadEntityRecords(world, doc.entities, doc.prefabs, expandPrefabs, componentRegistry)
   return world
 }
 
@@ -180,19 +184,20 @@ export function saveSceneDocument(
   prefabs: SceneDocument['prefabs'] = {},
   renderSettings: SceneDocument['renderSettings'] = defaultRenderSettings(),
   physicsSettings: SceneDocument['physicsSettings'] = defaultPhysicsProjectSettings(),
+  componentRegistry: ComponentRegistry = createCoreComponentRegistry(),
 ): SceneDocument {
   const entities: EntityRecord[] = []
 
   for (const id of world.getAllEntities()) {
     const components: ComponentRecord[] = []
     for (const typeId of world.getComponentTypes(id)) {
-      const type = getComponentType(typeId)
+      const type = getComponentType(componentRegistry, typeId)
       const data = world.getComponent(id, type)
       if (data !== undefined) {
         const parsed = type.schema.parse(data) as Record<string, unknown>
         components.push({
           type: typeId,
-          data: sanitizeComponentDataForPersistence(typeId, parsed),
+          data: sanitizeComponentDataForPersistence(type.name, parsed),
         })
       }
     }
@@ -215,8 +220,11 @@ export function saveSceneDocument(
   })
 }
 
-export function roundtripSceneDocument(doc: SceneDocument): SceneDocument {
-  const world = loadSceneDocument(doc)
+export function roundtripSceneDocument(
+  doc: SceneDocument,
+  componentRegistry: ComponentRegistry = createCoreComponentRegistry(),
+): SceneDocument {
+  const world = loadSceneDocument(doc, { componentRegistry })
   return saveSceneDocument(
     world,
     doc.metadata,
@@ -224,6 +232,7 @@ export function roundtripSceneDocument(doc: SceneDocument): SceneDocument {
     doc.prefabs,
     doc.renderSettings,
     doc.physicsSettings,
+    componentRegistry,
   )
 }
 

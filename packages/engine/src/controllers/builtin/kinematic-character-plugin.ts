@@ -1,4 +1,4 @@
-import type { EntityId } from '@haku/core'
+import { KinematicCharacterControllerComponent, type EntityId } from '@haku/core'
 import type { ControllerPlugin, ControllerRuntimeContext } from '../registry.js'
 import {
   bootstrapCharacter,
@@ -8,7 +8,7 @@ import {
 
 /** Isaac Mason `kinematic-character-controller` — Rapier KinematicCharacterController. */
 export class KinematicCharacterPlugin implements ControllerPlugin {
-  readonly type = 'KinematicCharacterController' as const
+  readonly type = KinematicCharacterControllerComponent.id
   private readonly tracked = new Map<string, TrackedCharacter>()
 
   bootstrap(ctx: ControllerRuntimeContext): void {

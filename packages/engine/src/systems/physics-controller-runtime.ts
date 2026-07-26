@@ -414,19 +414,20 @@ export interface TrackedCharacter {
 type CharacterControllerData = KinematicCharacterController | CharacterBodyController
 type CharacterComponentId = Extract<
   ControllerComponentId,
-  'KinematicCharacterController' | 'CharacterBodyController'
+  | typeof KinematicCharacterControllerComponent.id
+  | typeof CharacterBodyControllerComponent.id
 >
 
 const CHARACTER_COMPONENT_BY_ID = {
-  KinematicCharacterController: KinematicCharacterControllerComponent,
-  CharacterBodyController: CharacterBodyControllerComponent,
+  [KinematicCharacterControllerComponent.id]: KinematicCharacterControllerComponent,
+  [CharacterBodyControllerComponent.id]: CharacterBodyControllerComponent,
 } satisfies Record<CharacterComponentId, { id: string }>
 
 function characterControllerOptions(
   data: CharacterControllerData,
   controllerType: CharacterComponentId,
 ) {
-  if (controllerType === 'CharacterBodyController') {
+  if (controllerType === CharacterBodyControllerComponent.id) {
     const characterBody = data as CharacterBodyController
     return {
       offset: characterBody.characterShapeOffset,

@@ -1,4 +1,4 @@
-import type { EntityId } from '@haku/core'
+import { CharacterBodyControllerComponent, type EntityId } from '@haku/core'
 import type { ControllerPlugin, ControllerRuntimeContext } from '../registry.js'
 import {
   bootstrapCharacter,
@@ -8,7 +8,7 @@ import {
 
 /** Godot-style CharacterBody3D — shares kinematic character runtime with tier-3 step config. */
 export class CharacterBodyPlugin implements ControllerPlugin {
-  readonly type = 'CharacterBodyController' as const
+  readonly type = CharacterBodyControllerComponent.id
   private readonly tracked = new Map<string, TrackedCharacter>()
 
   bootstrap(ctx: ControllerRuntimeContext): void {

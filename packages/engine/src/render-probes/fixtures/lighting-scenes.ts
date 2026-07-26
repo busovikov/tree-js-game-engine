@@ -41,9 +41,9 @@ function cubeEntity(
     name,
     parent: null,
     components: [
-      { type: 'Transform', data: { position, rotation: [0, 0, 0, 1], scale: [1, 1, 1] } },
+      { type: '40000000-0000-4000-8000-000000000001', data: { position, rotation: [0, 0, 0, 1], scale: [1, 1, 1] } },
       {
-        type: 'MeshRenderer',
+        type: '40000000-0000-4000-8000-000000000004',
         data: {
           geometryType: 'BoxGeometry',
           geometryParams: { width: 1, height: 1, depth: 1 },
@@ -67,7 +67,7 @@ export const directionalPositionInvarianceScene: SceneDocument = {
       parent: null,
       components: [
         {
-          type: 'Transform',
+          type: '40000000-0000-4000-8000-000000000001',
           data: {
             position: [0, 10, 0],
             rotation: eulerToQuat(-50, 30),
@@ -75,7 +75,7 @@ export const directionalPositionInvarianceScene: SceneDocument = {
           },
         },
         {
-          type: 'Light',
+          type: '40000000-0000-4000-8000-000000000003',
           data: {
             type: 'directional',
             intensity: 1.2,
@@ -93,7 +93,7 @@ export const directionalPositionInvarianceScene: SceneDocument = {
       parent: null,
       components: [
         {
-          type: 'Transform',
+          type: '40000000-0000-4000-8000-000000000001',
           data: {
             position: [0, 0, 0],
             rotation: eulerToQuat(-90),
@@ -101,7 +101,7 @@ export const directionalPositionInvarianceScene: SceneDocument = {
           },
         },
         {
-          type: 'MeshRenderer',
+          type: '40000000-0000-4000-8000-000000000004',
           data: {
             geometryType: 'PlaneGeometry',
             geometryParams: { width: 1, height: 1 },
@@ -141,11 +141,11 @@ export const shadowCastScene: SceneDocument = {
       parent: null,
       components: [
         {
-          type: 'Transform',
+          type: '40000000-0000-4000-8000-000000000001',
           data: { position: [5, 12, 5], rotation: eulerToQuat(-55, -35), scale: [1, 1, 1] },
         },
         {
-          type: 'Light',
+          type: '40000000-0000-4000-8000-000000000003',
           data: {
             type: 'directional',
             intensity: 1.5,
@@ -162,11 +162,11 @@ export const shadowCastScene: SceneDocument = {
       parent: null,
       components: [
         {
-          type: 'Transform',
+          type: '40000000-0000-4000-8000-000000000001',
           data: { position: [0, 0, 0], rotation: eulerToQuat(-90), scale: [20, 20, 1] },
         },
         {
-          type: 'MeshRenderer',
+          type: '40000000-0000-4000-8000-000000000004',
           data: {
             geometryType: 'PlaneGeometry',
             geometryParams: { width: 1, height: 1 },
@@ -193,9 +193,9 @@ export const hemisphereScene: SceneDocument = {
       name: 'SkyFill',
       parent: null,
       components: [
-        { type: 'Transform', data: { position: [0, 5, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] } },
+        { type: '40000000-0000-4000-8000-000000000001', data: { position: [0, 5, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] } },
         {
-          type: 'Light',
+          type: '40000000-0000-4000-8000-000000000003',
           data: {
             type: 'hemisphere',
             intensity: 1,
@@ -210,9 +210,9 @@ export const hemisphereScene: SceneDocument = {
       name: 'Sphere',
       parent: null,
       components: [
-        { type: 'Transform', data: { position: [0, 1, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] } },
+        { type: '40000000-0000-4000-8000-000000000001', data: { position: [0, 1, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] } },
         {
-          type: 'MeshRenderer',
+          type: '40000000-0000-4000-8000-000000000004',
           data: {
             geometryType: 'SphereGeometry',
             geometryParams: { radius: 1, widthSegments: 24, heightSegments: 16 },
@@ -242,11 +242,11 @@ export const multiLightScene: SceneDocument = {
       parent: null,
       components: [
         {
-          type: 'Transform',
+          type: '40000000-0000-4000-8000-000000000001',
           data: { position: [0, 8, 0], rotation: eulerToQuat(-40), scale: [1, 1, 1] },
         },
         {
-          type: 'Light',
+          type: '40000000-0000-4000-8000-000000000003',
           data: {
             type: 'directional',
             intensity: 0.8,
@@ -261,9 +261,9 @@ export const multiLightScene: SceneDocument = {
       name: 'Point',
       parent: null,
       components: [
-        { type: 'Transform', data: { position: [-4, 2, 2], rotation: [0, 0, 0, 1], scale: [1, 1, 1] } },
+        { type: '40000000-0000-4000-8000-000000000001', data: { position: [-4, 2, 2], rotation: [0, 0, 0, 1], scale: [1, 1, 1] } },
         {
-          type: 'Light',
+          type: '40000000-0000-4000-8000-000000000003',
           data: { type: 'point', intensity: 2, distance: 12, decay: 2, color: '#ffaa66' },
         },
       ],
@@ -274,11 +274,11 @@ export const multiLightScene: SceneDocument = {
       parent: null,
       components: [
         {
-          type: 'Transform',
+          type: '40000000-0000-4000-8000-000000000001',
           data: { position: [4, 5, 4], rotation: eulerToQuat(-60, 45), scale: [1, 1, 1] },
         },
         {
-          type: 'Light',
+          type: '40000000-0000-4000-8000-000000000003',
           data: {
             type: 'spot',
             intensity: 2.5,

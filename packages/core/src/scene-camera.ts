@@ -1,8 +1,11 @@
-import type { SceneDocument } from './index.js'
+import type { SceneDocument } from '@haku/schema'
+import { CameraComponent } from './components.js'
 
 export function listCameraEntityIds(document: SceneDocument): string[] {
   return document.entities
-    .filter((entity) => entity.components.some((component) => component.type === 'Camera'))
+    .filter((entity) =>
+      entity.components.some((component) => component.type === CameraComponent.id),
+    )
     .map((entity) => entity.id)
 }
 

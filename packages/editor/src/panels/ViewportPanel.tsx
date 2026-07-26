@@ -3,8 +3,13 @@ import * as THREE from 'three'
 import { Engine, createDynamicRaycastWheelRestPoseResolver } from '@haku/engine'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js'
-import { TransformComponent, ColliderComponent, entityId, type EntityId } from '@haku/core'
-import { resolveActiveCameraId } from '@haku/schema'
+import {
+  TransformComponent,
+  ColliderComponent,
+  entityId,
+  resolveActiveCameraId,
+  type EntityId,
+} from '@haku/core'
 import { projectService } from '../services/project-service.js'
 import { useEditorStore } from '../store/editor-store.js'
 import {

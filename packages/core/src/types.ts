@@ -1,5 +1,9 @@
 import type { ZodType, ZodTypeDef } from 'zod'
-import type { RenderSettings } from '@haku/schema'
+import type {
+  AssetTypeId,
+  ComponentTypeId,
+  RenderSettings,
+} from '@haku/schema'
 
 export interface EntityId {
   readonly __brand: 'EntityId'
@@ -15,15 +19,24 @@ export function entityIdToString(id: EntityId): string {
 }
 
 export interface ComponentType<T = unknown> {
-  readonly id: string
+  readonly id: ComponentTypeId
+  readonly name: string
   readonly schema: ZodType<T, ZodTypeDef, unknown>
   readonly defaults?: () => T
+  readonly version?: number
+  readonly fingerprint?: string
+  readonly references?: readonly {
+    readonly path: string
+    readonly assetType: AssetTypeId
+    readonly optional?: boolean
+  }[]
 }
 
 export interface ComponentRegistry {
   register(type: ComponentType): void
-  get(typeId: string): ComponentType | undefined
-  all(): ComponentType[]
+  get(typeId: ComponentTypeId | string): ComponentType | undefined
+  require(typeId: ComponentTypeId | string): ComponentType
+  all(): readonly ComponentType[]
 }
 
 export interface IWorld {

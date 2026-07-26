@@ -1,5 +1,5 @@
 import type { EntityId, IWorld } from '@haku/core'
-import { TagComponent, entityId } from '@haku/core'
+import { TagComponent, TransformComponent, entityId, getCoreComponent } from '@haku/core'
 
 export type HierarchyFilterMode = 'all' | 'name' | 'type' | 'tag'
 
@@ -26,8 +26,8 @@ function entityDirectMatch(
     case 'type':
       return world
         .getComponentTypes(id)
-        .filter((typeId) => typeId !== 'Transform')
-        .some((typeId) => typeId.toLowerCase().includes(query))
+        .filter((typeId) => typeId !== TransformComponent.id)
+        .some((typeId) => (getCoreComponent(typeId)?.name ?? typeId).toLowerCase().includes(query))
     case 'tag': {
       const tag = world.getComponent(id, TagComponent)
       return tag?.tags.some((value) => value.toLowerCase().includes(query)) ?? false
@@ -37,8 +37,10 @@ function entityDirectMatch(
       if (
         world
           .getComponentTypes(id)
-          .filter((typeId) => typeId !== 'Transform')
-          .some((typeId) => typeId.toLowerCase().includes(query))
+          .filter((typeId) => typeId !== TransformComponent.id)
+          .some((typeId) =>
+            (getCoreComponent(typeId)?.name ?? typeId).toLowerCase().includes(query),
+          )
       ) {
         return true
       }

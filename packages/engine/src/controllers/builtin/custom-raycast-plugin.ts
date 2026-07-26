@@ -83,7 +83,7 @@ export function computeIsaacDriveControlState(ctx: DriveControlContext): DriveCo
  * constant brake). Rear-wheel drive with grounded gating on steer/engine force.
  */
 export class CustomRaycastPlugin implements ControllerPlugin {
-  readonly type = 'CustomRaycastController' as const
+  readonly type = CustomRaycastControllerComponent.id
   private readonly tracked = new Map<string, TrackedCustomRaycast>()
 
   bootstrap(ctx: ControllerRuntimeContext): void {

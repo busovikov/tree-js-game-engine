@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { resolveActiveCameraId, listCameraEntityIds } from '../src/scene-camera.js'
-import { validateSceneDocument } from '../src/index.js'
+import { validateSceneDocument } from '@haku/schema'
+import {
+  CameraComponent,
+  TransformComponent,
+  listCameraEntityIds,
+  resolveActiveCameraId,
+} from './index.js'
 
 describe('scene-camera', () => {
   const baseDoc = validateSceneDocument({
@@ -12,8 +17,15 @@ describe('scene-camera', () => {
         name: 'A',
         parent: null,
         components: [
-          { type: 'Transform', data: { position: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] } },
-          { type: 'Camera', data: { fov: 60, near: 0.1, far: 1000 } },
+          {
+            type: TransformComponent.id,
+            data: {
+              position: [0, 0, 0],
+              rotation: [0, 0, 0, 1],
+              scale: [1, 1, 1],
+            },
+          },
+          { type: CameraComponent.id, data: { fov: 60, near: 0.1, far: 1000 } },
         ],
       },
       {
@@ -21,8 +33,15 @@ describe('scene-camera', () => {
         name: 'B',
         parent: null,
         components: [
-          { type: 'Transform', data: { position: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] } },
-          { type: 'Camera', data: { fov: 45, near: 0.1, far: 500 } },
+          {
+            type: TransformComponent.id,
+            data: {
+              position: [0, 0, 0],
+              rotation: [0, 0, 0, 1],
+              scale: [1, 1, 1],
+            },
+          },
+          { type: CameraComponent.id, data: { fov: 45, near: 0.1, far: 500 } },
         ],
       },
     ],
@@ -38,7 +57,10 @@ describe('scene-camera', () => {
   it('uses metadata.activeCameraId when valid', () => {
     const doc = validateSceneDocument({
       ...baseDoc,
-      metadata: { name: 'Cameras', activeCameraId: 'b0000000-0000-4000-8000-000000000002' },
+      metadata: {
+        name: 'Cameras',
+        activeCameraId: 'b0000000-0000-4000-8000-000000000002',
+      },
     })
     expect(resolveActiveCameraId(doc)).toBe('b0000000-0000-4000-8000-000000000002')
   })

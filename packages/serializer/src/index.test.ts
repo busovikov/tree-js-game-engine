@@ -55,9 +55,9 @@ describe('@haku/serializer roundtrip', () => {
               name: 'Trunk',
               parent: null,
               components: [
-                { type: 'Transform', data: { position: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] } },
+                { type: '40000000-0000-4000-8000-000000000001', data: { position: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] } },
                 {
-                  type: 'MeshRenderer',
+                  type: '40000000-0000-4000-8000-000000000004',
                   data: {
                     geometryType: 'BoxGeometry',
                     geometryParams: { width: 1, height: 1, depth: 1 },
@@ -82,8 +82,8 @@ describe('@haku/serializer roundtrip', () => {
           name: 'Instance',
           parent: null,
           components: [
-            { type: 'Transform', data: { position: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] } },
-            { type: 'PrefabInstance', data: { prefabId: 'tree' } },
+            { type: '40000000-0000-4000-8000-000000000001', data: { position: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] } },
+            { type: '40000000-0000-4000-8000-000000000006', data: { prefabId: 'tree' } },
           ],
         },
       ],

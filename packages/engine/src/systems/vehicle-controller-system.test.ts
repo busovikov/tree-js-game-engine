@@ -1,7 +1,9 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest'
 import {
+  ArcadeVehicleControllerComponent,
   ColliderComponent,
   CustomRaycastControllerComponent,
+  KinematicCharacterControllerComponent,
   RevoluteJointVehicleControllerComponent,
   TransformComponent,
   World,
@@ -374,9 +376,9 @@ describe('VehicleControllerSystem integration (stub)', () => {
     }
     internals.customRaycast.tracked.set(id.value, custom)
     internals.dynamicRaycast.tracked.set(id.value, dynamic)
-    internals.registry.get('ArcadeVehicleController')?.tracked.set(id.value, arcade)
-    internals.registry.get('KinematicCharacterController')?.tracked.set(id.value, character)
-    internals.registry.get('RevoluteJointVehicleController')?.tracked.set(id.value, revolute)
+    internals.registry.get(ArcadeVehicleControllerComponent.id)?.tracked.set(id.value, arcade)
+    internals.registry.get(KinematicCharacterControllerComponent.id)?.tracked.set(id.value, character)
+    internals.registry.get(RevoluteJointVehicleControllerComponent.id)?.tracked.set(id.value, revolute)
     vehicleSystem.setControllerInput(id, { throttle: 1, jump: true })
 
     vehicleSystem.resetControllerState(world, id)

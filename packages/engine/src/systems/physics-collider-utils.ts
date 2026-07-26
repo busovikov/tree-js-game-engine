@@ -1,4 +1,4 @@
-import type { ControllerOnEntity } from '@haku/core'
+import { ArcadeVehicleControllerComponent, type ControllerOnEntity } from '@haku/core'
 import type {
   ArcadeVehicleController,
   Collider,
@@ -182,7 +182,7 @@ export function resolveColliderDescriptor(
   const componentId = controller.component.id as ControllerComponentId
 
   if (controllerNeedsChassis(componentId)) {
-    if (componentId === 'ArcadeVehicleController' && explicitCollider) {
+    if (componentId === ArcadeVehicleControllerComponent.id && explicitCollider) {
       return {
         collider: explicitCollider,
         source: 'explicit',

@@ -11,7 +11,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               0,
@@ -32,7 +32,7 @@
           }
         },
         {
-          "type": "Camera",
+          "type": "40000000-0000-4000-8000-000000000002",
           "data": {
             "fov": 50,
             "near": 0.1,
@@ -48,7 +48,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               0,
@@ -69,7 +69,7 @@
           }
         },
         {
-          "type": "Light",
+          "type": "40000000-0000-4000-8000-000000000003",
           "data": {
             "type": "directional",
             "color": "#ffffff",
@@ -96,7 +96,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               0,
@@ -117,7 +117,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "BoxGeometry",
             "geometryParams": {
@@ -141,7 +141,7 @@
           }
         },
         {
-          "type": "Collider",
+          "type": "40000000-0000-4000-8000-000000000009",
           "data": {
             "shape": "box",
             "halfExtents": [
@@ -171,7 +171,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               -50,
@@ -192,7 +192,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "ModelGeometry",
             "geometryParams": {},
@@ -219,7 +219,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               -7,
@@ -240,9 +240,9 @@
           }
         },
         {
-          "type": "PhysicsController",
+          "type": "40000000-0000-4000-8000-000000000016",
           "data": {
-            "type": "dynamic-raycast",
+
             "enabled": true,
             "chassis": {
               "mass": 250,
@@ -278,7 +278,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "BoxGeometry",
             "geometryParams": {

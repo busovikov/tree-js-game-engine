@@ -11,7 +11,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               0,
@@ -32,7 +32,7 @@
           }
         },
         {
-          "type": "Camera",
+          "type": "40000000-0000-4000-8000-000000000002",
           "data": {
             "fov": 60,
             "near": 0.1,
@@ -48,7 +48,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               0,
@@ -69,7 +69,7 @@
           }
         },
         {
-          "type": "Light",
+          "type": "40000000-0000-4000-8000-000000000003",
           "data": {
             "type": "hemisphere",
             "color": "#ffffff",
@@ -87,7 +87,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               10,
@@ -108,7 +108,7 @@
           }
         },
         {
-          "type": "Collider",
+          "type": "40000000-0000-4000-8000-000000000009",
           "data": {
             "shape": "box",
             "halfExtents": [
@@ -138,7 +138,7 @@
       "parent": "e0100000-0000-4000-8000-000000000003",
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               0,
@@ -159,7 +159,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "CylinderGeometry",
             "geometryParams": {
@@ -191,7 +191,7 @@
       "parent": "e0100000-0000-4000-8000-000000000003",
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               -0.4,
@@ -212,7 +212,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "BoxGeometry",
             "geometryParams": {
@@ -243,7 +243,7 @@
       "parent": "e0100000-0000-4000-8000-000000000003",
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               -0.6,
@@ -264,7 +264,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "PlaneGeometry",
             "geometryParams": {
@@ -294,7 +294,7 @@
       "parent": "e0100000-0000-4000-8000-000000000003",
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               -0.6,
@@ -315,7 +315,7 @@
           }
         },
         {
-          "type": "Light",
+          "type": "40000000-0000-4000-8000-000000000003",
           "data": {
             "type": "spot",
             "color": "#ffffff",
@@ -346,7 +346,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               -10,
@@ -367,7 +367,7 @@
           }
         },
         {
-          "type": "Collider",
+          "type": "40000000-0000-4000-8000-000000000009",
           "data": {
             "shape": "box",
             "halfExtents": [
@@ -397,7 +397,7 @@
       "parent": "e0100000-0000-4000-8000-000000000008",
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               0,
@@ -418,7 +418,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "CylinderGeometry",
             "geometryParams": {
@@ -450,7 +450,7 @@
       "parent": "e0100000-0000-4000-8000-000000000008",
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               -0.4,
@@ -471,7 +471,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "BoxGeometry",
             "geometryParams": {
@@ -502,7 +502,7 @@
       "parent": "e0100000-0000-4000-8000-000000000008",
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               -0.6,
@@ -523,7 +523,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "PlaneGeometry",
             "geometryParams": {
@@ -553,7 +553,7 @@
       "parent": "e0100000-0000-4000-8000-000000000008",
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               -0.6,
@@ -574,7 +574,7 @@
           }
         },
         {
-          "type": "Light",
+          "type": "40000000-0000-4000-8000-000000000003",
           "data": {
             "type": "spot",
             "color": "#ffffff",
@@ -605,7 +605,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               10,
@@ -626,7 +626,7 @@
           }
         },
         {
-          "type": "Collider",
+          "type": "40000000-0000-4000-8000-000000000009",
           "data": {
             "shape": "box",
             "halfExtents": [
@@ -656,7 +656,7 @@
       "parent": "e0100000-0000-4000-8000-000000000013",
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               0,
@@ -677,7 +677,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "CylinderGeometry",
             "geometryParams": {
@@ -709,7 +709,7 @@
       "parent": "e0100000-0000-4000-8000-000000000013",
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               -0.4,
@@ -730,7 +730,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "BoxGeometry",
             "geometryParams": {
@@ -761,7 +761,7 @@
       "parent": "e0100000-0000-4000-8000-000000000013",
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               -0.6,
@@ -782,7 +782,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "PlaneGeometry",
             "geometryParams": {
@@ -812,7 +812,7 @@
       "parent": "e0100000-0000-4000-8000-000000000013",
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               -0.6,
@@ -833,7 +833,7 @@
           }
         },
         {
-          "type": "Light",
+          "type": "40000000-0000-4000-8000-000000000003",
           "data": {
             "type": "spot",
             "color": "#ffffff",
@@ -864,7 +864,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               -10,
@@ -885,7 +885,7 @@
           }
         },
         {
-          "type": "Collider",
+          "type": "40000000-0000-4000-8000-000000000009",
           "data": {
             "shape": "box",
             "halfExtents": [
@@ -915,7 +915,7 @@
       "parent": "e0100000-0000-4000-8000-000000000018",
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               0,
@@ -936,7 +936,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "CylinderGeometry",
             "geometryParams": {
@@ -968,7 +968,7 @@
       "parent": "e0100000-0000-4000-8000-000000000018",
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               -0.4,
@@ -989,7 +989,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "BoxGeometry",
             "geometryParams": {
@@ -1020,7 +1020,7 @@
       "parent": "e0100000-0000-4000-8000-000000000018",
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               -0.6,
@@ -1041,7 +1041,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "PlaneGeometry",
             "geometryParams": {
@@ -1071,7 +1071,7 @@
       "parent": "e0100000-0000-4000-8000-000000000018",
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               -0.6,
@@ -1092,7 +1092,7 @@
           }
         },
         {
-          "type": "Light",
+          "type": "40000000-0000-4000-8000-000000000003",
           "data": {
             "type": "spot",
             "color": "#ffffff",
@@ -1123,7 +1123,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               10,
@@ -1144,7 +1144,7 @@
           }
         },
         {
-          "type": "Collider",
+          "type": "40000000-0000-4000-8000-000000000009",
           "data": {
             "shape": "box",
             "halfExtents": [
@@ -1174,7 +1174,7 @@
       "parent": "e0100000-0000-4000-8000-000000000023",
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               0,
@@ -1195,7 +1195,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "CylinderGeometry",
             "geometryParams": {
@@ -1227,7 +1227,7 @@
       "parent": "e0100000-0000-4000-8000-000000000023",
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               -0.4,
@@ -1248,7 +1248,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "BoxGeometry",
             "geometryParams": {
@@ -1279,7 +1279,7 @@
       "parent": "e0100000-0000-4000-8000-000000000023",
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               -0.6,
@@ -1300,7 +1300,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "PlaneGeometry",
             "geometryParams": {
@@ -1330,7 +1330,7 @@
       "parent": "e0100000-0000-4000-8000-000000000023",
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               -0.6,
@@ -1351,7 +1351,7 @@
           }
         },
         {
-          "type": "Light",
+          "type": "40000000-0000-4000-8000-000000000003",
           "data": {
             "type": "spot",
             "color": "#ffffff",
@@ -1382,7 +1382,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               0,
@@ -1403,9 +1403,9 @@
           }
         },
         {
-          "type": "PhysicsController",
+          "type": "40000000-0000-4000-8000-000000000015",
           "data": {
-            "type": "custom-raycast",
+
             "enabled": true,
             "chassis": {
               "mass": 150,
@@ -1447,7 +1447,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "ModelGeometry",
             "geometryParams": {},
@@ -1474,7 +1474,7 @@
       "parent": "e0100000-0000-4000-8000-000000000002",
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               0.7,
@@ -1495,7 +1495,7 @@
           }
         },
         {
-          "type": "Light",
+          "type": "40000000-0000-4000-8000-000000000003",
           "data": {
             "type": "spot",
             "color": "#ffffff",
@@ -1526,7 +1526,7 @@
       "parent": "e0100000-0000-4000-8000-000000000002",
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               -0.7,
@@ -1547,7 +1547,7 @@
           }
         },
         {
-          "type": "Light",
+          "type": "40000000-0000-4000-8000-000000000003",
           "data": {
             "type": "spot",
             "color": "#ffffff",
@@ -1578,7 +1578,7 @@
       "parent": "e0100000-0000-4000-8000-000000000002",
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               0,
@@ -1599,7 +1599,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "ModelGeometry",
             "geometryParams": {},
@@ -1626,7 +1626,7 @@
       "parent": "e0100000-0000-4000-8000-000000000002",
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               0,
@@ -1647,7 +1647,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "ModelGeometry",
             "geometryParams": {},
@@ -1674,7 +1674,7 @@
       "parent": "e0100000-0000-4000-8000-000000000002",
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               0,
@@ -1695,7 +1695,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "ModelGeometry",
             "geometryParams": {},
@@ -1722,7 +1722,7 @@
       "parent": "e0100000-0000-4000-8000-000000000002",
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               0,
@@ -1743,7 +1743,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "ModelGeometry",
             "geometryParams": {},
@@ -1770,7 +1770,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               0,
@@ -1791,7 +1791,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "BoxGeometry",
             "geometryParams": {
@@ -1815,7 +1815,7 @@
           }
         },
         {
-          "type": "Collider",
+          "type": "40000000-0000-4000-8000-000000000009",
           "data": {
             "shape": "box",
             "halfExtents": [
@@ -1845,7 +1845,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               0,
@@ -1866,7 +1866,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "BoxGeometry",
             "geometryParams": {
@@ -1890,7 +1890,7 @@
           }
         },
         {
-          "type": "Collider",
+          "type": "40000000-0000-4000-8000-000000000009",
           "data": {
             "shape": "box",
             "halfExtents": [
@@ -1920,7 +1920,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               0,
@@ -1941,7 +1941,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "PlaneGeometry",
             "geometryParams": {
@@ -1971,7 +1971,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               4,
@@ -1992,7 +1992,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "CylinderGeometry",
             "geometryParams": {
@@ -2017,7 +2017,7 @@
           }
         },
         {
-          "type": "Collider",
+          "type": "40000000-0000-4000-8000-000000000009",
           "data": {
             "shape": "capsule",
             "radius": 0.25,
@@ -2044,7 +2044,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               2,
@@ -2065,7 +2065,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "CylinderGeometry",
             "geometryParams": {
@@ -2090,7 +2090,7 @@
           }
         },
         {
-          "type": "Collider",
+          "type": "40000000-0000-4000-8000-000000000009",
           "data": {
             "shape": "capsule",
             "radius": 0.25,
@@ -2117,7 +2117,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               4,
@@ -2138,7 +2138,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "CylinderGeometry",
             "geometryParams": {
@@ -2163,7 +2163,7 @@
           }
         },
         {
-          "type": "Collider",
+          "type": "40000000-0000-4000-8000-000000000009",
           "data": {
             "shape": "capsule",
             "radius": 0.25,
@@ -2190,7 +2190,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               -4,
@@ -2211,7 +2211,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "CylinderGeometry",
             "geometryParams": {
@@ -2236,7 +2236,7 @@
           }
         },
         {
-          "type": "Collider",
+          "type": "40000000-0000-4000-8000-000000000009",
           "data": {
             "shape": "capsule",
             "radius": 0.25,
@@ -2263,7 +2263,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               -2,
@@ -2284,7 +2284,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "CylinderGeometry",
             "geometryParams": {
@@ -2309,7 +2309,7 @@
           }
         },
         {
-          "type": "Collider",
+          "type": "40000000-0000-4000-8000-000000000009",
           "data": {
             "shape": "capsule",
             "radius": 0.25,
@@ -2336,7 +2336,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               -4,
@@ -2357,7 +2357,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "CylinderGeometry",
             "geometryParams": {
@@ -2382,7 +2382,7 @@
           }
         },
         {
-          "type": "Collider",
+          "type": "40000000-0000-4000-8000-000000000009",
           "data": {
             "shape": "capsule",
             "radius": 0.25,
@@ -2409,7 +2409,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               -0.8,
@@ -2430,7 +2430,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "BoxGeometry",
             "geometryParams": {
@@ -2454,7 +2454,7 @@
           }
         },
         {
-          "type": "Collider",
+          "type": "40000000-0000-4000-8000-000000000009",
           "data": {
             "shape": "box",
             "halfExtents": [
@@ -2484,7 +2484,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               0.8,
@@ -2505,7 +2505,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "BoxGeometry",
             "geometryParams": {
@@ -2529,7 +2529,7 @@
           }
         },
         {
-          "type": "Collider",
+          "type": "40000000-0000-4000-8000-000000000009",
           "data": {
             "shape": "box",
             "halfExtents": [
@@ -2559,7 +2559,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               -0.8,
@@ -2580,7 +2580,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "BoxGeometry",
             "geometryParams": {
@@ -2604,7 +2604,7 @@
           }
         },
         {
-          "type": "Collider",
+          "type": "40000000-0000-4000-8000-000000000009",
           "data": {
             "shape": "box",
             "halfExtents": [
@@ -2634,7 +2634,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               0.8,
@@ -2655,7 +2655,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "BoxGeometry",
             "geometryParams": {
@@ -2679,7 +2679,7 @@
           }
         },
         {
-          "type": "Collider",
+          "type": "40000000-0000-4000-8000-000000000009",
           "data": {
             "shape": "box",
             "halfExtents": [
@@ -2709,7 +2709,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               -0.8,
@@ -2730,7 +2730,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "BoxGeometry",
             "geometryParams": {
@@ -2754,7 +2754,7 @@
           }
         },
         {
-          "type": "Collider",
+          "type": "40000000-0000-4000-8000-000000000009",
           "data": {
             "shape": "box",
             "halfExtents": [
@@ -2784,7 +2784,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               0.8,
@@ -2805,7 +2805,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "BoxGeometry",
             "geometryParams": {
@@ -2829,7 +2829,7 @@
           }
         },
         {
-          "type": "Collider",
+          "type": "40000000-0000-4000-8000-000000000009",
           "data": {
             "shape": "box",
             "halfExtents": [
@@ -2859,7 +2859,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               0,
@@ -2880,7 +2880,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "BoxGeometry",
             "geometryParams": {
@@ -2904,7 +2904,7 @@
           }
         },
         {
-          "type": "Collider",
+          "type": "40000000-0000-4000-8000-000000000009",
           "data": {
             "shape": "box",
             "halfExtents": [
@@ -2934,7 +2934,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               0,
@@ -2955,7 +2955,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "BoxGeometry",
             "geometryParams": {
@@ -2979,7 +2979,7 @@
           }
         },
         {
-          "type": "Collider",
+          "type": "40000000-0000-4000-8000-000000000009",
           "data": {
             "shape": "box",
             "halfExtents": [
@@ -3009,7 +3009,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               0,
@@ -3030,7 +3030,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "BoxGeometry",
             "geometryParams": {
@@ -3054,7 +3054,7 @@
           }
         },
         {
-          "type": "Collider",
+          "type": "40000000-0000-4000-8000-000000000009",
           "data": {
             "shape": "box",
             "halfExtents": [
@@ -3084,7 +3084,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               0,
@@ -3105,7 +3105,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "BoxGeometry",
             "geometryParams": {
@@ -3129,7 +3129,7 @@
           }
         },
         {
-          "type": "Collider",
+          "type": "40000000-0000-4000-8000-000000000009",
           "data": {
             "shape": "box",
             "halfExtents": [
@@ -3159,7 +3159,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               0,
@@ -3180,7 +3180,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "BoxGeometry",
             "geometryParams": {
@@ -3204,7 +3204,7 @@
           }
         },
         {
-          "type": "Collider",
+          "type": "40000000-0000-4000-8000-000000000009",
           "data": {
             "shape": "box",
             "halfExtents": [
@@ -3234,7 +3234,7 @@
       "parent": null,
       "components": [
         {
-          "type": "Transform",
+          "type": "40000000-0000-4000-8000-000000000001",
           "data": {
             "position": [
               0,
@@ -3255,7 +3255,7 @@
           }
         },
         {
-          "type": "MeshRenderer",
+          "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "BoxGeometry",
             "geometryParams": {
@@ -3279,7 +3279,7 @@
           }
         },
         {
-          "type": "Collider",
+          "type": "40000000-0000-4000-8000-000000000009",
           "data": {
             "shape": "box",
             "halfExtents": [

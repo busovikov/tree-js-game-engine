@@ -133,10 +133,10 @@ describe('controller component schemas', () => {
   })
 
   it('classifies chassis vs capsule controller ids', () => {
-    expect(controllerNeedsChassis('CustomRaycastController')).toBe(true)
-    expect(controllerNeedsChassis('KinematicCharacterController')).toBe(false)
-    expect(controllerNeedsCapsule('CharacterBodyController')).toBe(true)
-    expect(controllerNeedsCapsule('PointerControlsController')).toBe(false)
+    expect(controllerNeedsChassis('40000000-0000-4000-8000-000000000015')).toBe(true)
+    expect(controllerNeedsChassis('40000000-0000-4000-8000-000000000019')).toBe(false)
+    expect(controllerNeedsCapsule('40000000-0000-4000-8000-000000000020')).toBe(true)
+    expect(controllerNeedsCapsule('40000000-0000-4000-8000-000000000021')).toBe(false)
   })
 
   it('rejects invalid shared vehicle parameter groups', () => {

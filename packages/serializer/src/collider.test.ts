@@ -16,8 +16,8 @@ function entityWithCollider(
     name,
     parent: null,
     components: [
-      { type: 'Transform', data: TRANSFORM },
-      { type: 'Collider', data: collider },
+      { type: '40000000-0000-4000-8000-000000000001', data: TRANSFORM },
+      { type: '40000000-0000-4000-8000-000000000009', data: collider },
       ...extraComponents,
     ],
   }
@@ -51,8 +51,8 @@ describe('Collider serializer round-trip', () => {
     expect(loadedRigidBody?.physicsBodyHandle).toBe('body-42')
 
     const saved = saveSceneDocument(world, doc.metadata)
-    const colliderData = saved.entities[0].components.find((c) => c.type === 'Collider')?.data
-    const rigidBodyData = saved.entities[0].components.find((c) => c.type === 'RigidBody')?.data
+    const colliderData = saved.entities[0].components.find((c) => c.type === '40000000-0000-4000-8000-000000000009')?.data
+    const rigidBodyData = saved.entities[0].components.find((c) => c.type === '40000000-0000-4000-8000-000000000010')?.data
     expect(colliderData).toEqual({
       shape: 'box',
       enabled: true,
@@ -70,19 +70,18 @@ describe('Collider serializer round-trip', () => {
 
   it('keeps implicit static collider without RigidBody when legacy isStatic is true', () => {
     const migrated = migrateEntityComponents([
-      { type: 'Collider', data: { shape: 'box', isStatic: true } },
+      { type: '40000000-0000-4000-8000-000000000009', data: { shape: 'box', isStatic: true } },
     ])
-    expect(migrated.some((c) => c.type === 'RigidBody')).toBe(false)
+    expect(migrated.some((c) => c.type === '40000000-0000-4000-8000-000000000010')).toBe(false)
   })
 
-  it('drops the removed custom-spring controller so legacy scenes still load', () => {
+  it('rejects removed path-era component names at the scene envelope', () => {
     const migrated = migrateEntityComponents([
-      { type: 'Transform', data: TRANSFORM },
+      { type: '40000000-0000-4000-8000-000000000001', data: TRANSFORM },
       { type: 'PhysicsController', data: { type: 'custom-spring', stiffness: 10 } },
     ])
     expect(migrated.some((c) => c.type === 'PhysicsController')).toBe(false)
     expect(migrated.some((c) => c.type.endsWith('Controller'))).toBe(false)
-    // A scene document containing it must load without throwing.
     expect(() =>
       loadSceneDocument({
         schemaVersion: 1,
@@ -93,13 +92,13 @@ describe('Collider serializer round-trip', () => {
             name: 'Spring',
             parent: null,
             components: [
-              { type: 'Transform', data: TRANSFORM },
+              { type: '40000000-0000-4000-8000-000000000001', data: TRANSFORM },
               { type: 'PhysicsController', data: { type: 'custom-spring', stiffness: 10 } },
             ],
           },
         ],
       }),
-    ).not.toThrow()
+    ).toThrow(/Invalid uuid/)
   })
 
   it('round-trips sphere collider', () => {
@@ -115,7 +114,7 @@ describe('Collider serializer round-trip', () => {
     })
 
     const saved = roundtripSceneDocument(doc)
-    const colliderData = saved.entities[0].components.find((c) => c.type === 'Collider')?.data
+    const colliderData = saved.entities[0].components.find((c) => c.type === '40000000-0000-4000-8000-000000000009')?.data
     expect(colliderData).toMatchObject(collider)
     expect(colliderData?.rotation).toEqual([0, 0, 0, 1])
   })
@@ -130,9 +129,9 @@ describe('Collider serializer round-trip', () => {
           name: 'Capsule',
           parent: null,
           components: [
-            { type: 'Transform', data: TRANSFORM },
+            { type: '40000000-0000-4000-8000-000000000001', data: TRANSFORM },
             {
-              type: 'Collider',
+              type: '40000000-0000-4000-8000-000000000009',
               data: {
                 shape: 'capsule',
                 radius: 0.4,
@@ -141,15 +140,15 @@ describe('Collider serializer round-trip', () => {
                 rotation: [0, 0, 0, 1],
               },
             },
-            { type: 'RigidBody', data: { type: 'dynamic', mass: 2 } },
+            { type: '40000000-0000-4000-8000-000000000010', data: { type: 'dynamic', mass: 2 } },
           ],
         },
       ],
     })
 
     const saved = roundtripSceneDocument(doc)
-    const colliderData = saved.entities[0].components.find((c) => c.type === 'Collider')?.data
-    const rigidBodyData = saved.entities[0].components.find((c) => c.type === 'RigidBody')?.data
+    const colliderData = saved.entities[0].components.find((c) => c.type === '40000000-0000-4000-8000-000000000009')?.data
+    const rigidBodyData = saved.entities[0].components.find((c) => c.type === '40000000-0000-4000-8000-000000000010')?.data
     expect(colliderData).toMatchObject({
       shape: 'capsule',
       radius: 0.4,
@@ -172,7 +171,7 @@ describe('Collider serializer round-trip', () => {
           'b0000000-0000-4000-8000-000000000002',
           'Ball',
           { shape: 'sphere', radius: 0.5 },
-          [{ type: 'RigidBody', data: { type: 'dynamic' } }],
+          [{ type: '40000000-0000-4000-8000-000000000010', data: { type: 'dynamic' } }],
         ),
         entityWithCollider('c0000000-0000-4000-8000-000000000003', 'Pillar', {
           shape: 'capsule',
@@ -186,7 +185,7 @@ describe('Collider serializer round-trip', () => {
     const twice = roundtripSceneDocument(once)
     expect(twice).toEqual(once)
     expect(once.entities).toHaveLength(3)
-    expect(once.entities.every((e) => e.components.some((c) => c.type === 'Collider'))).toBe(true)
+    expect(once.entities.every((e) => e.components.some((c) => c.type === '40000000-0000-4000-8000-000000000009'))).toBe(true)
     expect(once.physicsSettings?.layers).toHaveLength(16)
   })
 
@@ -200,9 +199,9 @@ describe('Collider serializer round-trip', () => {
           name: 'BadMesh',
           parent: null,
           components: [
-            { type: 'Transform', data: TRANSFORM },
-            { type: 'Collider', data: { shape: 'trimesh', vertices: [], indices: [] } },
-            { type: 'RigidBody', data: { type: 'dynamic' } },
+            { type: '40000000-0000-4000-8000-000000000001', data: TRANSFORM },
+            { type: '40000000-0000-4000-8000-000000000009', data: { shape: 'trimesh', vertices: [], indices: [] } },
+            { type: '40000000-0000-4000-8000-000000000010', data: { type: 'dynamic' } },
           ],
         },
       ],
@@ -220,7 +219,7 @@ describe('Collider serializer round-trip', () => {
           id: 'd0000000-0000-4000-8000-000000000004',
           name: 'Plain',
           parent: null,
-          components: [{ type: 'Transform', data: TRANSFORM }],
+          components: [{ type: '40000000-0000-4000-8000-000000000001', data: TRANSFORM }],
         },
       ],
     })
@@ -230,7 +229,7 @@ describe('Collider serializer round-trip', () => {
     expect(world.getComponent(id, ColliderComponent)).toBeUndefined()
 
     const saved = saveSceneDocument(world, doc.metadata)
-    expect(saved.entities[0].components.some((c) => c.type === 'Collider')).toBe(false)
+    expect(saved.entities[0].components.some((c) => c.type === '40000000-0000-4000-8000-000000000009')).toBe(false)
   })
 
   it('rejects invalid collider data on load', () => {

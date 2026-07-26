@@ -1,4 +1,4 @@
-import type { EntityId } from '@haku/core'
+import { ArcadeVehicleControllerComponent, type EntityId } from '@haku/core'
 import type { Vec3 } from '@haku/physics'
 import type { ControllerPlugin, ControllerRuntimeContext } from '../registry.js'
 import {
@@ -9,7 +9,7 @@ import {
 
 /** Isaac Mason `arcade-vehicle-controller` — impulse arcade drive + drift. */
 export class ArcadeVehiclePlugin implements ControllerPlugin {
-  readonly type = 'ArcadeVehicleController' as const
+  readonly type = ArcadeVehicleControllerComponent.id
   private readonly tracked = new Map<string, TrackedArcadeVehicle>()
 
   bootstrap(ctx: ControllerRuntimeContext): void {

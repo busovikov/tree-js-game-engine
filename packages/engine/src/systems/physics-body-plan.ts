@@ -2,6 +2,7 @@ import type { EntityId, IWorld } from '@haku/core'
 import {
   ColliderComponent,
   CollidersComponent,
+  DynamicRaycastControllerComponent,
   PhysicsAreaComponent,
   AnimatableBodyComponent,
   getControllerOnEntity,
@@ -213,7 +214,7 @@ function resolveDynamicBodyParams(
   if (controller && controllerNeedsChassis(controller.component.id as ControllerComponentId)) {
     const chassisData = controller.data as { chassis: ControllerChassis }
     if (
-      controller.component.id === 'DynamicRaycastController' &&
+      controller.component.id === DynamicRaycastControllerComponent.id &&
       (controller.data as DynamicRaycastController).driveProfile === 'threejs-rapier'
     ) {
       return { mass: chassisData.chassis.mass, kinematicMode: 'position' }
@@ -523,13 +524,13 @@ export function findPhysicsBodyRoots(world: IWorld): EntityId[] {
       roots.push(id)
       continue
     }
-    if (hasAncestorComponent(world, id, 'RigidBody')) {
+    if (hasAncestorComponent(world, id, RigidBodyComponent.id)) {
       continue
     }
-    if (hasAncestorComponent(world, id, 'PhysicsArea')) {
+    if (hasAncestorComponent(world, id, PhysicsAreaComponent.id)) {
       continue
     }
-    if (hasAncestorComponent(world, id, 'AnimatableBody')) {
+    if (hasAncestorComponent(world, id, AnimatableBodyComponent.id)) {
       continue
     }
     if (isControllerSpawnBlocked(world, id)) {

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { ComponentRecordSchema } from './component-envelope.js'
 import {
   HEMISPHERE_LIGHT_DEFAULT_GROUND_COLOR,
   HEMISPHERE_LIGHT_DEFAULT_SKY_COLOR,
@@ -406,11 +407,13 @@ export const RenderPrototypeSchema = z.object({
 })
 export type RenderPrototype = z.infer<typeof RenderPrototypeSchema>
 
-export const ComponentRecordSchema = z.object({
-  type: z.string(),
-  data: z.record(z.unknown()),
-})
-export type ComponentRecord = z.infer<typeof ComponentRecordSchema>
+export {
+  ComponentRecordSchema,
+  ComponentTypeIdSchema,
+  componentTypeId,
+  type ComponentRecord,
+  type ComponentTypeId,
+} from './component-envelope.js'
 
 export const EntityRecordSchema = z.object({
   id: z.string().uuid(),
@@ -487,8 +490,6 @@ export {
   type SceneEditorState,
   type ViewportTab,
 } from './editor-project-settings.js'
-
-export { listCameraEntityIds, resolveActiveCameraId } from './scene-camera.js'
 
 export {
   RenderSettingsSchema,

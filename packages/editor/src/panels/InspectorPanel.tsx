@@ -5,6 +5,7 @@ import {
   LightComponent,
   MeshRendererComponent,
   ScriptRefComponent,
+  StaticComponent,
   TagComponent,
   TransformComponent,
   CustomRaycastControllerComponent,
@@ -42,7 +43,8 @@ import type {
   CharacterBodyController,
   PointerControlsController,
 } from '@haku/schema'
-import { ColliderSchema, isNonUniformScale, resolveActiveCameraId } from '@haku/schema'
+import { ColliderSchema, isNonUniformScale } from '@haku/schema'
+import { resolveActiveCameraId } from '@haku/core'
 import { sanitizeComponentDataForPersistence } from '@haku/serializer'
 import { commitActiveSceneCamera } from '../commands/active-scene-camera.js'
 import { useEditorStore } from '../store/editor-store.js'
@@ -119,7 +121,11 @@ const COMPONENT_MAP = {
   PointerControlsController: PointerControlsControllerComponent,
 } as const
 
-const HIDDEN_COMPONENTS = new Set(['Tag', 'Static', 'Transform'])
+const HIDDEN_COMPONENTS = new Set<string>([
+  TagComponent.id,
+  StaticComponent.id,
+  TransformComponent.id,
+])
 
 const CHASSIS_CONTROLLER_IDS = new Set([
   'CustomRaycastController',
@@ -730,7 +736,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
   }
 
   const otherComponents = commonTypes.filter((typeId) => !HIDDEN_COMPONENTS.has(typeId))
-  const showTransform = commonTypes.includes('Transform')
+  const showTransform = commonTypes.includes(TransformComponent.id)
 
   return (
     <div className="haku-inspector">
@@ -772,9 +778,14 @@ export const InspectorPanel = memo(function InspectorPanel() {
           canDelete={false}
           disabled={!canEditTransform}
           onToggleCollapsed={() => toggleSectionCollapsed('Transform')}
-          onCopy={() => copyComponentData('Transform', structuredClone(transformDisplay) as Record<string, unknown>)}
+          onCopy={() =>
+            copyComponentData(
+              TransformComponent.id,
+              structuredClone(transformDisplay) as Record<string, unknown>,
+            )
+          }
           onPaste={() => {
-            if (!componentClipboard || componentClipboard.typeId !== 'Transform') return
+            if (!componentClipboard || componentClipboard.typeId !== TransformComponent.id) return
             forEachSelectedTransform((id, draftWorld) => {
               draftWorld.addComponent(
                 id,
@@ -783,7 +794,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
               )
             })
           }}
-          canPaste={componentClipboard?.typeId === 'Transform'}
+          canPaste={componentClipboard?.typeId === TransformComponent.id}
         >
           <div className="haku-inspector__section-toolbar">
             <button
@@ -816,10 +827,10 @@ export const InspectorPanel = memo(function InspectorPanel() {
       <InspectorSeparator />
 
       {otherComponents.map((typeId) => {
-        const key = typeId as keyof typeof COMPONENT_MAP
-        if (!(key in COMPONENT_MAP)) return null
         const type = getCoreComponent(typeId)
         if (!type) return null
+        const key = type.name as keyof typeof COMPONENT_MAP
+        if (!(key in COMPONENT_MAP)) return null
 
         const component = COMPONENT_MAP[key]
         const targets = selectedIds.filter((entityId) => world.hasComponent(entityId, component))
@@ -845,7 +856,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
         return (
           <InspectorComponentSection
             key={typeId}
-            title={typeId}
+            title={type.name}
             badge={
               isActiveCamera ? (
                 <span className="haku-inspector__active-camera-badge">Active</span>

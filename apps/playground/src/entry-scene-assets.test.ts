@@ -37,7 +37,7 @@ describe('playground entry scene', () => {
         (entity.components ?? [])
           .filter(
             (component) =>
-              component.type === 'MeshRenderer' &&
+              component.type === '40000000-0000-4000-8000-000000000004' &&
               component.data?.geometryType === 'ModelGeometry' &&
               component.data.modelAsset,
           )
@@ -72,7 +72,7 @@ describe('playground entry scene', () => {
       (entity) => entity.id === scene.metadata?.activeCameraId,
     );
     const transform = camera?.components?.find(
-      (component) => component.type === 'Transform',
+      (component) => component.type === '40000000-0000-4000-8000-000000000001',
     )?.data;
     const [px, py, pz] = transform?.position ?? [0, 0, 0];
     const [qx, qy, qz, qw] = transform?.rotation ?? [0, 0, 0, 1];
@@ -91,10 +91,19 @@ describe('playground entry scene', () => {
       length;
 
     expect(alignment).toBeGreaterThan(0.995);
+    const controllerTypeIds = new Set([
+      '40000000-0000-4000-8000-000000000015',
+      '40000000-0000-4000-8000-000000000016',
+      '40000000-0000-4000-8000-000000000017',
+      '40000000-0000-4000-8000-000000000018',
+      '40000000-0000-4000-8000-000000000019',
+      '40000000-0000-4000-8000-000000000020',
+      '40000000-0000-4000-8000-000000000021',
+    ])
     const controllers =
       scene.entities?.flatMap((entity) =>
         (entity.components ?? []).filter(
-          (component) => component.type === 'PhysicsController',
+          (component) => component.type !== undefined && controllerTypeIds.has(component.type),
         ),
       ) ?? [];
     expect(controllers.length).toBeGreaterThan(0);

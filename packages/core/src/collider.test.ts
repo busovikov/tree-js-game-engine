@@ -1,29 +1,31 @@
 import { describe, expect, it } from 'vitest'
 import {
   ColliderComponent,
+  CORE_COMPONENT_TYPE_IDS,
   RigidBodyComponent,
+  createCoreComponentRegistry,
   coreComponents,
   getCoreComponent,
-  globalComponentRegistry,
 } from './index.js'
 
 describe('ColliderComponent registry', () => {
   it('registers Collider with stable type id', () => {
-    expect(ColliderComponent.id).toBe('Collider')
-    expect(globalComponentRegistry.get('Collider')).toBe(ColliderComponent)
-    expect(getCoreComponent('Collider')).toBe(ColliderComponent)
+    const registry = createCoreComponentRegistry()
+    expect(ColliderComponent.id).toBe(CORE_COMPONENT_TYPE_IDS.Collider)
+    expect(registry.get(ColliderComponent.id)).toBe(ColliderComponent)
+    expect(getCoreComponent(ColliderComponent.id)).toBe(ColliderComponent)
   })
 
   it('registers RigidBody with stable type id', () => {
-    expect(RigidBodyComponent.id).toBe('RigidBody')
-    expect(getCoreComponent('RigidBody')).toBe(RigidBodyComponent)
+    expect(RigidBodyComponent.id).toBe(CORE_COMPONENT_TYPE_IDS.RigidBody)
+    expect(getCoreComponent(RigidBodyComponent.id)).toBe(RigidBodyComponent)
   })
 
   it('appears in core component list', () => {
     const ids = coreComponents.map((c) => c.id)
-    expect(ids).toContain('Collider')
-    expect(ids).toContain('RigidBody')
-    expect(globalComponentRegistry.all().map((c) => c.id)).toContain('Collider')
+    expect(ids).toContain(ColliderComponent.id)
+    expect(ids).toContain(RigidBodyComponent.id)
+    expect(createCoreComponentRegistry().all().map((c) => c.id)).toContain(ColliderComponent.id)
   })
 
   it('provides box defaults via defaults()', () => {

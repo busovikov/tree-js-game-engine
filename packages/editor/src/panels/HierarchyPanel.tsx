@@ -1,7 +1,6 @@
 import { memo, useCallback, useMemo, useState, type DragEvent } from 'react'
 import type { EntityId } from '@haku/core'
-import { CameraComponent, entityId } from '@haku/core'
-import { resolveActiveCameraId } from '@haku/schema'
+import { CameraComponent, entityId, resolveActiveCameraId } from '@haku/core'
 import { commitActiveSceneCamera } from '../commands/active-scene-camera.js'
 import { useEditorStore } from '../store/editor-store.js'
 import { EntityCreateMenu } from '../components/EntityCreateMenu.js'

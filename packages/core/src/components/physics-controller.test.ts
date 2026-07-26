@@ -2,23 +2,24 @@ import { describe, expect, it } from 'vitest'
 import {
   CONTROLLER_COMPONENTS,
   CustomRaycastControllerComponent,
+  createCoreComponentRegistry,
   coreComponents,
   getCoreComponent,
 } from '../components.js'
-import { globalComponentRegistry } from '../registry.js'
 
 describe('controller components registry', () => {
   it('registers all seven controller component ids', () => {
+    const registry = createCoreComponentRegistry()
     for (const component of CONTROLLER_COMPONENTS) {
       expect(getCoreComponent(component.id)).toBe(component)
-      expect(globalComponentRegistry.get(component.id)).toBe(component)
+      expect(registry.get(component.id)).toBe(component)
       expect(coreComponents.map((entry) => entry.id)).toContain(component.id)
     }
   })
 
   it('no longer registers PhysicsController', () => {
     expect(getCoreComponent('PhysicsController')).toBeUndefined()
-    expect(globalComponentRegistry.get('PhysicsController')).toBeUndefined()
+    expect(createCoreComponentRegistry().get('PhysicsController')).toBeUndefined()
   })
 
   it('provides CustomRaycastController defaults without nested type', () => {

@@ -48,128 +48,150 @@ import {
   type RenderTexture,
 } from '@haku/schema'
 import type { ComponentType, EntityId, IWorld } from './types.js'
-import { globalComponentRegistry } from './registry.js'
+import { CORE_COMPONENT_TYPE_IDS } from './component-type-ids.js'
+import { DefaultComponentRegistry } from './registry.js'
 
 export const TransformComponent = {
-  id: 'Transform',
+  id: CORE_COMPONENT_TYPE_IDS.Transform,
+  name: 'Transform',
   schema: TransformSchema,
   defaults: () => TransformSchema.parse({}),
 } satisfies ComponentType<Transform>
 
 export const CameraComponent = {
-  id: 'Camera',
+  id: CORE_COMPONENT_TYPE_IDS.Camera,
+  name: 'Camera',
   schema: CameraSchema,
   defaults: () => CameraSchema.parse({}),
 } satisfies ComponentType<Camera>
 
 export const LightComponent = {
-  id: 'Light',
+  id: CORE_COMPONENT_TYPE_IDS.Light,
+  name: 'Light',
   schema: LightSchema,
   defaults: () => LightSchema.parse({ type: 'directional' }),
 } satisfies ComponentType<Light>
 
 export const MeshRendererComponent = {
-  id: 'MeshRenderer',
+  id: CORE_COMPONENT_TYPE_IDS.MeshRenderer,
+  name: 'MeshRenderer',
   schema: MeshRendererSchema,
   defaults: () => MeshRendererSchema.parse({}),
 } satisfies ComponentType<MeshRenderer>
 
 export const ScriptRefComponent = {
-  id: 'ScriptRef',
+  id: CORE_COMPONENT_TYPE_IDS.ScriptRef,
+  name: 'ScriptRef',
   schema: ScriptRefSchema,
 } satisfies ComponentType<ScriptRef>
 
 export const PrefabInstanceComponent = {
-  id: 'PrefabInstance',
+  id: CORE_COMPONENT_TYPE_IDS.PrefabInstance,
+  name: 'PrefabInstance',
   schema: PrefabInstanceSchema,
 } satisfies ComponentType<PrefabInstance>
 
 export const TagComponent = {
-  id: 'Tag',
+  id: CORE_COMPONENT_TYPE_IDS.Tag,
+  name: 'Tag',
   schema: TagSchema,
   defaults: () => TagSchema.parse({}),
 } satisfies ComponentType<Tag>
 
 export const StaticComponent = {
-  id: 'Static',
+  id: CORE_COMPONENT_TYPE_IDS.Static,
+  name: 'Static',
   schema: StaticSchema,
   defaults: () => StaticSchema.parse({}),
 } satisfies ComponentType<Static>
 
 export const ColliderComponent = {
-  id: 'Collider',
+  id: CORE_COMPONENT_TYPE_IDS.Collider,
+  name: 'Collider',
   schema: ColliderSchema,
   defaults: () => ColliderSchema.parse({ shape: 'box' }),
 } satisfies ComponentType<Collider>
 
 export const RigidBodyComponent = {
-  id: 'RigidBody',
+  id: CORE_COMPONENT_TYPE_IDS.RigidBody,
+  name: 'RigidBody',
   schema: RigidBodySchema,
   defaults: () => RigidBodySchema.parse({}),
 } satisfies ComponentType<RigidBody>
 
 export const PhysicsAreaComponent = {
-  id: 'PhysicsArea',
+  id: CORE_COMPONENT_TYPE_IDS.PhysicsArea,
+  name: 'PhysicsArea',
   schema: PhysicsAreaSchema,
   defaults: () => PhysicsAreaSchema.parse({}),
 } satisfies ComponentType<PhysicsArea>
 
 export const PhysicsJointComponent = {
-  id: 'PhysicsJoint',
+  id: CORE_COMPONENT_TYPE_IDS.PhysicsJoint,
+  name: 'PhysicsJoint',
   schema: PhysicsJointSchema,
   defaults: () => PhysicsJointSchema.parse({}),
 } satisfies ComponentType<PhysicsJoint>
 
 export const CollidersComponent = {
-  id: 'Colliders',
+  id: CORE_COMPONENT_TYPE_IDS.Colliders,
+  name: 'Colliders',
   schema: CollidersSchema,
   defaults: () => CollidersSchema.parse({}),
 } satisfies ComponentType<Colliders>
 
 export const AnimatableBodyComponent = {
-  id: 'AnimatableBody',
+  id: CORE_COMPONENT_TYPE_IDS.AnimatableBody,
+  name: 'AnimatableBody',
   schema: AnimatableBodySchema,
   defaults: () => AnimatableBodySchema.parse({}),
 } satisfies ComponentType<AnimatableBody>
 
 export const CustomRaycastControllerComponent = {
-  id: 'CustomRaycastController',
+  id: CORE_COMPONENT_TYPE_IDS.CustomRaycastController,
+  name: 'CustomRaycastController',
   schema: CustomRaycastControllerSchema,
   defaults: () => CustomRaycastControllerSchema.parse({}),
 } satisfies ComponentType<CustomRaycastController>
 
 export const DynamicRaycastControllerComponent = {
-  id: 'DynamicRaycastController',
+  id: CORE_COMPONENT_TYPE_IDS.DynamicRaycastController,
+  name: 'DynamicRaycastController',
   schema: DynamicRaycastControllerSchema,
   defaults: () => DynamicRaycastControllerSchema.parse({}),
 } satisfies ComponentType<DynamicRaycastController>
 
 export const ArcadeVehicleControllerComponent = {
-  id: 'ArcadeVehicleController',
+  id: CORE_COMPONENT_TYPE_IDS.ArcadeVehicleController,
+  name: 'ArcadeVehicleController',
   schema: ArcadeVehicleControllerSchema,
   defaults: () => ArcadeVehicleControllerSchema.parse({}),
 } satisfies ComponentType<ArcadeVehicleController>
 
 export const RevoluteJointVehicleControllerComponent = {
-  id: 'RevoluteJointVehicleController',
+  id: CORE_COMPONENT_TYPE_IDS.RevoluteJointVehicleController,
+  name: 'RevoluteJointVehicleController',
   schema: RevoluteJointVehicleControllerSchema,
   defaults: () => RevoluteJointVehicleControllerSchema.parse({}),
 } satisfies ComponentType<RevoluteJointVehicleController>
 
 export const KinematicCharacterControllerComponent = {
-  id: 'KinematicCharacterController',
+  id: CORE_COMPONENT_TYPE_IDS.KinematicCharacterController,
+  name: 'KinematicCharacterController',
   schema: KinematicCharacterControllerSchema,
   defaults: () => KinematicCharacterControllerSchema.parse({}),
 } satisfies ComponentType<KinematicCharacterController>
 
 export const CharacterBodyControllerComponent = {
-  id: 'CharacterBodyController',
+  id: CORE_COMPONENT_TYPE_IDS.CharacterBodyController,
+  name: 'CharacterBodyController',
   schema: CharacterBodyControllerSchema,
   defaults: () => CharacterBodyControllerSchema.parse({}),
 } satisfies ComponentType<CharacterBodyController>
 
 export const PointerControlsControllerComponent = {
-  id: 'PointerControlsController',
+  id: CORE_COMPONENT_TYPE_IDS.PointerControlsController,
+  name: 'PointerControlsController',
   schema: PointerControlsControllerSchema,
   defaults: () => PointerControlsControllerSchema.parse({}),
 } satisfies ComponentType<PointerControlsController>
@@ -226,13 +248,15 @@ export function* queryControllers(world: IWorld): IterableIterator<EntityId> {
 }
 
 export const RenderingLayersComponent = {
-  id: 'RenderingLayers',
+  id: CORE_COMPONENT_TYPE_IDS.RenderingLayers,
+  name: 'RenderingLayers',
   schema: RenderingLayersSchema,
   defaults: () => RenderingLayersSchema.parse({}),
 } satisfies ComponentType<RenderingLayers>
 
 export const RenderTextureComponent = {
-  id: 'RenderTexture',
+  id: CORE_COMPONENT_TYPE_IDS.RenderTexture,
+  name: 'RenderTexture',
   schema: RenderTextureSchema,
 } satisfies ComponentType<RenderTexture>
 
@@ -256,13 +280,13 @@ export const coreComponents = [
   RenderTextureComponent,
 ] as const
 
-export function registerCoreComponents(): void {
+export function createCoreComponentRegistry(): DefaultComponentRegistry {
+  const registry = new DefaultComponentRegistry()
   for (const c of coreComponents) {
-    globalComponentRegistry.register(c)
+    registry.register(c)
   }
+  return registry
 }
-
-registerCoreComponents()
 
 export function getCoreComponent(typeId: string): ComponentType | undefined {
   return coreComponents.find((c) => c.id === typeId)

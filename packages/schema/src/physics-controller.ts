@@ -12,13 +12,13 @@ const PositiveVec3Schema = z.tuple([
 
 /** Component type ids for the seven physics controller kinds. */
 export const CONTROLLER_COMPONENT_IDS = [
-  'CustomRaycastController',
-  'DynamicRaycastController',
-  'ArcadeVehicleController',
-  'RevoluteJointVehicleController',
-  'KinematicCharacterController',
-  'CharacterBodyController',
-  'PointerControlsController',
+  '40000000-0000-4000-8000-000000000015',
+  '40000000-0000-4000-8000-000000000016',
+  '40000000-0000-4000-8000-000000000017',
+  '40000000-0000-4000-8000-000000000018',
+  '40000000-0000-4000-8000-000000000019',
+  '40000000-0000-4000-8000-000000000020',
+  '40000000-0000-4000-8000-000000000021',
 ] as const
 export type ControllerComponentId = (typeof CONTROLLER_COMPONENT_IDS)[number]
 
@@ -38,13 +38,13 @@ export const LEGACY_CONTROLLER_TYPE_TO_COMPONENT_ID: Record<
   PhysicsControllerType,
   ControllerComponentId
 > = {
-  'custom-raycast': 'CustomRaycastController',
-  'dynamic-raycast': 'DynamicRaycastController',
-  'arcade-vehicle': 'ArcadeVehicleController',
-  'revolute-joint-vehicle': 'RevoluteJointVehicleController',
-  'kinematic-character': 'KinematicCharacterController',
-  'character-body': 'CharacterBodyController',
-  'pointer-controls': 'PointerControlsController',
+  'custom-raycast': '40000000-0000-4000-8000-000000000015',
+  'dynamic-raycast': '40000000-0000-4000-8000-000000000016',
+  'arcade-vehicle': '40000000-0000-4000-8000-000000000017',
+  'revolute-joint-vehicle': '40000000-0000-4000-8000-000000000018',
+  'kinematic-character': '40000000-0000-4000-8000-000000000019',
+  'character-body': '40000000-0000-4000-8000-000000000020',
+  'pointer-controls': '40000000-0000-4000-8000-000000000021',
 }
 
 /** Chassis rigid-body parameters shared by vehicle-style controllers. */
@@ -320,15 +320,15 @@ export function controllerChassisCollider(chassis: ControllerChassis): Collider 
 }
 
 const CHASSIS_CONTROLLER_IDS = new Set<ControllerComponentId>([
-  'CustomRaycastController',
-  'DynamicRaycastController',
-  'ArcadeVehicleController',
-  'RevoluteJointVehicleController',
+  '40000000-0000-4000-8000-000000000015',
+  '40000000-0000-4000-8000-000000000016',
+  '40000000-0000-4000-8000-000000000017',
+  '40000000-0000-4000-8000-000000000018',
 ])
 
 const CAPSULE_CONTROLLER_IDS = new Set<ControllerComponentId>([
-  'KinematicCharacterController',
-  'CharacterBodyController',
+  '40000000-0000-4000-8000-000000000019',
+  '40000000-0000-4000-8000-000000000020',
 ])
 
 /** Whether this controller component spawns an implicit chassis collider. */

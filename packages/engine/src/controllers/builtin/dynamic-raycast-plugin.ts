@@ -1,4 +1,4 @@
-import type { EntityId } from '@haku/core'
+import { DynamicRaycastControllerComponent, type EntityId } from '@haku/core'
 import type { IDynamicRaycastVehicle } from '@haku/physics'
 import type { ControllerPlugin, ControllerRuntimeContext } from '../registry.js'
 import {
@@ -9,7 +9,7 @@ import {
 
 /** Rapier `DynamicRaycastVehicleController` controller (Isaac sketch + Three.js example). */
 export class DynamicRaycastPlugin implements ControllerPlugin {
-  readonly type = 'DynamicRaycastController' as const
+  readonly type = DynamicRaycastControllerComponent.id
   private readonly tracked = new Map<string, TrackedDynamicRaycast>()
 
   bootstrap(ctx: ControllerRuntimeContext): void {

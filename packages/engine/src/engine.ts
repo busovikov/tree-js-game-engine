@@ -1,9 +1,9 @@
 import type { IPhysicsBackend } from '@haku/physics'
 import type { IWorld, ISystem } from '@haku/core'
-import { entityId } from '@haku/core'
+import { entityId, resolveActiveCameraId } from '@haku/core'
 import { loadSceneDocument } from '@haku/serializer'
 import type { RenderPrototype, RenderSettings, SceneDocument, SceneMetadata } from '@haku/schema'
-import { defaultPhysicsProjectSettings, defaultRenderSettings, resolveActiveCameraId, validateSceneDocument } from '@haku/schema'
+import { defaultPhysicsProjectSettings, defaultRenderSettings, validateSceneDocument } from '@haku/schema'
 import { ThreeRenderBackend } from './render-backend.js'
 import {
   PhysicsWorldSystem,

@@ -1,4 +1,4 @@
-import type { EntityId } from '@haku/core'
+import { RevoluteJointVehicleControllerComponent, type EntityId } from '@haku/core'
 import type { IPhysicsWorld, PhysicsBodyHandle } from '@haku/physics'
 import type { ControllerPlugin, ControllerRuntimeContext } from '../registry.js'
 import {
@@ -11,7 +11,7 @@ import {
 
 /** Isaac Mason `revolute-joint-vehicle` — revolute joints + motor drive. */
 export class RevoluteJointVehiclePlugin implements ControllerPlugin {
-  readonly type = 'RevoluteJointVehicleController' as const
+  readonly type = RevoluteJointVehicleControllerComponent.id
   private readonly tracked = new Map<string, TrackedRevoluteVehicle>()
 
   bootstrap(ctx: ControllerRuntimeContext): void {

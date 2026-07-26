@@ -85,9 +85,8 @@ describe('controller serializer policy', () => {
             parent: null,
             components: [
               {
-                type: 'PhysicsController',
+                type: newType,
                 data: {
-                  type: legacyType,
                   physicsBodyHandle: 'body-1',
                   physicsHandle: 'controller-1',
                   physicsVehicleHandle: 'legacy-vehicle-1',
@@ -123,7 +122,7 @@ describe('controller serializer policy', () => {
     ])
     expect(migrated).toEqual([
       {
-        type: 'CustomRaycastController',
+        type: '40000000-0000-4000-8000-000000000015',
         data: { engine: { force: 40 } },
       },
     ])
