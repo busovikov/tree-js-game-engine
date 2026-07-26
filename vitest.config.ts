@@ -13,6 +13,7 @@ export default {
   resolve: {
     alias: {
       '@haku/schema': join(fileURLToPath(new URL('.', import.meta.url)), 'packages/schema/src'),
+      '@haku/assets': join(fileURLToPath(new URL('.', import.meta.url)), 'packages/assets/src'),
       '@haku/core': join(fileURLToPath(new URL('.', import.meta.url)), 'packages/core/src'),
       '@haku/serializer': join(fileURLToPath(new URL('.', import.meta.url)), 'packages/serializer/src'),
       '@haku/engine': join(fileURLToPath(new URL('.', import.meta.url)), 'packages/engine/src'),

@@ -98,6 +98,22 @@ importers:
         specifier: ^6.0.3
         version: 6.4.3(@types/node@22.19.21)
 
+  packages/assets:
+    dependencies:
+      '@haku/schema':
+        specifier: workspace:*
+        version: link:../schema
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.19.21)(happy-dom@15.11.7)
+
   packages/core:
     dependencies:
       '@haku/schema':

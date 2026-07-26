@@ -13,12 +13,24 @@ export const QuatSchema = z.tuple([z.number(), z.number(), z.number(), z.number(
 export type Quat = z.infer<typeof QuatSchema>
 
 export const EntityRefSchema = z.object({ $ref: z.string().regex(/^entity:[0-9a-f-]+$/i) })
-export const AssetRefSchema = z.object({ $ref: z.string().regex(/^asset:.+/) })
 export const PrefabRefSchema = z.object({ $ref: z.string().regex(/^prefab:.+/) })
 
 export type EntityRef = z.infer<typeof EntityRefSchema>
-export type AssetRef = z.infer<typeof AssetRefSchema>
 export type PrefabRef = z.infer<typeof PrefabRefSchema>
+
+export {
+  AssetIdSchema,
+  AssetIdBrand,
+  AssetRefSchema,
+  AssetTypeIdSchema,
+  AssetTypeIdBrand,
+  assetId,
+  assetRef,
+  assetTypeId,
+  type AssetId,
+  type AssetRef,
+  type AssetTypeId,
+} from './assets.js'
 
 export const TransformSchema = z.object({
   position: Vec3Schema.default([0, 0, 0]),
