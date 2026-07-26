@@ -37,7 +37,7 @@ The program is done only when:
 | M01  | Audit and target documentation                                  | —          | Complete with the documentation baseline |
 | M02  | Asset IDs, manifests, and decentralized registries              | M01        | Complete                                 |
 | M03  | World activation, lifecycle, and unified scheduler              | M02        | Complete                                 |
-| M04  | Graph schema, type/effect system, and compiler                  | M03        | Pending                                  |
+| M04  | Graph schema, type/effect system, and compiler                  | M03        | Complete                                 |
 | M05  | Graph interpreter, domains, queues, and tracing                 | M04        | Pending                                  |
 | M06  | Checkpoint, rewind, async policies, and persistence hooks       | M05        | Pending                                  |
 | M07  | Minimal graph editor and diagnostic scene                       | M06        | Pending                                  |
@@ -130,13 +130,13 @@ Scope:
 
 Acceptance:
 
-- [ ] Graph JSON roundtrips without UI-library objects.
-- [ ] Positive and negative golden tests cover types, generics, flow/data separation,
+- [x] Graph JSON roundtrips without UI-library objects.
+- [x] Positive and negative golden tests cover types, generics, flow/data separation,
       domains, subgraphs, same-instance `NodeRef`, effects, and diagnostics.
-- [ ] User visual and TypeScript-schema types produce the same registry contract.
-- [ ] Compiler diagnostics contain exact node/port and causal chains.
-- [ ] Registry fingerprint is stable and invalidates incompatible plans.
-- [ ] Compiler is headless and imports neither React nor Three.js.
+- [x] User visual and TypeScript-schema types produce the same registry contract.
+- [x] Compiler diagnostics contain exact node/port and causal chains.
+- [x] Registry fingerprint is stable and invalidates incompatible plans.
+- [x] Compiler is headless and imports neither React nor Three.js.
 
 ## M05 — Graph interpreter, domains, queues, and tracing
 

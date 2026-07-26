@@ -105,6 +105,23 @@ Manual viewport checks **supplement** automated tests — never replace them.
 | Typed reference points to the wrong asset type | `ProjectAssetIndex.require()` throws `asset.type-mismatch` |
 | `entryScene` UUID missing or not a scene | Project open fails before scene loading |
 
+### Gameplay graph assets and compilation
+
+| Input | Result |
+| ----- | ------ |
+| UI-library state in a graph, node, property, or metadata object | Strict graph parse failure; React Flow objects never enter the asset |
+| Duplicate graph node/callsite/connection/public-port UUID | Structured diagnostic with exact graph and local identity |
+| Unknown node type or port | Structured registry/compiler diagnostic; no plan |
+| Flow/event/data kind mismatch | Compile error at the target node/port/callsite and connection |
+| Incompatible data types | Compile error with source/target causal chain; no implicit conversion |
+| Data dependency cycle | Compile error with the deterministic cycle chain |
+| Data edge crosses scheduler domains | Compile error; use a typed event instead |
+| Flow/event crosses scheduler domains | Deterministic queue operation in the plan, never a synchronous call |
+| Missing or incompatible subgraph | Compile error with root graph → subgraph call causal chain |
+| `NodeRef` targets a node outside the same graph instance | Compile error; cross-instance node access is not representable |
+| Unknown/external effect or dynamic resource read | Plan remains compilable but checkpoint-ineligible with causal reasons |
+| Plan registry fingerprint differs at load | Plan is incompatible and must be recompiled |
+
 ### Hierarchy / world invariants
 
 | Action | Result |
@@ -217,6 +234,7 @@ There is **no SQL/NoSQL database** in @haku v1. Do not add DB error handling unl
 | **Engine/playground no React** | Production bundle must not ship editor | ESLint `no-restricted-imports`, dep graph |
 | **Core/schema no Three.js** | Serializable pure data layer | ESLint on `@haku/core` |
 | **No inline scripts in scene JSON** | XSS / arbitrary code — use `ScriptRef` paths only | Schema design |
+| **No UI objects or executable closures in graph JSON** | Authoring adapters and runtime data must stay separate | `GraphAssetSchema`, metadata-only Node SDK |
 | **Asset paths relative to project** | Prevent arbitrary file read outside project root | `relativeToAssetsDir`, import guards |
 | **No `eval` / dynamic script from scene** | Scene data is data, not code | Architecture |
 | **HTML response detection on fetch** | Prevent loading error pages as assets | `browser-project-store` |
@@ -259,6 +277,7 @@ These are final unless the user explicitly asks to change them. Full rationale i
 - Push world changes via `worldRevision` bump → `engine.setWorld()`
 - Use `@haku/engine/runtime` entry for shipped games
 - Validate JSON with Zod before hydrating world
+- Compile graph JSON through `@haku/graph` and reject incompatible plan fingerprints
 
 ### Verification
 

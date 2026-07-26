@@ -108,6 +108,19 @@
 | `getCoreComponent(typeId)` | Registry lookup |
 | `IWorld`, `ISystem`, `IRenderBackend` | Stability contracts — [`types.ts`](../packages/core/src/types.ts) |
 
+### `@haku/graph` — `packages/graph/src/index.ts`
+
+| Export | Purpose |
+| ------ | ------- |
+| `GraphAssetSchema`, `GraphDocumentSchema` | Strict headless graph/public-interface/callsite JSON read gate |
+| `GRAPH_ASSET_DESCRIPTOR`, `registerGraphAssetTypes()` | Graph asset registry contribution |
+| `TypeRegistry`, `createBuiltinTypeRegistry()` | Runtime-schema-backed built-in and project type registry |
+| `defineVisualDataType()`, `defineSchemaDataType()` | Normalize visual and TypeScript-schema types to one registry contract |
+| `NodeRegistry`, `defineNode()` | Metadata-only Custom Node definition SDK |
+| `compileGraph()` | Validate and compile a graph into a deterministic registry-bound plan |
+| `isExecutionPlanCompatible()` | Reject a plan when node/type registry contracts change |
+| `GraphDiagnosticError`, `GraphDiagnostic` | Exact graph/node/port diagnostics and causal chains |
+
 ### `@haku/serializer` — `packages/serializer/src/index.ts`
 
 | Export | Purpose |

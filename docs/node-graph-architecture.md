@@ -96,6 +96,12 @@ The graph JSON is the sole editable source of truth. It contains stable UUIDs fo
 node instances, ports/callsites, public interface declarations, layout metadata, and node
 properties. Compiled artifacts are build cache and are not committed.
 
+Implemented in M04: `@haku/graph` owns the strict graph/public-interface/callsite schemas,
+graph asset descriptor, registered data and node contracts, structured diagnostics, and
+headless compiler. Haku-owned layout metadata is plain JSON; React Flow state is rejected
+even when nested in generic metadata. Plans contain no execution closures and are invalid
+when their combined node/type registry fingerprint changes.
+
 ```text
 Graph JSON
   -> schema validation
@@ -153,6 +159,10 @@ Every node type declares:
 - sync/async execution contract;
 - checkpoint and result-persistence policies;
 - optional lifecycle, reconciliation, task serialization, and migration hooks.
+
+M04 exposes the declaration and capability-context contracts only. Node definitions contain
+no executable callback; interpreter dispatch, capability injection, lifecycle, queues, and
+task ownership begin in M05.
 
 Custom TypeScript nodes execute through a restricted `NodeExecutionContext`, not engine
 internals. It exposes versioned world, assets, scene, scheduler, events, state, seeded random,

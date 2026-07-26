@@ -64,8 +64,8 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
 | Prefabs                      | **Ready for current v1**  | Prefabs are standalone manifest assets referenced by typed UUID, with component-ID overrides and load-time expansion. Deep override paths and nested variants remain intentionally deferred.                                               |
 | Asset system                 | **Ready as a foundation** | Universal UUID manifests, typed references, package-contributed descriptors, structured diagnostics, path-independent identity, and deterministic dependency closure exist. Static export remains a later milestone.                     |
 | Runtime scheduler            | **Ready as a foundation** | `EngineScheduler` owns named frame/fixed phases, deterministic local ordering and typed queued commands, bounded fixed-step catch-up, tick/frame numbering, interpolation alpha, pause, and single-step. Fixed-domain graph execution remains deferred. |
-| Gameplay node system         | **Absent**                | The existing `RenderGraph` orchestrates render passes only. There is no gameplay graph asset, compiler, dataflow, flow/event execution, node registry, or node editor.                                                                   |
-| Script/custom-node runtime   | **Absent**                | `ScriptRef` has schema/editor presence, but no runtime executor or safe SDK. The create template contains only a future-facing stub.                                                                                                     |
+| Gameplay node system         | **Partial**                | `@haku/graph` provides strict graph assets, registered types/nodes/effects, generics, structured diagnostics, deterministic headless compilation, liveness/cycle/domain/subgraph analysis, and registry-bound plans. Execution and the node editor remain deferred to M05 and M07. |
+| Script/custom-node runtime   | **Partial**                | The metadata-only Custom Node SDK declares ports, domains, capabilities, resources, effects, liveness, async/checkpoint policies, and capability-gated context types. It deliberately has no executor until M05. |
 | Rapier integration           | **Ready as a foundation** | Abstract and Rapier packages support dynamic/static/kinematic bodies, CCD, layers, material properties, multiple worlds, joints, and debug rendering. Gameplay bindings and graph effects still need to be designed.                     |
 | Collision and trigger events | **Ready as a foundation** | Collision/trigger events and contact manifolds are supported; editor Play mode exposes contact buffers. No graph event bindings or landing/bounce controller exists.                                                                     |
 | Physics queries              | **Ready as a foundation** | Raycast, shapecast, and overlap exist in the abstract API and Rapier backend. Node/Custom Node SDK bindings are absent.                                                                                                                  |
@@ -88,8 +88,8 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
 | ------------------------------- | ---------------------------------------------------------------------------- |
 | Named multi-phase scheduler     | Add compiled graph execution to the existing frame/fixed domains             |
 | Scheduler-owned accumulator     | Preserve exactly one physics step per fixed substep across graph integration |
-| Render-only graph               | Separate typed gameplay graph compiler and interpreter                       |
-| `ScriptRef` stub                | Custom Node SDK, custom components, behavior graphs, and typed project code  |
+| Typed gameplay graph compiler   | Add the replaceable interpreter, graph instances, queues, and tracing in M05 |
+| Metadata-only Custom Node SDK   | Add capability-gated execution in M05, then browser project code in M08      |
 | Hierarchy activation foundation | Build pooling and graph lifecycle integrations on the existing contract      |
 | No runtime pooling              | Package-level pool built on entity activation and baseline reset             |
 | Editor React UI only            | Separate production DOM UI subsystem and UI assets                           |
