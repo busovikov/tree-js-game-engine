@@ -172,6 +172,34 @@ describe('EngineScheduler', () => {
     ])
   })
 
+  it('captures a queue sequence and atomically removes matching later work', () => {
+    const world = new World()
+    const scheduler = new EngineScheduler({ fixedTimestep: 1 })
+    const trace: string[] = []
+    scheduler.enqueue('FrameGameplay', { owner: 'other', value: 'keep-before' }, (command) => {
+      trace.push(command.payload.value)
+    })
+    const checkpointSequence = scheduler.captureQueueSequence()
+    scheduler.enqueue('FrameGameplay', { owner: 'graph-a', value: 'remove' }, (command) => {
+      trace.push(command.payload.value)
+    })
+    scheduler.enqueue('FrameGameplay', { owner: 'other', value: 'keep-after' }, (command) => {
+      trace.push(command.payload.value)
+    })
+
+    const removed = scheduler.removeQueuedAfter(
+      checkpointSequence,
+      (command) =>
+        typeof command.payload === 'object' &&
+        command.payload !== null &&
+        (command.payload as { owner?: string }).owner === 'graph-a',
+    )
+    scheduler.runFrame(world, 0)
+
+    expect(removed.map((command) => command.sequence)).toEqual([1])
+    expect(trace).toEqual(['keep-before', 'keep-after'])
+  })
+
   it('is stable for equal local order and supports removing systems from an empty world', () => {
     const scheduler = new EngineScheduler()
     const world = new World()

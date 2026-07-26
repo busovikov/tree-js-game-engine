@@ -186,6 +186,28 @@ export class EngineScheduler {
     return command
   }
 
+  captureQueueSequence(): number {
+    return this.nextCommandSequence
+  }
+
+  removeQueuedAfter(
+    sequence: number,
+    predicate: (command: SchedulerCommand<unknown>) => boolean = () => true,
+  ): readonly SchedulerCommand<unknown>[] {
+    if (!Number.isInteger(sequence) || sequence < 0) {
+      throw new Error('Queue sequence must be a non-negative integer')
+    }
+    const removed: SchedulerCommand<unknown>[] = []
+    this.queue = this.queue.filter((entry) => {
+      if (entry.command.sequence < sequence || !predicate(entry.command)) {
+        return true
+      }
+      removed.push(entry.command)
+      return false
+    })
+    return removed
+  }
+
   runFrame(world: IWorld, dt: number): SchedulerFrameReport {
     if (this.runningFrame) {
       throw new Error('EngineScheduler.runFrame cannot be called reentrantly')
