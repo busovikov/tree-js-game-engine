@@ -9,6 +9,40 @@ import {
   type GraphPublicPort,
 } from '@haku/graph'
 
+export class GraphRuntimeError extends Error {
+  readonly code: string
+  readonly graphId: string
+  readonly instanceId: string
+  readonly nodeId: string
+  readonly phase: SchedulerPhase
+  readonly tickNumber: number
+  readonly frameNumber: number
+  override readonly cause?: unknown
+
+  constructor(options: {
+    readonly code: string
+    readonly message: string
+    readonly graphId: string
+    readonly instanceId: string
+    readonly nodeId: string
+    readonly phase: SchedulerPhase
+    readonly tickNumber: number
+    readonly frameNumber: number
+    readonly cause?: unknown
+  }) {
+    super(options.message)
+    this.name = 'GraphRuntimeError'
+    this.code = options.code
+    this.graphId = options.graphId
+    this.instanceId = options.instanceId
+    this.nodeId = options.nodeId
+    this.phase = options.phase
+    this.tickNumber = options.tickNumber
+    this.frameNumber = options.frameNumber
+    this.cause = options.cause
+  }
+}
+
 export interface NodeReference {
   readonly node: string
 }
@@ -76,6 +110,55 @@ export interface ExecutionBackend {
   lifecycle?(request: NodeLifecycleRequest): void
 }
 
+export interface NodeRuntimeAdapter {
+  readonly nodeType: string
+  readonly version: string
+  execute(
+    request: NodeExecutionRequest,
+  ): NodeExecutionResult | Promise<NodeExecutionResult>
+  lifecycle?(request: NodeLifecycleRequest): void
+}
+
+export class NodeRuntimeRegistry {
+  private readonly adapters = new Map<string, NodeRuntimeAdapter>()
+
+  register(adapter: NodeRuntimeAdapter): void {
+    const key = runtimeAdapterKey(adapter.nodeType, adapter.version)
+    if (this.adapters.has(key)) {
+      throw new Error(
+        `Duplicate runtime adapter ${adapter.nodeType}@${adapter.version}`,
+      )
+    }
+    this.adapters.set(key, adapter)
+  }
+
+  require(nodeType: string, version: string): NodeRuntimeAdapter {
+    const adapter = this.adapters.get(runtimeAdapterKey(nodeType, version))
+    if (!adapter) {
+      throw new Error(`Missing runtime adapter ${nodeType}@${version}`)
+    }
+    return adapter
+  }
+}
+
+export class InterpreterExecutionBackend implements ExecutionBackend {
+  constructor(private readonly registry: NodeRuntimeRegistry) {}
+
+  execute(
+    request: NodeExecutionRequest,
+  ): NodeExecutionResult | Promise<NodeExecutionResult> {
+    return this.registry
+      .require(request.node.nodeType, request.node.version)
+      .execute(request)
+  }
+
+  lifecycle(request: NodeLifecycleRequest): void {
+    this.registry
+      .require(request.node.nodeType, request.node.version)
+      .lifecycle?.(request)
+  }
+}
+
 export type NodeLifecycleAction =
   | 'create'
   | 'activate'
@@ -98,6 +181,8 @@ export type ExecutionTraceKind =
   | 'task-start'
   | 'task-complete'
   | 'task-cancel'
+  | 'node-error'
+  | 'runaway'
 
 export interface ExecutionTraceEntry {
   readonly kind: ExecutionTraceKind
@@ -109,6 +194,18 @@ export interface ExecutionTraceEntry {
   readonly tickNumber: number
   readonly frameNumber: number
   readonly connectionId?: string
+  readonly input?: {
+    readonly callsiteId: string
+    readonly kind: 'flow' | 'event'
+  }
+  readonly outputs?: {
+    readonly flow: readonly string[]
+    readonly data: readonly string[]
+    readonly events: readonly string[]
+    readonly publicOutputs: readonly string[]
+    readonly publicEvents: readonly string[]
+  }
+  readonly effects: ExecutionPlanNode['effects']
 }
 
 export interface GraphInstanceOptions {
@@ -117,12 +214,18 @@ export interface GraphInstanceOptions {
   readonly registryFingerprint: string
   readonly scheduler: EngineScheduler
   readonly backend: ExecutionBackend
+  readonly expectedPlanFingerprint?: string
   readonly subgraphPlans?: ReadonlyMap<string, GraphExecutionPlan>
   readonly resources?: ResourceSnapshotProvider
+  readonly limits?: Partial<GraphRuntimeLimits>
 }
 
 export interface ResourceSnapshotProvider {
   snapshot(resource: string): unknown
+}
+
+export interface GraphRuntimeLimits {
+  readonly maxStepsPerExecution: number
 }
 
 export type GraphInstanceStatus =
@@ -131,10 +234,13 @@ export type GraphInstanceStatus =
   | 'stopped'
   | 'destroyed'
 
-interface QueuedFlow {
+interface QueuedInvocation {
   readonly nodeId: string
   readonly inputCallsiteId: string
   readonly generation: number
+  readonly kind: 'flow' | 'event'
+  readonly value?: unknown
+  readonly budget: ExecutionBudget
 }
 
 interface SnapshotState extends ExecutionSnapshot {
@@ -158,6 +264,7 @@ export class GraphInstance {
   private readonly publicPorts: ReadonlyMap<string, GraphPublicPort>
   private readonly subgraphPlans: ReadonlyMap<string, GraphExecutionPlan>
   private readonly resources?: ResourceSnapshotProvider
+  private readonly limits: GraphRuntimeLimits
   private scopeController = new AbortController()
   private readonly traceEntries: ExecutionTraceEntry[] = []
   private readonly parameters = new Map<string, unknown>()
@@ -181,12 +288,29 @@ export class GraphInstance {
         `Graph plan ${options.plan.graphId} is incompatible with the runtime registry`,
       )
     }
+    if (
+      options.expectedPlanFingerprint !== undefined &&
+      options.plan.planFingerprint !== options.expectedPlanFingerprint
+    ) {
+      throw new Error(
+        `Graph plan ${options.plan.graphId} has unexpected fingerprint ${options.plan.planFingerprint}`,
+      )
+    }
     this.id = options.id
     this.plan = options.plan
     this.scheduler = options.scheduler
     this.backend = options.backend
     this.subgraphPlans = options.subgraphPlans ?? new Map()
     this.resources = options.resources
+    this.limits = {
+      maxStepsPerExecution: options.limits?.maxStepsPerExecution ?? 1_000,
+    }
+    if (
+      !Number.isInteger(this.limits.maxStepsPerExecution) ||
+      this.limits.maxStepsPerExecution <= 0
+    ) {
+      throw new Error('maxStepsPerExecution must be a positive integer')
+    }
     this.nodes = new Map(options.plan.nodes.map((node) => [node.id, node]))
     this.publicPorts = new Map(
       options.plan.publicInterface.ports.map((port) => [port.id, port]),
@@ -310,6 +434,17 @@ export class GraphInstance {
     if (!node) {
       throw new Error(`Graph ${this.plan.graphId} has no executable node ${nodeId}`)
     }
+    budget.steps += 1
+    if (budget.steps > this.limits.maxStepsPerExecution) {
+      throw this.runtimeError(
+        node,
+        snapshot,
+        'runtime.runaway',
+        `Graph ${this.plan.graphId} exceeded ${this.limits.maxStepsPerExecution} steps`,
+        undefined,
+        'runaway',
+      )
+    }
     const childTasks: Promise<unknown>[] = []
     const request: NodeExecutionRequest = {
       instanceId: this.id,
@@ -336,8 +471,32 @@ export class GraphInstance {
         return child
       },
     }
-    this.record('node-start', node)
-    const result = this.backend.execute(request)
+    this.record(
+      'node-start',
+      node,
+      undefined,
+      input
+        ? {
+            input: {
+              callsiteId: input.callsiteId,
+              kind: input.kind,
+            },
+          }
+        : undefined,
+    )
+    let result: NodeExecutionResult | Promise<NodeExecutionResult>
+    try {
+      result = this.backend.execute(request)
+    } catch (error) {
+      throw this.runtimeError(
+        node,
+        snapshot,
+        'runtime.node-error',
+        `Node ${node.id} execution failed: ${errorMessage(error)}`,
+        error,
+        'node-error',
+      )
+    }
     if (result instanceof Promise || childTasks.length > 0) {
       return this.finishAsyncNode(
         node,
@@ -358,10 +517,23 @@ export class GraphInstance {
   ): NodeExecutionResult | Promise<NodeExecutionResult> {
     if (this.scopeController.signal.aborted) return {}
     this.applyResult(node, result)
-    this.record('node-complete', node)
+    this.record('node-complete', node, undefined, {
+      outputs: {
+        flow: [...(result.flow ?? [])],
+        data: Object.keys(result.data ?? {}).sort(),
+        events: Object.keys(result.events ?? {}).sort(),
+        publicOutputs: Object.keys(result.publicOutputs ?? {}).sort(),
+        publicEvents: Object.keys(result.publicEvents ?? {}).sort(),
+      },
+    })
     const routed: Array<void | Promise<unknown>> = []
     for (const outputCallsiteId of result.flow ?? []) {
       routed.push(this.followFlow(node, outputCallsiteId, snapshot, budget))
+    }
+    for (const [outputCallsiteId, value] of Object.entries(
+      result.events ?? {},
+    )) {
+      this.routeEvent(node, outputCallsiteId, value, budget)
     }
     const pending = routed.filter(
       (item): item is Promise<unknown> => item instanceof Promise,
@@ -405,16 +577,18 @@ export class GraphInstance {
         )
         return execution instanceof Promise ? execution : undefined
       }
-      const payload: QueuedFlow = {
+      const payload: QueuedInvocation = {
         nodeId: target.id,
         inputCallsiteId: connection.to.callsite,
         generation: this.generation,
+        kind: 'flow',
+        budget,
       }
       this.record('queue', target, connection.id)
       this.scheduler.enqueue(
         target.domain,
         payload,
-        (command: SchedulerCommand<QueuedFlow>) => {
+        (command: SchedulerCommand<QueuedInvocation>) => {
           if (
             command.payload.generation !== this.generation ||
             this._status !== 'active'
@@ -426,10 +600,11 @@ export class GraphInstance {
             command.payload.nodeId,
             {
               callsiteId: command.payload.inputCallsiteId,
-              kind: 'flow',
+              kind: command.payload.kind,
+              value: command.payload.value,
             },
             queuedSnapshot,
-            { steps: 0 },
+            command.payload.budget,
           )
           if (execution instanceof Promise) {
             this.trackOwnedTask(execution)
@@ -447,6 +622,63 @@ export class GraphInstance {
       }
     }
     return pending
+  }
+
+  private routeEvent(
+    node: ExecutionPlanNode,
+    outputCallsiteId: string,
+    value: unknown,
+    budget: ExecutionBudget,
+  ): void {
+    const connections = this.plan.connections.filter(
+      (connection) =>
+        connection.from.node === node.id &&
+        connection.from.callsite === outputCallsiteId &&
+        connection.operation === 'queue-event',
+    )
+    for (const connection of connections) {
+      const target = this.nodes.get(connection.to.node)
+      if (!target) {
+        throw new Error(
+          `Graph ${this.plan.graphId} connection ${connection.id} targets a missing node`,
+        )
+      }
+      const payload: QueuedInvocation = {
+        nodeId: target.id,
+        inputCallsiteId: connection.to.callsite,
+        generation: this.generation,
+        kind: 'event',
+        value: cloneValue(value),
+        budget,
+      }
+      this.record('queue', target, connection.id)
+      this.scheduler.enqueue(
+        target.domain,
+        payload,
+        (command: SchedulerCommand<QueuedInvocation>) => {
+          if (
+            command.payload.generation !== this.generation ||
+            this._status !== 'active'
+          ) {
+            return
+          }
+          const queuedSnapshot = this.createSnapshot(target.domain)
+          const execution = this.executeNode(
+            command.payload.nodeId,
+            {
+              callsiteId: command.payload.inputCallsiteId,
+              kind: 'event',
+              value: cloneValue(command.payload.value),
+            },
+            queuedSnapshot,
+            command.payload.budget,
+          )
+          if (execution instanceof Promise) {
+            this.trackOwnedTask(execution)
+          }
+        },
+      )
+    }
   }
 
   private async finishAsyncNode(
@@ -480,7 +712,15 @@ export class GraphInstance {
         this.record('task-cancel', node)
         return {}
       }
-      throw error
+      if (error instanceof GraphRuntimeError) throw error
+      throw this.runtimeError(
+        node,
+        snapshot,
+        'runtime.node-error',
+        `Node ${node.id} async execution failed: ${errorMessage(error)}`,
+        error,
+        'node-error',
+      )
     }
   }
 
@@ -674,6 +914,7 @@ export class GraphInstance {
       backend: this.backend,
       subgraphPlans: this.subgraphPlans,
       resources: this.resources,
+      limits: this.limits,
     })
     this.childInstances.push(child)
     for (const [portId, value] of Object.entries(
@@ -763,10 +1004,33 @@ export class GraphInstance {
     }
   }
 
+  private runtimeError(
+    node: ExecutionPlanNode,
+    snapshot: ExecutionSnapshot,
+    code: string,
+    message: string,
+    cause: unknown,
+    traceKind: 'node-error' | 'runaway',
+  ): GraphRuntimeError {
+    this.record(traceKind, node)
+    return new GraphRuntimeError({
+      code,
+      message,
+      graphId: this.plan.graphId,
+      instanceId: this.id,
+      nodeId: node.id,
+      phase: node.domain,
+      tickNumber: snapshot.tickNumber,
+      frameNumber: snapshot.frameNumber,
+      cause,
+    })
+  }
+
   private record(
     kind: ExecutionTraceKind,
     node: ExecutionPlanNode,
     connectionId?: string,
+    details?: Pick<ExecutionTraceEntry, 'input' | 'outputs'>,
   ): void {
     this.traceEntries.push({
       kind,
@@ -778,12 +1042,22 @@ export class GraphInstance {
       tickNumber: this.scheduler.tickNumber,
       frameNumber: this.scheduler.frameNumber,
       connectionId,
+      effects: node.effects,
+      ...details,
     })
   }
 }
 
 function cloneValue<T>(value: T): T {
   return structuredClone(value)
+}
+
+function runtimeAdapterKey(nodeType: string, version: string): string {
+  return `${nodeType}@${version}`
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
 }
 
 function awaitAbortable<T>(
