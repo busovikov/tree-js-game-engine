@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from 'vitest'
-import { TransformComponent, World } from '@haku/core'
+import { EngineScheduler, TransformComponent, World } from '@haku/core'
 import { createBodyWithShape } from '@haku/physics'
 import { createRapierPhysicsBackend, resetRapierPhysicsIds } from '@haku/physics-rapier'
 import { PhysicsWorldSystem } from './physics-world-system.js'
@@ -11,8 +11,14 @@ describe('PhysicsWorldSystem primitive colliders (Rapier integration)', () => {
 
   it('static box ground + falling dynamic sphere collides and settles', async () => {
     const backend = await createRapierPhysicsBackend()
-    const system = new PhysicsWorldSystem({ fixedTimestep: 1 / 60, maxSubsteps: 120 })
+    const system = new PhysicsWorldSystem()
     system.setBackend(backend)
+    const scheduler = new EngineScheduler({
+      fixedTimestep: 1 / 60,
+      maxSubsteps: 60,
+      maxFrameDelta: 1,
+    })
+    scheduler.addSystem(system)
 
     const physicsWorld = system.getPhysicsWorld()
     expect(physicsWorld).not.toBeNull()
@@ -45,7 +51,7 @@ describe('PhysicsWorldSystem primitive colliders (Rapier integration)', () => {
     )
     system.registerBody(entityId, sphereBody, 'dynamic', world)
 
-    system.update(world, 1)
+    scheduler.runFrame(world, 1)
 
     const finalY = world.getComponent(entityId, TransformComponent)?.position[1] ?? 5
     expect(finalY).toBeGreaterThan(0)
@@ -56,8 +62,14 @@ describe('PhysicsWorldSystem primitive colliders (Rapier integration)', () => {
 
   it('dynamic capsule falls onto static box ground', async () => {
     const backend = await createRapierPhysicsBackend()
-    const system = new PhysicsWorldSystem({ fixedTimestep: 1 / 60, maxSubsteps: 120 })
+    const system = new PhysicsWorldSystem()
     system.setBackend(backend)
+    const scheduler = new EngineScheduler({
+      fixedTimestep: 1 / 60,
+      maxSubsteps: 90,
+      maxFrameDelta: 1.5,
+    })
+    scheduler.addSystem(system)
 
     const physicsWorld = system.getPhysicsWorld()!
 
@@ -89,7 +101,7 @@ describe('PhysicsWorldSystem primitive colliders (Rapier integration)', () => {
     )
     system.registerBody(entityId, body, 'dynamic', world)
 
-    system.update(world, 1.5)
+    scheduler.runFrame(world, 1.5)
 
     const finalY = world.getComponent(entityId, TransformComponent)?.position[1] ?? 8
     expect(finalY).toBeGreaterThan(0)

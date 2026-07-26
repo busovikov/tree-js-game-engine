@@ -218,8 +218,9 @@ interface WheelVisualCache {
  * Chassis transform is owned by {@link PhysicsWorldSystem} (order 50).
  */
 export class DynamicRaycastVisualSyncSystem implements ISystem {
-  /** Immediately after physics step + body transform sync. */
-  readonly order = 51
+  /** After physics step + body transform sync, before generic wheel visual sync. */
+  readonly phase = 'PostPhysics' as const
+  readonly localOrder = 10
 
   private readonly physicsSystem: PhysicsWorldSystem
   private readonly controllerSystem: PhysicsControllerSystem

@@ -1,5 +1,10 @@
 import { describe, expect, it, beforeEach } from 'vitest'
-import { TransformComponent, World } from '@haku/core'
+import {
+  EngineScheduler,
+  TransformComponent,
+  World,
+  type EngineSchedulerOptions,
+} from '@haku/core'
 import type { IPhysicsBackend } from '@haku/physics'
 import {
   PhysicsHandleNotFoundError,
@@ -17,11 +22,7 @@ import {
   type Vec3,
 } from '@haku/physics'
 import type { IRaycastVehicle } from '@haku/physics'
-import {
-  PHYSICS_CATCH_UP_POLICY,
-  PhysicsWorldSystem,
-  interpolatePhysicsPose,
-} from './physics-world-system.js'
+import { PhysicsWorldSystem, interpolatePhysicsPose } from './physics-world-system.js'
 
 const identityTransform: PhysicsTransform = {
   position: [0, 0, 0],
@@ -273,6 +274,16 @@ function cloneTransform(transform: PhysicsTransform): PhysicsTransform {
   }
 }
 
+function attachToScheduler(
+  system: PhysicsWorldSystem,
+  options: EngineSchedulerOptions = {},
+): EngineScheduler {
+  const scheduler = new EngineScheduler(options)
+  scheduler.addSystem(system)
+  system.setPresentationAlphaProvider(() => scheduler.interpolationAlpha)
+  return scheduler
+}
+
 describe('PhysicsWorldSystem', () => {
   beforeEach(() => {
     resetStubPhysicsIds()
@@ -292,13 +303,18 @@ describe('PhysicsWorldSystem', () => {
     expect(backend.isInitialized()).toBe(false)
   })
 
-  it('accumulates fixed timestep at 60 Hz', () => {
+  it('advances sixty fixed scheduler ticks per second at 60 Hz', () => {
     const backend = new StubPhysicsBackend()
     backend.init()
     const body = backend.createBody({ type: 'dynamic', transform: identityTransform })
 
-    const system = new PhysicsWorldSystem({ fixedTimestep: 1 / 60, maxSubsteps: 100 })
+    const system = new PhysicsWorldSystem()
     system.setBackend(backend)
+    const scheduler = attachToScheduler(system, {
+      fixedTimestep: 1 / 60,
+      maxSubsteps: 60,
+      maxFrameDelta: 1,
+    })
 
     const world = new World()
     const id = world.createEntity('Dynamic')
@@ -309,17 +325,41 @@ describe('PhysicsWorldSystem', () => {
     })
     system.registerBody(id, body, 'dynamic', world)
 
-    system.update(world, 1)
+    scheduler.runFrame(world, 1)
     expect(backend.getSimulationTime()).toBeCloseTo(1, 5)
     expect(Math.round(backend.getSimulationTime() / (1 / 60))).toBe(60)
+  })
+
+  it('steps exactly once per scheduler PhysicsStep during multi-substep frames', () => {
+    const backend = new StubPhysicsBackend()
+    const system = new PhysicsWorldSystem()
+    system.setBackend(backend)
+    const world = new World()
+    const id = world.createEntity('Dynamic')
+    world.addComponent(id, TransformComponent, TransformComponent.defaults())
+    const body = backend.createBody({ type: 'dynamic', transform: identityTransform })
+    system.registerBody(id, body, 'dynamic', world)
+    const scheduler = new EngineScheduler({
+      fixedTimestep: 1 / 60,
+      maxSubsteps: 3,
+      maxFrameDelta: 3 / 60,
+    })
+    scheduler.addSystem(system)
+
+    scheduler.runFrame(world, 2 / 60)
+    expect(backend.getSimulationTime()).toBeCloseTo(2 / 60)
+
+    system.update(world, 1 / 60)
+    expect(backend.getSimulationTime()).toBeCloseTo(3 / 60)
   })
 
   it.each([30, 45, 60])(
     'preserves one second of simulation time across uneven %i FPS frame deltas',
     (fps) => {
       const backend = new StubPhysicsBackend()
-      const system = new PhysicsWorldSystem(PHYSICS_CATCH_UP_POLICY)
+      const system = new PhysicsWorldSystem()
       system.setBackend(backend)
+      const scheduler = attachToScheduler(system)
 
       const world = new World()
       const id = world.createEntity('Dynamic')
@@ -337,7 +377,7 @@ describe('PhysicsWorldSystem', () => {
       )
       const traceDuration = relativeFrameDurations.reduce((sum, frameDt) => sum + frameDt, 0)
       for (const relativeFrameDt of relativeFrameDurations) {
-        system.update(world, relativeFrameDt / traceDuration)
+        scheduler.runFrame(world, relativeFrameDt / traceDuration)
       }
 
       expect(backend.getSimulationTime()).toBeCloseTo(1, 8)
@@ -346,8 +386,9 @@ describe('PhysicsWorldSystem', () => {
 
   it('drops pathological hitch time after bounded catch-up', () => {
     const backend = new StubPhysicsBackend()
-    const system = new PhysicsWorldSystem(PHYSICS_CATCH_UP_POLICY)
+    const system = new PhysicsWorldSystem()
     system.setBackend(backend)
+    const scheduler = attachToScheduler(system)
 
     const world = new World()
     const id = world.createEntity('Dynamic')
@@ -359,12 +400,11 @@ describe('PhysicsWorldSystem', () => {
     const body = backend.createBody({ type: 'dynamic', transform: identityTransform })
     system.registerBody(id, body, 'dynamic', world)
 
-    system.update(world, 1)
-    const boundedTime =
-      PHYSICS_CATCH_UP_POLICY.fixedTimestep * PHYSICS_CATCH_UP_POLICY.maxSubsteps
+    scheduler.runFrame(world, 1)
+    const boundedTime = scheduler.fixedTimestep * scheduler.maxSubsteps
     expect(backend.getSimulationTime()).toBeCloseTo(boundedTime, 8)
 
-    system.update(world, 0)
+    scheduler.runFrame(world, 0)
     expect(backend.getSimulationTime()).toBeCloseTo(boundedTime, 8)
   })
 
@@ -373,8 +413,13 @@ describe('PhysicsWorldSystem', () => {
     backend.init()
     const body = backend.createBody({ type: 'dynamic', transform: identityTransform })
 
-    const system = new PhysicsWorldSystem({ fixedTimestep: 1 / 60, maxSubsteps: 3 })
+    const system = new PhysicsWorldSystem()
     system.setBackend(backend)
+    const scheduler = attachToScheduler(system, {
+      fixedTimestep: 1 / 60,
+      maxSubsteps: 3,
+      maxFrameDelta: 1,
+    })
 
     const world = new World()
     const id = world.createEntity('Dynamic')
@@ -385,7 +430,7 @@ describe('PhysicsWorldSystem', () => {
     })
     system.registerBody(id, body, 'dynamic', world)
 
-    system.update(world, 1)
+    scheduler.runFrame(world, 1)
     expect(backend.getSimulationTime()).toBeCloseTo(3 / 60, 5)
   })
 
@@ -444,8 +489,9 @@ describe('PhysicsWorldSystem', () => {
 
   it('dynamic body falls under gravity and updates transform each step', () => {
     const backend = new GravityTestBackend()
-    const system = new PhysicsWorldSystem({ fixedTimestep: 1 / 60, maxSubsteps: 10 })
+    const system = new PhysicsWorldSystem()
     system.setBackend(backend)
+    const scheduler = attachToScheduler(system)
 
     const world = new World()
     const id = world.createEntity('Falling')
@@ -461,17 +507,22 @@ describe('PhysicsWorldSystem', () => {
     })
     system.registerBody(id, body, 'dynamic', world)
 
-    system.update(world, 0.5)
+    scheduler.runFrame(world, 1 / 60)
 
     const y = world.getComponent(id, TransformComponent)?.position[1] ?? 10
     expect(y).toBeLessThan(10)
     expect(backend.getStepCount()).toBeGreaterThan(0)
   })
 
-  it('interpolates between previous and current fixed poses using accumulator alpha', () => {
+  it('interpolates between previous and current fixed poses using scheduler alpha', () => {
     const backend = new GravityTestBackend([0, 0, 0])
-    const system = new PhysicsWorldSystem({ fixedTimestep: 1, maxSubsteps: 2 })
+    const system = new PhysicsWorldSystem()
     system.setBackend(backend)
+    const scheduler = attachToScheduler(system, {
+      fixedTimestep: 1,
+      maxSubsteps: 2,
+      maxFrameDelta: 2,
+    })
     const world = new World()
     const id = world.createEntity('Dynamic')
     world.addComponent(id, TransformComponent, {
@@ -486,10 +537,10 @@ describe('PhysicsWorldSystem', () => {
       position: [10, 4, -2],
       rotation: [0, 0, 1, 0],
     })
-    system.update(world, 1)
+    scheduler.runFrame(world, 1)
     const highRefreshPositions: number[] = []
     for (let frame = 0; frame < 4; frame++) {
-      system.update(world, 0.2)
+      scheduler.runFrame(world, 0.2)
       highRefreshPositions.push(
         system.resolvePresentationTransform(
           id,
@@ -513,8 +564,12 @@ describe('PhysicsWorldSystem', () => {
 
   it('keeps the first and no-step presentation frames snapped to an initialized pose', () => {
     const backend = new StubPhysicsBackend()
-    const system = new PhysicsWorldSystem({ fixedTimestep: 1 })
+    const system = new PhysicsWorldSystem()
     system.setBackend(backend)
+    const scheduler = attachToScheduler(system, {
+      fixedTimestep: 1,
+      maxFrameDelta: 1,
+    })
     const world = new World()
     const id = world.createEntity('Dynamic')
     world.addComponent(id, TransformComponent, {
@@ -528,7 +583,7 @@ describe('PhysicsWorldSystem', () => {
     })
     system.registerBody(id, body, 'dynamic', world)
 
-    system.update(world, 0.25)
+    scheduler.runFrame(world, 0.25)
 
     expect(system.getPresentationAlpha()).toBeCloseTo(0.25)
     expect(
@@ -541,8 +596,12 @@ describe('PhysicsWorldSystem', () => {
 
   it('snaps presentation history after teleport and explicit world replacement invalidation', () => {
     const backend = new StubPhysicsBackend()
-    const system = new PhysicsWorldSystem({ fixedTimestep: 1 })
+    const system = new PhysicsWorldSystem()
     system.setBackend(backend)
+    const scheduler = attachToScheduler(system, {
+      fixedTimestep: 1,
+      maxFrameDelta: 1,
+    })
     const world = new World()
     const id = world.createEntity('Dynamic')
     world.addComponent(id, TransformComponent, {
@@ -553,8 +612,8 @@ describe('PhysicsWorldSystem', () => {
     const body = backend.createBody({ type: 'dynamic', transform: identityTransform })
     system.registerBody(id, body, 'dynamic', world)
     backend.setBodyTransform(body, { position: [10, 0, 0], rotation: [0, 0, 0, 1] })
-    system.update(world, 1)
-    system.update(world, 0.5)
+    scheduler.runFrame(world, 1)
+    scheduler.runFrame(world, 0.5)
 
     system.resetBodyState(
       id,
@@ -581,7 +640,7 @@ describe('PhysicsWorldSystem', () => {
       ).position,
     ).toEqual([-20, 0, 0])
 
-    system.update(world, 0.5)
+    scheduler.runFrame(world, 0.5)
     const authoritativeAfterReplacement = world.getComponent(id, TransformComponent)!
     expect(
       system.resolvePresentationTransform(id, authoritativeAfterReplacement).position,
@@ -592,11 +651,10 @@ describe('PhysicsWorldSystem', () => {
     const run = (presentationInterpolation: boolean) => {
       const backend = new GravityTestBackend()
       const system = new PhysicsWorldSystem({
-        fixedTimestep: 1 / 60,
-        maxSubsteps: 3,
         presentationInterpolation,
       })
       system.setBackend(backend)
+      const scheduler = attachToScheduler(system)
       const world = new World()
       const id = world.createEntity('Falling')
       world.addComponent(id, TransformComponent, {
@@ -610,7 +668,7 @@ describe('PhysicsWorldSystem', () => {
       })
       system.registerBody(id, body, 'dynamic', world)
       for (const dt of [1 / 120, 1 / 120, 1 / 60, 1 / 30]) {
-        system.update(world, dt)
+        scheduler.runFrame(world, dt)
         system.resolvePresentationTransform(
           id,
           world.getComponent(id, TransformComponent)!,
@@ -645,8 +703,9 @@ describe('PhysicsWorldSystem multi-world', () => {
 
   it('isolates forked worlds so gravity in one does not affect the other', () => {
     const backend = new GravityTestBackend([0, -10, 0])
-    const system = new PhysicsWorldSystem({ fixedTimestep: 1 / 60, maxSubsteps: 10 })
+    const system = new PhysicsWorldSystem()
     system.setBackend(backend)
+    const scheduler = attachToScheduler(system)
 
     const worldA = system.createWorld({ gravity: [0, -10, 0] })
     const worldB = system.createWorld({ gravity: [0, 0, 0] })
@@ -682,7 +741,7 @@ describe('PhysicsWorldSystem multi-world', () => {
     system.registerBody(idA, bodyA, 'dynamic', ecsWorld)
     system.registerBody(idB, bodyB, 'dynamic', ecsWorld)
 
-    system.update(ecsWorld, 0.5)
+    scheduler.runFrame(ecsWorld, 1 / 60)
 
     const yA = ecsWorld.getComponent(idA, TransformComponent)?.position[1] ?? 10
     const yB = ecsWorld.getComponent(idB, TransformComponent)?.position[1] ?? 10

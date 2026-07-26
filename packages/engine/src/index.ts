@@ -3,7 +3,7 @@ export {
   SceneLoader,
   ThreeRenderBackend,
   RenderSyncSystem,
-  PHYSICS_CATCH_UP_POLICY,
+  ENGINE_SCHEDULER_POLICY,
   PRIMARY_WORLD_HANDLE,
   PhysicsWorldSystem,
   PhysicsColliderSystem,

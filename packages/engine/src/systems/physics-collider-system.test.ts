@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from 'vitest'
-import { TransformComponent, World } from '@haku/core'
+import { EngineScheduler, TransformComponent, World } from '@haku/core'
 import { ArcadeVehicleControllerComponent, ColliderComponent, CollidersComponent, CustomRaycastControllerComponent, DynamicRaycastControllerComponent, KinematicCharacterControllerComponent, PointerControlsControllerComponent, RevoluteJointVehicleControllerComponent, RigidBodyComponent } from '@haku/physics'
 import { ColliderSchema, CollidersSchema, RigidBodySchema } from '@haku/physics'
 import { createRapierPhysicsBackend, resetRapierPhysicsIds } from '@haku/physics-rapier'
@@ -121,7 +121,7 @@ describe('PhysicsColliderSystem', () => {
 
   it('spawns static box + dynamic sphere from ColliderComponent entities', async () => {
     const backend = await createRapierPhysicsBackend()
-    const physicsSystem = new PhysicsWorldSystem({ fixedTimestep: 1 / 60, maxSubsteps: 120 })
+    const physicsSystem = new PhysicsWorldSystem()
     physicsSystem.setBackend(backend)
     const colliderSystem = new PhysicsColliderSystem(physicsSystem)
 
@@ -149,8 +149,14 @@ describe('PhysicsColliderSystem', () => {
     }))
     world.addComponent(sphereId, RigidBodyComponent, RigidBodySchema.parse({ type: 'dynamic' }))
 
-    colliderSystem.bootstrap(world)
-    physicsSystem.update(world, 1)
+    const scheduler = new EngineScheduler({
+      fixedTimestep: 1 / 60,
+      maxSubsteps: 60,
+      maxFrameDelta: 1,
+    })
+    scheduler.addSystem(colliderSystem)
+    scheduler.addSystem(physicsSystem)
+    scheduler.runFrame(world, 1)
 
     const finalY = world.getComponent(sphereId, TransformComponent)?.position[1] ?? 5
     expect(finalY).toBeGreaterThan(0)
@@ -162,7 +168,7 @@ describe('PhysicsColliderSystem', () => {
 
   it('spawns vehicle dynamic body with CustomRaycastControllerComponent mass', async () => {
     const backend = await createRapierPhysicsBackend()
-    const physicsSystem = new PhysicsWorldSystem({ fixedTimestep: 1 / 60, maxSubsteps: 120 })
+    const physicsSystem = new PhysicsWorldSystem()
     physicsSystem.setBackend(backend)
     const colliderSystem = new PhysicsColliderSystem(physicsSystem)
 
@@ -189,7 +195,7 @@ describe('PhysicsColliderSystem', () => {
 
   it('spawns implicit chassis body for physics controller without ColliderComponent', async () => {
     const backend = await createRapierPhysicsBackend()
-    const physicsSystem = new PhysicsWorldSystem({ fixedTimestep: 1 / 60, maxSubsteps: 120 })
+    const physicsSystem = new PhysicsWorldSystem()
     physicsSystem.setBackend(backend)
     const colliderSystem = new PhysicsColliderSystem(physicsSystem)
 
@@ -211,7 +217,7 @@ describe('PhysicsColliderSystem', () => {
 
   it('uses explicit sphere collider for arcade-vehicle (Isaac ball body)', async () => {
     const backend = await createRapierPhysicsBackend()
-    const physicsSystem = new PhysicsWorldSystem({ fixedTimestep: 1 / 60, maxSubsteps: 120 })
+    const physicsSystem = new PhysicsWorldSystem()
     physicsSystem.setBackend(backend)
     const colliderSystem = new PhysicsColliderSystem(physicsSystem)
 
@@ -241,7 +247,7 @@ describe('PhysicsColliderSystem', () => {
 
   it('prefers implicit controller chassis over manual ColliderComponent', async () => {
     const backend = await createRapierPhysicsBackend()
-    const physicsSystem = new PhysicsWorldSystem({ fixedTimestep: 1 / 60, maxSubsteps: 120 })
+    const physicsSystem = new PhysicsWorldSystem()
     physicsSystem.setBackend(backend)
     const colliderSystem = new PhysicsColliderSystem(physicsSystem)
 
@@ -267,7 +273,7 @@ describe('PhysicsColliderSystem', () => {
 
   it('keeps RigidBody static body fixed during simulation', async () => {
     const backend = await createRapierPhysicsBackend()
-    const physicsSystem = new PhysicsWorldSystem({ fixedTimestep: 1 / 60, maxSubsteps: 60 })
+    const physicsSystem = new PhysicsWorldSystem()
     physicsSystem.setBackend(backend)
     const colliderSystem = new PhysicsColliderSystem(physicsSystem)
 
@@ -296,7 +302,7 @@ describe('PhysicsColliderSystem', () => {
 
   it('does not respawn a dynamic body when only Transform changes (config revision)', async () => {
     const backend = await createRapierPhysicsBackend()
-    const physicsSystem = new PhysicsWorldSystem({ fixedTimestep: 1 / 60, maxSubsteps: 5 })
+    const physicsSystem = new PhysicsWorldSystem()
     physicsSystem.setBackend(backend)
     const colliderSystem = new PhysicsColliderSystem(physicsSystem)
 
@@ -337,7 +343,7 @@ describe('PhysicsColliderSystem', () => {
 
   it('despawns physics body when collider entity is removed at runtime', async () => {
     const backend = await createRapierPhysicsBackend()
-    const physicsSystem = new PhysicsWorldSystem({ fixedTimestep: 1 / 60, maxSubsteps: 120 })
+    const physicsSystem = new PhysicsWorldSystem()
     physicsSystem.setBackend(backend)
     const colliderSystem = new PhysicsColliderSystem(physicsSystem)
 
@@ -368,7 +374,7 @@ describe('PhysicsColliderSystem', () => {
 
   it('respects collider.enabled=false without despawning the body', async () => {
     const backend = await createRapierPhysicsBackend()
-    const physicsSystem = new PhysicsWorldSystem({ fixedTimestep: 1 / 60, maxSubsteps: 120 })
+    const physicsSystem = new PhysicsWorldSystem()
     physicsSystem.setBackend(backend)
     const colliderSystem = new PhysicsColliderSystem(physicsSystem)
 
@@ -407,7 +413,7 @@ describe('PhysicsColliderSystem', () => {
 
   it('applies enabled flags to the correct array collider across a hot reload', async () => {
     const backend = await createRapierPhysicsBackend()
-    const physicsSystem = new PhysicsWorldSystem({ fixedTimestep: 1 / 60, maxSubsteps: 1 })
+    const physicsSystem = new PhysicsWorldSystem()
     physicsSystem.setBackend(backend)
     const colliderSystem = new PhysicsColliderSystem(physicsSystem)
 

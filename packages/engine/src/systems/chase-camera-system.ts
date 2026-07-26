@@ -400,7 +400,8 @@ export interface ChaseCameraSystemOptions {
  * Runs after physics + vehicle visual sync (order 91).
  */
 export class ChaseCameraSystem implements ISystem {
-  readonly order = 91
+  readonly phase = 'LateUpdate' as const
+  readonly localOrder = 0
 
   private controlledEntity: EntityId | null
   private cameraEntityId: EntityId | null
@@ -507,7 +508,10 @@ export class ChaseCameraSystem implements ISystem {
   }
 
   private resolveControlledEntity(world: IWorld): EntityId | null {
-    if (this.controlledEntity && world.hasEntity(this.controlledEntity)) {
+    if (
+      this.controlledEntity &&
+      world.isActiveInHierarchy(this.controlledEntity)
+    ) {
       return this.controlledEntity
     }
 
@@ -523,7 +527,10 @@ export class ChaseCameraSystem implements ISystem {
   }
 
   private resolveCameraEntity(world: IWorld): EntityId | null {
-    if (this.cameraEntityId && world.hasEntity(this.cameraEntityId)) {
+    if (
+      this.cameraEntityId &&
+      world.isActiveInHierarchy(this.cameraEntityId)
+    ) {
       return this.cameraEntityId
     }
 

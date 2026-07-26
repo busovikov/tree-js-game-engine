@@ -59,7 +59,8 @@ export interface PhysicsAreaGravitySystemOptions {
  * Applies {@link PhysicsAreaComponent} gravity overrides to overlapping dynamic bodies.
  */
 export class PhysicsAreaGravitySystem implements ISystem {
-  readonly order = 49.8
+  readonly phase = 'FixedPrePhysics' as const
+  readonly localOrder = 30
 
   private readonly physicsSystem: PhysicsWorldSystem
   private readonly physicsSettings: PhysicsProjectSettings

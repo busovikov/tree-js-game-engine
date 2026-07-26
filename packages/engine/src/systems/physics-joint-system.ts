@@ -24,7 +24,8 @@ function jointSignature(joint: PhysicsJoint): string {
  * built from authored anchors (no dependency on post-step body state).
  */
 export class PhysicsJointSystem implements ISystem {
-  readonly order = 49.5
+  readonly phase = 'FixedPrePhysics' as const
+  readonly localOrder = 20
 
   private readonly physicsSystem: PhysicsWorldSystem
   private readonly tracked = new Map<string, TrackedJoint>()

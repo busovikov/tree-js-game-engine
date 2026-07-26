@@ -7,7 +7,8 @@ import type { PhysicsWorldSystem } from './physics-world-system.js'
  * before the simulation step (50).
  */
 export class PhysicsQuerySystem implements ISystem {
-  readonly order = 46
+  readonly phase = 'FixedPrePhysics' as const
+  readonly localOrder = -20
 
   constructor(private readonly physicsSystem: PhysicsWorldSystem) {}
 

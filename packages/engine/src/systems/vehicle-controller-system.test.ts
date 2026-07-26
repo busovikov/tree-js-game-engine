@@ -107,10 +107,7 @@ describe('VehicleControllerSystem integration (stub)', () => {
 
   function createFlatVehicleScene() {
     const backend = new StubPhysicsBackend()
-    const physicsSystem = new PhysicsWorldSystem({
-      fixedTimestep: 1 / 60,
-      maxSubsteps: 120,
-    })
+    const physicsSystem = new PhysicsWorldSystem()
     physicsSystem.setBackend(backend)
     const colliderSystem = new PhysicsColliderSystem(physicsSystem)
     const vehicleSystem = new PhysicsControllerSystem(physicsSystem)
@@ -406,10 +403,7 @@ describe('VehicleControllerSystem integration (Rapier)', () => {
 
   it('drives forward on flat ground with Rapier backend', async () => {
     const backend = await createRapierPhysicsBackend()
-    const physicsSystem = new PhysicsWorldSystem({
-      fixedTimestep: 1 / 60,
-      maxSubsteps: 120,
-    })
+    const physicsSystem = new PhysicsWorldSystem()
     physicsSystem.setBackend(backend)
     const colliderSystem = new PhysicsColliderSystem(physicsSystem)
     const vehicleSystem = new PhysicsControllerSystem(physicsSystem)
@@ -457,7 +451,7 @@ describe('VehicleControllerSystem integration (Rapier)', () => {
 
   it('bootstraps implicit chassis collider without ColliderComponent', async () => {
     const backend = await createRapierPhysicsBackend()
-    const physicsSystem = new PhysicsWorldSystem({ fixedTimestep: 1 / 60, maxSubsteps: 120 })
+    const physicsSystem = new PhysicsWorldSystem()
     physicsSystem.setBackend(backend)
     const colliderSystem = new PhysicsColliderSystem(physicsSystem)
     const vehicleSystem = new PhysicsControllerSystem(physicsSystem)
@@ -504,7 +498,7 @@ describe('VehicleControllerSystem integration (Rapier)', () => {
 
   it('runs a revolute-joint vehicle without exploding into NaN (unreachable regression)', async () => {
     const backend = await createRapierPhysicsBackend()
-    const physicsSystem = new PhysicsWorldSystem({ fixedTimestep: 1 / 60, maxSubsteps: 120 })
+    const physicsSystem = new PhysicsWorldSystem()
     physicsSystem.setBackend(backend)
     const colliderSystem = new PhysicsColliderSystem(physicsSystem)
     const vehicleSystem = new PhysicsControllerSystem(physicsSystem)

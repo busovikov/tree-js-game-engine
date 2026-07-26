@@ -31,7 +31,8 @@ export const inputActionsToVehicleInput = inputActionsToControllerInput
  * Runs before {@link VehicleControllerSystem} (order 47).
  */
 export class InputBindingSystem implements ISystem {
-  readonly order = 47
+  readonly phase = 'FrameInput' as const
+  readonly localOrder = 0
 
   private controlledEntity: EntityId | null
   private readonly onRespawn?: (entityId: EntityId) => void
@@ -81,7 +82,10 @@ export class InputBindingSystem implements ISystem {
   }
 
   private resolveControlledEntity(world: IWorld): EntityId | null {
-    if (this.controlledEntity && world.hasEntity(this.controlledEntity)) {
+    if (
+      this.controlledEntity &&
+      world.isActiveInHierarchy(this.controlledEntity)
+    ) {
       return this.controlledEntity
     }
 

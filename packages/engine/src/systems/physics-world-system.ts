@@ -23,12 +23,6 @@ interface WorldSlot {
 }
 
 export interface PhysicsWorldSystemOptions {
-  /** Fixed simulation step in seconds. Default: 1/60 (60 Hz). */
-  fixedTimestep?: number
-  /** Max physics substeps per frame to avoid spiral-of-death. Default: 3. */
-  maxSubsteps?: number
-  /** Max render-frame delta admitted to the accumulator. Default: one frame's substep budget. */
-  maxFrameDelta?: number
   /** Blend fixed physics poses for presentation. Default: true. */
   presentationInterpolation?: boolean
 }
@@ -46,18 +40,6 @@ interface PresentationPoseHistory {
   previous: PhysicsTransform
   current: PhysicsTransform
 }
-
-const DEFAULT_FIXED_TIMESTEP = 1 / 60
-const DEFAULT_MAX_SUBSTEPS = 5
-
-/** Shared bounded catch-up policy for interactive play mode. */
-export const PHYSICS_CATCH_UP_POLICY: Readonly<Required<PhysicsWorldSystemOptions>> =
-  Object.freeze({
-    fixedTimestep: DEFAULT_FIXED_TIMESTEP,
-    maxSubsteps: DEFAULT_MAX_SUBSTEPS,
-    maxFrameDelta: DEFAULT_FIXED_TIMESTEP * DEFAULT_MAX_SUBSTEPS,
-    presentationInterpolation: true,
-  })
 
 /** Pure position lerp + normalized shortest-path quaternion interpolation. */
 export function interpolatePhysicsPose(
@@ -81,28 +63,26 @@ export function interpolatePhysicsPose(
  * back to entity {@link TransformComponent} data.
  */
 export class PhysicsWorldSystem implements ISystem {
-  readonly order = 50
+  readonly phase = 'PhysicsStep' as const
+  readonly localOrder = 0
 
-  private readonly fixedTimestep: number
-  private readonly maxSubsteps: number
-  private readonly maxFrameDelta: number
   private readonly presentationInterpolation: boolean
+  private presentationAlphaProvider: () => number = () => 0
   private physicsWorld: PhysicsWorld | null = null
   private backend: IPhysicsBackend | null = null
   private readonly worldSlots = new Map<string, WorldSlot>()
   private readonly entityWorld = new Map<string, string>()
-  private accumulator = 0
   private readonly trackedBodies = new Map<string, TrackedBody>()
   private readonly presentationPoses = new Map<string, PresentationPoseHistory>()
   private readonly queuedSubstepActions = new Map<string, () => void>()
   private readonly presentationSnapPending = new Set<string>()
 
   constructor(options: PhysicsWorldSystemOptions = {}) {
-    this.fixedTimestep = options.fixedTimestep ?? DEFAULT_FIXED_TIMESTEP
-    this.maxSubsteps = options.maxSubsteps ?? DEFAULT_MAX_SUBSTEPS
-    this.maxFrameDelta =
-      options.maxFrameDelta ?? this.fixedTimestep * this.maxSubsteps
     this.presentationInterpolation = options.presentationInterpolation ?? true
+  }
+
+  setPresentationAlphaProvider(provider: (() => number) | null): void {
+    this.presentationAlphaProvider = provider ?? (() => 0)
   }
 
   /** Initialize and attach a physics backend. Replaces any previous backend. */
@@ -116,7 +96,6 @@ export class PhysicsWorldSystem implements ISystem {
       backend,
       isPrimary: true,
     })
-    this.accumulator = 0
     this.resetPresentationPoses()
   }
 
@@ -180,7 +159,6 @@ export class PhysicsWorldSystem implements ISystem {
   dispose(): void {
     this.disposeBackend()
     this.trackedBodies.clear()
-    this.accumulator = 0
     this.resetPresentationPoses()
   }
 
@@ -193,9 +171,9 @@ export class PhysicsWorldSystem implements ISystem {
     return [...this.worldSlots.values()].map(({ world, isPrimary }) => ({ world, isPrimary }))
   }
 
-  /** Fraction of the next fixed step accumulated for presentation blending. */
+  /** Scheduler-owned fraction of the next fixed step used for presentation blending. */
   getPresentationAlpha(): number {
-    return Math.max(0, Math.min(1, this.accumulator / this.fixedTimestep))
+    return Math.max(0, Math.min(1, this.presentationAlphaProvider()))
   }
 
   /**
@@ -230,8 +208,8 @@ export class PhysicsWorldSystem implements ISystem {
   }
 
   /**
-   * Queue a keyed action to run before every fixed substep in the next update.
-   * Re-queuing the same key replaces the action; all actions expire after the update.
+   * Queue a keyed action to run before the next scheduler-owned physics step.
+   * Re-queuing the same key replaces the action; all actions expire after that step.
    */
   queueSubstepAction(key: string, action: () => void): void {
     this.queuedSubstepActions.set(key, action)
@@ -427,40 +405,26 @@ export class PhysicsWorldSystem implements ISystem {
       this.queuedSubstepActions.clear()
       return
     }
+    if (!Number.isFinite(dt) || dt <= 0) {
+      this.queuedSubstepActions.clear()
+      return
+    }
 
-    const frameDelta = Number.isNaN(dt) || dt <= 0 ? 0 : Math.min(dt, this.maxFrameDelta)
-    this.accumulator += frameDelta
-
-    let substeps = 0
     try {
       this.pushEcsAuthoritativeTransforms(world)
-      while (this.accumulator >= this.fixedTimestep - 1e-9 && substeps < this.maxSubsteps) {
-        for (const action of this.queuedSubstepActions.values()) {
-          action()
+      for (const action of this.queuedSubstepActions.values()) {
+        action()
+      }
+      this.advancePresentationHistoryBeforeStep()
+      this.physicsWorld.step(dt)
+      this.capturePresentationPosesAfterStep()
+      for (const slot of this.worldSlots.values()) {
+        if (!slot.isPrimary) {
+          slot.world.step(dt)
         }
-        this.advancePresentationHistoryBeforeStep()
-        this.physicsWorld.step(this.fixedTimestep)
-        this.capturePresentationPosesAfterStep()
-        this.accumulator -= this.fixedTimestep
-        substeps += 1
       }
     } finally {
       this.queuedSubstepActions.clear()
-    }
-
-    if (substeps > 0) {
-      for (const slot of this.worldSlots.values()) {
-        if (slot.isPrimary) {
-          continue
-        }
-        for (let i = 0; i < substeps; i++) {
-          slot.world.step(this.fixedTimestep)
-        }
-      }
-    }
-
-    if (substeps >= this.maxSubsteps) {
-      this.accumulator = 0
     }
 
     this.syncPhysicsTransforms(world)

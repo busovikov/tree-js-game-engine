@@ -96,10 +96,7 @@ describe('InputBindingSystem', () => {
     inputManager.enable()
 
     const backend = new StubPhysicsBackend()
-    physicsSystem = new PhysicsWorldSystem({
-      fixedTimestep: 1 / 60,
-      maxSubsteps: 120,
-    })
+    physicsSystem = new PhysicsWorldSystem()
     physicsSystem.setBackend(backend)
     colliderSystem = new PhysicsColliderSystem(physicsSystem)
     vehicleSystem = new PhysicsControllerSystem(physicsSystem)
@@ -171,6 +168,21 @@ describe('InputBindingSystem', () => {
 
     expect(respawns).toEqual([carId.value])
 
+    binding.dispose()
+  })
+
+  it('ignores explicit controlled entities while inactive in hierarchy', () => {
+    const respawns: string[] = []
+    const binding = new InputBindingSystem(inputManager, vehicleSystem, {
+      controlledEntity: carId,
+      onRespawn: (id) => respawns.push(id.value),
+    })
+    world.setActiveSelf(carId, false)
+    keyboard.dispatch('keydown', keyEvent('KeyR', 'keydown'))
+
+    binding.update(world, 1 / 60)
+
+    expect(respawns).toEqual([])
     binding.dispose()
   })
 

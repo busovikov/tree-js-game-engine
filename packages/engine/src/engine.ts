@@ -1,6 +1,11 @@
 import type { IPhysicsBackend } from '@haku/physics'
-import { type IWorld, type ISystem } from '@haku/core'
-import { entityId } from '@haku/core'
+import {
+  EngineScheduler,
+  entityId,
+  type EngineSchedulerOptions,
+  type ISystem,
+  type IWorld,
+} from '@haku/core'
 import { loadSceneDocument } from '@haku/serializer'
 import type {
   AssetId,
@@ -28,7 +33,15 @@ export interface EngineFeatureFlags {
 export interface EngineOptions {
   canvas: HTMLCanvasElement
   features?: EngineFeatureFlags
+  scheduler?: EngineSchedulerOptions
 }
+
+export const ENGINE_SCHEDULER_POLICY: Readonly<Required<EngineSchedulerOptions>> =
+  Object.freeze({
+    fixedTimestep: 1 / 60,
+    maxSubsteps: 3,
+    maxFrameDelta: 3 / 60,
+  })
 
 export interface LoadedScene {
   world: IWorld
@@ -42,9 +55,10 @@ export interface LoadedScene {
 
 export class Engine {
   readonly backend: ThreeRenderBackend
+  readonly scheduler: EngineScheduler
   private world: IWorld | null = null
-  private systems: ISystem[] = []
   private physicsSystem: PhysicsWorldSystem | null = null
+  private readonly renderSystem: ISystem
   private running = false
   private lastTime = 0
   private rafId = 0
@@ -52,6 +66,13 @@ export class Engine {
 
   constructor(options: EngineOptions) {
     this.backend = new ThreeRenderBackend(options.canvas, options.features)
+    this.scheduler = new EngineScheduler(options.scheduler ?? ENGINE_SCHEDULER_POLICY)
+    this.renderSystem = {
+      phase: 'Render',
+      update: () => this.backend.render(),
+    }
+    this.scheduler.addSystem(this.backend.sync)
+    this.scheduler.addSystem(this.renderSystem)
     this.setupResize(options.canvas)
   }
 
@@ -63,6 +84,7 @@ export class Engine {
     activeCameraId?: string | null,
   ): void {
     this.world = world
+    this.scheduler.resetTime()
     this.physicsSystem?.resetPresentationPoses()
     this.backend.setPrototypes(prototypes)
     this.backend.setPrefabs(prefabAssets)
@@ -80,18 +102,18 @@ export class Engine {
 
   setWorld(world: IWorld): void {
     this.world = world
+    this.scheduler.resetTime()
     this.physicsSystem?.resetPresentationPoses()
     this.backend.sync.update(world)
   }
 
   addSystem(system: ISystem): void {
-    this.systems.push(system)
-    this.systems.sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    this.scheduler.addSystem(system)
   }
 
   /**
    * Register a physics backend for play mode. Initializes the backend and adds
-   * {@link PhysicsWorldSystem} to the engine tick (order 50, before render sync).
+   * {@link PhysicsWorldSystem} to the scheduler's sole PhysicsStep phase.
    */
   setPhysicsBackend(
     backend: IPhysicsBackend,
@@ -100,6 +122,7 @@ export class Engine {
     this.clearPhysicsSystem()
     const system = new PhysicsWorldSystem(options)
     system.setBackend(backend)
+    system.setPresentationAlphaProvider(() => this.scheduler.interpolationAlpha)
     this.physicsSystem = system
     this.backend.sync.setPresentationTransformResolver((id, source) =>
       system.resolvePresentationTransform(id, source),
@@ -114,10 +137,7 @@ export class Engine {
 
   /** Remove a registered system from the engine tick. */
   removeSystem(system: ISystem): void {
-    const index = this.systems.indexOf(system)
-    if (index >= 0) {
-      this.systems.splice(index, 1)
-    }
+    this.scheduler.removeSystem(system)
     if (system === this.physicsSystem) {
       this.physicsSystem.dispose()
       this.physicsSystem = null
@@ -132,6 +152,14 @@ export class Engine {
 
   getWorld(): IWorld | null {
     return this.world
+  }
+
+  setPaused(paused: boolean): void {
+    this.scheduler.setPaused(paused)
+  }
+
+  requestSingleStep(): void {
+    this.scheduler.requestSingleStep()
   }
 
   start(): void {
@@ -155,10 +183,8 @@ export class Engine {
 
   tick(dt: number): void {
     if (this.world) {
-      for (const system of this.systems) {
-        system.update(this.world, dt)
-      }
-      this.backend.sync.update(this.world)
+      this.scheduler.runFrame(this.world, dt)
+      return
     }
     this.backend.render()
   }
@@ -177,7 +203,7 @@ export class Engine {
     if (!this.physicsSystem) {
       return
     }
-    this.systems = this.systems.filter((system) => system !== this.physicsSystem)
+    this.scheduler.removeSystem(this.physicsSystem)
     this.physicsSystem.dispose()
     this.physicsSystem = null
     this.backend.sync.setPresentationTransformResolver(null)
@@ -240,7 +266,6 @@ export class SceneLoader {
 
 export { ThreeRenderBackend, RenderSyncSystem } from './render-backend.js'
 export {
-  PHYSICS_CATCH_UP_POLICY,
   PhysicsWorldSystem,
   PRIMARY_WORLD_HANDLE,
   type PhysicsWorldSystemOptions,

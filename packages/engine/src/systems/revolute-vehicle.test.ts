@@ -4,7 +4,7 @@ import { ColliderComponent, RevoluteJointVehicleControllerComponent, RigidBodyCo
 import { ColliderSchema, RevoluteJointVehicleControllerSchema, RigidBodySchema } from '@haku/physics'
 import { createRapierPhysicsBackend, resetRapierPhysicsIds } from '@haku/physics-rapier'
 import { PhysicsColliderSystem } from './physics-collider-system.js'
-import { PhysicsWorldSystem, PHYSICS_CATCH_UP_POLICY } from './physics-world-system.js'
+import { PhysicsWorldSystem } from './physics-world-system.js'
 import { PhysicsControllerSystem } from './vehicle-controller-system.js'
 
 /**
@@ -54,7 +54,7 @@ async function drive(options: DriveOptions = {}): Promise<DriveResult> {
 
   resetRapierPhysicsIds()
   const backend = await createRapierPhysicsBackend()
-  const physicsSystem = new PhysicsWorldSystem(PHYSICS_CATCH_UP_POLICY)
+  const physicsSystem = new PhysicsWorldSystem()
   physicsSystem.setBackend(backend)
   const collider = new PhysicsColliderSystem(physicsSystem)
   const controller = new PhysicsControllerSystem(physicsSystem)

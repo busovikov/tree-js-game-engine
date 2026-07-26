@@ -171,7 +171,10 @@ export function startVehiclePlayMode(
  * via `followCamera === false`.
  */
 function resolveFollowCameraPreference(world: IWorld, controlledEntity: EntityId | null): boolean {
-  const targetId = controlledEntity ?? findFirstEnabledController(world)
+  const targetId =
+    controlledEntity && world.isActiveInHierarchy(controlledEntity)
+      ? controlledEntity
+      : findFirstEnabledController(world)
   if (!targetId) return true
   const controller = getControllerOnEntity(world, targetId)
   return controller?.data.followCamera !== false

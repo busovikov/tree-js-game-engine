@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { PHYSICS_CATCH_UP_POLICY } from '@haku/engine'
 import { startPlayModePhysics } from './play-mode-physics.js'
 
 const { backend, colliderSystem, contactSystem, querySystem, jointSystem, areaGravitySystem, vehicleSession, createBackend, startVehiclePlayMode } =
@@ -60,7 +59,7 @@ describe('startPlayModePhysics', () => {
 
     const session = await startPlayModePhysics(engine as never, {} as never)
 
-    expect(engine.setPhysicsBackend).toHaveBeenCalledWith(backend, PHYSICS_CATCH_UP_POLICY)
+    expect(engine.setPhysicsBackend).toHaveBeenCalledWith(backend)
     expect(startVehiclePlayMode).toHaveBeenCalledWith(engine, physicsSystem, {
       input: undefined,
     })

@@ -187,4 +187,21 @@ describe('EngineScheduler', () => {
 
     expect(trace).toEqual(['second'])
   })
+
+  it('rejects invalid timing policy and non-finite local order', () => {
+    expect(() => new EngineScheduler({ fixedTimestep: 0 })).toThrow(
+      'fixedTimestep must be a positive finite number',
+    )
+    expect(() => new EngineScheduler({ maxSubsteps: 1.5 })).toThrow(
+      'maxSubsteps must be a positive integer',
+    )
+    expect(() => new EngineScheduler({ maxFrameDelta: Number.POSITIVE_INFINITY })).toThrow(
+      'maxFrameDelta must be a non-negative finite number',
+    )
+
+    const scheduler = new EngineScheduler()
+    expect(() =>
+      scheduler.addSystem(recordingSystem('FrameGameplay', () => {}, Number.NaN)),
+    ).toThrow('localOrder must be a finite number')
+  })
 })

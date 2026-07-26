@@ -70,7 +70,8 @@ interface EntityRenderState {
 }
 
 export class RenderSyncSystem implements ISystem {
-  readonly order = 100
+  readonly phase = 'Presentation' as const
+  readonly localOrder = 0
   private readonly entityStates = new Map<string, EntityRenderState>()
   private readonly scene: THREE.Scene
   private prefabs: Map<AssetId, PrefabDefinition> = new Map()

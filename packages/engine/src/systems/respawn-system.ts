@@ -26,7 +26,8 @@ export interface RespawnSystemOptions {
  * {@link InputBindingSystem} `onRespawn`). Runs after input binding (order 49).
  */
 export class RespawnSystem implements ISystem {
-  readonly order = 49
+  readonly phase = 'FixedPrePhysics' as const
+  readonly localOrder = 10
 
   private readonly fallThresholdY: number
   private controlledEntity: EntityId | null
@@ -53,6 +54,9 @@ export class RespawnSystem implements ISystem {
 
   /** Immediately reset entity to spawn pose (physics + vehicle state). */
   respawnEntity(world: IWorld, id: EntityId): void {
+    if (!world.isActiveInHierarchy(id)) {
+      return
+    }
     const spawn = this.ensureSpawnPose(world, id)
     if (!spawn) {
       return
@@ -141,7 +145,10 @@ export class RespawnSystem implements ISystem {
   }
 
   private resolveControlledEntity(world: IWorld): EntityId | null {
-    if (this.controlledEntity && world.hasEntity(this.controlledEntity)) {
+    if (
+      this.controlledEntity &&
+      world.isActiveInHierarchy(this.controlledEntity)
+    ) {
       return this.controlledEntity
     }
 

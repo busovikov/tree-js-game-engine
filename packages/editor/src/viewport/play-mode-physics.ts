@@ -2,7 +2,6 @@ import { type IWorld } from '@haku/core'
 import type { PhysicsProjectSettings } from '@haku/schema'
 import type { Engine } from '@haku/engine'
 import {
-  PHYSICS_CATCH_UP_POLICY,
   PhysicsColliderSystem,
   PhysicsContactSystem,
   PhysicsQuerySystem,
@@ -35,7 +34,7 @@ export async function startPlayModePhysics(
   physicsSettings?: PhysicsProjectSettings,
 ): Promise<PlayModePhysicsSession> {
   const backend = await createRapierPhysicsBackend()
-  const physicsSystem = engine.setPhysicsBackend(backend, PHYSICS_CATCH_UP_POLICY)
+  const physicsSystem = engine.setPhysicsBackend(backend)
   const colliderSystem = new PhysicsColliderSystem(physicsSystem, { physicsSettings })
   const contactSystem = new PhysicsContactSystem(physicsSystem)
   const querySystem = new PhysicsQuerySystem(physicsSystem)

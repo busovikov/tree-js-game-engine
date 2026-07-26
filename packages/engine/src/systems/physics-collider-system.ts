@@ -49,7 +49,8 @@ export interface PhysicsColliderSystemOptions {
  * Reconciles ECS collider/rigid-body state with the active physics backend each frame.
  */
 export class PhysicsColliderSystem implements ISystem {
-  readonly order = 45
+  readonly phase = 'FixedPrePhysics' as const
+  readonly localOrder = -30
 
   private readonly physicsSystem: PhysicsWorldSystem
   private readonly physicsSettings: PhysicsProjectSettings

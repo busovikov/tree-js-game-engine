@@ -157,10 +157,7 @@ describe('VehicleVisualSyncSystem integration (stub)', () => {
 
   function createVehicleWithWheels() {
     const backend = new StubPhysicsBackend()
-    const physicsSystem = new PhysicsWorldSystem({
-      fixedTimestep: 1 / 60,
-      maxSubsteps: 120,
-    })
+    const physicsSystem = new PhysicsWorldSystem()
     physicsSystem.setBackend(backend)
     const colliderSystem = new PhysicsColliderSystem(physicsSystem)
     const vehicleSystem = new PhysicsControllerSystem(physicsSystem)

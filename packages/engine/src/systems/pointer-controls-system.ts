@@ -25,7 +25,8 @@ interface ActiveDrag {
  * Uses capture-phase listeners so draggable hits take priority over camera orbit.
  */
 export class PointerControlsSystem implements ISystem {
-  readonly order = 46
+  readonly phase = 'FrameInput' as const
+  readonly localOrder = -10
 
   private readonly physicsSystem: PhysicsWorldSystem
   private readonly maxDistance: number

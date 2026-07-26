@@ -70,7 +70,8 @@ export function computeWheelVisualTransform(
  * {@link PhysicsWorldSystem} exclusively owns the simulation-authoritative chassis transform.
  */
 export class VehicleVisualSyncSystem implements ISystem {
-  readonly order = 90
+  readonly phase = 'PostPhysics' as const
+  readonly localOrder = 20
 
   private readonly physicsSystem: PhysicsWorldSystem
   private readonly controllerSystem: PhysicsControllerSystem

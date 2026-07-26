@@ -1,7 +1,7 @@
 export {
   Engine,
   SceneLoader,
-  PHYSICS_CATCH_UP_POLICY,
+  ENGINE_SCHEDULER_POLICY,
   PhysicsColliderSystem,
   PhysicsContactSystem,
   PhysicsQuerySystem,

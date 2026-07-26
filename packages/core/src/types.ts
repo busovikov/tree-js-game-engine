@@ -89,11 +89,6 @@ export interface IWorld {
   queryIncludingInactive(...types: ComponentTypeReference[]): Iterable<EntityId>
 }
 
-export interface ISystem {
-  readonly order?: number
-  update(world: IWorld, dt: number): void
-}
-
 export interface ViewportRenderOverrides {
   previewShadows?: boolean
 }

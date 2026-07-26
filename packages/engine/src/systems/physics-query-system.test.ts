@@ -6,7 +6,7 @@ import { PhysicsWorldSystem } from './physics-world-system.js'
 describe('PhysicsQuerySystem', () => {
   it('delegates raycast to the active physics world', () => {
     const backend = new StubPhysicsBackend()
-    const physicsSystem = new PhysicsWorldSystem({ fixedTimestep: 1 / 60, maxSubsteps: 1 })
+    const physicsSystem = new PhysicsWorldSystem()
     physicsSystem.setBackend(backend)
     const querySystem = new PhysicsQuerySystem(physicsSystem)
 

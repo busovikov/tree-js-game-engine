@@ -45,7 +45,8 @@ export const vehicleWheelConfigs = raycastWheelConfigs
  * only orchestrates bootstrap/update/reset/dispose and the shared disabled-transition sweep.
  */
 export class PhysicsControllerSystem implements ISystem {
-  readonly order = 48
+  readonly phase = 'FixedPrePhysics' as const
+  readonly localOrder = 0
 
   private readonly physicsSystem: PhysicsWorldSystem
   private readonly inputs = new Map<string, ControllerInput>()
@@ -178,7 +179,10 @@ export class PhysicsControllerSystem implements ISystem {
       for (const entityIdValue of plugin.trackedIds()) {
         const id = { value: entityIdValue } as EntityId
         const controller = componentType ? ctx.world.getComponent(id, componentType) : undefined
-        const enabled = controller !== undefined && controller.enabled !== false
+        const enabled =
+          ctx.world.isActiveInHierarchy(id) &&
+          controller !== undefined &&
+          controller.enabled !== false
         if (enabled) {
           this.disabledControllers.delete(entityIdValue)
         } else if (!this.disabledControllers.has(entityIdValue)) {

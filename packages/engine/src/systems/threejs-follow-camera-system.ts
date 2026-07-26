@@ -25,7 +25,8 @@ function addVec3(a: Vec3, b: Vec3): Vec3 {
  * look target at vehicle position. No throttle orbit reset or airborne blend.
  */
 export class ThreeJsFollowCameraSystem implements ISystem {
-  readonly order = 91
+  readonly phase = 'LateUpdate' as const
+  readonly localOrder = 0
 
   private controlledEntity: EntityId | null
   private cameraEntityId: EntityId | null
@@ -85,7 +86,10 @@ export class ThreeJsFollowCameraSystem implements ISystem {
   }
 
   private resolveControlledEntity(world: IWorld): EntityId | null {
-    if (this.controlledEntity) {
+    if (
+      this.controlledEntity &&
+      world.isActiveInHierarchy(this.controlledEntity)
+    ) {
       return this.controlledEntity
     }
     for (const id of world.query(DynamicRaycastControllerComponent, TransformComponent)) {
@@ -98,7 +102,10 @@ export class ThreeJsFollowCameraSystem implements ISystem {
   }
 
   private resolveCameraEntity(world: IWorld): EntityId | null {
-    if (this.cameraEntityId) {
+    if (
+      this.cameraEntityId &&
+      world.isActiveInHierarchy(this.cameraEntityId)
+    ) {
       return this.cameraEntityId
     }
     for (const id of world.query(CameraComponent, TransformComponent)) {
@@ -112,7 +119,10 @@ export class ThreeJsFollowCameraSystem implements ISystem {
 }
 
 export function usesThreeJsFollowCamera(world: IWorld, controlledEntity: EntityId | null): boolean {
-  const vehicleId = controlledEntity ?? findThreeJsRapierVehicle(world)
+  const vehicleId =
+    controlledEntity && world.isActiveInHierarchy(controlledEntity)
+      ? controlledEntity
+      : findThreeJsRapierVehicle(world)
   if (!vehicleId) {
     return false
   }

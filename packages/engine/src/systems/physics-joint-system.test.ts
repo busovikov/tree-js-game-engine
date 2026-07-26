@@ -23,7 +23,7 @@ describe('PhysicsJointSystem', () => {
 
   it('spawns a prismatic scene joint between two rigid bodies', () => {
     const backend = new JointTrackingBackend()
-    const physicsSystem = new PhysicsWorldSystem({ fixedTimestep: 1 / 60, maxSubsteps: 1 })
+    const physicsSystem = new PhysicsWorldSystem()
     physicsSystem.setBackend(backend)
     const colliderSystem = new PhysicsColliderSystem(physicsSystem)
     const jointSystem = new PhysicsJointSystem(physicsSystem)
@@ -67,8 +67,9 @@ describe('PhysicsJointSystem', () => {
   })
 
   it('reconciles joints before the world step so they constrain the same-frame integration', () => {
-    const physicsSystem = new PhysicsWorldSystem({ fixedTimestep: 1 / 60, maxSubsteps: 1 })
+    const physicsSystem = new PhysicsWorldSystem()
     const jointSystem = new PhysicsJointSystem(physicsSystem)
-    expect(jointSystem.order).toBeLessThan(physicsSystem.order)
+    expect(jointSystem.phase).toBe('FixedPrePhysics')
+    expect(physicsSystem.phase).toBe('PhysicsStep')
   })
 })

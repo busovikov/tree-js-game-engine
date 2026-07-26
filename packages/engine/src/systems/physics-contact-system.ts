@@ -6,7 +6,8 @@ import type { PhysicsWorldSystem } from './physics-world-system.js'
  * Drains backend collision/trigger events after {@link PhysicsWorldSystem} steps.
  */
 export class PhysicsContactSystem implements ISystem {
-  readonly order = 51
+  readonly phase = 'PostPhysics' as const
+  readonly localOrder = 0
 
   private readonly physicsSystem: PhysicsWorldSystem
   private frameEvents: PhysicsCollisionEvent[] = []

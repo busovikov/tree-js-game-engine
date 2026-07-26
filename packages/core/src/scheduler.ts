@@ -23,6 +23,8 @@ export interface SchedulerSystem {
   update(world: IWorld, dt: number): void
 }
 
+export interface ISystem extends SchedulerSystem {}
+
 export interface EngineSchedulerOptions {
   readonly fixedTimestep?: number
   readonly maxSubsteps?: number
@@ -124,6 +126,12 @@ export class EngineScheduler {
 
   addSystem(system: SchedulerSystem): void {
     if (this.systems.some((entry) => entry.system === system)) return
+    if (
+      system.localOrder !== undefined &&
+      !Number.isFinite(system.localOrder)
+    ) {
+      throw new Error('localOrder must be a finite number')
+    }
     this.systems.push({
       system,
       sequence: this.nextSystemSequence++,
