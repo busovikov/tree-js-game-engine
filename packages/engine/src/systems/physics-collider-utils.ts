@@ -1,17 +1,16 @@
-import { ArcadeVehicleControllerComponent, type ControllerOnEntity } from '@haku/physics'
-import type {
-  ArcadeVehicleController,
-  Collider,
-  ControllerChassis,
-  ControllerComponentId,
-  KinematicCharacterController,
-} from '@haku/schema'
 import {
+  ArcadeVehicleControllerComponent,
+  ColliderSchema,
   controllerChassisCollider,
   controllerNeedsCapsule,
   controllerNeedsChassis,
-  ColliderSchema,
-} from '@haku/schema'
+  type ControllerOnEntity,
+  ArcadeVehicleController,
+  type Collider,
+  type ControllerChassis,
+  type ControllerComponentId,
+  type KinematicCharacterController,
+} from '@haku/physics'
 import type { PhysicsShapeDescriptor, PhysicsTransform, Quat, RigidBodyType, Vec3 } from '@haku/physics'
 
 function quatMul(a: Quat, b: Quat): Quat {

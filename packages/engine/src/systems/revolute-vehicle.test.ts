@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { TransformComponent, World } from '@haku/core'
 import { ColliderComponent, RevoluteJointVehicleControllerComponent, RigidBodyComponent } from '@haku/physics'
-import { RevoluteJointVehicleControllerSchema, ColliderSchema, RigidBodySchema } from '@haku/schema'
+import { ColliderSchema, RevoluteJointVehicleControllerSchema, RigidBodySchema } from '@haku/physics'
 import { createRapierPhysicsBackend, resetRapierPhysicsIds } from '@haku/physics-rapier'
 import { PhysicsColliderSystem } from './physics-collider-system.js'
 import { PhysicsWorldSystem, PHYSICS_CATCH_UP_POLICY } from './physics-world-system.js'

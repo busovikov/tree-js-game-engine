@@ -1,11 +1,14 @@
 import { World, PrefabInstanceComponent, entityId, type ComponentRegistry, type ComponentDefinition, type EntityId, type IWorld } from '@haku/core'
-import { ColliderComponent, RigidBodyComponent } from '@haku/physics'
+import {
+  ColliderComponent,
+  RigidBodyComponent,
+  validateEntityPhysicsComponents,
+} from '@haku/physics'
 import {
   PrefabInstanceSchema,
   SceneDocumentSchema,
   defaultPhysicsProjectSettings,
   defaultRenderSettings,
-  validateEntityPhysicsComponents,
   validateSceneDocument,
   type ComponentRecord,
   type EntityRecord,

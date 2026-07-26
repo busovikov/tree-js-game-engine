@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { TransformComponent, World } from '@haku/core'
 import { ArcadeVehicleControllerComponent, ColliderComponent, CustomRaycastControllerComponent } from '@haku/physics'
-import { CustomRaycastControllerSchema, ColliderSchema, ArcadeVehicleControllerSchema } from '@haku/schema'
+import { ArcadeVehicleControllerSchema, ColliderSchema, CustomRaycastControllerSchema } from '@haku/physics'
 import { resetStubPhysicsIds, StubPhysicsBackend } from '@haku/physics'
 import { InputManager, type PointerCaptureTarget } from '../input/input-manager.js'
 import { PhysicsColliderSystem } from './physics-collider-system.js'

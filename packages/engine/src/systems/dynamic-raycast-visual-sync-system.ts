@@ -2,8 +2,12 @@ import { type EntityId, type IWorld, type ISystem } from '@haku/core'
 import { TransformComponent } from '@haku/core'
 import { DynamicRaycastControllerComponent } from '@haku/physics'
 import { MeshRendererComponent } from '../components.js'
-import type { ControllerWheelSlot, Transform } from '@haku/schema'
-import { CONTROLLER_WHEEL_ORDER, controllerWheelLocalPositions } from '@haku/schema'
+import type { Transform } from '@haku/schema'
+import {
+  CONTROLLER_WHEEL_ORDER,
+  controllerWheelLocalPositions,
+  type ControllerWheelSlot,
+} from '@haku/physics'
 import type { Quat, Vec3 } from '@haku/physics'
 import type { PhysicsWorldSystem } from './physics-world-system.js'
 import type { PhysicsControllerSystem } from './physics-controller-system.js'

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { MAX_PHYSICS_LAYERS } from './physics-project-settings.js'
+import { MAX_PHYSICS_LAYERS } from '@haku/schema'
 
 const ComponentEnabledSchema = z.boolean().default(true)
 const Vec3Schema = z.tuple([z.number(), z.number(), z.number()])

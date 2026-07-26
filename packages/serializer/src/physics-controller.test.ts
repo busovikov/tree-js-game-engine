@@ -12,7 +12,7 @@ import {
   PointerControlsControllerSchema,
   LEGACY_CONTROLLER_TYPE_TO_COMPONENT_ID,
   type PhysicsControllerType,
-} from '@haku/schema'
+} from '@haku/physics'
 import {
   loadSceneDocument,
   sanitizeComponentDataForPersistence,

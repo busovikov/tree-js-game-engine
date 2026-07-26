@@ -4,7 +4,7 @@ import {
   type MaterialPropertySpec,
   type MaterialType,
   type MeshMaterial,
-} from '@haku/schema'
+} from '@haku/engine'
 import { mergeBooleans, mergeNumbers, mergeStrings, type MixedBool, type MixedNumber } from '../inspector/multi-edit.js'
 import { NumberField } from './NumberField.js'
 import './mesh-renderer-fields.css'

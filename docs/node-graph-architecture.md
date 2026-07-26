@@ -41,6 +41,12 @@ asset schemas and registers descriptors at a composition root. Core/schema never
 Three.js, DOM, React, Web Audio, IndexedDB, or platform SDKs. Production games never depend
 on `@haku/editor`, React Flow, or Monaco.
 
+Project-wide render and physics settings remain in `@haku/schema` as shared serializable
+fields of the base scene envelope. Render component schemas and helpers belong to
+`@haku/engine`; physics component schemas and helpers belong to `@haku/physics`. This keeps
+the scene envelope independent of runtime composition without turning subsystem component
+schemas into compatibility exports.
+
 ## Universal IDs and assets
 
 - Every asset type uses a stable UUID `AssetId`.

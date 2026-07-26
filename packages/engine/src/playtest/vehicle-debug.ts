@@ -1,7 +1,7 @@
 import { type EntityId, type IWorld } from '@haku/core'
 import { TransformComponent } from '@haku/core'
 import { CustomRaycastControllerComponent } from '@haku/physics'
-import type { CustomRaycastController } from '@haku/schema'
+import type { CustomRaycastController } from '@haku/physics'
 import type { IRaycastVehicle, Vec3 } from '@haku/physics'
 import { vehicleChassisCollider } from '../systems/physics-collider-system.js'
 import {

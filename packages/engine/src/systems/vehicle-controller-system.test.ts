@@ -5,7 +5,7 @@ import {
   CustomRaycastControllerSchema,
   RevoluteJointVehicleControllerSchema,
   ColliderSchema,
-} from '@haku/schema'
+} from '@haku/physics'
 import {
   resetStubPhysicsIds,
   StubPhysicsBackend,

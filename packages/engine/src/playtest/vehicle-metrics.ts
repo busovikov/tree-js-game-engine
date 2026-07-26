@@ -1,7 +1,7 @@
 import { type IWorld } from '@haku/core'
 import { TransformComponent } from '@haku/core'
 import { ColliderComponent, RigidBodyComponent } from '@haku/physics'
-import { resolveBodyTypeFromComponents } from '@haku/schema'
+import { resolveBodyTypeFromComponents } from '@haku/physics'
 
 /**
  * Probes the top Y of the nearest static box collider under `(x, z)`.

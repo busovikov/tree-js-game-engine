@@ -1,4 +1,4 @@
-import type { MeshRenderer } from '@haku/schema'
+import type { MeshRenderer } from '../mesh.js'
 import * as THREE from 'three'
 
 export function syncMeshShadowFlags(object3d: THREE.Object3D, meshRenderer: MeshRenderer): void {

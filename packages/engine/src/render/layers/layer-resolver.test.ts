@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import * as THREE from 'three'
 import { defaultRenderSettings } from '@haku/schema'
-import { RENDER_LAYER_DEFAULT, layerBit } from '@haku/schema'
+import { RENDER_LAYER_DEFAULT, layerBit } from '../../rendering-layers.js'
 import {
   applyLayerMask,
   resolveCameraLayerMask,

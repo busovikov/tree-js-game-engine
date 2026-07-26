@@ -1,5 +1,5 @@
 /** Local-space position of a directional / spot light relative to its entity. */
-export type Vec3 = [number, number, number]
+type Vec3 = [number, number, number]
 
 /** Local-space position of a directional / spot light relative to its entity. */
 export const LIGHT_DEFAULT_LOCAL_POSITION: Vec3 = [0, 0, 0]

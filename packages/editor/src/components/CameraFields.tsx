@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { CameraSchema, type Camera } from '@haku/schema'
+import { CameraSchema, type Camera } from '@haku/engine'
 import { NumberField } from './NumberField.js'
 import './mesh-renderer-fields.css'
 

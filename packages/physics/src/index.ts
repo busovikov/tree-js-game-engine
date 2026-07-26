@@ -1,5 +1,14 @@
 export type { PhysicsDebugRenderBuffers } from './debug-render.js'
+export * from './animatable-body.js'
+export * from './collider.js'
+export * from './colliders-array.js'
 export * from './components.js'
+export * from './physics-area.js'
+export * from './physics-controller.js'
+export * from './physics-joint.js'
+export * from './physics-scale.js'
+export * from './physics-validation.js'
+export * from './rigid-body.js'
 export type { PhysicsCapabilities, ColliderShapeKind, PhysicsJointKind } from './capabilities.js'
 export { STUB_PHYSICS_CAPABILITIES, RAPIER_PHYSICS_CAPABILITIES } from './capabilities.js'
 export type {
@@ -62,7 +71,6 @@ export type {
   RaycastHit,
   RaycastQuery,
   RigidBodyDescriptor,
-  RigidBodyType,
   Vec3,
   PhysicsShapeSpawnOptions,
   ShapecastQuery,

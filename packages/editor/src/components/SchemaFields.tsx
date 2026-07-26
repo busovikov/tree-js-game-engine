@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { coreComponentSchemas } from '@haku/schema'
+import type { ComponentDefinition } from '@haku/core'
 import { NumberField } from './NumberField.js'
 import './mesh-renderer-fields.css'
 
@@ -44,17 +44,20 @@ function StringField({
 
 export const SchemaFields = memo(function SchemaFields({
   componentId,
+  component,
   data,
   onChange,
   disabled,
 }: {
-  componentId: keyof typeof coreComponentSchemas
+  componentId: string
+  component: ComponentDefinition
   data: Record<string, unknown>
   onChange: (next: Record<string, unknown>) => void
   disabled?: boolean
 }) {
-  const schema = coreComponentSchemas[componentId]
-  const shape = (schema as { shape: Record<string, { _def?: { typeName?: string; values?: string[] } }> }).shape
+  const shape = (component.schema as unknown as {
+    shape: Record<string, { _def?: { typeName?: string; values?: string[] } }>
+  }).shape
 
   return (
     <div>

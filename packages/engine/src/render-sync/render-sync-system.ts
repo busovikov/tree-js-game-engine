@@ -1,27 +1,27 @@
 import { type EntityId, type IWorld, type ISystem } from '@haku/core'
 import { entityId } from '@haku/core'
 import { PrefabInstanceComponent, StaticComponent, TransformComponent } from '@haku/core'
-import { CustomRaycastControllerComponent, getControllerOnEntity, hasAnyController } from '@haku/physics'
+import {
+  CustomRaycastControllerComponent,
+  getControllerOnEntity,
+  hasAnyController,
+  type CustomRaycastController,
+} from '@haku/physics'
 import { CameraComponent, LightComponent, MeshRendererComponent, RenderingLayersComponent } from '../components.js'
 import type {
-  CustomRaycastController,
-  Light,
-  MeshRenderer,
   PrefabDefinition,
   RenderSettings,
   Transform,
 } from '@haku/schema'
 import {
-  LightSchema,
   defaultRenderSettings,
   isComponentEnabled,
-  meshRendererKey,
-  normalizeMeshRenderer,
-  resolveLightColor,
   resolveShadowSettings,
-  spotToThreeCone,
   isFeatureActive,
 } from '@haku/schema'
+import { LightSchema, spotToThreeCone, type Light } from '../light.js'
+import { resolveLightColor } from '../light-color.js'
+import { meshRendererKey, normalizeMeshRenderer, type MeshRenderer } from '../mesh.js'
 import * as THREE from 'three'
 import {
   createMeshFromRenderer,
@@ -53,7 +53,7 @@ import {
 } from './directional-shadow.js'
 import { applyDirectionalLightPose, applySpotLightPose } from './apply-directional-light.js'
 import { applyLayerMask, resolveEntityLayerMask } from '../render/layers/layer-resolver.js'
-import { RENDER_LAYER_DEFAULT, RENDER_LAYER_EDITOR_GIZMO } from '@haku/schema'
+import { RENDER_LAYER_DEFAULT, RENDER_LAYER_EDITOR_GIZMO } from '../rendering-layers.js'
 
 const MODEL_ROOT_NAME = 'haku-model-root'
 

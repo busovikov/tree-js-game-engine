@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { PhysicsJointSchema, PhysicsJointTypeSchema, type PhysicsJoint } from '@haku/schema'
+import { PhysicsJointSchema, PhysicsJointTypeSchema, type PhysicsJoint } from '@haku/physics'
 import { NumberField } from './NumberField.js'
 import './mesh-renderer-fields.css'
 

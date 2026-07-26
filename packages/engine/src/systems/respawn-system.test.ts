@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { TransformComponent, World } from '@haku/core'
 import { ColliderComponent, CustomRaycastControllerComponent } from '@haku/physics'
-import { CustomRaycastControllerSchema, ColliderSchema } from '@haku/schema'
+import { ColliderSchema, CustomRaycastControllerSchema } from '@haku/physics'
 import type { Quat, Vec3 } from '@haku/schema'
 import { resetStubPhysicsIds, StubPhysicsBackend } from '@haku/physics'
 import { InputManager, type PointerCaptureTarget } from '../input/input-manager.js'

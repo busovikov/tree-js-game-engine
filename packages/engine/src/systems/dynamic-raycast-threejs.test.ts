@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DynamicRaycastControllerSchema } from '@haku/schema'
+import { DynamicRaycastControllerSchema } from '@haku/physics'
 import { updateDynamicRaycast, type TrackedDynamicRaycast } from './physics-controller-runtime.js'
 import type { IDynamicRaycastVehicle } from '@haku/physics'
 import { physicsBodyHandle } from '@haku/physics'

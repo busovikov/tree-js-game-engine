@@ -3,7 +3,8 @@ import * as THREE from 'three'
 import { TransformComponent, World } from '@haku/core'
 import { ColliderComponent, CustomRaycastControllerComponent } from '@haku/physics'
 import { MeshRendererComponent } from '../components.js'
-import { CustomRaycastControllerSchema, MeshRendererSchema, ColliderSchema } from '@haku/schema'
+import { ColliderSchema, CustomRaycastControllerSchema } from '@haku/physics'
+import { MeshRendererSchema } from '../mesh.js'
 import {
   resetStubPhysicsIds,
   StubPhysicsBackend,

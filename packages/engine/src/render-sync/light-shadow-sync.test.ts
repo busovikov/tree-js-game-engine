@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import * as THREE from 'three'
-import { LightSchema, RenderSettingsSchema } from '@haku/schema'
+import { RenderSettingsSchema } from '@haku/schema'
+import { LightSchema } from '../light.js'
 import { TransformComponent, World } from '@haku/core'
 import { LightComponent } from '../components.js'
 import { RenderSyncSystem } from './render-sync-system.js'

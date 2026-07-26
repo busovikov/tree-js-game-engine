@@ -218,6 +218,9 @@ importers:
       three:
         specifier: ^0.171.0
         version: 0.171.0
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
     devDependencies:
       '@haku/physics-rapier':
         specifier: file:../physics-rapier
@@ -240,6 +243,9 @@ importers:
       '@haku/schema':
         specifier: file:../schema
         version: link:../schema
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
     devDependencies:
       typescript:
         specifier: ^5.7.2
@@ -2731,6 +2737,7 @@ snapshots:
       '@haku/schema': file:packages/schema
       '@haku/serializer': file:packages/serializer
       three: 0.171.0
+      zod: 3.25.76
 
   '@haku/physics-rapier@file:packages/physics-rapier':
     dependencies:
@@ -2741,6 +2748,7 @@ snapshots:
     dependencies:
       '@haku/core': file:packages/core
       '@haku/schema': file:packages/schema
+      zod: 3.25.76
 
   '@haku/schema@file:packages/schema':
     dependencies:

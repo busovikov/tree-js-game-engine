@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { TransformComponent, World } from '@haku/core'
 import { DynamicRaycastControllerComponent } from '@haku/physics'
 import { CameraComponent } from '../components.js'
-import { DynamicRaycastControllerSchema } from '@haku/schema'
+import { DynamicRaycastControllerSchema } from '@haku/physics'
 import {
   ThreeJsFollowCameraSystem,
   usesThreeJsFollowCamera,

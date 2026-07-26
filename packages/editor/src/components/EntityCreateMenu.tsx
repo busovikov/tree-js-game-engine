@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import type { Light } from '@haku/schema'
-import { MESH_GEOMETRY_TYPE_LABELS, MESH_PRIMITIVE_GEOMETRY_TYPES } from '@haku/schema'
+import type { Light } from '@haku/engine'
+import { MESH_GEOMETRY_TYPE_LABELS, MESH_PRIMITIVE_GEOMETRY_TYPES } from '@haku/engine'
 import {
   createCameraEntity,
   createEmptyEntity,

@@ -1,10 +1,12 @@
 import type { SceneDocument } from '@haku/schema'
 import {
-  LIGHT_DEFAULT_LOCAL_POSITION,
-  LIGHT_DEFAULT_TARGET_POSITION,
   RenderSettingsSchema,
   defaultPhysicsProjectSettings,
 } from '@haku/schema'
+import {
+  LIGHT_DEFAULT_LOCAL_POSITION,
+  LIGHT_DEFAULT_TARGET_POSITION,
+} from '../../light-defaults.js'
 
 const DEFAULT_PHYSICS_SETTINGS = defaultPhysicsProjectSettings()
 

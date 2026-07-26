@@ -1,14 +1,16 @@
 import {
   GEOMETRY_PARAM_SPECS,
   defaultGeometryParams,
+  type MeshGeometryType,
+  type MeshRenderer,
+  normalizeMeshRenderer,
+} from './mesh.js'
+import {
   defaultMaterialProperties,
   normalizeMeshMaterial,
   type MaterialType,
-  type MeshGeometryType,
   type MeshMaterial,
-  type MeshRenderer,
-  normalizeMeshRenderer,
-} from '@haku/schema'
+} from './material.js'
 import * as THREE from 'three'
 
 function resolveParams(type: MeshGeometryType, params: Record<string, number>): Record<string, number> {

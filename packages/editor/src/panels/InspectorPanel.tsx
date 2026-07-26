@@ -1,29 +1,49 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { ScriptRefComponent, StaticComponent, TagComponent, TransformComponent } from '@haku/core'
-import { ColliderComponent, CustomRaycastControllerComponent, DynamicRaycastControllerComponent, ArcadeVehicleControllerComponent, RevoluteJointVehicleControllerComponent, KinematicCharacterControllerComponent, CharacterBodyControllerComponent, PointerControlsControllerComponent, RigidBodyComponent, PhysicsAreaComponent, AnimatableBodyComponent, PhysicsJointComponent, CollidersComponent } from '@haku/physics'
-import { CameraComponent, LightComponent, MeshRendererComponent } from '@haku/engine'
+import {
+  AnimatableBodyComponent,
+  ArcadeVehicleControllerComponent,
+  CharacterBodyControllerComponent,
+  ColliderComponent,
+  ColliderSchema,
+  CollidersComponent,
+  CustomRaycastControllerComponent,
+  DynamicRaycastControllerComponent,
+  KinematicCharacterControllerComponent,
+  PhysicsAreaComponent,
+  PhysicsJointComponent,
+  PointerControlsControllerComponent,
+  RevoluteJointVehicleControllerComponent,
+  RigidBodyComponent,
+  isNonUniformScale,
+  type AnimatableBody,
+  type ArcadeVehicleController,
+  type CharacterBodyController,
+  type Collider,
+  type Colliders,
+  type CustomRaycastController,
+  type DynamicRaycastController,
+  type KinematicCharacterController,
+  type PhysicsArea,
+  type PhysicsJoint,
+  type PointerControlsController,
+  type RevoluteJointVehicleController,
+  type RigidBody,
+} from '@haku/physics'
+import {
+  CameraComponent,
+  LightComponent,
+  MeshRendererComponent,
+  defaultGeometryParams,
+  normalizeMeshMaterial,
+  normalizeMeshRenderer,
+  type Camera,
+  type Light,
+  type MeshMaterial,
+  type MeshRenderer,
+} from '@haku/engine'
 import { type ComponentDefinition, type EntityId } from '@haku/core'
-import type {
-  AnimatableBody,
-  Camera,
-  Collider,
-  Light,
-  MeshMaterial,
-  MeshRenderer,
-  PhysicsArea,
-  PhysicsJoint,
-  Colliders,
-  RigidBody,
-  Transform,
-  CustomRaycastController,
-  DynamicRaycastController,
-  ArcadeVehicleController,
-  RevoluteJointVehicleController,
-  KinematicCharacterController,
-  CharacterBodyController,
-  PointerControlsController,
-} from '@haku/schema'
-import { ColliderSchema, isNonUniformScale } from '@haku/schema'
+import type { Transform } from '@haku/schema'
 import { resolveActiveCameraId } from '@haku/engine'
 import { getEngineComponent } from '@haku/engine'
 import { sanitizeComponentDataForPersistence } from '@haku/serializer'
@@ -67,13 +87,7 @@ import { currentMeshRevision, type ColliderBakeMode } from '../viewport/collider
 import { SchemaFields } from '../components/SchemaFields.js'
 import { InspectorComponentSection } from '../components/InspectorComponentSection.js'
 import { AddComponentMenu } from '../components/AddComponentMenu.js'
-import {
-  normalizeMeshRenderer,
-  normalizeMeshMaterial,
-  defaultGeometryParams,
-  isComponentEnabled,
-  withComponentEnabled,
-} from '@haku/schema'
+import { isComponentEnabled, withComponentEnabled } from '@haku/schema'
 import { eulerAxisToQuat, quatToEulerDegrees } from '../transform/euler-degrees.js'
 import {
   commonComponentTypes,
@@ -1088,6 +1102,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
               ) : (
                 <SchemaFields
                   componentId={key}
+                  component={COMPONENT_MAP[key]}
                   data={data as Record<string, unknown>}
                   disabled={mode === 'play'}
                   onChange={(next) =>

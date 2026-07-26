@@ -1,8 +1,10 @@
 import { type EntityId } from '@haku/core'
 import { TransformComponent } from '@haku/core'
 import { CustomRaycastControllerComponent } from '@haku/physics'
-import type { CustomRaycastController } from '@haku/schema'
-import { controllerWheelLocalPositions } from '@haku/schema'
+import {
+  controllerWheelLocalPositions,
+  type CustomRaycastController,
+} from '@haku/physics'
 import type { IRaycastVehicle, PhysicsWheelHandle, WheelConfig } from '@haku/physics'
 import type { ControllerInput, ControllerPlugin, ControllerRuntimeContext } from '../registry.js'
 import { ISAAC_RAYCAST_PHYSICS_STEER_SIGN } from '../../vehicle-model-fit.js'

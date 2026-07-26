@@ -1,16 +1,20 @@
 import { type IWorld, type EntityId, type ComponentDefinition } from '@haku/core'
 import { TransformComponent, entityId } from '@haku/core'
-import { ArcadeVehicleControllerComponent, CharacterBodyControllerComponent, DynamicRaycastControllerComponent, KinematicCharacterControllerComponent, RevoluteJointVehicleControllerComponent } from '@haku/physics'
+import {
+  ArcadeVehicleControllerComponent,
+  CharacterBodyControllerComponent,
+  DynamicRaycastControllerComponent,
+  KinematicCharacterControllerComponent,
+  RevoluteJointVehicleControllerComponent,
+  type ArcadeVehicleController,
+  type CharacterBodyController,
+  type ControllerComponentId,
+  type DynamicRaycastController,
+  type KinematicCharacterController,
+  type RevoluteJointVehicleController,
+} from '@haku/physics'
 import { CameraComponent } from '../components.js'
-import type {
-  ArcadeVehicleController,
-  CharacterBodyController,
-  ControllerComponentId,
-  DynamicRaycastController,
-  KinematicCharacterController,
-  RevoluteJointVehicleController,
-} from '@haku/schema'
-import { controllerWheelLocalPositions } from '@haku/schema'
+import { controllerWheelLocalPositions } from '@haku/physics'
 import type {
   DynamicRaycastWheelConfig,
   ICharacterController,

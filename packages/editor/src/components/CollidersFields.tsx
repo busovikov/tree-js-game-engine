@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { ColliderSchema, CollidersSchema, type Collider, type Colliders } from '@haku/schema'
+import { ColliderSchema, CollidersSchema, type Collider, type Colliders } from '@haku/physics'
 import { ColliderFields, normalizeCollider } from './ColliderFields.js'
 import './mesh-renderer-fields.css'
 

@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { MeshMaterialSchema } from './material.js'
-import { AssetRefSchema } from './assets.js'
+import { AssetRefSchema } from '@haku/schema'
 
 export const MeshGeometryTypeSchema = z.enum([
   'BoxGeometry',

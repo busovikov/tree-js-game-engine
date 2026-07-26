@@ -1,13 +1,11 @@
 import {
-  RENDER_LAYER_DEFAULT,
-  RENDER_LAYER_PICKING,
   type RenderSettings,
   isFeatureActive,
-  layerBit,
 } from '@haku/schema'
+import { RENDER_LAYER_DEFAULT, RENDER_LAYER_PICKING, layerBit } from '../../rendering-layers.js'
 import type * as THREE from 'three'
 
-export { RENDER_LAYER_DEFAULT, RENDER_LAYER_PICKING } from '@haku/schema'
+export { RENDER_LAYER_DEFAULT, RENDER_LAYER_PICKING } from '../../rendering-layers.js'
 
 export function resolveEntityLayerMask(
   renderingLayersMask: number | undefined,

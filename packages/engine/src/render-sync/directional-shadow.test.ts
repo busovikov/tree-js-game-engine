@@ -6,7 +6,7 @@ import { applyDirectionalLightPose } from './apply-directional-light.js'
 import {
   LIGHT_DEFAULT_LOCAL_POSITION,
   LIGHT_DEFAULT_TARGET_POSITION,
-} from '@haku/schema'
+} from '../light-defaults.js'
 
 function makeLightGroup(): { group: THREE.Group; light: THREE.DirectionalLight } {
   const scene = new THREE.Scene()

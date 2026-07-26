@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { AnimatableBodySchema, type AnimatableBody } from '@haku/schema'
+import { AnimatableBodySchema, type AnimatableBody } from '@haku/physics'
 import './mesh-renderer-fields.css'
 
 export function normalizeAnimatableBody(data: unknown): AnimatableBody {

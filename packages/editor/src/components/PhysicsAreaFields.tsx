@@ -1,10 +1,9 @@
 import { memo } from 'react'
 import {
   MAX_PHYSICS_LAYERS,
-  PhysicsAreaSchema,
-  type PhysicsArea,
   type PhysicsProjectSettings,
 } from '@haku/schema'
+import { PhysicsAreaSchema, type PhysicsArea } from '@haku/physics'
 import './mesh-renderer-fields.css'
 
 export function normalizePhysicsArea(data: unknown): PhysicsArea {

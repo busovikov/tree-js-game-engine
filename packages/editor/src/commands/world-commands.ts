@@ -1,9 +1,16 @@
 import { type EntityId } from '@haku/core'
 import { PrefabInstanceComponent, TransformComponent } from '@haku/core'
-import { getEngineComponent } from '@haku/engine'
-import { CameraComponent, LightComponent, MeshRendererComponent } from '@haku/engine'
-import type { Light, MeshGeometryType } from '@haku/schema'
-import { LightSchema, MESH_GEOMETRY_TYPE_LABELS, defaultGeometryParams } from '@haku/schema'
+import {
+  CameraComponent,
+  LightComponent,
+  LightSchema,
+  MeshRendererComponent,
+  MESH_GEOMETRY_TYPE_LABELS,
+  defaultGeometryParams,
+  getEngineComponent,
+  type Light,
+  type MeshGeometryType,
+} from '@haku/engine'
 import type { Command } from './command-bus.js'
 import { globalCommandBus } from './command-bus.js'
 import { commitSceneEdit } from './scene-history.js'

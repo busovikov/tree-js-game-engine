@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { defaultMaterialProperties } from '@haku/schema'
+import { defaultMaterialProperties } from './material.js'
 import * as THREE from 'three'
 import { createMaterial } from './mesh-factory.js'
 

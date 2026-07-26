@@ -1,12 +1,14 @@
 import {
+  type ComponentRecord,
+  type EntityRecord,
+} from '@haku/schema'
+import {
   ColliderSchema,
   LEGACY_CONTROLLER_TYPE_TO_COMPONENT_ID,
   PhysicsControllerTypeSchema,
   RigidBodySchema,
   stripLegacyColliderFields,
-  type ComponentRecord,
-  type EntityRecord,
-} from '@haku/schema'
+} from '@haku/physics'
 import { StaticComponent } from '@haku/core'
 import { ColliderComponent, RigidBodyComponent } from '@haku/physics'
 

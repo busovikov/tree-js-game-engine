@@ -1334,7 +1334,7 @@ export function assignPrototype(
 export function assignMeshPrototype(
   world: IWorld,
   targetId: EntityId,
-  meshRenderer: import('@haku/schema').MeshRenderer,
+  meshRenderer: import('@haku/engine').MeshRenderer,
 ): void {
   world.addComponent(targetId, MeshRendererComponent, meshRenderer)
 }

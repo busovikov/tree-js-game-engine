@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest'
 import { TransformComponent, World } from '@haku/core'
 import { ArcadeVehicleControllerComponent, ColliderComponent, CollidersComponent, CustomRaycastControllerComponent, DynamicRaycastControllerComponent, KinematicCharacterControllerComponent, PointerControlsControllerComponent, RevoluteJointVehicleControllerComponent, RigidBodyComponent } from '@haku/physics'
-import { ColliderSchema, CollidersSchema, RigidBodySchema } from '@haku/schema'
+import { ColliderSchema, CollidersSchema, RigidBodySchema } from '@haku/physics'
 import { createRapierPhysicsBackend, resetRapierPhysicsIds } from '@haku/physics-rapier'
 import {
   ArcadeVehicleControllerSchema,
@@ -10,7 +10,7 @@ import {
   KinematicCharacterControllerSchema,
   PointerControlsControllerSchema,
   RevoluteJointVehicleControllerSchema,
-} from '@haku/schema'
+} from '@haku/physics'
 import {
   PhysicsColliderSystem,
   resolveColliderDescriptor,

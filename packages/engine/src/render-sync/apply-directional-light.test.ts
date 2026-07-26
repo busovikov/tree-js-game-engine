@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import {
   LIGHT_DEFAULT_LOCAL_POSITION,
   LIGHT_DEFAULT_TARGET_POSITION,
-} from '@haku/schema'
+} from '../light-defaults.js'
 import {
   applyDirectionalLightPose,
   getDirectionalLightWorldDirection,

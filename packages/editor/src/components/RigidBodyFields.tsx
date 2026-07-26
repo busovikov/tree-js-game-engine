@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { RigidBodySchema, type RigidBody } from '@haku/schema'
+import { RigidBodySchema, type RigidBody } from '@haku/physics'
 import { EDITOR_PHYSICS_CAPABILITIES } from '../physics/editor-physics-capabilities.js'
 import { NumberField } from './NumberField.js'
 import './mesh-renderer-fields.css'

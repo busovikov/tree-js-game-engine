@@ -11,8 +11,8 @@ import {
   type MeshGeometryType,
   type MeshMaterial,
   type MeshRenderer,
-  type AssetRef,
-} from '@haku/schema'
+} from '@haku/engine'
+import type { AssetRef } from '@haku/schema'
 import { MODEL_ASSET_TYPE } from '@haku/assets'
 import { modelLog } from '@haku/engine'
 import { projectService } from '../services/project-service.js'

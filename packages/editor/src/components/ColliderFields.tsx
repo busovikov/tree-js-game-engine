@@ -1,13 +1,15 @@
 import { memo, useMemo, useState } from 'react'
 import {
-  ColliderSchema,
-  ColliderShapeSchema,
   DEFAULT_PHYSICS_MATERIAL_ID,
   MAX_PHYSICS_LAYERS,
-  type Collider,
-  type ColliderShape,
   type PhysicsProjectSettings,
 } from '@haku/schema'
+import {
+  ColliderSchema,
+  ColliderShapeSchema,
+  type Collider,
+  type ColliderShape,
+} from '@haku/physics'
 import { MODEL_ASSET_TYPE } from '@haku/assets'
 import { projectService } from '../services/project-service.js'
 import { EDITOR_PHYSICS_CAPABILITIES } from '../physics/editor-physics-capabilities.js'

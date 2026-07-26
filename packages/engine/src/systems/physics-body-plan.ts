@@ -1,22 +1,28 @@
 import { type EntityId, type IWorld } from '@haku/core'
 import { TransformComponent } from '@haku/core'
-import { ColliderComponent, CollidersComponent, DynamicRaycastControllerComponent, PhysicsAreaComponent, AnimatableBodyComponent, getControllerOnEntity, RigidBodyComponent } from '@haku/physics'
-import type {
-  AnimatableBody,
-  Collider,
-  ControllerChassis,
-  ControllerComponentId,
-  DynamicRaycastController,
-  PhysicsProjectSettings,
-  RigidBody,
-} from '@haku/schema'
+import {
+  AnimatableBodyComponent,
+  ColliderComponent,
+  CollidersComponent,
+  DynamicRaycastControllerComponent,
+  PhysicsAreaComponent,
+  RigidBodyComponent,
+  getControllerOnEntity,
+  resolveBodyTypeFromComponents,
+  type AnimatableBody,
+  type Collider,
+  type ControllerChassis,
+  type ControllerComponentId,
+  type DynamicRaycastController,
+  type RigidBody,
+} from '@haku/physics'
+import type { PhysicsProjectSettings } from '@haku/schema'
 import {
   bakeLayerCollisionGroups,
-  controllerNeedsChassis,
   defaultPhysicsProjectSettings,
-  resolveBodyTypeFromComponents,
   resolveColliderPhysicsMaterial,
 } from '@haku/schema'
+import { controllerNeedsChassis } from '@haku/physics'
 import type {
   PhysicsShapeDescriptor,
   PhysicsShapeSpawnOptions,

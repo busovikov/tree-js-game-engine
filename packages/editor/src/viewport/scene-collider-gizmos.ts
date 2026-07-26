@@ -1,7 +1,6 @@
 import { type EntityId, type IWorld } from '@haku/core'
-import { ColliderComponent, getControllerOnEntity } from '@haku/physics'
+import { ColliderComponent, getControllerOnEntity, type Collider } from '@haku/physics'
 import { resolveColliderDescriptor } from '@haku/engine'
-import type { Collider } from '@haku/schema'
 import * as THREE from 'three'
 import { applyEditorLineMaterial, applyEditorOverlayObject } from './editor-overlay-style.js'
 

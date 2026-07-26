@@ -4,7 +4,7 @@ import {
   LIGHT_TEMPERATURE_MAX,
   LIGHT_TEMPERATURE_MIN,
   kelvinToHex,
-} from '@haku/schema'
+} from '@haku/engine'
 import { DraggableNumberLabel } from './DraggableNumberLabel.js'
 import './light-temperature-slider.css'
 

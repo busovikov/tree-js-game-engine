@@ -1,16 +1,22 @@
 import { describe, expect, it } from 'vitest'
 import { World, type ComponentDefinition, type EntityId } from '@haku/core'
-import { ColliderComponent, CustomRaycastControllerComponent, DynamicRaycastControllerComponent, ArcadeVehicleControllerComponent, RevoluteJointVehicleControllerComponent, KinematicCharacterControllerComponent, PointerControlsControllerComponent } from '@haku/physics'
 import {
+  ArcadeVehicleControllerComponent,
   ArcadeVehicleControllerSchema,
+  ColliderComponent,
   ColliderSchema,
+  CustomRaycastControllerComponent,
   CustomRaycastControllerSchema,
+  DynamicRaycastControllerComponent,
   DynamicRaycastControllerSchema,
+  KinematicCharacterControllerComponent,
   KinematicCharacterControllerSchema,
+  PointerControlsControllerComponent,
   PointerControlsControllerSchema,
+  RevoluteJointVehicleControllerComponent,
   RevoluteJointVehicleControllerSchema,
   type Collider,
-} from '@haku/schema'
+} from '@haku/physics'
 import * as THREE from 'three'
 import { SceneColliderGizmos } from './scene-collider-gizmos.js'
 

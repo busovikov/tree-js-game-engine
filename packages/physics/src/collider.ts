@@ -1,6 +1,5 @@
 import { z } from 'zod'
-import { MAX_PHYSICS_LAYERS } from './physics-project-settings.js'
-import { AssetRefSchema } from './assets.js'
+import { AssetRefSchema, MAX_PHYSICS_LAYERS } from '@haku/schema'
 
 const ComponentEnabledSchema = z.boolean().default(true)
 

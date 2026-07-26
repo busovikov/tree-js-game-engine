@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import * as THREE from 'three'
-import { normalizeMeshRenderer } from '@haku/schema'
+import { normalizeMeshRenderer } from '../mesh.js'
 import { syncMeshShadowFlags } from './sync-mesh-shadow.js'
 
 describe('syncMeshShadowFlags', () => {

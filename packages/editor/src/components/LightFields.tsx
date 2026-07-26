@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { LightSchema, kelvinToHex, type Light } from '@haku/schema'
+import { LightSchema, kelvinToHex, type Light } from '@haku/engine'
 import { AngleRangeSlider } from './AngleRangeSlider.js'
 import { LightTemperatureSlider, LIGHT_TEMPERATURE_DEFAULT } from './LightTemperatureSlider.js'
 import { NumberField } from './NumberField.js'

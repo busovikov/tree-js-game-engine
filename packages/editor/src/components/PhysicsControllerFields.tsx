@@ -14,7 +14,7 @@ import {
   type KinematicCharacterController,
   type PointerControlsController,
   type RevoluteJointVehicleController,
-} from '@haku/schema'
+} from '@haku/physics'
 import { NumberField } from './NumberField.js'
 import './mesh-renderer-fields.css'
 

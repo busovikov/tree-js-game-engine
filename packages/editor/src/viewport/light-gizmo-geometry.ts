@@ -1,5 +1,5 @@
-import type { Light, SpotLight } from '@haku/schema'
-import { lightDisplayDistance } from '@haku/schema'
+import type { Light, SpotLight } from '@haku/engine'
+import { lightDisplayDistance } from '@haku/engine'
 
 function pushSegment(
   out: number[],

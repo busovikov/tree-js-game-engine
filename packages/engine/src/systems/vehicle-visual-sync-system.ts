@@ -2,8 +2,12 @@ import { type EntityId, type IWorld, type ISystem } from '@haku/core'
 import { TransformComponent } from '@haku/core'
 import { CustomRaycastControllerComponent, RevoluteJointVehicleControllerComponent, getControllerOnEntity, queryControllers } from '@haku/physics'
 import { MeshRendererComponent } from '../components.js'
-import type { ControllerWheelSlot, CustomRaycastController } from '@haku/schema'
-import { CONTROLLER_WHEEL_ORDER, normalizeMeshRenderer } from '@haku/schema'
+import {
+  CONTROLLER_WHEEL_ORDER,
+  type ControllerWheelSlot,
+  type CustomRaycastController,
+} from '@haku/physics'
+import { normalizeMeshRenderer } from '../mesh.js'
 import type {
   IPhysicsWorld,
   PhysicsTransform,

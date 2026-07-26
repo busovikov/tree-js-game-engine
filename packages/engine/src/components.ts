@@ -1,15 +1,5 @@
 import {
-  CameraSchema,
-  LightSchema,
-  MeshRendererSchema,
-  RenderingLayersSchema,
-  RenderTextureSchema,
   componentTypeId,
-  type Camera,
-  type Light,
-  type MeshRenderer,
-  type RenderingLayers,
-  type RenderTexture,
 } from '@haku/schema'
 import {
   DefaultComponentRegistry,
@@ -18,6 +8,11 @@ import {
   type ComponentDefinition,
 } from '@haku/core'
 import { registerPhysicsComponents } from '@haku/physics'
+import { CameraSchema, type Camera } from './camera.js'
+import { LightSchema, type Light } from './light.js'
+import { MeshRendererSchema, type MeshRenderer } from './mesh.js'
+import { RenderingLayersSchema, type RenderingLayers } from './rendering-layers.js'
+import { RenderTextureSchema, type RenderTexture } from './render-texture.js'
 
 export const RENDER_COMPONENT_TYPE_IDS = {
   Camera: componentTypeId('40000000-0000-4000-8000-000000000002'),

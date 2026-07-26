@@ -1,34 +1,30 @@
 import {
-  AnimatableBodySchema,
+  componentTypeId,
+} from '@haku/schema'
+import { type ComponentRegistry, type ComponentDefinition, type EntityId, type IWorld } from '@haku/core'
+import { AnimatableBodySchema, type AnimatableBody } from './animatable-body.js'
+import { ColliderSchema, type Collider } from './collider.js'
+import { CollidersSchema, type Colliders } from './colliders-array.js'
+import { PhysicsAreaSchema, type PhysicsArea } from './physics-area.js'
+import {
   ArcadeVehicleControllerSchema,
   CharacterBodyControllerSchema,
-  ColliderSchema,
-  CollidersSchema,
   CustomRaycastControllerSchema,
   DynamicRaycastControllerSchema,
   KinematicCharacterControllerSchema,
-  PhysicsAreaSchema,
-  PhysicsJointSchema,
   PointerControlsControllerSchema,
   RevoluteJointVehicleControllerSchema,
-  RigidBodySchema,
-  componentTypeId,
-  type AnimatableBody,
   type AnyPhysicsController,
   type ArcadeVehicleController,
   type CharacterBodyController,
-  type Collider,
-  type Colliders,
   type CustomRaycastController,
   type DynamicRaycastController,
   type KinematicCharacterController,
-  type PhysicsArea,
-  type PhysicsJoint,
   type PointerControlsController,
   type RevoluteJointVehicleController,
-  type RigidBody,
-} from '@haku/schema'
-import { type ComponentRegistry, type ComponentDefinition, type EntityId, type IWorld } from '@haku/core'
+} from './physics-controller.js'
+import { PhysicsJointSchema, type PhysicsJoint } from './physics-joint.js'
+import { RigidBodySchema, type RigidBody } from './rigid-body.js'
 
 export const PHYSICS_COMPONENT_TYPE_IDS = {
   Collider: componentTypeId('40000000-0000-4000-8000-000000000009'),

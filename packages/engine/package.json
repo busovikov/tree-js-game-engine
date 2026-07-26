@@ -28,7 +28,8 @@
     "@haku/physics": "file:../physics",
     "@haku/schema": "file:../schema",
     "@haku/serializer": "file:../serializer",
-    "three": "^0.171.0"
+    "three": "^0.171.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@haku/physics-rapier": "file:../physics-rapier",
