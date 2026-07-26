@@ -5,7 +5,7 @@ export type JsonValue =
   | boolean
   | number
   | string
-  | JsonValue[]
+  | readonly JsonValue[]
   | { readonly [key: string]: JsonValue }
 
 export const JsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
@@ -28,17 +28,47 @@ export const NodeTypeIdSchema = z.string().uuid()
 export const DataTypeIdSchema = z.string().uuid()
 
 export const TypeExpressionSchema: z.ZodType<TypeExpression, z.ZodTypeDef, unknown> = z.lazy(() =>
-  z
-    .object({
-      type: DataTypeIdSchema,
-      arguments: z.array(TypeExpressionSchema).default([]),
-    })
-    .strict(),
+  z.discriminatedUnion('kind', [
+    z
+      .object({
+        kind: z.literal('named'),
+        type: DataTypeIdSchema,
+        arguments: z.array(TypeExpressionSchema).default([]),
+      })
+      .strict(),
+    z
+      .object({
+        kind: z.literal('generic'),
+        name: z.string().regex(/^[A-Z][A-Za-z0-9_]*$/),
+      })
+      .strict(),
+  ]),
 )
 
-export interface TypeExpression {
-  readonly type: string
-  readonly arguments: readonly TypeExpression[]
+export type TypeExpression =
+  | {
+      readonly kind: 'named'
+      readonly type: string
+      readonly arguments: readonly TypeExpression[]
+    }
+  | {
+      readonly kind: 'generic'
+      readonly name: string
+    }
+
+export function namedType(
+  type: string,
+  arguments_: readonly TypeExpression[] = [],
+): TypeExpression {
+  return TypeExpressionSchema.parse({
+    kind: 'named',
+    type,
+    arguments: arguments_,
+  })
+}
+
+export function genericType(name: string): TypeExpression {
+  return TypeExpressionSchema.parse({ kind: 'generic', name })
 }
 
 export const GraphPortKindSchema = z.enum(['flow', 'event', 'trigger', 'data'])
