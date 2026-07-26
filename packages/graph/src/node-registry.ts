@@ -27,7 +27,7 @@ export type NodeCheckpointRole = 'none' | 'create'
 export type NodeCheckpointScope = 'bounded' | 'unbounded'
 export type NodeResultPersistence = 'none' | 'execution' | 'checkpoint'
 export type NodeLiveness = 'pure' | 'on-flow' | 'on-event' | 'always'
-export type ResourceScope = 'static' | 'dynamic'
+export type ResourceScope = 'static' | 'dynamic' | 'unprovable'
 
 export const NODE_CAPABILITIES = [
   'world.read',
@@ -316,6 +316,8 @@ export function analyzeNodeCheckpointEligibility(
   for (const read of definition.contract.reads) {
     if (read.scope === 'dynamic') {
       causalChain.push(`dynamic ${read.resource} read`)
+    } else if (read.scope === 'unprovable') {
+      causalChain.push(`unprovable ${read.resource} query`)
     }
   }
   return {

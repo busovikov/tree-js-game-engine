@@ -626,6 +626,55 @@ describe('headless graph compiler', () => {
     })
   })
 
+  it('rejects unknown effects and unprovable queries in Inspector checkpoint metadata', () => {
+    const types = createBuiltinTypeRegistry()
+    const nodes = new NodeRegistry()
+    nodes.register(
+      definition(26, [], {
+        name: 'UnprovableCheckpoint',
+        checkpointRole: 'create',
+        reads: [{ resource: 'world.query.any', scope: 'unprovable' }],
+        effects: ['external'],
+      }),
+    )
+
+    const result = compileGraph(graph([node(126, 26, [])]), { types, nodes })
+
+    expect(result.plan?.checkpointEligible).toBe(false)
+    expect(result.plan?.checkpoints[0]).toEqual({
+      nodeId: uid(126),
+      eligible: false,
+      stateScope: {
+        nodes: [uid(126)],
+        resources: ['world.query.any'],
+        unbounded: false,
+      },
+      dependencies: [
+        {
+          kind: 'unknown-effect',
+          nodeId: uid(126),
+          effect: 'external',
+          causalChain: [
+            `checkpoint ${uid(126)}`,
+            `node UnprovableCheckpoint (${uid(126)})`,
+            'effect external',
+          ],
+        },
+        {
+          kind: 'unprovable-query',
+          nodeId: uid(126),
+          resource: 'world.query.any',
+          causalChain: [
+            `checkpoint ${uid(126)}`,
+            `node UnprovableCheckpoint (${uid(126)})`,
+            'unprovable query world.query.any',
+          ],
+        },
+      ],
+      asyncPolicies: [],
+    })
+  })
+
   it('keeps pure data nodes only when a live node consumes them', () => {
     const types = createBuiltinTypeRegistry()
     const nodes = new NodeRegistry()

@@ -54,6 +54,7 @@ export interface ExecutionPlanNode {
 export type CheckpointDependencyKind =
   | 'dynamic-physics'
   | 'unknown-effect'
+  | 'unprovable-query'
   | 'unbounded-scope'
 
 export interface CheckpointDependency {
@@ -571,13 +572,21 @@ function analyzeCheckpoints(
         `node ${analysis.definition.contract.name} (${analysis.node.id})`,
       ]
       for (const read of analysis.definition.contract.reads) {
-        if (read.scope !== 'dynamic') continue
-        dependencies.push({
-          kind: 'dynamic-physics',
-          nodeId: analysis.node.id,
-          resource: read.resource,
-          causalChain: [...prefix, `dynamic physics read ${read.resource}`],
-        })
+        if (read.scope === 'dynamic') {
+          dependencies.push({
+            kind: 'dynamic-physics',
+            nodeId: analysis.node.id,
+            resource: read.resource,
+            causalChain: [...prefix, `dynamic physics read ${read.resource}`],
+          })
+        } else if (read.scope === 'unprovable') {
+          dependencies.push({
+            kind: 'unprovable-query',
+            nodeId: analysis.node.id,
+            resource: read.resource,
+            causalChain: [...prefix, `unprovable query ${read.resource}`],
+          })
+        }
       }
       for (const effect of analysis.definition.contract.effects) {
         if (effect !== 'unknown' && effect !== 'external') continue
