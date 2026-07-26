@@ -260,6 +260,25 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.19.21)(happy-dom@15.11.7)
 
+  packages/graph-runtime:
+    dependencies:
+      '@haku/core':
+        specifier: workspace:*
+        version: link:../core
+      '@haku/graph':
+        specifier: workspace:*
+        version: link:../graph
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.19.21)(happy-dom@15.11.7)
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
+
   packages/physics:
     dependencies:
       '@haku/core':
