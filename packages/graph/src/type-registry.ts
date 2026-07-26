@@ -541,9 +541,13 @@ function canonicalStringify(value: unknown): string {
 }
 
 export function fingerprintContracts(contracts: readonly DataTypeContract[]): string {
-  const canonical = canonicalStringify(
+  return stableFingerprint(
     [...contracts].sort((left, right) => left.id.localeCompare(right.id)),
   )
+}
+
+export function stableFingerprint(value: unknown): string {
+  const canonical = canonicalStringify(value)
   let hash = 0x811c9dc5
   for (let index = 0; index < canonical.length; index += 1) {
     hash ^= canonical.charCodeAt(index)

@@ -243,6 +243,9 @@ importers:
       '@haku/assets':
         specifier: workspace:*
         version: link:../assets
+      '@haku/core':
+        specifier: workspace:*
+        version: link:../core
       '@haku/schema':
         specifier: workspace:*
         version: link:../schema
