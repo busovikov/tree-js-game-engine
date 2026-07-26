@@ -36,7 +36,7 @@ The program is done only when:
 | ---- | --------------------------------------------------------------- | ---------- | ---------------------------------------- |
 | M01  | Audit and target documentation                                  | —          | Complete with the documentation baseline |
 | M02  | Asset IDs, manifests, and decentralized registries              | M01        | Complete                                 |
-| M03  | World activation, lifecycle, and unified scheduler              | M02        | Pending                                  |
+| M03  | World activation, lifecycle, and unified scheduler              | M02        | Complete                                 |
 | M04  | Graph schema, type/effect system, and compiler                  | M03        | Pending                                  |
 | M05  | Graph interpreter, domains, queues, and tracing                 | M04        | Pending                                  |
 | M06  | Checkpoint, rewind, async policies, and persistence hooks       | M05        | Pending                                  |
@@ -108,13 +108,13 @@ Scope:
 
 Acceptance:
 
-- [ ] Disabling a parent deactivates its subtree without mutating child `activeSelf`.
-- [ ] Normal systems, render, physics, events, and queries ignore inactive entities.
-- [ ] Scheduler phase order and cross-domain queue order are deterministic.
-- [ ] Fixed-domain systems run once per physics substep, including multi-substep frames.
-- [ ] Physics parity, interpolation, respawn, vehicle, camera, pause, and hitch tests pass.
-- [ ] No second accumulator or magic fractional order remains.
-- [ ] Single-step advances one fixed tick and produces one coherent presentation update.
+- [x] Disabling a parent deactivates its subtree without mutating child `activeSelf`.
+- [x] Normal systems, render, physics, events, and queries ignore inactive entities.
+- [x] Scheduler phase order and cross-domain queue order are deterministic.
+- [x] Fixed-domain systems run once per physics substep, including multi-substep frames.
+- [x] Physics parity, interpolation, respawn, vehicle, camera, pause, and hitch tests pass.
+- [x] No second accumulator or magic fractional order remains.
+- [x] Single-step advances one fixed tick and produces one coherent presentation update.
 
 ## M04 — Graph schema, types/effects, and compiler
 

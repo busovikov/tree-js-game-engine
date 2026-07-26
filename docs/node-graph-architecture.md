@@ -175,7 +175,7 @@ The graph runtime does not create a second game loop. One `EngineScheduler` owns
 - typed cross-domain event/command queues;
 - fixed tick numbering used by replay and tracing.
 
-Target phase shape:
+Implemented foundational phase shape (M03):
 
 ```text
 FrameInput
@@ -192,10 +192,10 @@ Presentation
 Render
 ```
 
-Lifecycle, activation, UI/event, and async-continuation phases are explicit scheduler
-domains. Existing systems are migrated from numeric `order` to phase plus local order.
-`PhysicsWorldSystem` no longer owns an accumulator; the scheduler commands exactly one
-physics step per fixed substep.
+Existing engine systems use phase plus local order. `PhysicsWorldSystem` no longer owns an
+accumulator; the scheduler commands exactly one physics step per fixed substep. Later graph
+milestones integrate lifecycle, activation, UI/event, and async-continuation work into these
+explicit scheduler domains rather than adding a second loop.
 
 Cross-domain calls are never synchronously reentrant. They enter typed queues with source
 tick, source phase, stable sequence, and payload. Incoming action state is snapshotted for

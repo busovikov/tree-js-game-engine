@@ -1,7 +1,7 @@
 # Engine improvement through Bounce Run: current-state audit
 
-> Baseline verified on 2026-07-26 at commit `d8e74a1`. This document records what exists
-> before the engine-improvement program starts. Target contracts live in
+> Baseline verified on 2026-07-26 at commit `d8e74a1`; current claims are updated through
+> M03. Target contracts live in
 > [node-graph-architecture.md](./node-graph-architecture.md) and execution order lives in
 > [engine-game-development-plan.md](./engine-game-development-plan.md).
 
@@ -33,12 +33,13 @@ not modified. The repository documents supersede it where the user made a later 
 SceneDocument v1
   -> @haku/schema validation
   -> @haku/serializer
-  -> @haku/core World (scene graph + plain-data components)
-  -> ordered ISystem.update(world, frameDt)
-       -> PhysicsWorldSystem owns its fixed-step accumulator
-       -> other systems use numeric order
-  -> RenderSyncSystem
-  -> ThreeRenderBackend / render-only RenderGraph
+  -> @haku/core World (scene graph + plain-data components + hierarchy activity)
+  -> EngineScheduler
+       -> named frame/fixed phases with deterministic phase-local ordering
+       -> sole fixed-step accumulator, pause, single-step, and tick numbering
+       -> PhysicsWorldSystem performs exactly one step in PhysicsStep
+  -> RenderSyncSystem in Presentation
+  -> ThreeRenderBackend / render-only RenderGraph in Render
 
 Browser editor
   -> React + Zustand + command history
@@ -59,17 +60,17 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
 | Capability                   | Status                    | Current evidence and target gap                                                                                                                                                                                                          |
 | ---------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Scene documents              | **Ready for current v1**  | Zod validation, load/save, hierarchy, render/physics settings, and roundtrip tests exist. Target deliberately replaces the format; no compatibility layer is required.                                                                   |
-| Entity and component model   | **Partial**               | `World`, stable entity UUIDs, hierarchy, queries, plain component data, package-owned schemas, and composition-root registries exist. No `activeSelf`/`activeInHierarchy` or project custom components.                                    |
+| Entity and component model   | **Ready as a foundation** | `World`, stable entity UUIDs, hierarchy, active-state propagation, inactive-aware queries, deterministic component lifecycle hooks, plain component data, package-owned schemas, and composition-root registries exist. Project custom components remain deferred. |
 | Prefabs                      | **Ready for current v1**  | Prefabs are standalone manifest assets referenced by typed UUID, with component-ID overrides and load-time expansion. Deep override paths and nested variants remain intentionally deferred.                                               |
 | Asset system                 | **Ready as a foundation** | Universal UUID manifests, typed references, package-contributed descriptors, structured diagnostics, path-independent identity, and deterministic dependency closure exist. Static export remains a later milestone.                     |
-| Runtime scheduler            | **Partial**               | Systems are sorted by numeric `order`. `PhysicsWorldSystem` owns a bounded fixed-step accumulator and interpolation. There are no named phases, shared scheduler queues, pause/single-step contract, or fixed-domain graph execution.    |
+| Runtime scheduler            | **Ready as a foundation** | `EngineScheduler` owns named frame/fixed phases, deterministic local ordering and typed queued commands, bounded fixed-step catch-up, tick/frame numbering, interpolation alpha, pause, and single-step. Fixed-domain graph execution remains deferred. |
 | Gameplay node system         | **Absent**                | The existing `RenderGraph` orchestrates render passes only. There is no gameplay graph asset, compiler, dataflow, flow/event execution, node registry, or node editor.                                                                   |
 | Script/custom-node runtime   | **Absent**                | `ScriptRef` has schema/editor presence, but no runtime executor or safe SDK. The create template contains only a future-facing stub.                                                                                                     |
 | Rapier integration           | **Ready as a foundation** | Abstract and Rapier packages support dynamic/static/kinematic bodies, CCD, layers, material properties, multiple worlds, joints, and debug rendering. Gameplay bindings and graph effects still need to be designed.                     |
 | Collision and trigger events | **Ready as a foundation** | Collision/trigger events and contact manifolds are supported; editor Play mode exposes contact buffers. No graph event bindings or landing/bounce controller exists.                                                                     |
 | Physics queries              | **Ready as a foundation** | Raycast, shapecast, and overlap exist in the abstract API and Rapier backend. Node/Custom Node SDK bindings are absent.                                                                                                                  |
 | Input                        | **Partial**               | Keyboard/pointer `InputManager` produces action-like vehicle inputs and has attach/detach/enable lifecycle. It is vehicle-shaped rather than a general provider/action registry; no replay injection or future mobile provider boundary. |
-| Object pooling               | **Absent**                | No universal pool component, system, entity activation contract, baseline reset, or lifecycle hooks.                                                                                                                                     |
+| Object pooling               | **Partial foundation**    | Entity activation and deterministic lifecycle hooks exist. The universal pool component/system, authored baseline reset, capacity policy, and integrations remain deferred.                                                             |
 | Runtime DOM UI               | **Absent**                | Editor UI is React. Production games have no serializable UI document, DOM renderer, UI service, or visual UI editor.                                                                                                                    |
 | Audio                        | **Absent**                | No audio asset, component, backend abstraction, mixer, Web Audio implementation, or graph API was found.                                                                                                                                 |
 | Save/storage                 | **Absent**                | Project file persistence exists, but no save-game storage, IndexedDB backend, replication adapter, slots, or graph API.                                                                                                                  |
@@ -85,11 +86,11 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
 
 | Current contract                | Target contract                                                              |
 | ------------------------------- | ---------------------------------------------------------------------------- |
-| Numeric system `order`          | One named, multi-phase `EngineScheduler` owning frame/fixed time             |
-| Physics system owns accumulator | Scheduler commands exactly one physics step per fixed substep                |
+| Named multi-phase scheduler     | Add compiled graph execution to the existing frame/fixed domains             |
+| Scheduler-owned accumulator     | Preserve exactly one physics step per fixed substep across graph integration |
 | Render-only graph               | Separate typed gameplay graph compiler and interpreter                       |
 | `ScriptRef` stub                | Custom Node SDK, custom components, behavior graphs, and typed project code  |
-| World always active             | `activeSelf` plus computed `activeInHierarchy`                               |
+| Hierarchy activation foundation | Build pooling and graph lifecycle integrations on the existing contract      |
 | No runtime pooling              | Package-level pool built on entity activation and baseline reset             |
 | Editor React UI only            | Separate production DOM UI subsystem and UI assets                           |
 | Project I/O only                | Save storage, replication, platform capabilities, and persistent checkpoints |
@@ -97,8 +98,9 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
 
 ## Confirmed risks
 
-- **Central refactor risk:** scheduler ownership changes the engine loop and every existing
-  physics/controller consumer. It must be an isolated early stage with parity tests.
+- **Scheduler integration risk:** the central scheduler refactor is complete; later graph,
+  replay, and checkpoint work must reuse its phases, fixed tick, and typed queues rather
+  than create a second loop or accumulator.
 - **Graph-runtime risk:** checkpoint, async policy, effects, and multi-domain execution are
   fundamental contracts. They cannot be added as editor-only conveniences after gameplay.
 - **Browser toolchain risk:** TypeScript, bundling, custom code, and sandbox messaging must

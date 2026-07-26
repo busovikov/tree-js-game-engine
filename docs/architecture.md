@@ -83,18 +83,27 @@ Stable API between editor, serializer, and engine. Scene-graph today; ECS-compat
 
 ```typescript
 interface IWorld {
-  createEntity(name?: string): EntityId
+  createEntity(name?: string, id?: EntityId, activeSelf?: boolean): EntityId
   destroyEntity(id: EntityId): void
+  getActiveSelf(id: EntityId): boolean
+  setActiveSelf(id: EntityId, active: boolean): void
+  isActiveInHierarchy(id: EntityId): boolean
   addComponent<T>(id, type, data): void
   getComponent<T>(id, type): T | undefined
   setParent(child, parent): void
   query(...types): Iterable<EntityId>
+  queryIncludingInactive(...types): Iterable<EntityId>
 }
 ```
 
 - Entity IDs: **UUID v4** strings (not indices)
-- Components: **plain data** + Zod schema in `@haku/schema`
+- Components: **plain data** + owner-package Zod schemas and optional deterministic
+  `create`/`activate`/`deactivate`/`destroy` lifecycle hooks
 - Hierarchy: `parent` field on entity (not inside Transform)
+- Activity: authored/serialized `activeSelf` defaults to `true`; derived
+  `activeInHierarchy` follows parent activity without overwriting child intent
+- Queries: `query()` excludes inactive entities; diagnostics and authoring may opt in with
+  `queryIncludingInactive()`
 
 Implementation: `World` class in `@haku/core`.
 
@@ -121,6 +130,7 @@ Top-level shape (`packages/schema/src/index.ts`):
   "id": "550e8400-e29b-41d4-a716-446655440000",
   "name": "MainCamera",
   "parent": null,
+  "activeSelf": true,
   "components": [
     { "type": "40000000-0000-4000-8000-000000000001", "data": { "position": [0,2,5], "rotation": [0,0,0,1], "scale": [1,1,1] } }
   ]
@@ -142,14 +152,33 @@ runtime resolve it through the production asset registry and injected prefab ass
 
 ```
 tick(dt):
-  1. systems.update(world, dt)     // game logic (PhysicsWorldSystem @ order 50 when enabled)
-  2. RenderSyncSystem.syncAll()    // mirror components → Three.js
-  3. backend.render()              // forward pass + editor overlays
+  EngineScheduler.runFrame(world, dt):
+    FrameInput -> AccumulateTime
+    repeat bounded fixed substeps:
+      FixedInputSnapshot -> FixedPrePhysics -> PhysicsStep
+      -> PostPhysics -> FixedGameplay
+    FrameGameplay -> LateUpdate -> Presentation -> Render
 ```
 
-**Physics (optional):** `Engine.setPhysicsBackend(backend)` registers `PhysicsWorldSystem` — deterministic fixed 60 Hz steps via `@haku/physics`, with dynamic body transforms written back to `Transform` components. `PhysicsWorldSystem` is the sole simulation-authoritative writer for registered chassis transforms; vehicle visual systems only update wheel-local presentation data. Editor and playground use the shared `PHYSICS_CATCH_UP_POLICY`: up to three substeps recover uneven 30–60 FPS frames, while render-frame input and accumulated backlog are capped to one catch-up budget (50 ms) so hitches drop excess time instead of causing a spiral of death. Rapier wiring belongs to app composition roots: editor Play mode and playground may depend on `@haku/physics-rapier`, while engine production dependencies remain on the abstract `@haku/physics` API.
+**Scheduler:** `EngineScheduler` is the sole owner of frame/fixed time, the accumulator,
+bounded catch-up, frame/tick numbering, pause, single-step, phase order, and interpolation
+alpha. Systems declare a named `phase` and optional finite `localOrder`; registration
+sequence is the stable tie-breaker. Typed queued commands record source phase/tick/frame and
+sequence. A command enqueued for its currently executing phase waits for the next visit,
+preventing synchronous reentrancy.
 
-**Physics presentation interpolation:** `PhysicsWorldSystem` retains previous/current fixed-step poses and exposes a render-only resolver using `accumulator / fixedTimestep`. Position uses lerp; rotation uses normalized shortest-path quaternion interpolation. `RenderSyncSystem` applies the resolved pose directly to `Object3D` and never writes it into the simulation-authoritative `Transform`. Vehicle chase/follow cameras resolve the same chassis presentation pose, and wheel child meshes inherit that interpolated parent pose. Wheel-local suspension, steering, and spin remain sampled from the current fixed-step controller state; there is no separate wheel-pose interpolation buffer. First registration, respawn/teleport, backend replacement, and `Engine.loadWorld()` / `setWorld()` invalidate history and snap instead of blending across discontinuities. This is interpolation only (one fixed-step of presentation latency), not extrapolation or networking prediction.
+**Physics (optional):** `Engine.setPhysicsBackend(backend)` registers `PhysicsWorldSystem`
+in `PhysicsStep` for deterministic fixed 60 Hz steps via `@haku/physics`, with dynamic body
+transforms written back to `Transform` components. It performs exactly one backend step each
+time the scheduler visits that phase and owns no accumulator. `ENGINE_SCHEDULER_POLICY`
+allows up to three substeps and admits at most 50 ms of frame time, dropping excess hitch
+time instead of causing a spiral of death. `PhysicsWorldSystem` remains the sole
+simulation-authoritative writer for registered chassis transforms; vehicle visual systems
+only update wheel-local presentation data. Rapier wiring belongs to app composition roots:
+editor Play mode and playground may depend on `@haku/physics-rapier`, while engine
+production dependencies remain on the abstract `@haku/physics` API.
+
+**Physics presentation interpolation:** `PhysicsWorldSystem` retains previous/current fixed-step poses and exposes a render-only resolver using the scheduler's interpolation alpha. Position uses lerp; rotation uses normalized shortest-path quaternion interpolation. `RenderSyncSystem` applies the resolved pose directly to `Object3D` and never writes it into the simulation-authoritative `Transform`. Vehicle chase/follow cameras resolve the same chassis presentation pose, and wheel child meshes inherit that interpolated parent pose. Wheel-local suspension, steering, and spin remain sampled from the current fixed-step controller state; there is no separate wheel-pose interpolation buffer. First registration, respawn/teleport, backend replacement, and `Engine.loadWorld()` / `setWorld()` invalidate history and snap instead of blending across discontinuities. This is interpolation only (one fixed-step of presentation latency), not extrapolation or networking prediction.
 
 **Force lifetime:** `IPhysicsWorld.applyForce()` accumulates force and point torque for exactly the next backend `step()`; Stub and Rapier clear both after integration. Render-frame controllers that need continuous force queue a `PhysicsWorldSystem` substep action so the force is recomputed before every fixed substep, as the custom spring does.
 
@@ -161,17 +190,17 @@ tick(dt):
 
 **Raycast vehicle (T01.12):** Shared sketchbook-style solver in `@haku/physics` (`stepRaycastVehicle`) — per-wheel suspension raycasts, spring-damper (compression/relaxation), lateral friction along wheel axle, engine/brake/steering via `IRaycastVehicle`. `StubPhysicsBackend` and `RapierPhysicsBackend` call the solver in `step()` before integration; Rapier types stay in `@haku/physics-rapier` only. **Implementation references:** [`links.md` § Rapier](./links.md#rapier-dimforge-rapier3d-compat-0193) (official docs, Three.js Rapier vehicle example, Isaac Mason custom raycast vehicle). Tune `PhysicsController` custom-raycast defaults for the Rapier stack in Play mode — do not port reference-game physics constants. Visual sync (T01.14) and arcade assists (T01.15) out of scope.
 
-**Vehicle controller (T01.13):** `VehicleControllerSystem` in `@haku/engine` (order 48, before `PhysicsWorldSystem`) — creates `IRaycastVehicle` per entity with a custom-raycast `PhysicsController` + collider body; reads component params each frame. RWD engine force, smoothed steering, coast/service/handbrake, boost speed cap, jump with grounded check. Programmatic input via `setVehicleInput(entityId, { throttle, steer, boost, jump, brake })`.
+**Vehicle controller (T01.13):** `VehicleControllerSystem` in `@haku/engine` (`FixedPrePhysics`, before `PhysicsWorldSystem`) — creates `IRaycastVehicle` per entity with a custom-raycast `PhysicsController` + collider body; reads component params each fixed step. RWD engine force, smoothed steering, coast/service/handbrake, boost speed cap, jump with grounded check. Programmatic input via `setVehicleInput(entityId, { throttle, steer, boost, jump, brake })`.
 
-**Input binding (T01.18):** `InputBindingSystem` in `@haku/engine` (order 47) — reads `InputManager` actions each frame and calls `setVehicleInput` on the controlled vehicle entity (explicit or first enabled vehicle-style `PhysicsController`). R pulse queues respawn via `RespawnSystem` (T01.21). Clears jump/respawn pulses each frame; orbit/zoom deltas consumed by `ChaseCameraSystem`.
+**Input binding (T01.18):** `InputBindingSystem` in `@haku/engine` (`FrameInput`) — reads `InputManager` actions each frame and calls `setVehicleInput` on the controlled active vehicle entity (explicit or first enabled vehicle-style `PhysicsController`). R pulse queues respawn via `RespawnSystem` (T01.21). Clears jump/respawn pulses each frame; orbit/zoom deltas consumed by `ChaseCameraSystem`.
 
-**Respawn (T01.21):** `RespawnSystem` in `@haku/engine` (order 49) — captures spawn pose from initial vehicle transform; auto-respawns when chassis Y &lt; fall threshold (default −20, reference-aligned); manual reset on R via `InputBindingSystem` → `requestRespawn`. Resets physics body transform + linear/angular velocity and vehicle steer/jump/brake state. Wired in `startVehiclePlayMode()`.
+**Respawn (T01.21):** `RespawnSystem` in `@haku/engine` (`FixedPrePhysics`) — captures spawn pose from initial vehicle transform; auto-respawns when chassis Y &lt; fall threshold (default −20, reference-aligned); manual reset on R via `InputBindingSystem` → `requestRespawn`. Resets physics body transform + linear/angular velocity and vehicle steer/jump/brake state. Wired in `startVehiclePlayMode()`.
 
-**Chase camera (T01.19):** `ChaseCameraSystem` in `@haku/engine` (order 91, after vehicle visual sync) — follows the controlled vehicle's presentation-resolved pose with offset + exponential lerp; mouse orbit from `InputManager` (`cameraOrbitDelta`, `cameraZoomDelta`) with pitch clamp; airborne blend when wheels leave ground; boost FOV widen (lerp scene camera `fov` → 72). Updates scene camera entity `Transform` + `Camera` each frame. Registered by `startVehiclePlayMode()` alongside controller, input binding, and visual sync. Post-FX FOV blend (T01.31) out of scope.
+**Chase camera (T01.19):** `ChaseCameraSystem` in `@haku/engine` (`LateUpdate`, after vehicle visual sync) — follows the controlled active vehicle's presentation-resolved pose with offset + exponential lerp; mouse orbit from `InputManager` (`cameraOrbitDelta`, `cameraZoomDelta`) with pitch clamp; airborne blend when wheels leave ground; boost FOV widen (lerp scene camera `fov` → 72). Updates scene camera entity `Transform` + `Camera` each frame. Registered by `startVehiclePlayMode()` alongside controller, input binding, and visual sync. Post-FX FOV blend (T01.31) out of scope.
 
 **Runtime input (T01.17):** `InputManager` in `@haku/engine` (`packages/engine/src/input/`) — play-mode keyboard + pointer abstraction (AD-07 v1). Tracks key down/up into throttle/steer axes and modifier actions (boost, brake/handbrake, jump pulse, respawn pulse); pointer drag → `cameraOrbitDelta`, wheel → `cameraZoomDelta`. `attach`/`detach` register DOM listeners on window/canvas; `enable`/`disable` gate processing and release held keys on pause/exit. `endFrame()` clears orbit/zoom after chase camera consumes them.
 
-**Vehicle visual sync (T01.14):** `VehicleVisualSyncSystem` in `@haku/engine` (order 90, after physics, before `RenderSyncSystem`) — reads the chassis physics pose to compute four wheel child entity transforms from `IRaycastVehicle` wheel state (contact, suspension length, steering, spin), but never writes the chassis `Transform`. `PhysicsWorldSystem` already performed the authoritative chassis write at order 50. Wheel meshes: child entities with `MeshRenderer`, named `frontLeft` / `frontRight` / `backLeft` / `backRight` (or first four mesh children in FL→FR→BL→BR order). Edit-mode dynamic-raycast wheel rest poses are installed as a `RenderSyncSystem` presentation resolver; they do not mutate authored wheel transforms or scene snapshots. Tire marks (T01.16) out of scope.
+**Vehicle visual sync (T01.14):** `VehicleVisualSyncSystem` in `@haku/engine` (`PostPhysics`, before `RenderSyncSystem` in `Presentation`) — reads the chassis physics pose to compute four wheel child entity transforms from `IRaycastVehicle` wheel state (contact, suspension length, steering, spin), but never writes the chassis `Transform`. `PhysicsWorldSystem` already performed the authoritative chassis write in `PhysicsStep`. Wheel meshes: child entities with `MeshRenderer`, named `frontLeft` / `frontRight` / `backLeft` / `backRight` (or first four mesh children in FL→FR→BL→BR order). Edit-mode dynamic-raycast wheel rest poses are installed as a `RenderSyncSystem` presentation resolver; they do not mutate authored wheel transforms or scene snapshots. Tire marks (T01.16) out of scope.
 
 - `Engine.start()` → `requestAnimationFrame`
 - Editor creates `Engine` once in `ViewportPanel` `useEffect`; scene edits call `engine.setWorld()` — do not recreate engine per edit

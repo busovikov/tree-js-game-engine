@@ -100,6 +100,10 @@
 | `World` | `IWorld` implementation |
 | `cloneWorld(world)` | Deep clone (undo / play snapshot) |
 | `entityId(string)`, `entityIdToString()` | Branded entity id |
+| `World.getActiveSelf()`, `setActiveSelf()`, `isActiveInHierarchy()` | Hierarchy activity contract |
+| `World.queryIncludingInactive()` | Explicit diagnostic/authoring query opt-in |
+| `ComponentLifecycleHooks` | Deterministic create/activate/deactivate/destroy hooks |
+| `EngineScheduler`, `SCHEDULER_PHASES` | Named frame/fixed phases, sole accumulator, queues, pause, and single-step |
 | `*Component` | `TransformComponent`, `CameraComponent`, `LightComponent`, `MeshRendererComponent`, … |
 | `getCoreComponent(typeId)` | Registry lookup |
 | `IWorld`, `ISystem`, `IRenderBackend` | Stability contracts — [`types.ts`](../packages/core/src/types.ts) |
@@ -120,7 +124,7 @@
 
 | Export | Purpose |
 | ------ | ------- |
-| `Engine`, `EngineOptions`, `EngineFeatureFlags` | Game loop — [`engine.ts`](../packages/engine/src/engine.ts) |
+| `Engine`, `EngineOptions`, `EngineFeatureFlags`, `ENGINE_SCHEDULER_POLICY` | Scheduled game loop — [`engine.ts`](../packages/engine/src/engine.ts) |
 | `SceneLoader.load(path)`, `SceneLoader.fromDocument(doc)` | HTTP load + validate |
 | `ThreeRenderBackend`, `RenderSyncSystem` | Render pipeline |
 | `createMaterial`, `createMeshFromRenderer`, `updateMeshMaterial`, … | Mesh factory |
