@@ -31,7 +31,7 @@ import {
 } from '@haku/assets'
 import type { AssetId, AssetRef, AssetTypeId } from '@haku/schema'
 import { loadSceneDocument, saveSceneDocument } from '@haku/serializer'
-import { type EntityId, type IWorld } from '@haku/core'
+import { PrefabInstanceComponent, type EntityId, type IWorld } from '@haku/core'
 import { World } from '@haku/core'
 import {
   createEngineAssetRegistry,
@@ -1413,7 +1413,7 @@ export function extractPrefabSubtree(
     })(),
     components: world.getComponentTypes(id).flatMap((typeId) => {
       const type = getEngineComponent(typeId)
-      if (!type || typeId === 'PrefabInstance') return []
+      if (!type || typeId === PrefabInstanceComponent.id) return []
       const data = world.getComponent(id, type)
       return data !== undefined ? [{ type: typeId, data: data as Record<string, unknown> }] : []
     }),

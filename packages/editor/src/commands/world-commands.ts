@@ -192,7 +192,7 @@ export async function createPrefab(rootId: EntityId, displayName: string): Promi
     }
 
     for (const typeId of [...draft.world.getComponentTypes(rootId)]) {
-      if (typeId === 'Transform') continue
+      if (typeId === TransformComponent.id) continue
       const type = getEngineComponent(typeId)
       if (type) draft.world.removeComponent(rootId, type)
     }
@@ -220,7 +220,7 @@ export function placePrefab(
     })
     draft.world.addComponent(id, PrefabInstanceComponent, {
       prefab,
-      overrides: { Transform: { position } },
+      overrides: { [TransformComponent.id]: { position } },
     })
     return [id]
   })
