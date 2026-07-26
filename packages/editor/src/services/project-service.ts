@@ -21,6 +21,7 @@ import {
   ProjectAssetIndex,
   SCENE_ASSET_TYPE,
   TEXTURE_ASSET_TYPE,
+  validateProjectAssetComposition,
   validateProjectManifest,
   type ProjectManifest,
 } from '@haku/assets'
@@ -28,7 +29,11 @@ import type { AssetId, AssetRef, AssetTypeId } from '@haku/schema'
 import { loadSceneDocument, saveSceneDocument } from '@haku/serializer'
 import { type EntityId, type IWorld } from '@haku/core'
 import { World } from '@haku/core'
-import { createEngineComponentRegistry, getEngineComponent } from '@haku/engine'
+import {
+  createEngineAssetRegistry,
+  createEngineComponentRegistry,
+  getEngineComponent,
+} from '@haku/engine'
 import { MeshRendererComponent } from '@haku/engine'
 import {
   clearModelCache,
@@ -54,6 +59,7 @@ type ProjectStorage = 'memory' | 'native' | 'playground' | 'dev-target'
 const PROJECT_LOG_PATH = 'logs/haku.log'
 
 export class ProjectService {
+  private readonly assetRegistry = createEngineAssetRegistry()
   private readonly componentRegistry = createEngineComponentRegistry()
   private root: string | null = null
   private manifest: ProjectManifest | null = null
@@ -1140,7 +1146,7 @@ export class ProjectService {
   }
 
   private async normalizeManifest(manifest: ProjectManifest): Promise<ProjectManifest> {
-    new ProjectAssetIndex(manifest).require(manifest.entryScene, SCENE_ASSET_TYPE)
+    validateProjectAssetComposition(manifest, this.assetRegistry)
     return manifest
   }
 

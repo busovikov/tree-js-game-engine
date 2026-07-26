@@ -23,6 +23,8 @@ import {
   parseMigratedRigidBodyData,
 } from './physics-migration.js'
 
+export * from './asset-types.js'
+
 export function sanitizeComponentDataForPersistence(
   typeName: string,
   data: Record<string, unknown>,

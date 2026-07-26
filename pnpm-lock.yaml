@@ -168,7 +168,7 @@ importers:
         version: link:../schema
       '@haku/serializer':
         specifier: file:../serializer
-        version: link:../serializer
+        version: file:packages/serializer
       react-resizable-panels:
         specifier: ^2.1.9
         version: 2.1.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -214,7 +214,7 @@ importers:
         version: link:../schema
       '@haku/serializer':
         specifier: file:../serializer
-        version: link:../serializer
+        version: file:packages/serializer
       three:
         specifier: ^0.171.0
         version: 0.171.0
@@ -285,6 +285,9 @@ importers:
 
   packages/serializer:
     dependencies:
+      '@haku/assets':
+        specifier: workspace:*
+        version: link:../assets
       '@haku/core':
         specifier: file:../core
         version: file:packages/core
@@ -2756,6 +2759,7 @@ snapshots:
 
   '@haku/serializer@file:packages/serializer':
     dependencies:
+      '@haku/assets': link:packages/assets
       '@haku/core': file:packages/core
       '@haku/physics': file:packages/physics
       '@haku/schema': file:packages/schema

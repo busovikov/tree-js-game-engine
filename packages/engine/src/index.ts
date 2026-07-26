@@ -48,6 +48,7 @@ export {
   vehicleWheelConfigs,
 } from './engine.js'
 export * from './components.js'
+export * from './asset-registry.js'
 export * from './camera.js'
 export * from './light.js'
 export * from './light-color.js'

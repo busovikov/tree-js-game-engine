@@ -3,14 +3,15 @@ import {
   SceneLoader,
   PHYSICS_CATCH_UP_POLICY,
   PhysicsColliderSystem,
+  createEngineAssetRegistry,
   startVehiclePlayMode,
   projectPathToUrl,
 } from '@haku/engine/runtime'
 import { createRapierPhysicsBackend } from '@haku/physics-rapier'
 import {
   MODEL_ASSET_TYPE,
-  ProjectAssetIndex,
   SCENE_ASSET_TYPE,
+  validateProjectAssetComposition,
   validateProjectManifest,
 } from '@haku/assets'
 import project from '../haku.project.json'
@@ -18,7 +19,10 @@ import { configurePlaygroundViewport } from './playground-viewport.js'
 
 async function main() {
   const manifest = validateProjectManifest(project)
-  const assets = new ProjectAssetIndex(manifest)
+  const assets = validateProjectAssetComposition(
+    manifest,
+    createEngineAssetRegistry(),
+  ).index
   const canvas = document.getElementById('canvas') as HTMLCanvasElement
   const engine = new Engine({ canvas })
   engine.backend.setModelAssetResolver((assetId) => {

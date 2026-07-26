@@ -1,15 +1,23 @@
-import { Engine, SceneLoader, projectPathToUrl } from '@haku/engine/runtime'
+import {
+  Engine,
+  SceneLoader,
+  createEngineAssetRegistry,
+  projectPathToUrl,
+} from '@haku/engine/runtime'
 import {
   MODEL_ASSET_TYPE,
-  ProjectAssetIndex,
   SCENE_ASSET_TYPE,
+  validateProjectAssetComposition,
   validateProjectManifest,
 } from '@haku/assets'
 import project from '../haku.project.json'
 
 async function main() {
   const manifest = validateProjectManifest(project)
-  const assets = new ProjectAssetIndex(manifest)
+  const assets = validateProjectAssetComposition(
+    manifest,
+    createEngineAssetRegistry(),
+  ).index
   const canvas = document.getElementById('canvas') as HTMLCanvasElement
   const engine = new Engine({ canvas })
   engine.backend.setModelAssetResolver((assetId) => {

@@ -13,6 +13,7 @@ export {
   startVehiclePlayMode,
 } from './engine.js'
 export * from './components.js'
+export * from './asset-registry.js'
 export * from './scene-camera.js'
 export { DEFAULT_ASSETS_DIR, projectPathToUrl, relativeToAssetsDir } from '@haku/schema'
 export type { EngineOptions, LoadedScene, SceneFetch } from './engine.js'

@@ -139,6 +139,40 @@ export interface AssetTypeDescriptor<T = unknown> {
   readonly dependencies: (value: T) => readonly AssetRef[]
 }
 
+export const BinaryAssetSchema = z.instanceof(Uint8Array)
+export type BinaryAsset = z.infer<typeof BinaryAssetSchema>
+
+export const DataAssetSchema = z.record(z.unknown())
+export type DataAsset = z.infer<typeof DataAssetSchema>
+
+export const MODEL_ASSET_DESCRIPTOR = {
+  type: MODEL_ASSET_TYPE,
+  name: 'Model',
+  schema: BinaryAssetSchema,
+  dependencies: () => [],
+} satisfies AssetTypeDescriptor<BinaryAsset>
+
+export const TEXTURE_ASSET_DESCRIPTOR = {
+  type: TEXTURE_ASSET_TYPE,
+  name: 'Texture',
+  schema: BinaryAssetSchema,
+  dependencies: () => [],
+} satisfies AssetTypeDescriptor<BinaryAsset>
+
+export const BINARY_ASSET_DESCRIPTOR = {
+  type: BINARY_ASSET_TYPE,
+  name: 'Binary',
+  schema: BinaryAssetSchema,
+  dependencies: () => [],
+} satisfies AssetTypeDescriptor<BinaryAsset>
+
+export const DATA_ASSET_DESCRIPTOR = {
+  type: DATA_ASSET_TYPE,
+  name: 'Data',
+  schema: DataAssetSchema,
+  dependencies: collectAssetReferences,
+} satisfies AssetTypeDescriptor<DataAsset>
+
 export class AssetRegistry {
   private readonly descriptors = new Map<AssetTypeId, AssetTypeDescriptor>()
 
@@ -178,6 +212,33 @@ export class AssetRegistry {
   all(): readonly AssetTypeDescriptor[] {
     return [...this.descriptors.values()].sort((left, right) => left.type.localeCompare(right.type))
   }
+}
+
+export function registerBuiltinAssetTypes(registry: AssetRegistry): void {
+  registry.register(MODEL_ASSET_DESCRIPTOR)
+  registry.register(TEXTURE_ASSET_DESCRIPTOR)
+  registry.register(BINARY_ASSET_DESCRIPTOR)
+  registry.register(DATA_ASSET_DESCRIPTOR)
+}
+
+export function collectAssetReferences(value: unknown): AssetRef[] {
+  const references = new Map<AssetId, AssetRef>()
+  const visit = (candidate: unknown): void => {
+    const parsedReference = AssetRefSchema.safeParse(candidate)
+    if (parsedReference.success) {
+      references.set(parsedReference.data.$ref, parsedReference.data)
+      return
+    }
+    if (Array.isArray(candidate)) {
+      for (const item of candidate) visit(item)
+      return
+    }
+    if (typeof candidate === 'object' && candidate !== null) {
+      for (const item of Object.values(candidate)) visit(item)
+    }
+  }
+  visit(value)
+  return [...references.values()].sort((left, right) => left.$ref.localeCompare(right.$ref))
 }
 
 export class ProjectAssetIndex {
@@ -223,6 +284,25 @@ export class ProjectAssetIndex {
   path(reference: AssetRef, expectedType?: AssetTypeId): string {
     return this.require(reference, expectedType).path
   }
+}
+
+export interface ProjectAssetComposition {
+  readonly registry: AssetRegistry
+  readonly index: ProjectAssetIndex
+}
+
+export function validateProjectAssetComposition(
+  manifest: ProjectManifest,
+  registry: AssetRegistry,
+): ProjectAssetComposition {
+  for (const entry of manifest.assets) registry.require(entry.type)
+
+  const index = new ProjectAssetIndex(manifest)
+  index.require(manifest.entryScene, SCENE_ASSET_TYPE)
+  for (const entry of manifest.assets) {
+    for (const reference of entry.dependencies) index.require(reference)
+  }
+  return { registry, index }
 }
 
 export function dependencyClosure(
