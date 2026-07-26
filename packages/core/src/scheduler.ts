@@ -23,7 +23,7 @@ export interface SchedulerSystem {
   update(world: IWorld, dt: number): void
 }
 
-export interface ISystem extends SchedulerSystem {}
+export type ISystem = SchedulerSystem
 
 export interface EngineSchedulerOptions {
   readonly fixedTimestep?: number
