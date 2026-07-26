@@ -20,6 +20,7 @@ import {
   createRegistryFingerprint,
   type NodeCapability,
   type NodeDefinition,
+  type AsyncCheckpointPolicy,
 } from './node-registry.js'
 import {
   TypeRegistry,
@@ -76,7 +77,16 @@ export interface ExecutionPlanCheckpoint {
   readonly eligible: boolean
   readonly stateScope: CheckpointStateScope
   readonly dependencies: readonly CheckpointDependency[]
-  readonly asyncPolicies: readonly never[]
+  readonly asyncPolicies: readonly CheckpointAsyncPolicyMetadata[]
+}
+
+export interface CheckpointAsyncPolicyMetadata {
+  readonly nodeId: string
+  readonly callsiteId: string
+  readonly live: boolean
+  readonly dominatesCheckpoint: boolean
+  readonly supported: readonly AsyncCheckpointPolicy[]
+  readonly causalChain: readonly string[]
 }
 
 export interface ExecutionPlanConnection {
@@ -611,6 +621,63 @@ function analyzeCheckpoints(
           `${right.nodeId}:${right.kind}:${right.resource ?? ''}:${right.effect ?? ''}`,
         ),
     )
+    const asyncPolicies: CheckpointAsyncPolicyMetadata[] = []
+    const asyncPaths = new Map<string, readonly string[]>()
+    const incoming = [checkpoint.node.id]
+    asyncPaths.set(checkpoint.node.id, [])
+    while (incoming.length > 0) {
+      const current = incoming.shift()!
+      const path = asyncPaths.get(current)!
+      for (const connection of connections) {
+        if (
+          connection.operation === 'data-dependency' ||
+          connection.to.node !== current ||
+          asyncPaths.has(connection.from.node)
+        ) {
+          continue
+        }
+        asyncPaths.set(connection.from.node, [
+          ...path,
+          `${connection.kind} dependency ${connection.from.node} -> ${connection.to.node}`,
+        ])
+        incoming.push(connection.from.node)
+      }
+    }
+    for (const [nodeId, path] of asyncPaths) {
+      const analysis = analyses.get(nodeId)
+      if (!analysis || analysis.definition.contract.execution !== 'async') continue
+      const connection = connections.find(
+        (candidate) =>
+          candidate.from.node === nodeId &&
+          candidate.operation !== 'data-dependency' &&
+          asyncPaths.has(candidate.to.node),
+      )
+      const callsiteId = connection?.from.callsite ??
+        [...analysis.callsites.keys()].sort()[0]
+      if (!callsiteId) continue
+      asyncPolicies.push({
+        nodeId,
+        callsiteId,
+        live: true,
+        dominatesCheckpoint: flowNodeDominates(
+          nodeId,
+          checkpoint.node.id,
+          analyses,
+          connections,
+        ),
+        supported: analysis.definition.contract.asyncCheckpointPolicies,
+        causalChain: [
+          `checkpoint ${checkpoint.node.id}`,
+          ...path,
+          `async node ${analysis.definition.contract.name} (${nodeId})`,
+        ],
+      })
+    }
+    asyncPolicies.sort((left, right) =>
+      `${left.nodeId}:${left.callsiteId}`.localeCompare(
+        `${right.nodeId}:${right.callsiteId}`,
+      ),
+    )
     checkpoints.push({
       nodeId: checkpoint.node.id,
       eligible: dependencies.length === 0,
@@ -623,10 +690,49 @@ function analyzeCheckpoints(
         unbounded: dependencies.some((item) => item.kind === 'unbounded-scope'),
       },
       dependencies,
-      asyncPolicies: [],
+      asyncPolicies,
     })
   }
   return checkpoints
+}
+
+function flowNodeDominates(
+  candidate: string,
+  target: string,
+  analyses: ReadonlyMap<string, NodeAnalysis>,
+  connections: readonly ExecutionPlanConnection[],
+): boolean {
+  const flowConnections = connections.filter(
+    (connection) => connection.operation !== 'data-dependency',
+  )
+  const incomingCounts = new Map([...analyses.keys()].map((id) => [id, 0]))
+  for (const connection of flowConnections) {
+    incomingCounts.set(
+      connection.to.node,
+      (incomingCounts.get(connection.to.node) ?? 0) + 1,
+    )
+  }
+  const pending = [...incomingCounts]
+    .filter(([, count]) => count === 0)
+    .map(([id]) => id)
+    .filter((id) => id !== candidate)
+  const visited = new Set(pending)
+  while (pending.length > 0) {
+    const current = pending.shift()!
+    if (current === target) return false
+    for (const connection of flowConnections) {
+      if (
+        connection.from.node !== current ||
+        connection.to.node === candidate ||
+        visited.has(connection.to.node)
+      ) {
+        continue
+      }
+      visited.add(connection.to.node)
+      pending.push(connection.to.node)
+    }
+  }
+  return true
 }
 
 function compileInternal(

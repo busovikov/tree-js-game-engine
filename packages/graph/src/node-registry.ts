@@ -25,6 +25,16 @@ export type NodeExecutionContract = 'sync' | 'async'
 export type NodeCheckpointPolicy = 'safe' | 'conditional' | 'unsafe'
 export type NodeCheckpointRole = 'none' | 'create'
 export type NodeCheckpointScope = 'bounded' | 'unbounded'
+export const ASYNC_CHECKPOINT_POLICIES = [
+  'wait',
+  'restart',
+  'resume',
+  'reconnect',
+  'materialized',
+  'cancel-fallback',
+  'reject',
+] as const
+export type AsyncCheckpointPolicy = (typeof ASYNC_CHECKPOINT_POLICIES)[number]
 export type NodeResultPersistence = 'none' | 'execution' | 'checkpoint'
 export type NodeLiveness = 'pure' | 'on-flow' | 'on-event' | 'always'
 export type ResourceScope = 'static' | 'dynamic' | 'unprovable'
@@ -112,6 +122,7 @@ export interface NodeDefinitionContract {
   readonly checkpoint: NodeCheckpointPolicy
   readonly checkpointRole: NodeCheckpointRole
   readonly checkpointScope: NodeCheckpointScope
+  readonly asyncCheckpointPolicies: readonly AsyncCheckpointPolicy[]
   readonly resultPersistence: NodeResultPersistence
   readonly liveness: NodeLiveness
   readonly exportedState: readonly ExportedNodeState[]
@@ -133,13 +144,18 @@ export interface NodePortInput {
 export interface NodeDefinitionInput
   extends Omit<
     NodeDefinitionContract,
-    'ports' | 'propertyContract' | 'checkpointRole' | 'checkpointScope'
+    | 'ports'
+    | 'propertyContract'
+    | 'checkpointRole'
+    | 'checkpointScope'
+    | 'asyncCheckpointPolicies'
   > {
   readonly ports: readonly NodePortInput[]
   readonly propertySchema: z.ZodType<Record<string, unknown>, z.ZodTypeDef, unknown>
   readonly propertyContract: unknown
   readonly checkpointRole?: NodeCheckpointRole
   readonly checkpointScope?: NodeCheckpointScope
+  readonly asyncCheckpointPolicies?: readonly AsyncCheckpointPolicy[]
 }
 
 function diagnostic(
@@ -240,6 +256,11 @@ export function defineNode(input: NodeDefinitionInput): NodeDefinition {
       checkpoint: input.checkpoint,
       checkpointRole: input.checkpointRole ?? 'none',
       checkpointScope: input.checkpointScope ?? 'bounded',
+      asyncCheckpointPolicies: ASYNC_CHECKPOINT_POLICIES.filter((policy) =>
+        (input.asyncCheckpointPolicies ??
+          (input.execution === 'async' ? ['reject'] : [])
+        ).includes(policy)
+      ),
       resultPersistence: input.resultPersistence,
       liveness: input.liveness,
       exportedState: [...input.exportedState].sort((left, right) =>

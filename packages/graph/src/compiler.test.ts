@@ -675,6 +675,72 @@ describe('headless graph compiler', () => {
     })
   })
 
+  it('enumerates all supported policies for a flow-dominant live async callsite', () => {
+    const types = createBuiltinTypeRegistry()
+    const nodes = new NodeRegistry()
+    nodes.register(
+      definition(27, [
+        { id: uid(127), name: 'Next', kind: 'flow', direction: 'output' },
+      ], {
+        name: 'AsyncOperation',
+        execution: 'async',
+        asyncCheckpointPolicies: [
+          'wait',
+          'restart',
+          'resume',
+          'reconnect',
+          'materialized',
+          'cancel-fallback',
+          'reject',
+        ],
+      }),
+    )
+    nodes.register(
+      definition(28, [
+        { id: uid(128), name: 'In', kind: 'flow', direction: 'input' },
+      ], {
+        name: 'CheckpointAfterAsync',
+        checkpointRole: 'create',
+        liveness: 'on-flow',
+      }),
+    )
+
+    const result = compileGraph(
+      graph(
+        [
+          node(127, 27, [callsite(227, 127, 'flow', 'output')]),
+          node(128, 28, [callsite(228, 128, 'flow', 'input')]),
+        ],
+        [connection(327, 127, 227, 128, 228)],
+      ),
+      { types, nodes },
+    )
+
+    expect(result.diagnostics).toEqual([])
+    expect(result.plan?.checkpoints[0].asyncPolicies).toEqual([
+      {
+        nodeId: uid(127),
+        callsiteId: uid(227),
+        live: true,
+        dominatesCheckpoint: true,
+        supported: [
+          'wait',
+          'restart',
+          'resume',
+          'reconnect',
+          'materialized',
+          'cancel-fallback',
+          'reject',
+        ],
+        causalChain: [
+          `checkpoint ${uid(128)}`,
+          `flow dependency ${uid(127)} -> ${uid(128)}`,
+          `async node AsyncOperation (${uid(127)})`,
+        ],
+      },
+    ])
+  })
+
   it('keeps pure data nodes only when a live node consumes them', () => {
     const types = createBuiltinTypeRegistry()
     const nodes = new NodeRegistry()
