@@ -36,7 +36,9 @@ function runtimeNode(
     order,
     typeArguments: {},
     properties: {},
-    reads: [],
+    reads: id === SOURCE
+      ? [{ resource: 'test.speed', scope: 'static' }]
+      : [],
     writes: [],
     effects: [],
     execution: 'sync',
@@ -103,11 +105,14 @@ describe('GraphInstance data and public API', () => {
     const plan = dataPlan()
     const events: unknown[] = []
     let sourceEvaluations = 0
+    let resourceValue = 10
     const backend: ExecutionBackend = {
       execute(request: NodeExecutionRequest) {
         if (request.node.id === SOURCE) {
           sourceEvaluations += 1
-          const value = request.getParameter(PARAMETER)
+          const value =
+            Number(request.getParameter(PARAMETER)) +
+            Number(request.readResource('test.speed'))
           return {
             data: { [SOURCE_OUT]: value },
             exportedState: { last: value },
@@ -116,6 +121,8 @@ describe('GraphInstance data and public API', () => {
         if (request.node.id === CONSUMER) {
           const first = request.readData(CONSUMER_IN)
           instance.setParameter(PARAMETER, 2)
+          resourceValue = 20
+          instance.invalidateResource('test.speed')
           const second = request.readData(CONSUMER_IN)
           return {
             publicOutputs: { [OUTPUT]: [first, second] },
@@ -135,23 +142,26 @@ describe('GraphInstance data and public API', () => {
       registryFingerprint: plan.registryFingerprint,
       scheduler,
       backend,
+      resources: {
+        snapshot: () => resourceValue,
+      },
     })
     instance.setParameter(PARAMETER, 1)
     instance.subscribe(EVENT, (value) => events.push(value))
 
     instance.start(CONSUMER)
 
-    expect(instance.getOutput(OUTPUT)).toEqual([1, 1])
-    expect(events).toEqual([1])
+    expect(instance.getOutput(OUTPUT)).toEqual([11, 11])
+    expect(events).toEqual([11])
     expect(sourceEvaluations).toBe(1)
 
     instance.start(CONSUMER)
-    expect(instance.getOutput(OUTPUT)).toEqual([2, 2])
-    expect(events).toEqual([1, 2])
+    expect(instance.getOutput(OUTPUT)).toEqual([22, 22])
+    expect(events).toEqual([11, 22])
     expect(sourceEvaluations).toBe(2)
 
     instance.start(INSPECTOR)
-    expect(instance.getOutput(OUTPUT)).toBe(2)
+    expect(instance.getOutput(OUTPUT)).toBe(22)
   })
 
   it('rejects unknown public ports and NodeRefs outside the current instance', () => {

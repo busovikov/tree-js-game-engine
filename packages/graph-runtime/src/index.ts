@@ -25,6 +25,17 @@ export interface ExecutionSnapshot {
   readonly phase: SchedulerPhase
   readonly tickNumber: number
   readonly frameNumber: number
+  readonly resourceVersions: Readonly<Record<string, number>>
+}
+
+export interface SubgraphInvocation {
+  readonly entryNodeId: string
+  readonly parameters?: Readonly<Record<string, unknown>>
+}
+
+export interface SubgraphExecutionResult {
+  readonly instanceId: string
+  readonly outputs: Readonly<Record<string, unknown>>
 }
 
 export interface NodeExecutionRequest {
@@ -38,8 +49,12 @@ export interface NodeExecutionRequest {
   readonly snapshot: ExecutionSnapshot
   readonly signal: AbortSignal
   getParameter(portId: string): unknown
+  readResource(resource: string): unknown
   readData(inputCallsiteId: string): unknown
   readNodeRef(reference: NodeReference, exportedName: string): unknown
+  runSubgraph(
+    invocation: SubgraphInvocation,
+  ): SubgraphExecutionResult | Promise<SubgraphExecutionResult>
 }
 
 export interface NodeExecutionResult {
@@ -80,6 +95,12 @@ export interface GraphInstanceOptions {
   readonly registryFingerprint: string
   readonly scheduler: EngineScheduler
   readonly backend: ExecutionBackend
+  readonly subgraphPlans?: ReadonlyMap<string, GraphExecutionPlan>
+  readonly resources?: ResourceSnapshotProvider
+}
+
+export interface ResourceSnapshotProvider {
+  snapshot(resource: string): unknown
 }
 
 interface QueuedFlow {
@@ -89,6 +110,7 @@ interface QueuedFlow {
 
 interface SnapshotState extends ExecutionSnapshot {
   readonly parameters: ReadonlyMap<string, unknown>
+  readonly resources: ReadonlyMap<string, unknown>
 }
 
 interface ExecutionBudget {
@@ -105,6 +127,8 @@ export class GraphInstance {
   private readonly backend: ExecutionBackend
   private readonly nodes: ReadonlyMap<string, ExecutionPlanNode>
   private readonly publicPorts: ReadonlyMap<string, GraphPublicPort>
+  private readonly subgraphPlans: ReadonlyMap<string, GraphExecutionPlan>
+  private readonly resources?: ResourceSnapshotProvider
   private readonly abortController = new AbortController()
   private readonly traceEntries: ExecutionTraceEntry[] = []
   private readonly parameters = new Map<string, unknown>()
@@ -112,9 +136,12 @@ export class GraphInstance {
   private readonly exportedState = new Map<string, ReadonlyMap<string, unknown>>()
   private readonly subscribers = new Map<string, Set<EventSubscriber>>()
   private readonly dataCache = new Map<string, NodeExecutionResult>()
+  private readonly resourceVersions = new Map<string, number>()
+  private readonly childInstances: GraphInstance[] = []
   private nextTraceSequence = 0
   private nextSnapshotId = 0
   private parameterRevision = 0
+  private nextSubgraphSequence = 0
 
   constructor(options: GraphInstanceOptions) {
     if (options.plan.registryFingerprint !== options.registryFingerprint) {
@@ -126,6 +153,8 @@ export class GraphInstance {
     this.plan = options.plan
     this.scheduler = options.scheduler
     this.backend = options.backend
+    this.subgraphPlans = options.subgraphPlans ?? new Map()
+    this.resources = options.resources
     this.nodes = new Map(options.plan.nodes.map((node) => [node.id, node]))
     this.publicPorts = new Map(
       options.plan.publicInterface.ports.map((port) => [port.id, port]),
@@ -140,6 +169,20 @@ export class GraphInstance {
     const port = this.requirePublicPort(portId, 'input', 'data')
     this.parameters.set(port.id, cloneValue(value))
     this.parameterRevision += 1
+  }
+
+  invalidateResource(resource: string): void {
+    if (!this.plan.nodes.some((node) =>
+      node.reads.some((read) => read.resource === resource)
+    )) {
+      throw new Error(
+        `Resource ${resource} is not declared by graph ${this.plan.graphId}`,
+      )
+    }
+    this.resourceVersions.set(
+      resource,
+      (this.resourceVersions.get(resource) ?? 0) + 1,
+    )
   }
 
   getOutput(portId: string): unknown {
@@ -165,6 +208,7 @@ export class GraphInstance {
     if (!node) {
       throw new Error(`Graph ${this.plan.graphId} has no executable node ${nodeId}`)
     }
+    this.requireSubgraphPlan(node)
     const snapshot = this.createSnapshot(node.domain)
     this.executeNode(nodeId, undefined, snapshot, { steps: 0 })
   }
@@ -190,10 +234,14 @@ export class GraphInstance {
       snapshot,
       signal: this.abortController.signal,
       getParameter: (portId) => this.readParameter(snapshot, portId),
+      readResource: (resource) =>
+        this.readResource(node, snapshot, resource),
       readData: (inputCallsiteId) =>
         this.readData(node, inputCallsiteId, snapshot, budget),
       readNodeRef: (reference, exportedName) =>
         this.readNodeRef(reference, exportedName),
+      runSubgraph: (invocation) =>
+        this.runSubgraph(node, invocation),
     }
     this.record('node-start', node)
     const result = this.backend.execute(request)
@@ -301,6 +349,19 @@ export class GraphInstance {
     return cloneValue(result.data?.[connection.from.callsite])
   }
 
+  private readResource(
+    node: ExecutionPlanNode,
+    snapshot: SnapshotState,
+    resource: string,
+  ): unknown {
+    if (!node.reads.some((read) => read.resource === resource)) {
+      throw new Error(
+        `Node ${node.id} did not declare resource read ${resource}`,
+      )
+    }
+    return cloneValue(snapshot.resources.get(resource))
+  }
+
   private readNodeRef(
     reference: NodeReference,
     exportedName: string,
@@ -346,6 +407,66 @@ export class GraphInstance {
     }
   }
 
+  private runSubgraph(
+    node: ExecutionPlanNode,
+    invocation: SubgraphInvocation,
+  ): SubgraphExecutionResult {
+    const descriptor = this.plan.subgraphs.find(
+      (subgraph) => subgraph.nodeId === node.id,
+    )
+    if (!descriptor) {
+      throw new Error(`Node ${node.id} is not a compiled subgraph call`)
+    }
+    const plan = this.subgraphPlans.get(descriptor.assetId)
+    if (!plan) {
+      throw new Error(`Missing compiled subgraph plan ${descriptor.assetId}`)
+    }
+    if (plan.graphId !== descriptor.graphId) {
+      throw new Error(
+        `Compiled subgraph ${descriptor.assetId} expected graph ${descriptor.graphId}, received ${plan.graphId}`,
+      )
+    }
+    const child = new GraphInstance({
+      id: `${this.id}:${node.id}:${this.nextSubgraphSequence++}`,
+      plan,
+      registryFingerprint: this.plan.registryFingerprint,
+      scheduler: this.scheduler,
+      backend: this.backend,
+      subgraphPlans: this.subgraphPlans,
+      resources: this.resources,
+    })
+    this.childInstances.push(child)
+    for (const [portId, value] of Object.entries(
+      invocation.parameters ?? {},
+    )) {
+      child.setParameter(portId, value)
+    }
+    child.start(invocation.entryNodeId)
+    const outputs = Object.fromEntries(
+      plan.publicInterface.ports
+        .filter(
+          (port) => port.direction === 'output' && port.kind === 'data',
+        )
+        .map((port) => [port.id, child.getOutput(port.id)]),
+    )
+    return {
+      instanceId: child.id,
+      outputs,
+    }
+  }
+
+  private requireSubgraphPlan(node: ExecutionPlanNode): void {
+    if (node.kind !== 'subgraph') return
+    const descriptor = this.plan.subgraphs.find(
+      (subgraph) => subgraph.nodeId === node.id,
+    )
+    if (!descriptor || !this.subgraphPlans.has(descriptor.assetId)) {
+      throw new Error(
+        `Missing compiled subgraph plan ${descriptor?.assetId ?? node.id}`,
+      )
+    }
+  }
+
   private requirePublicPort(
     portId: string,
     direction: GraphPublicPort['direction'],
@@ -362,16 +483,36 @@ export class GraphInstance {
 
   private createSnapshot(phase: SchedulerPhase): SnapshotState {
     const id = this.nextSnapshotId++
+    const resourceNames = [
+      ...new Set(
+        this.plan.nodes.flatMap((node) =>
+          node.reads.map((read) => read.resource)
+        ),
+      ),
+    ].sort()
+    const resourceVersions = Object.fromEntries(
+      resourceNames.map((resource) => [
+        resource,
+        this.resourceVersions.get(resource) ?? 0,
+      ]),
+    )
     return {
       id,
-      key: `${this.scheduler.frameNumber}:${this.scheduler.tickNumber}:${phase}:${this.parameterRevision}`,
+      key: `${this.scheduler.frameNumber}:${this.scheduler.tickNumber}:${phase}:${this.parameterRevision}:${JSON.stringify(resourceVersions)}`,
       phase,
       tickNumber: this.scheduler.tickNumber,
       frameNumber: this.scheduler.frameNumber,
+      resourceVersions,
       parameters: new Map(
         [...this.parameters].map(([portId, value]) => [
           portId,
           cloneValue(value),
+        ]),
+      ),
+      resources: new Map(
+        resourceNames.map((resource) => [
+          resource,
+          cloneValue(this.resources?.snapshot(resource)),
         ]),
       ),
     }
