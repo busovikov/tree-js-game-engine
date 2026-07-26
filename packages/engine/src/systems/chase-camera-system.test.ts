@@ -1,12 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import {
-  ArcadeVehicleControllerComponent,
-  CameraComponent,
-  ColliderComponent,
-  CustomRaycastControllerComponent,
-  TransformComponent,
-  World,
-} from '@haku/core'
+import { TransformComponent, World } from '@haku/core'
+import { ArcadeVehicleControllerComponent, ColliderComponent, CustomRaycastControllerComponent } from '@haku/physics'
+import { CameraComponent } from '../components.js'
 import { CustomRaycastControllerSchema, ColliderSchema, ArcadeVehicleControllerSchema } from '@haku/schema'
 import type { Quat, Vec3 } from '@haku/schema'
 import { resetStubPhysicsIds, StubPhysicsBackend } from '@haku/physics'

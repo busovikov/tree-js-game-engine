@@ -1,4 +1,4 @@
-import type { World } from '@haku/core'
+import { type World } from '@haku/core'
 import { cloneWorld } from '@haku/core'
 import { useEditorStore } from '../store/editor-store.js'
 

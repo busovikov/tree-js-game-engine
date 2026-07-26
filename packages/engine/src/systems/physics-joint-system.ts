@@ -1,5 +1,6 @@
-import type { EntityId, IWorld, ISystem } from '@haku/core'
-import { entityId, PhysicsJointComponent } from '@haku/core'
+import { type EntityId, type IWorld, type ISystem } from '@haku/core'
+import { entityId } from '@haku/core'
+import { PhysicsJointComponent } from '@haku/physics'
 import type { PhysicsJoint } from '@haku/schema'
 import type { PhysicsJointHandle } from '@haku/physics'
 import type { PhysicsWorldSystem } from './physics-world-system.js'

@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
-import { MeshRendererComponent } from '@haku/core'
+import { MeshRendererComponent } from '@haku/engine'
 import { defaultGeometryParams, normalizeMeshRenderer, relativeToAssetsDir } from '@haku/schema'
 import { MODEL_ASSET_TYPE } from '@haku/assets'
 import { commitSceneEdit } from '../commands/scene-history.js'

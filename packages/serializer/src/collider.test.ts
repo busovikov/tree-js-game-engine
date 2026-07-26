@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { ColliderComponent, RigidBodyComponent } from '@haku/core'
+import { createEngineComponentRegistry } from '@haku/engine'
+import { ColliderComponent, RigidBodyComponent } from '@haku/physics'
 import { loadSceneDocument, roundtripSceneDocument, saveSceneDocument, validateSceneDocument } from './index.js'
 import { migrateEntityComponents } from './physics-migration.js'
 
@@ -24,6 +25,7 @@ function entityWithCollider(
 }
 
 describe('Collider serializer round-trip', () => {
+  const componentRegistry = createEngineComponentRegistry()
   it('migrates legacy dynamic collider to Collider + RigidBody and strips runtime handles on save', () => {
     const collider = {
       shape: 'box',
@@ -41,7 +43,7 @@ describe('Collider serializer round-trip', () => {
       entities: [entityWithCollider('a0000000-0000-4000-8000-000000000001', 'Box', collider)],
     })
 
-    const world = loadSceneDocument(doc)
+    const world = loadSceneDocument(doc, { componentRegistry })
     const id = world.getAllEntities()[0]
     const loadedCollider = world.getComponent(id, ColliderComponent)
     const loadedRigidBody = world.getComponent(id, RigidBodyComponent)
@@ -50,7 +52,7 @@ describe('Collider serializer round-trip', () => {
     expect(loadedRigidBody?.type).toBe('dynamic')
     expect(loadedRigidBody?.physicsBodyHandle).toBe('body-42')
 
-    const saved = saveSceneDocument(world, doc.metadata)
+    const saved = saveSceneDocument(world, doc.metadata, {}, {}, undefined, undefined, componentRegistry)
     const colliderData = saved.entities[0].components.find((c) => c.type === '40000000-0000-4000-8000-000000000009')?.data
     const rigidBodyData = saved.entities[0].components.find((c) => c.type === '40000000-0000-4000-8000-000000000010')?.data
     expect(colliderData).toEqual({
@@ -97,7 +99,7 @@ describe('Collider serializer round-trip', () => {
             ],
           },
         ],
-      }),
+      }, { componentRegistry }),
     ).toThrow(/Invalid uuid/)
   })
 
@@ -113,7 +115,7 @@ describe('Collider serializer round-trip', () => {
       entities: [entityWithCollider('b0000000-0000-4000-8000-000000000002', 'Sphere', collider)],
     })
 
-    const saved = roundtripSceneDocument(doc)
+    const saved = roundtripSceneDocument(doc, componentRegistry)
     const colliderData = saved.entities[0].components.find((c) => c.type === '40000000-0000-4000-8000-000000000009')?.data
     expect(colliderData).toMatchObject(collider)
     expect(colliderData?.rotation).toEqual([0, 0, 0, 1])
@@ -146,7 +148,7 @@ describe('Collider serializer round-trip', () => {
       ],
     })
 
-    const saved = roundtripSceneDocument(doc)
+    const saved = roundtripSceneDocument(doc, componentRegistry)
     const colliderData = saved.entities[0].components.find((c) => c.type === '40000000-0000-4000-8000-000000000009')?.data
     const rigidBodyData = saved.entities[0].components.find((c) => c.type === '40000000-0000-4000-8000-000000000010')?.data
     expect(colliderData).toMatchObject({
@@ -181,8 +183,8 @@ describe('Collider serializer round-trip', () => {
       ],
     })
 
-    const once = roundtripSceneDocument(doc)
-    const twice = roundtripSceneDocument(once)
+    const once = roundtripSceneDocument(doc, componentRegistry)
+    const twice = roundtripSceneDocument(once, componentRegistry)
     expect(twice).toEqual(once)
     expect(once.entities).toHaveLength(3)
     expect(once.entities.every((e) => e.components.some((c) => c.type === '40000000-0000-4000-8000-000000000009'))).toBe(true)
@@ -207,7 +209,7 @@ describe('Collider serializer round-trip', () => {
       ],
     })
 
-    expect(() => loadSceneDocument(doc)).toThrow(/Trimesh collider cannot be used on a dynamic/)
+    expect(() => loadSceneDocument(doc, { componentRegistry })).toThrow(/Trimesh collider cannot be used on a dynamic/)
   })
 
   it('entities without collider have no Collider component (backward compat)', () => {
@@ -224,11 +226,11 @@ describe('Collider serializer round-trip', () => {
       ],
     })
 
-    const world = loadSceneDocument(doc)
+    const world = loadSceneDocument(doc, { componentRegistry })
     const id = world.getAllEntities()[0]
     expect(world.getComponent(id, ColliderComponent)).toBeUndefined()
 
-    const saved = saveSceneDocument(world, doc.metadata)
+    const saved = saveSceneDocument(world, doc.metadata, {}, {}, undefined, undefined, componentRegistry)
     expect(saved.entities[0].components.some((c) => c.type === '40000000-0000-4000-8000-000000000009')).toBe(false)
   })
 
@@ -244,6 +246,6 @@ describe('Collider serializer round-trip', () => {
       ],
     })
 
-    expect(() => loadSceneDocument(doc)).toThrow()
+    expect(() => loadSceneDocument(doc, { componentRegistry })).toThrow()
   })
 })

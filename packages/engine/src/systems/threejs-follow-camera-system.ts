@@ -1,9 +1,7 @@
-import type { EntityId, IWorld, ISystem } from '@haku/core'
-import {
-  CameraComponent,
-  DynamicRaycastControllerComponent,
-  TransformComponent,
-} from '@haku/core'
+import { type EntityId, type IWorld, type ISystem } from '@haku/core'
+import { TransformComponent } from '@haku/core'
+import { DynamicRaycastControllerComponent } from '@haku/physics'
+import { CameraComponent } from '../components.js'
 import type { Vec3 } from '@haku/schema'
 import { lookAtQuaternion } from './chase-camera-system.js'
 import type { PhysicsWorldSystem } from './physics-world-system.js'

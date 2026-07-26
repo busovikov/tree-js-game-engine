@@ -1,5 +1,6 @@
-import type { IWorld } from '@haku/core'
-import { ColliderComponent, RigidBodyComponent, TransformComponent } from '@haku/core'
+import { type IWorld } from '@haku/core'
+import { TransformComponent } from '@haku/core'
+import { ColliderComponent, RigidBodyComponent } from '@haku/physics'
 import { resolveBodyTypeFromComponents } from '@haku/schema'
 
 /**

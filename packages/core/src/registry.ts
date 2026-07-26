@@ -1,4 +1,4 @@
-import type { ComponentRegistry, ComponentType } from './types.js'
+import type { ComponentRegistry, ComponentDefinition } from './types.js'
 import type { ComponentTypeId } from '@haku/schema'
 
 export interface ComponentDiagnostic {
@@ -19,9 +19,9 @@ export class ComponentDiagnosticError extends Error {
 }
 
 export class DefaultComponentRegistry implements ComponentRegistry {
-  private readonly types = new Map<ComponentTypeId, ComponentType>()
+  private readonly types = new Map<ComponentTypeId, ComponentDefinition>()
 
-  register(type: ComponentType): void {
+  register(type: ComponentDefinition): void {
     if (this.types.has(type.id)) {
       throw new ComponentDiagnosticError([
         {
@@ -35,11 +35,11 @@ export class DefaultComponentRegistry implements ComponentRegistry {
     this.types.set(type.id, type)
   }
 
-  get(typeId: ComponentTypeId | string): ComponentType | undefined {
+  get(typeId: ComponentTypeId | string): ComponentDefinition | undefined {
     return this.types.get(typeId as ComponentTypeId)
   }
 
-  require(typeId: ComponentTypeId | string): ComponentType {
+  require(typeId: ComponentTypeId | string): ComponentDefinition {
     const type = this.get(typeId)
     if (!type) {
       throw new ComponentDiagnosticError([
@@ -54,7 +54,7 @@ export class DefaultComponentRegistry implements ComponentRegistry {
     return type
   }
 
-  all(): readonly ComponentType[] {
+  all(): readonly ComponentDefinition[] {
     return [...this.types.values()].sort((left, right) => left.id.localeCompare(right.id))
   }
 }

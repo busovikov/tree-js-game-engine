@@ -1,5 +1,5 @@
-import type { EntityId, World } from '@haku/core'
-import { MeshRendererComponent } from '@haku/core'
+import { type EntityId, type World } from '@haku/core'
+import { MeshRendererComponent } from '@haku/engine'
 import * as THREE from 'three'
 
 const SNAP_THRESHOLD = 0.5

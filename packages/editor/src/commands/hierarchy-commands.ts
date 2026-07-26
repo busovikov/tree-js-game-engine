@@ -1,4 +1,4 @@
-import type { EntityId } from '@haku/core'
+import { type EntityId } from '@haku/core'
 import { commitSceneEdit } from './scene-history.js'
 import {
   canDropEntity,

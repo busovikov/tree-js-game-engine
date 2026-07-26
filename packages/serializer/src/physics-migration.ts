@@ -7,11 +7,8 @@ import {
   type ComponentRecord,
   type EntityRecord,
 } from '@haku/schema'
-import {
-  ColliderComponent,
-  RigidBodyComponent,
-  StaticComponent,
-} from '@haku/core'
+import { StaticComponent } from '@haku/core'
+import { ColliderComponent, RigidBodyComponent } from '@haku/physics'
 
 const RUNTIME_COLLIDER_FIELDS = [
   'physicsBodyHandle',

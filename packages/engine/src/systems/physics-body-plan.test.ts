@@ -1,12 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import {
-  ColliderComponent,
-  AnimatableBodyComponent,
-  PhysicsAreaComponent,
-  RigidBodyComponent,
-  TransformComponent,
-  World,
-} from '@haku/core'
+import { TransformComponent, World } from '@haku/core'
+import { ColliderComponent, AnimatableBodyComponent, PhysicsAreaComponent, RigidBodyComponent } from '@haku/physics'
 import { ColliderSchema, PhysicsAreaSchema, RigidBodySchema } from '@haku/schema'
 import { collectBodyPlans, resolveBodyPlan } from './physics-body-plan.js'
 

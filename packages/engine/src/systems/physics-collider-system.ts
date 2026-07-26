@@ -1,4 +1,4 @@
-import type { IWorld, ISystem } from '@haku/core'
+import { type IWorld, type ISystem } from '@haku/core'
 import { entityId } from '@haku/core'
 import type { PhysicsProjectSettings } from '@haku/schema'
 import { defaultPhysicsProjectSettings } from '@haku/schema'

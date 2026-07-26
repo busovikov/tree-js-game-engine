@@ -1,5 +1,5 @@
-import type { EntityId, IWorld, ISystem, ComponentType } from '@haku/core'
-import { getCoreComponent } from '@haku/core'
+import { type EntityId, type IWorld, type ISystem, type ComponentDefinition } from '@haku/core'
+import { getPhysicsComponent } from '@haku/physics'
 import type {
   IRaycastVehicle,
   IDynamicRaycastVehicle,
@@ -172,8 +172,8 @@ export class PhysicsControllerSystem implements ISystem {
 
   private resetDisabledControllerTransitions(ctx: ControllerRuntimeContext): void {
     for (const plugin of this.registry.all()) {
-      const componentType = getCoreComponent(plugin.type) as
-        | ComponentType<{ enabled?: boolean }>
+      const componentType = getPhysicsComponent(plugin.type) as
+        | ComponentDefinition<{ enabled?: boolean }>
         | undefined
       for (const entityIdValue of plugin.trackedIds()) {
         const id = { value: entityIdValue } as EntityId

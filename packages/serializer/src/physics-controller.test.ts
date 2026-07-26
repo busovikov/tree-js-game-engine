@@ -1,14 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import {
-  CustomRaycastControllerComponent,
-  DynamicRaycastControllerComponent,
-  ArcadeVehicleControllerComponent,
-  RevoluteJointVehicleControllerComponent,
-  KinematicCharacterControllerComponent,
-  CharacterBodyControllerComponent,
-  PointerControlsControllerComponent,
-  type ComponentType,
-} from '@haku/core'
+import { createEngineComponentRegistry } from '@haku/engine'
+import { type ComponentDefinition } from '@haku/core'
+import { CustomRaycastControllerComponent, DynamicRaycastControllerComponent, ArcadeVehicleControllerComponent, RevoluteJointVehicleControllerComponent, KinematicCharacterControllerComponent, CharacterBodyControllerComponent, PointerControlsControllerComponent } from '@haku/physics'
 import {
   CustomRaycastControllerSchema,
   DynamicRaycastControllerSchema,
@@ -30,7 +23,7 @@ import { migrateEntityComponents } from './physics-migration.js'
 
 const CONTROLLER_CASES: Array<{
   legacyType: PhysicsControllerType
-  component: ComponentType
+  component: ComponentDefinition
   schema: { parse: (data: unknown) => unknown }
 }> = [
   {
@@ -71,6 +64,7 @@ const CONTROLLER_CASES: Array<{
 ]
 
 describe('controller serializer policy', () => {
+  const componentRegistry = createEngineComponentRegistry()
   it.each(CONTROLLER_CASES)(
     'migrates polluted PhysicsController($legacyType) and strips handles on save',
     ({ legacyType, component, schema }) => {
@@ -97,14 +91,22 @@ describe('controller serializer policy', () => {
         ],
       })
 
-      const world = loadSceneDocument(doc)
+      const world = loadSceneDocument(doc, { componentRegistry })
       const entity = world.getAllEntities()[0]
       const loaded = world.getComponent(entity, component)
       expect(loaded?.physicsHandle).toBe('controller-1')
       expect(world.getComponentTypes(entity)).toContain(newType)
       expect(world.getComponentTypes(entity)).not.toContain('PhysicsController')
 
-      const saved = saveSceneDocument(world, doc.metadata)
+      const saved = saveSceneDocument(
+        world,
+        doc.metadata,
+        {},
+        {},
+        undefined,
+        undefined,
+        componentRegistry,
+      )
       const controllerData = saved.entities[0].components.find(
         (entry) => entry.type === newType,
       )?.data

@@ -1,4 +1,4 @@
-import type { IWorld, ISystem } from '@haku/core'
+import { type IWorld, type ISystem } from '@haku/core'
 import type { PhysicsCollisionEvent } from '@haku/physics'
 import type { PhysicsWorldSystem } from './physics-world-system.js'
 

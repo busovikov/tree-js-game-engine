@@ -1,17 +1,8 @@
-import type { EntityId, IWorld, ISystem } from '@haku/core'
+import { type EntityId, type IWorld, type ISystem } from '@haku/core'
 import { entityId } from '@haku/core'
-import {
-  CameraComponent,
-  CustomRaycastControllerComponent,
-  LightComponent,
-  MeshRendererComponent,
-  PrefabInstanceComponent,
-  RenderingLayersComponent,
-  StaticComponent,
-  TransformComponent,
-  getControllerOnEntity,
-  hasAnyController,
-} from '@haku/core'
+import { PrefabInstanceComponent, StaticComponent, TransformComponent } from '@haku/core'
+import { CustomRaycastControllerComponent, getControllerOnEntity, hasAnyController } from '@haku/physics'
+import { CameraComponent, LightComponent, MeshRendererComponent, RenderingLayersComponent } from '../components.js'
 import type {
   CustomRaycastController,
   Light,

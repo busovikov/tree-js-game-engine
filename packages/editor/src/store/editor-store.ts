@@ -1,4 +1,4 @@
-import type { EntityId } from '@haku/core'
+import { type EntityId } from '@haku/core'
 import { create } from 'zustand'
 import type { SceneDocument, ViewportTab } from '@haku/schema'
 import { World, cloneWorld } from '@haku/core'

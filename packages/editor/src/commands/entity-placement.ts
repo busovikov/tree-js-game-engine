@@ -1,5 +1,6 @@
-import type { EntityId, World } from '@haku/core'
-import { TransformComponent, getCoreComponent } from '@haku/core'
+import { type EntityId, type World } from '@haku/core'
+import { TransformComponent } from '@haku/core'
+import { getEngineComponent } from '@haku/engine'
 import type { Transform } from '@haku/schema'
 
 export type EntityPlacement = 'root' | 'child' | 'parent'
@@ -110,7 +111,7 @@ export function duplicateEntitySubtree(world: World, sourceId: EntityId): Entity
     idMap.set(oldId.value, newId)
 
     for (const typeId of world.getComponentTypes(oldId)) {
-      const type = getCoreComponent(typeId)
+      const type = getEngineComponent(typeId)
       if (!type) continue
       const data = world.getComponent(oldId, type)
       if (data !== undefined) {

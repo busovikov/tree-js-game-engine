@@ -1,4 +1,4 @@
-import type { EntityId, IWorld } from '@haku/core'
+import { type EntityId, type IWorld } from '@haku/core'
 import type * as THREE from 'three'
 import { setObjectEditorDimmed } from './object-visual-dim.js'
 

@@ -1,4 +1,5 @@
-import { ArcadeVehicleControllerComponent, type EntityId } from '@haku/core'
+import { type EntityId } from '@haku/core'
+import { ArcadeVehicleControllerComponent } from '@haku/physics'
 import type { Vec3 } from '@haku/physics'
 import type { ControllerPlugin, ControllerRuntimeContext } from '../registry.js'
 import {

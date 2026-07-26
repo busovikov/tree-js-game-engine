@@ -1,6 +1,5 @@
-import type { ComponentType, EntityId, IWorld } from './types.js'
+import type { ComponentDefinition, EntityId, IWorld } from './types.js'
 import { entityId } from './types.js'
-import { getCoreComponent } from './components.js'
 
 interface GameObject {
   name: string
@@ -65,26 +64,26 @@ export class World implements IWorld {
     return [...this.entities.keys()].map(entityId)
   }
 
-  addComponent<T>(id: EntityId, type: ComponentType<T>, data: T): void {
+  addComponent<T>(id: EntityId, type: ComponentDefinition<T>, data: T): void {
     const obj = this.entities.get(id.value)
     if (!obj) throw new Error(`Entity not found: ${id.value}`)
     obj.components.set(type.id, structuredClone(data))
   }
 
-  removeComponent(id: EntityId, type: ComponentType): void {
+  removeComponent(id: EntityId, type: ComponentDefinition): void {
     const obj = this.entities.get(id.value)
     if (!obj) return
     obj.components.delete(type.id)
   }
 
-  getComponent<T>(id: EntityId, type: ComponentType<T>): T | undefined {
+  getComponent<T>(id: EntityId, type: ComponentDefinition<T>): T | undefined {
     const obj = this.entities.get(id.value)
     if (!obj) return undefined
     const data = obj.components.get(type.id)
     return data !== undefined ? (structuredClone(data) as T) : undefined
   }
 
-  hasComponent(id: EntityId, type: ComponentType): boolean {
+  hasComponent(id: EntityId, type: ComponentDefinition): boolean {
     return this.entities.get(id.value)?.components.has(type.id) ?? false
   }
 
@@ -194,7 +193,7 @@ export class World implements IWorld {
     }
   }
 
-  *query(...types: ComponentType[]): Iterable<EntityId> {
+  *query(...types: ComponentDefinition[]): Iterable<EntityId> {
     for (const [idStr, obj] of this.entities) {
       if (types.every((t) => obj.components.has(t.id))) {
         yield entityId(idStr)
@@ -232,8 +231,7 @@ export function cloneWorld(source: World): World {
     const name = source.getEntityName(id) ?? 'Entity'
     clone.createEntity(name, id)
     for (const typeId of source.getComponentTypes(id)) {
-      const type = getCoreComponent(typeId)
-      if (!type) continue
+      const type = { id: typeId } as ComponentDefinition
       const data = source.getComponent(id, type)
       if (data !== undefined) clone.addComponent(id, type, data)
     }

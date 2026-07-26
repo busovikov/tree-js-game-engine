@@ -1,4 +1,4 @@
-import type { IWorld } from '@haku/core'
+import { type IWorld } from '@haku/core'
 import type { PhysicsProjectSettings } from '@haku/schema'
 import type { Engine } from '@haku/engine'
 import {

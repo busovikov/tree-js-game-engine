@@ -157,6 +157,9 @@ importers:
       '@haku/engine':
         specifier: file:../engine
         version: file:packages/engine
+      '@haku/physics':
+        specifier: file:../physics
+        version: link:../physics
       '@haku/physics-rapier':
         specifier: file:../physics-rapier
         version: file:packages/physics-rapier
@@ -230,6 +233,13 @@ importers:
         version: 2.1.9(@types/node@22.19.21)(happy-dom@15.11.7)
 
   packages/physics:
+    dependencies:
+      '@haku/core':
+        specifier: file:../core
+        version: file:packages/core
+      '@haku/schema':
+        specifier: file:../schema
+        version: link:../schema
     devDependencies:
       typescript:
         specifier: ^5.7.2
@@ -272,6 +282,9 @@ importers:
       '@haku/core':
         specifier: file:../core
         version: file:packages/core
+      '@haku/physics':
+        specifier: file:../physics
+        version: link:../physics
       '@haku/schema':
         specifier: file:../schema
         version: link:../schema
@@ -2696,6 +2709,7 @@ snapshots:
       '@haku/assets': link:packages/assets
       '@haku/core': file:packages/core
       '@haku/engine': file:packages/engine
+      '@haku/physics': file:packages/physics
       '@haku/physics-rapier': file:packages/physics-rapier
       '@haku/schema': file:packages/schema
       '@haku/serializer': file:packages/serializer
@@ -2723,7 +2737,10 @@ snapshots:
       '@dimforge/rapier3d-compat': 0.19.3
       '@haku/physics': link:packages/physics
 
-  '@haku/physics@file:packages/physics': {}
+  '@haku/physics@file:packages/physics':
+    dependencies:
+      '@haku/core': file:packages/core
+      '@haku/schema': file:packages/schema
 
   '@haku/schema@file:packages/schema':
     dependencies:
@@ -2732,6 +2749,7 @@ snapshots:
   '@haku/serializer@file:packages/serializer':
     dependencies:
       '@haku/core': file:packages/core
+      '@haku/physics': file:packages/physics
       '@haku/schema': file:packages/schema
 
   '@humanfs/core@0.19.2':

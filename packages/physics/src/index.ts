@@ -1,4 +1,5 @@
 export type { PhysicsDebugRenderBuffers } from './debug-render.js'
+export * from './components.js'
 export type { PhysicsCapabilities, ColliderShapeKind, PhysicsJointKind } from './capabilities.js'
 export { STUB_PHYSICS_CAPABILITIES, RAPIER_PHYSICS_CAPABILITIES } from './capabilities.js'
 export type {

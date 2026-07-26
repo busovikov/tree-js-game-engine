@@ -1,8 +1,10 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it, beforeEach } from 'vitest'
-import { RevoluteJointVehicleControllerComponent, TransformComponent } from '@haku/core'
+import { TransformComponent } from '@haku/core'
+import { RevoluteJointVehicleControllerComponent } from '@haku/physics'
 import { loadSceneDocument } from '@haku/serializer'
+import { createEngineComponentRegistry } from '../components.js'
 import { createRapierPhysicsBackend, resetRapierPhysicsIds } from '@haku/physics-rapier'
 import { PhysicsWorldSystem, PHYSICS_CATCH_UP_POLICY } from './physics-world-system.js'
 import { PhysicsColliderSystem } from './physics-collider-system.js'
@@ -30,7 +32,9 @@ describe('revolute-joint-vehicle scene (full play-mode pipeline, driven + steere
   beforeEach(() => resetRapierPhysicsIds())
 
   it('plays the real scene file under drive + steer without trapping Rapier', async () => {
-    const world = loadSceneDocument(JSON.parse(readFileSync(SCENE_PATH, 'utf-8')))
+    const world = loadSceneDocument(JSON.parse(readFileSync(SCENE_PATH, 'utf-8')), {
+      componentRegistry: createEngineComponentRegistry(),
+    })
 
     const backend = await createRapierPhysicsBackend()
     const physicsSystem = new PhysicsWorldSystem(PHYSICS_CATCH_UP_POLICY)

@@ -1,10 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import {
-  ColliderComponent,
-  CustomRaycastControllerComponent,
-  TransformComponent,
-  World,
-} from '@haku/core'
+import { TransformComponent, World } from '@haku/core'
+import { ColliderComponent, CustomRaycastControllerComponent } from '@haku/physics'
 import { CustomRaycastControllerSchema, ColliderSchema } from '@haku/schema'
 import type { Quat, Vec3 } from '@haku/schema'
 import { resetStubPhysicsIds, StubPhysicsBackend } from '@haku/physics'

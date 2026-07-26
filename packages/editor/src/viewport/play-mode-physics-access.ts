@@ -1,4 +1,4 @@
-import type { EntityId, IWorld } from '@haku/core'
+import { type EntityId, type IWorld } from '@haku/core'
 import { TransformComponent } from '@haku/core'
 import type { Engine } from '@haku/engine'
 

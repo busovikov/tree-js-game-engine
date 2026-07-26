@@ -1,13 +1,6 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest'
-import {
-  ArcadeVehicleControllerComponent,
-  ColliderComponent,
-  CustomRaycastControllerComponent,
-  KinematicCharacterControllerComponent,
-  RevoluteJointVehicleControllerComponent,
-  TransformComponent,
-  World,
-} from '@haku/core'
+import { TransformComponent, World } from '@haku/core'
+import { ArcadeVehicleControllerComponent, ColliderComponent, CustomRaycastControllerComponent, KinematicCharacterControllerComponent, RevoluteJointVehicleControllerComponent } from '@haku/physics'
 import {
   CustomRaycastControllerSchema,
   RevoluteJointVehicleControllerSchema,

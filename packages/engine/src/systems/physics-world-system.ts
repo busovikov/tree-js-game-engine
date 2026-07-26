@@ -1,5 +1,6 @@
-import type { EntityId, IWorld, ISystem } from '@haku/core'
-import { entityId, AnimatableBodyComponent, hasAnyController, RigidBodyComponent, TransformComponent } from '@haku/core'
+import { type EntityId, type IWorld, type ISystem } from '@haku/core'
+import { entityId, TransformComponent } from '@haku/core'
+import { AnimatableBodyComponent, hasAnyController, RigidBodyComponent } from '@haku/physics'
 import type { Transform } from '@haku/schema'
 import type {
   IPhysicsBackend,

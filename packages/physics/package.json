@@ -16,6 +16,10 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --config vitest.config.ts"
   },
+  "dependencies": {
+    "@haku/core": "file:../core",
+    "@haku/schema": "file:../schema"
+  },
   "devDependencies": {
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"

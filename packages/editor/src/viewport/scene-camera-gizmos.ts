@@ -1,5 +1,6 @@
-import type { EntityId, IWorld } from '@haku/core'
-import { CameraComponent, TransformComponent } from '@haku/core'
+import { type EntityId, type IWorld } from '@haku/core'
+import { TransformComponent } from '@haku/core'
+import { CameraComponent } from '@haku/engine'
 import * as THREE from 'three'
 import { EditorCameraFrustumHelper } from './camera-frustum-helper.js'
 import { applyEditorOverlayObject } from './editor-overlay-style.js'

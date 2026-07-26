@@ -1,5 +1,6 @@
-import type { EntityId, IWorld } from '@haku/core'
-import { entityId, getControllerOnEntity, queryControllers } from '@haku/core'
+import { type EntityId, type IWorld } from '@haku/core'
+import { entityId } from '@haku/core'
+import { getControllerOnEntity, queryControllers } from '@haku/physics'
 import type { Engine } from './engine.js'
 import { InputManager, type InputManagerOptions } from './input/index.js'
 import { ChaseCameraSystem } from './systems/chase-camera-system.js'

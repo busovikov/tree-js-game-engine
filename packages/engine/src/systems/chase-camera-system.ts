@@ -1,10 +1,7 @@
-import type { EntityId, IWorld, ISystem } from '@haku/core'
-import {
-  CameraComponent,
-  TransformComponent,
-  getControllerOnEntity,
-  queryControllers,
-} from '@haku/core'
+import { type EntityId, type IWorld, type ISystem } from '@haku/core'
+import { TransformComponent } from '@haku/core'
+import { getControllerOnEntity, queryControllers } from '@haku/physics'
+import { CameraComponent } from '../components.js'
 import type { Quat, Vec3 } from '@haku/schema'
 import type { InputManager } from '../input/input-manager.js'
 import type { PhysicsWorldSystem } from './physics-world-system.js'

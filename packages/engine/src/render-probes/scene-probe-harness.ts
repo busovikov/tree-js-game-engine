@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import type { RenderSettings, SceneDocument } from '@haku/schema'
 import { defaultRenderSettings } from '@haku/schema'
 import { loadSceneDocument } from '@haku/serializer'
+import { createEngineComponentRegistry } from '../components.js'
 import { RenderSyncSystem } from '../render-sync/render-sync-system.js'
 import { applyShadowSettings } from '../render/apply-render-settings.js'
 import { applyToneMappingSettings } from '../render/apply-render-settings.js'
@@ -73,7 +74,9 @@ export function loadSyncedScene(
   renderSettings: RenderSettings = document.renderSettings ?? defaultRenderSettings(),
   renderSize = 256,
 ): SyncedScene {
-  const world = loadSceneDocument(document)
+  const world = loadSceneDocument(document, {
+    componentRegistry: createEngineComponentRegistry(),
+  })
   const scene = new THREE.Scene()
   scene.background = new THREE.Color(renderSettings.background.color)
 

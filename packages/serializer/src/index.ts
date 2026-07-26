@@ -1,15 +1,5 @@
-import {
-  World,
-  ColliderComponent,
-  RigidBodyComponent,
-  PrefabInstanceComponent,
-  createCoreComponentRegistry,
-  entityId,
-  type ComponentRegistry,
-  type ComponentType,
-  type EntityId,
-  type IWorld,
-} from '@haku/core'
+import { World, PrefabInstanceComponent, entityId, type ComponentRegistry, type ComponentDefinition, type EntityId, type IWorld } from '@haku/core'
+import { ColliderComponent, RigidBodyComponent } from '@haku/physics'
 import {
   PrefabInstanceSchema,
   SceneDocumentSchema,
@@ -44,11 +34,11 @@ export function sanitizeComponentDataForPersistence(
   return sanitized
 }
 
-function getComponentType(registry: ComponentRegistry, typeId: string): ComponentType {
+function getComponentType(registry: ComponentRegistry, typeId: string): ComponentDefinition {
   return registry.require(typeId)
 }
 
-function parseComponentData(type: ComponentType, data: Record<string, unknown>): unknown {
+function parseComponentData(type: ComponentDefinition, data: Record<string, unknown>): unknown {
   if (type.id === ColliderComponent.id) {
     return parseMigratedColliderData(data)
   }
@@ -167,10 +157,10 @@ function loadEntityRecords(
 
 export function loadSceneDocument(
   input: unknown,
-  options: { expandPrefabs?: boolean; componentRegistry?: ComponentRegistry } = {},
+  options: { expandPrefabs?: boolean; componentRegistry: ComponentRegistry },
 ): World {
   const expandPrefabs = options.expandPrefabs ?? true
-  const componentRegistry = options.componentRegistry ?? createCoreComponentRegistry()
+  const componentRegistry = options.componentRegistry
   const doc = validateSceneDocument(input)
   const world = new World()
   loadEntityRecords(world, doc.entities, doc.prefabs, expandPrefabs, componentRegistry)
@@ -184,7 +174,7 @@ export function saveSceneDocument(
   prefabs: SceneDocument['prefabs'] = {},
   renderSettings: SceneDocument['renderSettings'] = defaultRenderSettings(),
   physicsSettings: SceneDocument['physicsSettings'] = defaultPhysicsProjectSettings(),
-  componentRegistry: ComponentRegistry = createCoreComponentRegistry(),
+  componentRegistry: ComponentRegistry,
 ): SceneDocument {
   const entities: EntityRecord[] = []
 
@@ -222,7 +212,7 @@ export function saveSceneDocument(
 
 export function roundtripSceneDocument(
   doc: SceneDocument,
-  componentRegistry: ComponentRegistry = createCoreComponentRegistry(),
+  componentRegistry: ComponentRegistry,
 ): SceneDocument {
   const world = loadSceneDocument(doc, { componentRegistry })
   return saveSceneDocument(

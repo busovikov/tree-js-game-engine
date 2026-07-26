@@ -1,10 +1,16 @@
 import { describe, expect, it } from 'vitest'
+import { z } from 'zod'
 import {
-  CameraComponent,
   TransformComponent,
   World,
   entityId,
 } from '../src/index.js'
+
+const CameraComponent = {
+  id: '40000000-0000-4000-8000-000000000002',
+  name: 'TestCamera',
+  schema: z.object({ fov: z.number(), near: z.number(), far: z.number() }),
+}
 
 describe('@haku/core World', () => {
   it('creates entity with Transform + Camera and query works', () => {

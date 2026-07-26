@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { TransformComponent, CustomRaycastControllerComponent, World } from '@haku/core'
+import { TransformComponent, World } from '@haku/core'
+import { CustomRaycastControllerComponent } from '@haku/physics'
 import { collectVehicleDebugSnapshot, VehicleDebugLogger, type VehicleDebugLogRecord } from './vehicle-debug.js'
 import type { PhysicsControllerSystem } from '../systems/physics-controller-system.js'
 import type { PhysicsWorldSystem } from '../systems/physics-world-system.js'

@@ -1,4 +1,4 @@
-import type { EntityId, World } from '@haku/core'
+import { type EntityId, type World } from '@haku/core'
 import { cloneWorld } from '@haku/core'
 import { TransformComponent } from '@haku/core'
 import type { SceneDocument, Transform } from '@haku/schema'

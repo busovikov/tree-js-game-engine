@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { validateSceneDocument } from '@haku/schema'
+import { TransformComponent } from '@haku/core'
 import {
   CameraComponent,
-  TransformComponent,
   listCameraEntityIds,
   resolveActiveCameraId,
 } from './index.js'

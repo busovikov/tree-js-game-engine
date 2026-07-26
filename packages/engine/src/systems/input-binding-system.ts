@@ -1,5 +1,5 @@
-import type { EntityId, IWorld, ISystem } from '@haku/core'
-import { getControllerOnEntity, queryControllers } from '@haku/core'
+import { type EntityId, type IWorld, type ISystem } from '@haku/core'
+import { getControllerOnEntity, queryControllers } from '@haku/physics'
 import type { InputActions } from '../input/input-actions.js'
 import type { InputManager } from '../input/input-manager.js'
 import type { PhysicsControllerSystem, ControllerInput } from './physics-controller-system.js'

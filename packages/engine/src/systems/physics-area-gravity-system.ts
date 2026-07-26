@@ -1,5 +1,6 @@
-import type { IWorld, ISystem } from '@haku/core'
-import { PhysicsAreaComponent, TransformComponent } from '@haku/core'
+import { type IWorld, type ISystem } from '@haku/core'
+import { TransformComponent } from '@haku/core'
+import { PhysicsAreaComponent } from '@haku/physics'
 import type { PhysicsProjectSettings } from '@haku/schema'
 import { defaultPhysicsProjectSettings } from '@haku/schema'
 import type { PhysicsShapeDescriptor, PhysicsTransform, Quat, Vec3 } from '@haku/physics'

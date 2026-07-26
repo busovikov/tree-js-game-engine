@@ -1,5 +1,5 @@
-import type { EntityId, IWorld } from '@haku/core'
-import { MeshRendererComponent } from '@haku/core'
+import { type EntityId, type IWorld } from '@haku/core'
+import { MeshRendererComponent } from '@haku/engine'
 import * as THREE from 'three'
 import { applyEditorLineMaterial, applyEditorOverlayObject } from './editor-overlay-style.js'
 

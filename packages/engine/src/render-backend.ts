@@ -1,5 +1,6 @@
-import type { EntityId, IRenderBackend, IWorld, ViewportRenderOverrides } from '@haku/core'
-import { entityId, CameraComponent, RenderTextureComponent } from '@haku/core'
+import { type EntityId, type IRenderBackend, type IWorld, type ViewportRenderOverrides } from '@haku/core'
+import { entityId } from '@haku/core'
+import { CameraComponent, RenderTextureComponent } from './components.js'
 import type { EngineFeatureFlags } from './engine.js'
 import type { PrefabDefinition, RenderSettings } from '@haku/schema'
 import { defaultRenderSettings, isFeatureActive, RenderSettingsSchema, resolveShadowSettings } from '@haku/schema'

@@ -18,7 +18,7 @@ export function entityIdToString(id: EntityId): string {
   return id.value
 }
 
-export interface ComponentType<T = unknown> {
+export interface ComponentDefinition<T = unknown> {
   readonly id: ComponentTypeId
   readonly name: string
   readonly schema: ZodType<T, ZodTypeDef, unknown>
@@ -33,10 +33,10 @@ export interface ComponentType<T = unknown> {
 }
 
 export interface ComponentRegistry {
-  register(type: ComponentType): void
-  get(typeId: ComponentTypeId | string): ComponentType | undefined
-  require(typeId: ComponentTypeId | string): ComponentType
-  all(): readonly ComponentType[]
+  register(type: ComponentDefinition): void
+  get(typeId: ComponentTypeId | string): ComponentDefinition | undefined
+  require(typeId: ComponentTypeId | string): ComponentDefinition
+  all(): readonly ComponentDefinition[]
 }
 
 export interface IWorld {
@@ -47,10 +47,10 @@ export interface IWorld {
   setEntityName(id: EntityId, name: string): void
   getAllEntities(): readonly EntityId[]
 
-  addComponent<T>(id: EntityId, type: ComponentType<T>, data: T): void
-  removeComponent(id: EntityId, type: ComponentType): void
-  getComponent<T>(id: EntityId, type: ComponentType<T>): T | undefined
-  hasComponent(id: EntityId, type: ComponentType): boolean
+  addComponent<T>(id: EntityId, type: ComponentDefinition<T>, data: T): void
+  removeComponent(id: EntityId, type: ComponentDefinition): void
+  getComponent<T>(id: EntityId, type: ComponentDefinition<T>): T | undefined
+  hasComponent(id: EntityId, type: ComponentDefinition): boolean
   getComponentTypes(id: EntityId): readonly string[]
 
   setParent(child: EntityId, parent: EntityId | null): void
@@ -63,7 +63,7 @@ export interface IWorld {
     mode: 'before' | 'after' | 'child',
   ): void
 
-  query(...types: ComponentType[]): Iterable<EntityId>
+  query(...types: ComponentDefinition[]): Iterable<EntityId>
 }
 
 export interface ISystem {

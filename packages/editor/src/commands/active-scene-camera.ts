@@ -1,4 +1,5 @@
-import { entityId, resolveActiveCameraId, type EntityId } from '@haku/core'
+import { entityId, type EntityId } from '@haku/core'
+import { resolveActiveCameraId } from '@haku/engine'
 import { commitSceneEdit } from './scene-history.js'
 import { useEditorStore } from '../store/editor-store.js'
 

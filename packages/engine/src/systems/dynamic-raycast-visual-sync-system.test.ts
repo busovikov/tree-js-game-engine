@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import {
-  DynamicRaycastControllerComponent,
-  MeshRendererComponent,
-  TransformComponent,
-  World,
-} from '@haku/core'
+import { TransformComponent, World } from '@haku/core'
+import { DynamicRaycastControllerComponent } from '@haku/physics'
+import { MeshRendererComponent } from '../components.js'
 import { DynamicRaycastControllerSchema, MeshRendererSchema } from '@haku/schema'
 import {
   computeDynamicRaycastWheelLocalTransform,

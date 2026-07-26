@@ -1,9 +1,7 @@
-import type { EntityId, IWorld, ISystem } from '@haku/core'
-import {
-  MeshRendererComponent,
-  TransformComponent,
-  DynamicRaycastControllerComponent,
-} from '@haku/core'
+import { type EntityId, type IWorld, type ISystem } from '@haku/core'
+import { TransformComponent } from '@haku/core'
+import { DynamicRaycastControllerComponent } from '@haku/physics'
+import { MeshRendererComponent } from '../components.js'
 import type { ControllerWheelSlot, Transform } from '@haku/schema'
 import { CONTROLLER_WHEEL_ORDER, controllerWheelLocalPositions } from '@haku/schema'
 import type { Quat, Vec3 } from '@haku/physics'

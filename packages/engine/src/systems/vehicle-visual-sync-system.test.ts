@@ -1,12 +1,8 @@
 import { describe, expect, it, beforeEach } from 'vitest'
 import * as THREE from 'three'
-import {
-  ColliderComponent,
-  CustomRaycastControllerComponent,
-  MeshRendererComponent,
-  TransformComponent,
-  World,
-} from '@haku/core'
+import { TransformComponent, World } from '@haku/core'
+import { ColliderComponent, CustomRaycastControllerComponent } from '@haku/physics'
+import { MeshRendererComponent } from '../components.js'
 import { CustomRaycastControllerSchema, MeshRendererSchema, ColliderSchema } from '@haku/schema'
 import {
   resetStubPhysicsIds,

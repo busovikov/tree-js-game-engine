@@ -1,5 +1,6 @@
-import type { EntityId, IWorld } from '@haku/core'
-import { LightComponent, TransformComponent } from '@haku/core'
+import { type EntityId, type IWorld } from '@haku/core'
+import { TransformComponent } from '@haku/core'
+import { LightComponent } from '@haku/engine'
 import type { Light } from '@haku/schema'
 import { LightSchema } from '@haku/schema'
 import * as THREE from 'three'

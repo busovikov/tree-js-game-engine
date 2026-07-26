@@ -26,8 +26,10 @@ import {
 } from '@haku/assets'
 import type { AssetId, AssetRef, AssetTypeId } from '@haku/schema'
 import { loadSceneDocument, saveSceneDocument } from '@haku/serializer'
-import type { EntityId, IWorld } from '@haku/core'
-import { MeshRendererComponent, World, getCoreComponent } from '@haku/core'
+import { type EntityId, type IWorld } from '@haku/core'
+import { World } from '@haku/core'
+import { createEngineComponentRegistry, getEngineComponent } from '@haku/engine'
+import { MeshRendererComponent } from '@haku/engine'
 import {
   clearModelCache,
   modelLog,
@@ -52,6 +54,7 @@ type ProjectStorage = 'memory' | 'native' | 'playground' | 'dev-target'
 const PROJECT_LOG_PATH = 'logs/haku.log'
 
 export class ProjectService {
+  private readonly componentRegistry = createEngineComponentRegistry()
   private root: string | null = null
   private manifest: ProjectManifest | null = null
   private assetBaseUrl = ''
@@ -329,7 +332,10 @@ export class ProjectService {
         document = validateSceneDocument(await res.json())
       }
 
-      const world = loadSceneDocument(document, { expandPrefabs: false })
+      const world = loadSceneDocument(document, {
+        expandPrefabs: false,
+        componentRegistry: this.componentRegistry,
+      })
       sceneLog('load.success', {
         path: relativePath,
         name: document.metadata?.name,
@@ -395,6 +401,7 @@ export class ProjectService {
       document.prefabs,
       document.renderSettings,
       document.physicsSettings,
+      this.componentRegistry,
     )
     const json = JSON.stringify(saved, null, 2) + '\n'
 
@@ -1300,7 +1307,7 @@ export function extractPrefabSubtree(
       return idSet.has(p.value) ? p.value : null
     })(),
     components: world.getComponentTypes(id).flatMap((typeId) => {
-      const type = getCoreComponent(typeId)
+      const type = getEngineComponent(typeId)
       if (!type || typeId === 'PrefabInstance') return []
       const data = world.getComponent(id, type)
       return data !== undefined ? [{ type: typeId, data: data as Record<string, unknown> }] : []

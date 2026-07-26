@@ -1,4 +1,4 @@
-import type { EntityId } from '@haku/core'
+import { type EntityId } from '@haku/core'
 import { entityId } from '@haku/core'
 
 export function isEntitySelected(selection: readonly EntityId[], id: EntityId): boolean {

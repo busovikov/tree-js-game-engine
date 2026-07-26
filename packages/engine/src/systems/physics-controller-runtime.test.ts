@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { ArcadeVehicleControllerComponent, TransformComponent, World } from '@haku/core'
+import { TransformComponent, World } from '@haku/core'
+import { ArcadeVehicleControllerComponent } from '@haku/physics'
 import { physicsBodyHandle } from '@haku/physics'
 import {
   updateArcadeVehicle,

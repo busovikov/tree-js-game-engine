@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeEach } from 'vitest'
-import { MeshRendererComponent, TransformComponent, World } from '@haku/core'
+import { TransformComponent, World } from '@haku/core'
+import { MeshRendererComponent } from '@haku/engine'
 import { validateSceneDocument } from '@haku/schema'
 import { commitSceneEdit, commitTransformChange } from './scene-history.js'
 import { globalCommandBus } from './world-commands.js'

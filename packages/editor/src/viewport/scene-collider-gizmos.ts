@@ -1,5 +1,5 @@
-import type { EntityId, IWorld } from '@haku/core'
-import { ColliderComponent, getControllerOnEntity } from '@haku/core'
+import { type EntityId, type IWorld } from '@haku/core'
+import { ColliderComponent, getControllerOnEntity } from '@haku/physics'
 import { resolveColliderDescriptor } from '@haku/engine'
 import type { Collider } from '@haku/schema'
 import * as THREE from 'three'

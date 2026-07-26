@@ -1,14 +1,6 @@
-import type { EntityId, IWorld } from '@haku/core'
-import {
-  ColliderComponent,
-  CollidersComponent,
-  DynamicRaycastControllerComponent,
-  PhysicsAreaComponent,
-  AnimatableBodyComponent,
-  getControllerOnEntity,
-  RigidBodyComponent,
-  TransformComponent,
-} from '@haku/core'
+import { type EntityId, type IWorld } from '@haku/core'
+import { TransformComponent } from '@haku/core'
+import { ColliderComponent, CollidersComponent, DynamicRaycastControllerComponent, PhysicsAreaComponent, AnimatableBodyComponent, getControllerOnEntity, RigidBodyComponent } from '@haku/physics'
 import type {
   AnimatableBody,
   Collider,

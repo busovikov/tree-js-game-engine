@@ -1,4 +1,5 @@
-import { RevoluteJointVehicleControllerComponent, type EntityId } from '@haku/core'
+import { type EntityId } from '@haku/core'
+import { RevoluteJointVehicleControllerComponent } from '@haku/physics'
 import type { IPhysicsWorld, PhysicsBodyHandle } from '@haku/physics'
 import type { ControllerPlugin, ControllerRuntimeContext } from '../registry.js'
 import {

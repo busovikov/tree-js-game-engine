@@ -1,5 +1,6 @@
-import type { EntityId } from '@haku/core'
-import { CustomRaycastControllerComponent, TransformComponent } from '@haku/core'
+import { type EntityId } from '@haku/core'
+import { TransformComponent } from '@haku/core'
+import { CustomRaycastControllerComponent } from '@haku/physics'
 import type { CustomRaycastController } from '@haku/schema'
 import { controllerWheelLocalPositions } from '@haku/schema'
 import type { IRaycastVehicle, PhysicsWheelHandle, WheelConfig } from '@haku/physics'

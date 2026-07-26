@@ -1,4 +1,4 @@
-import type { EntityId, World } from '@haku/core'
+import { type EntityId, type World } from '@haku/core'
 import { TransformComponent } from '@haku/core'
 import type { Transform } from '@haku/schema'
 import * as THREE from 'three'

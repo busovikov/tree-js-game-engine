@@ -3,7 +3,8 @@
  */
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
 import { fireEvent, render, screen, cleanup } from '@testing-library/react'
-import { ColliderComponent, TransformComponent, CustomRaycastControllerComponent, World } from '@haku/core'
+import { TransformComponent, World } from '@haku/core'
+import { ColliderComponent, CustomRaycastControllerComponent } from '@haku/physics'
 import { commitSceneEdit } from '../commands/scene-history.js'
 import { globalCommandBus } from '../commands/world-commands.js'
 import { useEditorStore } from '../store/editor-store.js'

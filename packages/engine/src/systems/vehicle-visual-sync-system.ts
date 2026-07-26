@@ -1,12 +1,7 @@
-import type { EntityId, IWorld, ISystem } from '@haku/core'
-import {
-  CustomRaycastControllerComponent,
-  MeshRendererComponent,
-  RevoluteJointVehicleControllerComponent,
-  TransformComponent,
-  getControllerOnEntity,
-  queryControllers,
-} from '@haku/core'
+import { type EntityId, type IWorld, type ISystem } from '@haku/core'
+import { TransformComponent } from '@haku/core'
+import { CustomRaycastControllerComponent, RevoluteJointVehicleControllerComponent, getControllerOnEntity, queryControllers } from '@haku/physics'
+import { MeshRendererComponent } from '../components.js'
 import type { ControllerWheelSlot, CustomRaycastController } from '@haku/schema'
 import { CONTROLLER_WHEEL_ORDER, normalizeMeshRenderer } from '@haku/schema'
 import type {

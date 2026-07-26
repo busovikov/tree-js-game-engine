@@ -1,4 +1,4 @@
-import type { ComponentType, EntityId, World } from '@haku/core'
+import { type ComponentDefinition, type EntityId, type World } from '@haku/core'
 
 export type MixedNumber = number | null
 export type MixedVec3 = [MixedNumber, MixedNumber, MixedNumber]
@@ -45,7 +45,7 @@ export function commonComponentTypes(world: World, ids: readonly EntityId[]): st
 export function entitiesWithComponent<T>(
   world: World,
   ids: readonly EntityId[],
-  component: ComponentType<T>,
+  component: ComponentDefinition<T>,
 ): EntityId[] {
   return ids.filter((id) => world.hasComponent(id, component))
 }

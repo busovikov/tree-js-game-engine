@@ -1,4 +1,5 @@
-import { CharacterBodyControllerComponent, type EntityId } from '@haku/core'
+import { type EntityId } from '@haku/core'
+import { CharacterBodyControllerComponent } from '@haku/physics'
 import type { ControllerPlugin, ControllerRuntimeContext } from '../registry.js'
 import {
   bootstrapCharacter,

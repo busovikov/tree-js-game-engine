@@ -5,8 +5,8 @@ import {
   type VehicleDebugCollectContext,
   type VehicleDebugWindowApi,
 } from '@haku/engine'
-import type { IWorld } from '@haku/core'
-import { queryControllers } from '@haku/core'
+import { type IWorld } from '@haku/core'
+import { queryControllers } from '@haku/physics'
 import type { VehiclePlayModeSession } from '@haku/engine'
 
 export interface VehicleDebugHookOptions {

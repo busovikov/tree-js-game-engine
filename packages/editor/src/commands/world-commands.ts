@@ -1,12 +1,7 @@
-import type { EntityId } from '@haku/core'
-import {
-  CameraComponent,
-  LightComponent,
-  MeshRendererComponent,
-  PrefabInstanceComponent,
-  TransformComponent,
-  getCoreComponent,
-} from '@haku/core'
+import { type EntityId } from '@haku/core'
+import { PrefabInstanceComponent, TransformComponent } from '@haku/core'
+import { getEngineComponent } from '@haku/engine'
+import { CameraComponent, LightComponent, MeshRendererComponent } from '@haku/engine'
 import type { Light, MeshGeometryType } from '@haku/schema'
 import { LightSchema, MESH_GEOMETRY_TYPE_LABELS, defaultGeometryParams } from '@haku/schema'
 import type { Command } from './command-bus.js'
@@ -190,7 +185,7 @@ export function createPrefab(rootId: EntityId, prefabId: string): void {
 
     for (const typeId of [...draft.world.getComponentTypes(rootId)]) {
       if (typeId === 'Transform') continue
-      const type = getCoreComponent(typeId)
+      const type = getEngineComponent(typeId)
       if (type) draft.world.removeComponent(rootId, type)
     }
 

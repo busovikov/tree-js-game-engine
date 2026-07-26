@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import * as THREE from 'three'
 import { LightSchema, RenderSettingsSchema } from '@haku/schema'
-import { LightComponent, TransformComponent, World } from '@haku/core'
+import { TransformComponent, World } from '@haku/core'
+import { LightComponent } from '../components.js'
 import { RenderSyncSystem } from './render-sync-system.js'
 import { getDirectionalLightWorldDirection } from './apply-directional-light.js'
 

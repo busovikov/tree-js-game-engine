@@ -2,24 +2,25 @@ import { describe, expect, it } from 'vitest'
 import {
   CONTROLLER_COMPONENTS,
   CustomRaycastControllerComponent,
-  createCoreComponentRegistry,
-  coreComponents,
-  getCoreComponent,
-} from '../components.js'
+  physicsComponents,
+  registerPhysicsComponents,
+} from './components.js'
+import { DefaultComponentRegistry } from '@haku/core'
 
 describe('controller components registry', () => {
   it('registers all seven controller component ids', () => {
-    const registry = createCoreComponentRegistry()
+    const registry = new DefaultComponentRegistry()
+    registerPhysicsComponents(registry)
     for (const component of CONTROLLER_COMPONENTS) {
-      expect(getCoreComponent(component.id)).toBe(component)
       expect(registry.get(component.id)).toBe(component)
-      expect(coreComponents.map((entry) => entry.id)).toContain(component.id)
+      expect(physicsComponents.map((entry) => entry.id)).toContain(component.id)
     }
   })
 
   it('no longer registers PhysicsController', () => {
-    expect(getCoreComponent('PhysicsController')).toBeUndefined()
-    expect(createCoreComponentRegistry().get('PhysicsController')).toBeUndefined()
+    const registry = new DefaultComponentRegistry()
+    registerPhysicsComponents(registry)
+    expect(registry.get('PhysicsController')).toBeUndefined()
   })
 
   it('provides CustomRaycastController defaults without nested type', () => {

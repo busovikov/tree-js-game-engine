@@ -1,31 +1,32 @@
 import { describe, expect, it } from 'vitest'
 import {
   ColliderComponent,
-  CORE_COMPONENT_TYPE_IDS,
+  PHYSICS_COMPONENT_TYPE_IDS,
   RigidBodyComponent,
-  createCoreComponentRegistry,
-  coreComponents,
-  getCoreComponent,
+  physicsComponents,
+  registerPhysicsComponents,
 } from './index.js'
+import { DefaultComponentRegistry } from '@haku/core'
 
 describe('ColliderComponent registry', () => {
   it('registers Collider with stable type id', () => {
-    const registry = createCoreComponentRegistry()
-    expect(ColliderComponent.id).toBe(CORE_COMPONENT_TYPE_IDS.Collider)
+    const registry = new DefaultComponentRegistry()
+    registerPhysicsComponents(registry)
+    expect(ColliderComponent.id).toBe(PHYSICS_COMPONENT_TYPE_IDS.Collider)
     expect(registry.get(ColliderComponent.id)).toBe(ColliderComponent)
-    expect(getCoreComponent(ColliderComponent.id)).toBe(ColliderComponent)
   })
 
   it('registers RigidBody with stable type id', () => {
-    expect(RigidBodyComponent.id).toBe(CORE_COMPONENT_TYPE_IDS.RigidBody)
-    expect(getCoreComponent(RigidBodyComponent.id)).toBe(RigidBodyComponent)
+    expect(RigidBodyComponent.id).toBe(PHYSICS_COMPONENT_TYPE_IDS.RigidBody)
   })
 
   it('appears in core component list', () => {
-    const ids = coreComponents.map((c) => c.id)
+    const ids = physicsComponents.map((c) => c.id)
     expect(ids).toContain(ColliderComponent.id)
     expect(ids).toContain(RigidBodyComponent.id)
-    expect(createCoreComponentRegistry().all().map((c) => c.id)).toContain(ColliderComponent.id)
+    const registry = new DefaultComponentRegistry()
+    registerPhysicsComponents(registry)
+    expect(registry.all().map((c) => c.id)).toContain(ColliderComponent.id)
   })
 
   it('provides box defaults via defaults()', () => {

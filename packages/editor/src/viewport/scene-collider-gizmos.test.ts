@@ -1,16 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import {
-  ColliderComponent,
-  CustomRaycastControllerComponent,
-  DynamicRaycastControllerComponent,
-  ArcadeVehicleControllerComponent,
-  RevoluteJointVehicleControllerComponent,
-  KinematicCharacterControllerComponent,
-  PointerControlsControllerComponent,
-  World,
-  type ComponentType,
-  type EntityId,
-} from '@haku/core'
+import { World, type ComponentDefinition, type EntityId } from '@haku/core'
+import { ColliderComponent, CustomRaycastControllerComponent, DynamicRaycastControllerComponent, ArcadeVehicleControllerComponent, RevoluteJointVehicleControllerComponent, KinematicCharacterControllerComponent, PointerControlsControllerComponent } from '@haku/physics'
 import {
   ArcadeVehicleControllerSchema,
   ColliderSchema,
@@ -32,7 +22,7 @@ const explicitSphere: Collider = {
 }
 
 function syncControllerGizmo(
-  component: ComponentType,
+  component: ComponentDefinition,
   data: unknown,
   explicitCollider?: Collider,
 ): THREE.LineSegments | undefined {

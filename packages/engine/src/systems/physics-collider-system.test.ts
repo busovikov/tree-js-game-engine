@@ -1,17 +1,6 @@
 import { describe, expect, it, beforeEach } from 'vitest'
-import {
-  ArcadeVehicleControllerComponent,
-  ColliderComponent,
-  CollidersComponent,
-  CustomRaycastControllerComponent,
-  DynamicRaycastControllerComponent,
-  KinematicCharacterControllerComponent,
-  PointerControlsControllerComponent,
-  RevoluteJointVehicleControllerComponent,
-  RigidBodyComponent,
-  TransformComponent,
-  World,
-} from '@haku/core'
+import { TransformComponent, World } from '@haku/core'
+import { ArcadeVehicleControllerComponent, ColliderComponent, CollidersComponent, CustomRaycastControllerComponent, DynamicRaycastControllerComponent, KinematicCharacterControllerComponent, PointerControlsControllerComponent, RevoluteJointVehicleControllerComponent, RigidBodyComponent } from '@haku/physics'
 import { ColliderSchema, CollidersSchema, RigidBodySchema } from '@haku/schema'
 import { createRapierPhysicsBackend, resetRapierPhysicsIds } from '@haku/physics-rapier'
 import {

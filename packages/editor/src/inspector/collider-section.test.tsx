@@ -3,7 +3,8 @@
  */
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
 import { fireEvent, render, screen, cleanup } from '@testing-library/react'
-import { ColliderComponent, TransformComponent, World } from '@haku/core'
+import { TransformComponent, World } from '@haku/core'
+import { ColliderComponent } from '@haku/physics'
 import { ColliderSchema, defaultPhysicsProjectSettings, type BoxCollider } from '@haku/schema'
 import { commitSceneEdit } from '../commands/scene-history.js'
 import { globalCommandBus } from '../commands/world-commands.js'

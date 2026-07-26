@@ -1,4 +1,5 @@
-import { DynamicRaycastControllerComponent, type EntityId } from '@haku/core'
+import { type EntityId } from '@haku/core'
+import { DynamicRaycastControllerComponent } from '@haku/physics'
 import type { IDynamicRaycastVehicle } from '@haku/physics'
 import type { ControllerPlugin, ControllerRuntimeContext } from '../registry.js'
 import {

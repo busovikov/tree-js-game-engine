@@ -1,5 +1,5 @@
-import type { EntityId } from '@haku/core'
-import { MeshRendererComponent } from '@haku/core'
+import { type EntityId } from '@haku/core'
+import { MeshRendererComponent } from '@haku/engine'
 import type { AssetRef, ColliderBakeSource, MeshRenderer } from '@haku/schema'
 import { meshRendererKey, normalizeMeshRenderer } from '@haku/schema'
 import * as THREE from 'three'

@@ -1,11 +1,6 @@
 import { describe, expect, it, beforeEach } from 'vitest'
-import {
-  ColliderComponent,
-  PhysicsJointComponent,
-  RigidBodyComponent,
-  TransformComponent,
-  World,
-} from '@haku/core'
+import { TransformComponent, World } from '@haku/core'
+import { ColliderComponent, PhysicsJointComponent, RigidBodyComponent } from '@haku/physics'
 import { ColliderSchema, PhysicsJointSchema, RigidBodySchema } from '@haku/schema'
 import { resetStubPhysicsIds, StubPhysicsBackend, type SceneJointConfig, type PhysicsJointHandle } from '@haku/physics'
 import { PhysicsColliderSystem } from './physics-collider-system.js'

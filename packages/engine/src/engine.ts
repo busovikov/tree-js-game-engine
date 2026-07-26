@@ -1,10 +1,12 @@
 import type { IPhysicsBackend } from '@haku/physics'
-import type { IWorld, ISystem } from '@haku/core'
-import { entityId, resolveActiveCameraId } from '@haku/core'
+import { type IWorld, type ISystem } from '@haku/core'
+import { entityId } from '@haku/core'
 import { loadSceneDocument } from '@haku/serializer'
 import type { RenderPrototype, RenderSettings, SceneDocument, SceneMetadata } from '@haku/schema'
 import { defaultPhysicsProjectSettings, defaultRenderSettings, validateSceneDocument } from '@haku/schema'
 import { ThreeRenderBackend } from './render-backend.js'
+import { resolveActiveCameraId } from './scene-camera.js'
+import { createEngineComponentRegistry } from './components.js'
 import {
   PhysicsWorldSystem,
   type PhysicsWorldSystemOptions,
@@ -208,7 +210,7 @@ export class SceneLoader {
 
   static fromDocument(doc: SceneDocument): LoadedScene {
     return {
-      world: loadSceneDocument(doc),
+      world: loadSceneDocument(doc, { componentRegistry: createEngineComponentRegistry() }),
       prototypes: doc.prototypes,
       metadata: doc.metadata,
       prefabs: doc.prefabs,

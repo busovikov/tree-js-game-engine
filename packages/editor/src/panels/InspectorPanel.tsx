@@ -1,28 +1,8 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
-import {
-  CameraComponent,
-  ColliderComponent,
-  LightComponent,
-  MeshRendererComponent,
-  ScriptRefComponent,
-  StaticComponent,
-  TagComponent,
-  TransformComponent,
-  CustomRaycastControllerComponent,
-  DynamicRaycastControllerComponent,
-  ArcadeVehicleControllerComponent,
-  RevoluteJointVehicleControllerComponent,
-  KinematicCharacterControllerComponent,
-  CharacterBodyControllerComponent,
-  PointerControlsControllerComponent,
-  RigidBodyComponent,
-  PhysicsAreaComponent,
-  AnimatableBodyComponent,
-  PhysicsJointComponent,
-  CollidersComponent,
-  getCoreComponent,
-} from '@haku/core'
-import type { ComponentType, EntityId } from '@haku/core'
+import { ScriptRefComponent, StaticComponent, TagComponent, TransformComponent } from '@haku/core'
+import { ColliderComponent, CustomRaycastControllerComponent, DynamicRaycastControllerComponent, ArcadeVehicleControllerComponent, RevoluteJointVehicleControllerComponent, KinematicCharacterControllerComponent, CharacterBodyControllerComponent, PointerControlsControllerComponent, RigidBodyComponent, PhysicsAreaComponent, AnimatableBodyComponent, PhysicsJointComponent, CollidersComponent } from '@haku/physics'
+import { CameraComponent, LightComponent, MeshRendererComponent } from '@haku/engine'
+import { type ComponentDefinition, type EntityId } from '@haku/core'
 import type {
   AnimatableBody,
   Camera,
@@ -44,7 +24,8 @@ import type {
   PointerControlsController,
 } from '@haku/schema'
 import { ColliderSchema, isNonUniformScale } from '@haku/schema'
-import { resolveActiveCameraId } from '@haku/core'
+import { resolveActiveCameraId } from '@haku/engine'
+import { getEngineComponent } from '@haku/engine'
 import { sanitizeComponentDataForPersistence } from '@haku/serializer'
 import { commitActiveSceneCamera } from '../commands/active-scene-camera.js'
 import { useEditorStore } from '../store/editor-store.js'
@@ -664,7 +645,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
   )
 
   const addComponent = useCallback(
-    (component: ComponentType) => {
+    (component: ComponentDefinition) => {
       forEachSelected((id, draftWorld) => {
         if (draftWorld.hasComponent(id, component)) return
         const defaults =
@@ -678,7 +659,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
   )
 
   const removeComponent = useCallback(
-    (component: ComponentType) => {
+    (component: ComponentDefinition) => {
       forEachSelected((id, draftWorld) => {
         if (draftWorld.hasComponent(id, component)) {
           draftWorld.removeComponent(id, component)
@@ -701,7 +682,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
   )
 
   const pasteComponentData = useCallback(
-    (typeId: string, component: ComponentType) => {
+    (typeId: string, component: ComponentDefinition) => {
       if (!componentClipboard || componentClipboard.typeId !== typeId) return
       forEachSelected((id, draftWorld) => {
         const parsed = component.schema.parse(componentClipboard.data)
@@ -712,7 +693,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
   )
 
   const toggleComponentEnabled = useCallback(
-    (component: ComponentType, enabled: boolean) => {
+    (component: ComponentDefinition, enabled: boolean) => {
       forEachSelected((id, draftWorld) => {
         if (!draftWorld.hasComponent(id, component)) return
         const current = draftWorld.getComponent(id, component)
@@ -728,7 +709,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
   )
 
   const mergeComponentEnabled = useCallback(
-    (component: ComponentType, targets: EntityId[]): MixedBool => {
+    (component: ComponentDefinition, targets: EntityId[]): MixedBool => {
       if (!world || targets.length === 0) return null
       return mergeBooleans(
         targets.map((id) => {
@@ -863,7 +844,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
         <InspectorSeparator />
 
         {otherComponents.map((typeId) => {
-          const type = getCoreComponent(typeId)
+          const type = getEngineComponent(typeId)
           if (!type) return null
           const key = type.name as keyof typeof COMPONENT_MAP
           if (!(key in COMPONENT_MAP)) return null
@@ -1134,4 +1115,4 @@ export const InspectorPanel = memo(function InspectorPanel() {
   )
 })
 
-export { getCoreComponent }
+export { getEngineComponent }

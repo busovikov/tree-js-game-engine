@@ -47,6 +47,8 @@ export {
   computeWheelVisualTransform,
   vehicleWheelConfigs,
 } from './engine.js'
+export * from './components.js'
+export * from './scene-camera.js'
 export type { EngineOptions, EngineFeatureFlags, LoadedScene, SceneFetch } from './engine.js'
 export type { PhysicsWorldSystemOptions } from './systems/physics-world-system.js'
 export type {

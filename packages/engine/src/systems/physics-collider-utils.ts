@@ -1,4 +1,4 @@
-import { ArcadeVehicleControllerComponent, type ControllerOnEntity } from '@haku/core'
+import { ArcadeVehicleControllerComponent, type ControllerOnEntity } from '@haku/physics'
 import type {
   ArcadeVehicleController,
   Collider,

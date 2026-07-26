@@ -1,14 +1,7 @@
-import type { IWorld, EntityId, ComponentType } from '@haku/core'
-import {
-  ArcadeVehicleControllerComponent,
-  CameraComponent,
-  CharacterBodyControllerComponent,
-  DynamicRaycastControllerComponent,
-  KinematicCharacterControllerComponent,
-  RevoluteJointVehicleControllerComponent,
-  TransformComponent,
-  entityId,
-} from '@haku/core'
+import { type IWorld, type EntityId, type ComponentDefinition } from '@haku/core'
+import { TransformComponent, entityId } from '@haku/core'
+import { ArcadeVehicleControllerComponent, CharacterBodyControllerComponent, DynamicRaycastControllerComponent, KinematicCharacterControllerComponent, RevoluteJointVehicleControllerComponent } from '@haku/physics'
+import { CameraComponent } from '../components.js'
 import type {
   ArcadeVehicleController,
   CharacterBodyController,
@@ -456,7 +449,7 @@ export function bootstrapCharacter(
   tracked: Map<string, TrackedCharacter>,
   controllerType: CharacterComponentId,
 ): void {
-  const component = CHARACTER_COMPONENT_BY_ID[controllerType] as ComponentType<CharacterControllerData>
+  const component = CHARACTER_COMPONENT_BY_ID[controllerType] as ComponentDefinition<CharacterControllerData>
   for (const id of world.query(component, TransformComponent)) {
     const data = world.getComponent(id, component)
     if (!data) {
@@ -488,7 +481,7 @@ export function updateCharacter(
   controllerType: CharacterComponentId,
 ): void {
   const cameraYaw = resolveCameraYaw(world)
-  const component = CHARACTER_COMPONENT_BY_ID[controllerType] as ComponentType<CharacterControllerData>
+  const component = CHARACTER_COMPONENT_BY_ID[controllerType] as ComponentDefinition<CharacterControllerData>
 
   for (const [entityIdValue, state] of tracked) {
     const id = entityId(entityIdValue)
