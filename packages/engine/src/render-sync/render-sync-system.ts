@@ -20,7 +20,17 @@ import type {
   RenderSettings,
   Transform,
 } from '@haku/schema'
-import { LightSchema, defaultRenderSettings, isComponentEnabled, meshRendererKey, normalizeMeshRenderer, resolveLightColor, resolveShadowSettings, spotToThreeCone, isFeatureActive } from '@haku/schema'
+import {
+  LightSchema,
+  defaultRenderSettings,
+  isComponentEnabled,
+  meshRendererKey,
+  normalizeMeshRenderer,
+  resolveLightColor,
+  resolveShadowSettings,
+  spotToThreeCone,
+  isFeatureActive,
+} from '@haku/schema'
 import * as THREE from 'three'
 import {
   createMeshFromRenderer,
@@ -28,12 +38,10 @@ import {
   updateMeshMaterial,
   applyMaterial,
 } from '../mesh-factory.js'
-import { applyMaterialToObject } from '../model-loader.js'
+import { applyMaterialToObject, resolveModelAssetPath } from '../model-loader.js'
 import { syncWireframeOverlay } from '../wireframe-overlay.js'
 import { countObject3DMeshes, modelLog, modelLogError, modelLogWarn } from '../model-log.js'
-import {
-  loadModelTemplate,
-} from '../model-loader.js'
+import { loadModelTemplate } from '../model-loader.js'
 import { syncMeshShadowFlags } from './sync-mesh-shadow.js'
 import {
   fitIsaacMasonChassisModel,
@@ -52,10 +60,7 @@ import {
   shadowAnchorConfigFromSettings,
   updateDirectionalShadowRig,
 } from './directional-shadow.js'
-import {
-  applyDirectionalLightPose,
-  applySpotLightPose,
-} from './apply-directional-light.js'
+import { applyDirectionalLightPose, applySpotLightPose } from './apply-directional-light.js'
 import { applyLayerMask, resolveEntityLayerMask } from '../render/layers/layer-resolver.js'
 import { RENDER_LAYER_DEFAULT, RENDER_LAYER_EDITOR_GIZMO } from '@haku/schema'
 
@@ -135,7 +140,9 @@ export class RenderSyncSystem implements ISystem {
     return this.entityStates.get(entityId.value)?.object3d
   }
 
-  getEntityCamera(entityId: EntityId): THREE.PerspectiveCamera | THREE.OrthographicCamera | undefined {
+  getEntityCamera(
+    entityId: EntityId,
+  ): THREE.PerspectiveCamera | THREE.OrthographicCamera | undefined {
     const object3d = this.getObject3D(entityId)
     if (!object3d) return undefined
     return this.findCamera(object3d) ?? undefined
@@ -186,8 +193,7 @@ export class RenderSyncSystem implements ISystem {
 
       this.tagPickable(state.object3d, id.value)
       const isStatic = this.isEntityStatic(id)
-      const presentationTransform =
-        this.presentationTransformResolver?.(id, transform) ?? transform
+      const presentationTransform = this.presentationTransformResolver?.(id, transform) ?? transform
       this.applyTransform(state.object3d, presentationTransform, isStatic)
       this.syncLight(id, state.object3d)
       this.syncCamera(id, state.object3d)
@@ -290,7 +296,9 @@ export class RenderSyncSystem implements ISystem {
     }
 
     if (this.world.hasComponent(id, MeshRendererComponent)) {
-      const meshRenderer = normalizeMeshRenderer(this.world.getComponent(id, MeshRendererComponent)!)
+      const meshRenderer = normalizeMeshRenderer(
+        this.world.getComponent(id, MeshRendererComponent)!,
+      )
       if (!isComponentEnabled(meshRenderer)) return new THREE.Group()
       return createMeshFromRenderer(meshRenderer)
     }
@@ -346,7 +354,7 @@ export class RenderSyncSystem implements ISystem {
     if (this.world.hasComponent(id, MeshRendererComponent)) {
       const meshRenderer = this.world.getComponent(id, MeshRendererComponent)!
       if (meshRenderer.geometryType === 'ModelGeometry') {
-        return `model:${meshRenderer.modelAsset}`
+        return `model:${meshRenderer.modelAsset?.$ref ?? 'missing'}`
       }
       return `mesh:${meshRendererKey(meshRenderer)}`
     }
@@ -389,7 +397,7 @@ export class RenderSyncSystem implements ISystem {
     meshRenderer: MeshRenderer,
     meshKey: string,
   ): void {
-    const modelAsset = meshRenderer.modelAsset.trim()
+    const modelAsset = meshRenderer.modelAsset?.$ref
     state.meshKey = meshKey
 
     const existingRoot = state.object3d.getObjectByName(MODEL_ROOT_NAME)
@@ -402,8 +410,9 @@ export class RenderSyncSystem implements ISystem {
     }
 
     if (state.loadedModelAsset === modelAsset && existingRoot) {
+      const modelPath = resolveModelAssetPath(modelAsset)
       modelLog('sync.already-loaded', { entityId: id.value, modelAsset })
-      this.applyRendererMaterial(state.object3d, meshRenderer.material, modelAsset)
+      this.applyRendererMaterial(state.object3d, meshRenderer.material, modelPath)
       syncMeshShadowFlags(state.object3d, meshRenderer)
       return
     }
@@ -442,7 +451,8 @@ export class RenderSyncSystem implements ISystem {
 
         const wrapper = new THREE.Group()
         wrapper.name = MODEL_ROOT_NAME
-        wrapper.add(this.fitVehicleModelIfNeeded(id, modelAsset, model))
+        const modelPath = resolveModelAssetPath(modelAsset)
+        wrapper.add(this.fitVehicleModelIfNeeded(id, modelPath, model))
         state.object3d.add(wrapper)
         state.loadedModelAsset = modelAsset
         state.pendingModelAsset = undefined
@@ -450,7 +460,7 @@ export class RenderSyncSystem implements ISystem {
         const currentRenderer = this.world.getComponent(id, MeshRendererComponent)
         if (currentRenderer) {
           const normalized = normalizeMeshRenderer(currentRenderer)
-          this.applyRendererMaterial(state.object3d, normalized.material, modelAsset)
+          this.applyRendererMaterial(state.object3d, normalized.material, modelPath)
           syncMeshShadowFlags(state.object3d, normalized)
         }
         this.tagPickable(state.object3d, id.value)
@@ -591,11 +601,7 @@ export class RenderSyncSystem implements ISystem {
       case 'directional':
         return new THREE.DirectionalLight(color, light.intensity)
       case 'hemisphere':
-        return new THREE.HemisphereLight(
-          light.skyColor,
-          light.groundColor,
-          light.intensity,
-        )
+        return new THREE.HemisphereLight(light.skyColor, light.groundColor, light.intensity)
     }
   }
 
@@ -906,8 +912,13 @@ export class RenderSyncSystem implements ISystem {
     }
   }
 
-  private findCamera(object3d: THREE.Object3D): THREE.PerspectiveCamera | THREE.OrthographicCamera | null {
-    if (object3d instanceof THREE.PerspectiveCamera || object3d instanceof THREE.OrthographicCamera) {
+  private findCamera(
+    object3d: THREE.Object3D,
+  ): THREE.PerspectiveCamera | THREE.OrthographicCamera | null {
+    if (
+      object3d instanceof THREE.PerspectiveCamera ||
+      object3d instanceof THREE.OrthographicCamera
+    ) {
       return object3d
     }
 

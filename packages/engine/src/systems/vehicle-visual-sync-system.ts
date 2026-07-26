@@ -21,10 +21,8 @@ import { computeWheelWorldPose } from '@haku/physics'
 import type { PhysicsWorldSystem } from './physics-world-system.js'
 import type { PhysicsControllerSystem } from './physics-controller-system.js'
 import { raycastWheelConfigs } from './physics-controller-system.js'
-import {
-  isIsaacMasonWheelAsset,
-  resolveVisualSteerAngle,
-} from '../vehicle-model-fit.js'
+import { resolveModelAssetPath } from '../model-loader.js'
+import { isIsaacMasonWheelAsset, resolveVisualSteerAngle } from '../vehicle-model-fit.js'
 
 /**
  * Revolute wheel meshes are Y-axis cylinders; the wheel body spins about its local Z (the lateral
@@ -52,9 +50,7 @@ export function computeWheelVisualTransform(
   state: WheelState,
   visualSteerAngle: number = state.steering,
 ): WheelVisualTransform {
-  const suspensionLength = state.inContact
-    ? state.suspensionLength
-    : config.suspensionRestLength
+  const suspensionLength = state.inContact ? state.suspensionLength : config.suspensionRestLength
 
   const { worldPosition, worldRotation } = computeWheelWorldPose(
     chassisTransform,
@@ -81,10 +77,7 @@ export class VehicleVisualSyncSystem implements ISystem {
   private readonly controllerSystem: PhysicsControllerSystem
   private readonly wheelSlots = new Map<string, Partial<Record<ControllerWheelSlot, EntityId>>>()
 
-  constructor(
-    physicsSystem: PhysicsWorldSystem,
-    controllerSystem: PhysicsControllerSystem,
-  ) {
+  constructor(physicsSystem: PhysicsWorldSystem, controllerSystem: PhysicsControllerSystem) {
     this.physicsSystem = physicsSystem
     this.controllerSystem = controllerSystem
   }
@@ -154,12 +147,7 @@ export class VehicleVisualSyncSystem implements ISystem {
               ? state.steering
               : resolveVisualSteerAngle(driverSteer, slot)
             : 0
-        const visual = computeWheelVisualTransform(
-          chassisTransform,
-          config,
-          state,
-          visualSteer,
-        )
+        const visual = computeWheelVisualTransform(chassisTransform, config, state, visualSteer)
         const wheelTransform = world.getComponent(wheelEntityId, TransformComponent)
         if (!wheelTransform) {
           continue
@@ -224,7 +212,8 @@ export class VehicleVisualSyncSystem implements ISystem {
   private isIsaacWheelEntity(world: IWorld, wheelEntityId: EntityId): boolean {
     const renderer = world.getComponent(wheelEntityId, MeshRendererComponent)
     if (!renderer) return false
-    return isIsaacMasonWheelAsset(normalizeMeshRenderer(renderer).modelAsset.trim())
+    const modelAsset = normalizeMeshRenderer(renderer).modelAsset
+    return modelAsset ? isIsaacMasonWheelAsset(resolveModelAssetPath(modelAsset.$ref)) : false
   }
 
   private resolveWheelSlots(

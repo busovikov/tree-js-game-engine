@@ -19,6 +19,7 @@
     "test": "pnpm --dir ../.. exec vitest run packages/editor"
   },
   "dependencies": {
+    "@haku/assets": "workspace:*",
     "@haku/core": "file:../core",
     "@haku/engine": "file:../engine",
     "@haku/physics-rapier": "file:../physics-rapier",

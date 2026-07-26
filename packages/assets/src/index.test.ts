@@ -4,6 +4,7 @@ import {
   AssetDiagnosticError,
   AssetRegistry,
   MODEL_ASSET_TYPE,
+  ProjectAssetIndex,
   SCENE_ASSET_TYPE,
   assetId,
   assetRef,
@@ -55,6 +56,9 @@ describe('@haku/assets manifest contracts', () => {
     expect(after.entryScene).toEqual(before.entryScene)
     expect(after.assets[0]!.dependencies).toEqual(before.assets[0]!.dependencies)
     expect(after.assets[1]!.id).toBe(before.assets[1]!.id)
+    expect(new ProjectAssetIndex(after).path(after.assets[0]!.dependencies[0]!)).toBe(
+      'models/archive/renamed.glb',
+    )
   })
 
   it('reports duplicate asset IDs with structured diagnostics', () => {

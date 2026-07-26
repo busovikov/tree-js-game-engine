@@ -27,6 +27,8 @@ export const SCENE_ASSET_TYPE = assetTypeId('20000000-0000-4000-8000-00000000000
 export const PREFAB_ASSET_TYPE = assetTypeId('20000000-0000-4000-8000-000000000002')
 export const MODEL_ASSET_TYPE = assetTypeId('20000000-0000-4000-8000-000000000003')
 export const TEXTURE_ASSET_TYPE = assetTypeId('20000000-0000-4000-8000-000000000004')
+export const BINARY_ASSET_TYPE = assetTypeId('20000000-0000-4000-8000-000000000005')
+export const DATA_ASSET_TYPE = assetTypeId('20000000-0000-4000-8000-000000000006')
 
 export type AssetDiagnosticCode =
   | 'manifest.invalid'
@@ -67,11 +69,11 @@ export interface AssetManifestEntry {
 
 export const AssetManifestEntrySchema: z.ZodType<AssetManifestEntry, z.ZodTypeDef, unknown> =
   z.object({
-  id: AssetIdSchema,
-  type: AssetTypeIdSchema,
-  path: z.string().min(1),
-  dependencies: z.array(AssetRefSchema).default([]),
-  metadata: z.record(z.unknown()).default({}),
+    id: AssetIdSchema,
+    type: AssetTypeIdSchema,
+    path: z.string().min(1),
+    dependencies: z.array(AssetRefSchema).default([]),
+    metadata: z.record(z.unknown()).default({}),
   }) as unknown as z.ZodType<AssetManifestEntry, z.ZodTypeDef, unknown>
 
 export interface ProjectManifest {
@@ -174,9 +176,52 @@ export class AssetRegistry {
   }
 
   all(): readonly AssetTypeDescriptor[] {
-    return [...this.descriptors.values()].sort((left, right) =>
-      left.type.localeCompare(right.type),
-    )
+    return [...this.descriptors.values()].sort((left, right) => left.type.localeCompare(right.type))
+  }
+}
+
+export class ProjectAssetIndex {
+  private readonly entries: Map<AssetId, AssetManifestEntry>
+
+  constructor(readonly manifest: ProjectManifest) {
+    this.entries = new Map(manifest.assets.map((entry) => [entry.id, entry]))
+  }
+
+  get(id: AssetId): AssetManifestEntry | undefined {
+    return this.entries.get(id)
+  }
+
+  require(reference: AssetRef, expectedType?: AssetTypeId): AssetManifestEntry {
+    const entry = this.get(reference.$ref)
+    const requiredType = expectedType ?? reference.type
+    if (!entry) {
+      throw new AssetDiagnosticError([
+        {
+          code: 'asset.unknown-id',
+          severity: 'error',
+          message: `Unknown asset ID: ${reference.$ref}`,
+          assetId: reference.$ref,
+          expectedType: requiredType,
+        },
+      ])
+    }
+    if (requiredType !== undefined && entry.type !== requiredType) {
+      throw new AssetDiagnosticError([
+        {
+          code: 'asset.type-mismatch',
+          severity: 'error',
+          message: `Asset ${entry.id} has type ${entry.type}; expected ${requiredType}`,
+          assetId: entry.id,
+          expectedType: requiredType,
+          actualType: entry.type,
+        },
+      ])
+    }
+    return entry
+  }
+
+  path(reference: AssetRef, expectedType?: AssetTypeId): string {
+    return this.require(reference, expectedType).path
   }
 }
 

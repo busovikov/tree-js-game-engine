@@ -1,4 +1,4 @@
-import { DEFAULT_ASSETS_DIR, projectPathToUrl } from '@haku/schema'
+import type { AssetId } from '@haku/schema'
 import * as THREE from 'three'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
@@ -7,9 +7,14 @@ import { countObject3DMeshes, modelLog, modelLogError, modelLogUrl } from './mod
 /** Browser path to bundled Draco decoder (see `apps/playground/public/draco/gltf/`). */
 const DEFAULT_DRACO_DECODER_PATH = '/draco/gltf/'
 
-export type ModelAssetResolver = (relativeAssetPath: string) => string
-export type ModelResourceResolver = (modelRelativePath: string, resourceFileName: string) => string
-export type ModelLoadPreparer = (relativeAssetPath: string) => Promise<void>
+export interface ModelAssetLocation {
+  readonly path: string
+  readonly url: string
+}
+
+export type ModelAssetResolver = (assetId: AssetId) => ModelAssetLocation
+export type ModelResourceResolver = (modelAssetId: AssetId, resourceFileName: string) => string
+export type ModelLoadPreparer = (assetId: AssetId) => Promise<void>
 
 const cache = new Map<string, Promise<THREE.Object3D>>()
 
@@ -31,16 +36,15 @@ function getDracoLoader(): DRACOLoader {
   return dracoLoader
 }
 
-let resolveModelAssetUrl: ModelAssetResolver = (relativeAssetPath) => {
-  const normalized = relativeAssetPath.replace(/^\/+/, '')
-  return projectPathToUrl(`${DEFAULT_ASSETS_DIR}/${normalized}`)
+let resolveModelAsset: ModelAssetResolver = (id) => {
+  throw new Error(`Model asset resolver is not configured for ID: ${id}`)
 }
 
 let resolveModelResourceUrl: ModelResourceResolver | null = null
 let prepareModelLoad: ModelLoadPreparer | null = null
 
 export function setModelAssetResolver(resolver: ModelAssetResolver): void {
-  resolveModelAssetUrl = resolver
+  resolveModelAsset = resolver
 }
 
 export function setModelResourceResolver(resolver: ModelResourceResolver | null): void {
@@ -89,10 +93,14 @@ function extractGltfResourceFileName(resourceUrl: string): string | null {
   return resourceUrl
 }
 
-function resolveGltfResourceUrl(relativeAssetPath: string, resourceUrl: string, resourcePath: string | null): string {
+function resolveGltfResourceUrl(
+  assetId: AssetId,
+  resourceUrl: string,
+  resourcePath: string | null,
+): string {
   const fileName = extractGltfResourceFileName(resourceUrl)
   if (fileName && resolveModelResourceUrl) {
-    return resolveModelResourceUrl(relativeAssetPath, fileName)
+    return resolveModelResourceUrl(assetId, fileName)
   }
 
   if (resourcePath && !resourceUrl.startsWith('/') && !resourceUrl.startsWith('http')) {
@@ -102,8 +110,8 @@ function resolveGltfResourceUrl(relativeAssetPath: string, resourceUrl: string, 
   return resourceUrl
 }
 
-function loadGltfScene(relativeAssetPath: string): Promise<THREE.Object3D> {
-  const url = resolveModelAssetUrl(relativeAssetPath)
+function loadGltfScene(assetId: AssetId): Promise<THREE.Object3D> {
+  const { path: relativeAssetPath, url } = resolveModelAsset(assetId)
   const loader = new GLTFLoader()
   loader.setDRACOLoader(getDracoLoader())
   const resourcePath = resourcePathForUrl(url)
@@ -116,7 +124,7 @@ function loadGltfScene(relativeAssetPath: string): Promise<THREE.Object3D> {
   })
 
   loader.manager.setURLModifier((resourceUrl) => {
-    const resolved = resolveGltfResourceUrl(relativeAssetPath, resourceUrl, resourcePath)
+    const resolved = resolveGltfResourceUrl(assetId, resourceUrl, resourcePath)
 
     if (resolved !== resourceUrl) {
       modelLog('gltf.resource.resolve', {
@@ -149,11 +157,12 @@ function loadGltfScene(relativeAssetPath: string): Promise<THREE.Object3D> {
   })
 }
 
-export async function loadModelTemplate(relativeAssetPath: string): Promise<THREE.Object3D> {
-  const key = relativeAssetPath.trim()
-  if (!key) {
-    throw new Error('Model asset path is empty')
-  }
+export function resolveModelAssetPath(assetId: AssetId): string {
+  return resolveModelAsset(assetId).path
+}
+
+export async function loadModelTemplate(assetId: AssetId): Promise<THREE.Object3D> {
+  const key = assetId
 
   let pending = cache.get(key)
   if (pending) {
@@ -183,7 +192,10 @@ export async function loadModelTemplate(relativeAssetPath: string): Promise<THRE
   return template.clone(true)
 }
 
-export function applyMaterialToObject(root: THREE.Object3D, apply: (material: THREE.Material) => void): void {
+export function applyMaterialToObject(
+  root: THREE.Object3D,
+  apply: (material: THREE.Material) => void,
+): void {
   root.traverse((child) => {
     if (!(child instanceof THREE.Mesh)) return
     const materials = Array.isArray(child.material) ? child.material : [child.material]

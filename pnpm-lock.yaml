@@ -58,7 +58,7 @@ importers:
     dependencies:
       '@haku/editor':
         specifier: file:../../packages/editor
-        version: link:../../packages/editor
+        version: file:packages/editor(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -84,6 +84,9 @@ importers:
 
   apps/playground:
     dependencies:
+      '@haku/assets':
+        specifier: workspace:*
+        version: link:../../packages/assets
       '@haku/engine':
         specifier: workspace:*
         version: link:../../packages/engine
@@ -145,12 +148,15 @@ importers:
 
   packages/editor:
     dependencies:
+      '@haku/assets':
+        specifier: workspace:*
+        version: link:../assets
       '@haku/core':
         specifier: file:../core
         version: file:packages/core
       '@haku/engine':
         specifier: file:../engine
-        version: link:../engine
+        version: file:packages/engine
       '@haku/physics-rapier':
         specifier: file:../physics-rapier
         version: file:packages/physics-rapier
@@ -191,6 +197,9 @@ importers:
 
   packages/engine:
     dependencies:
+      '@haku/assets':
+        specifier: workspace:*
+        version: link:../assets
       '@haku/core':
         specifier: file:../core
         version: file:packages/core
@@ -704,8 +713,26 @@ packages:
   '@haku/core@file:packages/core':
     resolution: {directory: packages/core, type: directory}
 
+  '@haku/editor@file:packages/editor':
+    resolution: {directory: packages/editor, type: directory}
+    peerDependencies:
+      react: ^18.3.1
+      react-dom: ^18.3.1
+
+  '@haku/engine@file:packages/engine':
+    resolution: {directory: packages/engine, type: directory}
+
   '@haku/physics-rapier@file:packages/physics-rapier':
     resolution: {directory: packages/physics-rapier, type: directory}
+
+  '@haku/physics@file:packages/physics':
+    resolution: {directory: packages/physics, type: directory}
+
+  '@haku/schema@file:packages/schema':
+    resolution: {directory: packages/schema, type: directory}
+
+  '@haku/serializer@file:packages/serializer':
+    resolution: {directory: packages/serializer, type: directory}
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -2664,10 +2691,48 @@ snapshots:
       '@haku/schema': link:packages/schema
       zod: 3.25.76
 
+  '@haku/editor@file:packages/editor(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      '@haku/assets': link:packages/assets
+      '@haku/core': file:packages/core
+      '@haku/engine': file:packages/engine
+      '@haku/physics-rapier': file:packages/physics-rapier
+      '@haku/schema': file:packages/schema
+      '@haku/serializer': file:packages/serializer
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+      react-resizable-panels: 2.1.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      three: 0.171.0
+      zustand: 5.0.14(@types/react@18.3.31)(react@18.3.1)
+    transitivePeerDependencies:
+      - '@types/react'
+      - immer
+      - use-sync-external-store
+
+  '@haku/engine@file:packages/engine':
+    dependencies:
+      '@haku/assets': link:packages/assets
+      '@haku/core': file:packages/core
+      '@haku/physics': file:packages/physics
+      '@haku/schema': file:packages/schema
+      '@haku/serializer': file:packages/serializer
+      three: 0.171.0
+
   '@haku/physics-rapier@file:packages/physics-rapier':
     dependencies:
       '@dimforge/rapier3d-compat': 0.19.3
       '@haku/physics': link:packages/physics
+
+  '@haku/physics@file:packages/physics': {}
+
+  '@haku/schema@file:packages/schema':
+    dependencies:
+      zod: 3.25.76
+
+  '@haku/serializer@file:packages/serializer':
+    dependencies:
+      '@haku/core': file:packages/core
+      '@haku/schema': file:packages/schema
 
   '@humanfs/core@0.19.2':
     dependencies:

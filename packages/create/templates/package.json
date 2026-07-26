@@ -8,6 +8,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@haku/assets": "latest",
     "@haku/engine": "latest"
   },
   "devDependencies": {

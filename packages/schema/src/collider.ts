@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { MAX_PHYSICS_LAYERS } from './physics-project-settings.js'
+import { AssetRefSchema } from './assets.js'
 
 const ComponentEnabledSchema = z.boolean().default(true)
 
@@ -18,9 +19,9 @@ export type UnsupportedShapePolicy = z.infer<typeof UnsupportedShapePolicySchema
 export const ColliderBakeSourceSchema = z.object({
   kind: z.enum(['meshRenderer', 'manual']),
   geometryType: z.string().optional(),
-  modelAsset: z.string().optional(),
+  modelAsset: AssetRefSchema.optional(),
   /** Optional collision LOD mesh asset id (manual assign; bake source when set). */
-  collisionMeshAsset: z.string().optional(),
+  collisionMeshAsset: AssetRefSchema.optional(),
   meshRevision: z.string().optional(),
 })
 export type ColliderBakeSource = z.infer<typeof ColliderBakeSourceSchema>
@@ -36,7 +37,12 @@ const ColliderBaseSchema = z.object({
   /** Project physics material asset id; inline friction/restitution are fallbacks. */
   materialId: z.string().default(''),
   /** Layer index 0..15 (Unity model); filtering from project collision matrix. */
-  layer: z.number().int().min(0).max(MAX_PHYSICS_LAYERS - 1).default(0),
+  layer: z
+    .number()
+    .int()
+    .min(0)
+    .max(MAX_PHYSICS_LAYERS - 1)
+    .default(0),
   unsupportedShapePolicy: UnsupportedShapePolicySchema.default('skip'),
   friction: z.number().min(0).optional(),
   restitution: z.number().min(0).max(1).optional(),
@@ -136,9 +142,7 @@ export const LEGACY_COLLIDER_FIELDS = [
   'physicsVehicleHandle',
 ] as const
 
-export function stripLegacyColliderFields(
-  data: Record<string, unknown>,
-): Record<string, unknown> {
+export function stripLegacyColliderFields(data: Record<string, unknown>): Record<string, unknown> {
   const next = { ...data }
   for (const field of LEGACY_COLLIDER_FIELDS) {
     delete next[field]

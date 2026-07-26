@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { ComponentRecordSchema } from './component-envelope.js'
+import { AssetRefSchema } from './assets.js'
 import {
   HEMISPHERE_LIGHT_DEFAULT_GROUND_COLOR,
   HEMISPHERE_LIGHT_DEFAULT_SKY_COLOR,
@@ -21,10 +22,8 @@ export type PrefabRef = z.infer<typeof PrefabRefSchema>
 
 export {
   AssetIdSchema,
-  AssetIdBrand,
   AssetRefSchema,
   AssetTypeIdSchema,
-  AssetTypeIdBrand,
   assetId,
   assetRef,
   assetTypeId,
@@ -247,10 +246,7 @@ export {
   type PhysicsJointType,
 } from './physics-joint.js'
 
-export {
-  CollidersSchema,
-  type Colliders,
-} from './colliders-array.js'
+export { CollidersSchema, type Colliders } from './colliders-array.js'
 
 export {
   AnimatableBodySchema,
@@ -403,7 +399,7 @@ export type RenderMode = z.infer<typeof RenderModeSchema>
 export const RenderPrototypeSchema = z.object({
   id: z.string(),
   mode: RenderModeSchema,
-  sourceAsset: z.string(),
+  sourceAsset: AssetRefSchema,
 })
 export type RenderPrototype = z.infer<typeof RenderPrototypeSchema>
 
@@ -442,40 +438,31 @@ import {
   defaultPhysicsProjectSettings,
 } from './physics-project-settings.js'
 
-export const SceneDocumentSchema = z.preprocess((input) => {
-  if (typeof input !== 'object' || input === null) return input
-  let next = input as Record<string, unknown>
-  if (!('renderSettings' in next)) {
-    next = { ...next, renderSettings: defaultRenderSettings() }
-  }
-  if (!('physicsSettings' in next)) {
-    next = { ...next, physicsSettings: defaultPhysicsProjectSettings() }
-  }
-  return next
-}, z.object({
-  schemaVersion: z.literal(1),
-  metadata: SceneMetadataSchema,
-  entities: z.array(EntityRecordSchema),
-  prototypes: z.record(RenderPrototypeSchema).default({}),
-  prefabs: z.record(PrefabDefinitionSchema).default({}),
-  renderSettings: RenderSettingsSchema.default({}),
-  physicsSettings: PhysicsProjectSettingsSchema.default({}),
-}))
+export const SceneDocumentSchema = z.preprocess(
+  (input) => {
+    if (typeof input !== 'object' || input === null) return input
+    let next = input as Record<string, unknown>
+    if (!('renderSettings' in next)) {
+      next = { ...next, renderSettings: defaultRenderSettings() }
+    }
+    if (!('physicsSettings' in next)) {
+      next = { ...next, physicsSettings: defaultPhysicsProjectSettings() }
+    }
+    return next
+  },
+  z.object({
+    schemaVersion: z.literal(1),
+    metadata: SceneMetadataSchema,
+    entities: z.array(EntityRecordSchema),
+    prototypes: z.record(RenderPrototypeSchema).default({}),
+    prefabs: z.record(PrefabDefinitionSchema).default({}),
+    renderSettings: RenderSettingsSchema.default({}),
+    physicsSettings: PhysicsProjectSettingsSchema.default({}),
+  }),
+)
 export type SceneDocument = z.infer<typeof SceneDocumentSchema>
 
-export const HakuProjectSchema = z.object({
-  name: z.string(),
-  entryScene: z.string(),
-  assetsDir: z.string().default('public/assets'),
-  scriptsDir: z.string().default('scripts'),
-})
-export type HakuProject = z.infer<typeof HakuProjectSchema>
-
-export {
-  DEFAULT_ASSETS_DIR,
-  projectPathToUrl,
-  relativeToAssetsDir,
-} from './paths.js'
+export { DEFAULT_ASSETS_DIR, projectPathToUrl, relativeToAssetsDir } from './paths.js'
 
 export {
   EditorProjectSettingsSchema,

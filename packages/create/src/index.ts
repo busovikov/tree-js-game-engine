@@ -34,7 +34,15 @@ function isNonEmpty(dir: string): boolean {
   return existsSync(dir) && readdirSync(dir).length > 0
 }
 
-const MONOREPO_HAKU_PACKAGES = ['schema', 'core', 'serializer', 'physics', 'physics-rapier', 'engine'] as const
+const MONOREPO_HAKU_PACKAGES = [
+  'schema',
+  'assets',
+  'core',
+  'serializer',
+  'physics',
+  'physics-rapier',
+  'engine',
+] as const
 
 /** When engine is a file: link into the monorepo, wire all @haku/* deps for standalone install. */
 function resolveMonorepoPackageLinks(engineVersion: string): Record<string, string> | null {
@@ -50,7 +58,9 @@ function resolveMonorepoPackageLinks(engineVersion: string): Record<string, stri
   return links
 }
 
-export async function createHakuProject(options: CreateProjectOptions): Promise<CreateProjectResult> {
+export async function createHakuProject(
+  options: CreateProjectOptions,
+): Promise<CreateProjectResult> {
   const name = options.name ?? 'my-game'
   const projectDir = join(options.targetDir, name)
   const engineVersion = options.engineVersion ?? 'latest'
@@ -72,7 +82,13 @@ export async function createHakuProject(options: CreateProjectOptions): Promise<
   const monorepoLinks = resolveMonorepoPackageLinks(engineVersion)
   if (monorepoLinks) {
     for (const [dep, link] of Object.entries(monorepoLinks)) {
-      if (dep === '@haku/engine' || dep === '@haku/schema' || dep === '@haku/core' || dep === '@haku/serializer') {
+      if (
+        dep === '@haku/engine' ||
+        dep === '@haku/assets' ||
+        dep === '@haku/schema' ||
+        dep === '@haku/core' ||
+        dep === '@haku/serializer'
+      ) {
         pkg.dependencies[dep] = link
       }
     }

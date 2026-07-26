@@ -121,7 +121,7 @@
           "data": {
             "geometryType": "ModelGeometry",
             "geometryParams": {},
-            "modelAsset": "sketches/isaac-mason/game-level-transformed.glb",
+            "modelAsset": { "$ref": "f91a931c-3cbb-4f18-9ef1-1099556e725e", "type": "20000000-0000-4000-8000-000000000003" },
             "material": {
               "color": "#ffffff",
               "opacity": 1,
@@ -173,7 +173,6 @@
               "height": 2,
               "depth": 400
             },
-            "modelAsset": "",
             "material": {
               "color": "#555555",
               "opacity": 1,
@@ -273,7 +272,6 @@
               "capSegments": 4,
               "radialSegments": 8
             },
-            "modelAsset": "",
             "material": {
               "color": "#74c0fc",
               "opacity": 1,

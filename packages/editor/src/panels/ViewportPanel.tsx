@@ -159,11 +159,11 @@ export const ViewportPanel = memo(function ViewportPanel() {
         viewportPicking: true,
       },
     })
-    engine.backend.setModelAssetResolver((path) => projectService.resolveModelAssetUrl(path))
-    engine.backend.setModelResourceResolver((modelPath, resource) =>
-      projectService.resolveModelResourceUrl(modelPath, resource),
+    engine.backend.setModelAssetResolver((assetId) => projectService.resolveModelAsset(assetId))
+    engine.backend.setModelResourceResolver((modelAssetId, resource) =>
+      projectService.resolveModelResourceUrl(modelAssetId, resource),
     )
-    engine.backend.setModelLoadPreparer((path) => projectService.prepareModelLoad(path))
+    engine.backend.setModelLoadPreparer((assetId) => projectService.prepareModelLoad(assetId))
     engineRef.current = engine
 
     const editorCamera = engine.backend.getEditorCamera()

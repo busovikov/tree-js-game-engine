@@ -196,7 +196,6 @@
               "height": 0.5,
               "depth": 100
             },
-            "modelAsset": "",
             "material": {
               "color": "#ffffff",
               "opacity": 1,
@@ -308,7 +307,6 @@
               "height": 1,
               "depth": 4
             },
-            "modelAsset": "",
             "material": {
               "color": "#ff0000",
               "opacity": 1,
@@ -361,7 +359,6 @@
               "height": 0.4,
               "radialSegments": 16
             },
-            "modelAsset": "",
             "material": {
               "color": "#000000",
               "opacity": 1,
@@ -414,7 +411,6 @@
               "height": 0.4,
               "radialSegments": 16
             },
-            "modelAsset": "",
             "material": {
               "color": "#000000",
               "opacity": 1,
@@ -467,7 +463,6 @@
               "height": 0.4,
               "radialSegments": 16
             },
-            "modelAsset": "",
             "material": {
               "color": "#000000",
               "opacity": 1,
@@ -520,7 +515,6 @@
               "height": 0.4,
               "radialSegments": 16
             },
-            "modelAsset": "",
             "material": {
               "color": "#000000",
               "opacity": 1,

@@ -1,20 +1,30 @@
 import {
   EDITOR_PROJECT_SETTINGS_PATH,
   EditorProjectSettingsSchema,
-  HakuProjectSchema,
   defaultEditorProjectSettings,
   defaultSceneEditorState,
   type EditorProjectSettings,
-  type HakuProject,
   type PrefabDefinition,
   type SceneDocument,
   type SceneEditorState,
   DEFAULT_ASSETS_DIR,
+  assetId,
   projectPathToUrl,
   relativeToAssetsDir,
   validateSceneDocument,
   SceneEditorStateSchema,
 } from '@haku/schema'
+import {
+  BINARY_ASSET_TYPE,
+  DATA_ASSET_TYPE,
+  MODEL_ASSET_TYPE,
+  ProjectAssetIndex,
+  SCENE_ASSET_TYPE,
+  TEXTURE_ASSET_TYPE,
+  validateProjectManifest,
+  type ProjectManifest,
+} from '@haku/assets'
+import type { AssetId, AssetRef, AssetTypeId } from '@haku/schema'
 import { loadSceneDocument, saveSceneDocument } from '@haku/serializer'
 import type { EntityId, IWorld } from '@haku/core'
 import { MeshRendererComponent, World, getCoreComponent } from '@haku/core'
@@ -43,7 +53,7 @@ const PROJECT_LOG_PATH = 'logs/haku.log'
 
 export class ProjectService {
   private root: string | null = null
-  private manifest: HakuProject | null = null
+  private manifest: ProjectManifest | null = null
   private assetBaseUrl = ''
   private storage: ProjectStorage = 'memory'
   private modelBlobUrlCache = new Map<string, string>()
@@ -74,7 +84,7 @@ export class ProjectService {
   }
 
   /** Create a new project folder on disk and open it. */
-  async createNewProject(): Promise<HakuProject> {
+  async createNewProject(): Promise<ProjectManifest> {
     if (!isFileSystemAccessSupported()) {
       throw new Error(
         'File System Access API is not supported in this browser. Use Chrome or Edge.',
@@ -97,31 +107,31 @@ export class ProjectService {
     this.clearModelAssetCache()
 
     const manifestRaw = await nativeProjectStore.readText('haku.project.json')
-    this.manifest = await this.normalizeManifest(HakuProjectSchema.parse(JSON.parse(manifestRaw)))
+    this.manifest = await this.normalizeManifest(validateProjectManifest(JSON.parse(manifestRaw)))
 
     await this.loadEditorSettings()
     sceneLog('project.open', {
       source: 'native-create',
       root: projectHandle.name,
-      entryScene: this.manifest.entryScene,
+      entryScene: this.resolveEntryScenePath(this.manifest),
     })
-    const { world, document } = await this.loadScene(this.manifest.entryScene)
+    const { world, document } = await this.loadScene(this.resolveEntryScenePath(this.manifest))
     const { useEditorStore } = await import('../store/editor-store.js')
     useEditorStore.getState().setProjectRoot(projectHandle.name)
     useEditorStore
       .getState()
       .setScene(
-        this.manifest.entryScene,
+        this.resolveEntryScenePath(this.manifest),
         document,
         world as World,
-        this.getSceneEditorState(this.manifest.entryScene).activeTab,
+        this.getSceneEditorState(this.resolveEntryScenePath(this.manifest)).activeTab,
       )
 
     return this.manifest
   }
 
   /** Open project via File System Access API (read/write on disk). */
-  async openFromDirectoryPicker(): Promise<HakuProject> {
+  async openFromDirectoryPicker(): Promise<ProjectManifest> {
     if (!isFileSystemAccessSupported()) {
       throw new Error(
         'File System Access API is not supported in this browser. Use Chrome or Edge.',
@@ -135,31 +145,31 @@ export class ProjectService {
     this.clearModelAssetCache()
 
     const manifestRaw = await nativeProjectStore.readText('haku.project.json')
-    this.manifest = await this.normalizeManifest(HakuProjectSchema.parse(JSON.parse(manifestRaw)))
+    this.manifest = await this.normalizeManifest(validateProjectManifest(JSON.parse(manifestRaw)))
 
     await this.loadEditorSettings()
     sceneLog('project.open', {
       source: 'native',
       root: rootName,
-      entryScene: this.manifest.entryScene,
+      entryScene: this.resolveEntryScenePath(this.manifest),
     })
-    const { world, document } = await this.loadScene(this.manifest.entryScene)
+    const { world, document } = await this.loadScene(this.resolveEntryScenePath(this.manifest))
     const { useEditorStore } = await import('../store/editor-store.js')
     useEditorStore.getState().setProjectRoot(rootName)
     useEditorStore
       .getState()
       .setScene(
-        this.manifest.entryScene,
+        this.resolveEntryScenePath(this.manifest),
         document,
         world as World,
-        this.getSceneEditorState(this.manifest.entryScene).activeTab,
+        this.getSceneEditorState(this.resolveEntryScenePath(this.manifest)).activeTab,
       )
 
     return this.manifest
   }
 
   /** Fallback: open project from folder picker (read-only snapshot in memory). */
-  async openFromFileList(fileList: FileList): Promise<HakuProject> {
+  async openFromFileList(fileList: FileList): Promise<ProjectManifest> {
     const rootName = browserProjectStore.loadFromFileList(fileList)
     this.storage = 'memory'
     this.root = rootName
@@ -167,30 +177,34 @@ export class ProjectService {
     this.clearModelAssetCache()
 
     const manifestRaw = await browserProjectStore.readText('haku.project.json')
-    this.manifest = await this.normalizeManifest(HakuProjectSchema.parse(JSON.parse(manifestRaw)))
+    this.manifest = await this.normalizeManifest(validateProjectManifest(JSON.parse(manifestRaw)))
 
     await this.loadEditorSettings()
     sceneLog('project.open', {
       source: 'memory',
       root: rootName,
-      entryScene: this.manifest.entryScene,
+      entryScene: this.resolveEntryScenePath(this.manifest),
     })
-    const { world, document } = await this.loadScene(this.manifest.entryScene)
+    const { world, document } = await this.loadScene(this.resolveEntryScenePath(this.manifest))
     const { useEditorStore } = await import('../store/editor-store.js')
     useEditorStore.getState().setProjectRoot(rootName)
     useEditorStore
       .getState()
       .setScene(
-        this.manifest.entryScene,
+        this.resolveEntryScenePath(this.manifest),
         document,
         world as World,
-        this.getSceneEditorState(this.manifest.entryScene).activeTab,
+        this.getSceneEditorState(this.resolveEntryScenePath(this.manifest)).activeTab,
       )
 
     return this.manifest
   }
 
-  openFromManifest(rootPath: string, manifest: HakuProject, assetBaseUrl = ''): HakuProject {
+  openFromManifest(
+    rootPath: string,
+    manifest: ProjectManifest,
+    assetBaseUrl = '',
+  ): ProjectManifest {
     this.root = rootPath
     this.manifest = manifest
     this.assetBaseUrl = assetBaseUrl
@@ -199,7 +213,7 @@ export class ProjectService {
     sceneLog('project.open', {
       source: rootPath === 'playground' ? 'playground' : 'manifest',
       root: rootPath,
-      entryScene: manifest.entryScene,
+      entryScene: this.resolveEntryScenePath(manifest),
     })
     return manifest
   }
@@ -232,7 +246,7 @@ export class ProjectService {
    * Open the dev-server target project (HAKU_TARGET_PATH on editor vite).
    * Used by `?hakuOpenTarget=1` dev flow — not for production.
    */
-  async openFromDevPath(): Promise<HakuProject> {
+  async openFromDevPath(): Promise<ProjectManifest> {
     const infoRes = await fetch('/__haku/dev/info')
     if (!infoRes.ok) {
       throw new Error(
@@ -245,7 +259,7 @@ export class ProjectService {
     if (!manifestRes.ok) {
       throw new Error('Failed to load target haku.project.json')
     }
-    const manifest = await this.normalizeManifest(HakuProjectSchema.parse(await manifestRes.json()))
+    const manifest = await this.normalizeManifest(validateProjectManifest(await manifestRes.json()))
 
     this.root = info.rootName
     this.manifest = manifest
@@ -259,19 +273,19 @@ export class ProjectService {
     sceneLog('project.open', {
       source: 'dev-target',
       root: info.rootName,
-      entryScene: manifest.entryScene,
+      entryScene: this.resolveEntryScenePath(manifest),
     })
 
-    const { world, document } = await this.loadScene(manifest.entryScene)
+    const { world, document } = await this.loadScene(this.resolveEntryScenePath(manifest))
     const { useEditorStore } = await import('../store/editor-store.js')
     useEditorStore.getState().setProjectRoot(info.rootName)
     useEditorStore
       .getState()
       .setScene(
-        manifest.entryScene,
+        this.resolveEntryScenePath(manifest),
         document,
         world as World,
-        this.getSceneEditorState(manifest.entryScene).activeTab,
+        this.getSceneEditorState(this.resolveEntryScenePath(manifest)).activeTab,
       )
 
     return manifest
@@ -281,7 +295,7 @@ export class ProjectService {
     return this.root
   }
 
-  getManifest(): HakuProject | null {
+  getManifest(): ProjectManifest | null {
     return this.manifest
   }
 
@@ -502,14 +516,14 @@ export class ProjectService {
   async importAsset(relativePath: string, file: File): Promise<void> {
     if (this.storage === 'native') {
       await nativeProjectStore.writeFile(relativePath, file)
-      return
+    } else {
+      browserProjectStore.registerFile(relativePath, { file, isBinary: isBinaryFile(file.name) })
+      if (this.storage === 'playground') {
+        await this.writePlaygroundFileToDisk(relativePath, file)
+      }
     }
 
-    browserProjectStore.registerFile(relativePath, { file, isBinary: isBinaryFile(file.name) })
-
-    if (this.storage !== 'playground') return
-
-    await this.writePlaygroundFileToDisk(relativePath, file)
+    await this.registerImportedAsset(relativePath)
   }
 
   supportsShellActions(): boolean {
@@ -580,16 +594,15 @@ export class ProjectService {
 
     if (this.storage === 'native') {
       await nativeProjectStore.copyFile(normalized, destPath)
-      return destPath
+    } else {
+      browserProjectStore.copyFile(normalized, destPath)
+      if (this.storage === 'playground') {
+        const blob = await browserProjectStore.getBlob(normalized)
+        await this.writePlaygroundFileToDisk(destPath, blob)
+      }
     }
 
-    browserProjectStore.copyFile(normalized, destPath)
-
-    if (this.storage === 'playground') {
-      const blob = await browserProjectStore.getBlob(normalized)
-      await this.writePlaygroundFileToDisk(destPath, blob)
-    }
-
+    await this.registerDuplicatedAsset(normalized, destPath)
     return destPath
   }
 
@@ -626,20 +639,19 @@ export class ProjectService {
 
     if (this.storage === 'native') {
       await nativeProjectStore.renamePath(normalized, destPath)
-      return destPath
-    }
-
-    browserProjectStore.renamePath(normalized, destPath)
-
-    if (this.storage === 'playground') {
-      try {
-        const blob = await browserProjectStore.getBlob(destPath)
-        await this.writePlaygroundFileToDisk(destPath, blob)
-      } catch {
-        // Best-effort disk sync for renamed virtual assets.
+    } else {
+      browserProjectStore.renamePath(normalized, destPath)
+      if (this.storage === 'playground') {
+        try {
+          const blob = await browserProjectStore.getBlob(destPath)
+          await this.writePlaygroundFileToDisk(destPath, blob)
+        } catch {
+          // Best-effort disk sync for renamed virtual assets.
+        }
       }
     }
 
+    await this.registerRenamedAsset(normalized, destPath)
     return destPath
   }
 
@@ -671,11 +683,31 @@ export class ProjectService {
   }
 
   getEntryScene(): string | null {
-    return this.manifest?.entryScene ?? null
+    return this.manifest ? this.resolveEntryScenePath(this.manifest) : null
   }
 
   getAssetsRoot(): string {
     return this.manifest?.assetsDir ?? DEFAULT_ASSETS_DIR
+  }
+
+  getAssetRefByPath(relativePath: string, expectedType: AssetTypeId): AssetRef {
+    if (!this.manifest) throw new Error('No project manifest is open')
+    const normalized = relativePath.replace(/^\/+/, '')
+    const manifestPath = relativeToAssetsDir(normalized, this.manifest.assetsDir) ?? normalized
+    const entry = this.manifest.assets.find((asset) => asset.path === manifestPath)
+    if (!entry) {
+      throw new Error(`Asset path is not registered in the project manifest: ${normalized}`)
+    }
+    new ProjectAssetIndex(this.manifest).require(
+      { $ref: entry.id, type: expectedType },
+      expectedType,
+    )
+    return { $ref: entry.id, type: expectedType }
+  }
+
+  getAssetPath(reference: AssetRef): string {
+    if (!this.manifest) throw new Error('No project manifest is open')
+    return new ProjectAssetIndex(this.manifest).path(reference)
   }
 
   clearModelAssetCache(): void {
@@ -687,7 +719,8 @@ export class ProjectService {
     clearModelCache()
   }
 
-  async prepareModelLoad(relativePath: string): Promise<void> {
+  async prepareModelLoad(assetId: AssetId): Promise<void> {
+    const relativePath = this.resolveModelPath(assetId)
     const normalized = relativePath.replace(/^\/+/, '')
     const assetsRoot = this.getAssetsRoot()
     const fullPath = `${assetsRoot}/${normalized}`
@@ -728,7 +761,8 @@ export class ProjectService {
     modelLog('prepare.done', { relativePath, format: 'gltf', resources: uris.size })
   }
 
-  resolveModelAssetUrl(relativePath: string): string {
+  resolveModelAsset(assetId: AssetId): { path: string; url: string } {
+    const relativePath = this.resolveModelPath(assetId)
     const assetsRoot = this.getAssetsRoot()
     const fullPath = `${assetsRoot}/${relativePath.replace(/^\/+/, '')}`
 
@@ -741,7 +775,7 @@ export class ProjectService {
         source: 'asset-base-url',
         url,
       })
-      return url
+      return { path: relativePath, url }
     }
 
     const cached = this.modelBlobUrlCache.get(fullPath)
@@ -753,7 +787,7 @@ export class ProjectService {
         source: 'blob-cache',
         url: modelLogUrl(cached),
       })
-      return cached
+      return { path: relativePath, url: cached }
     }
 
     if (this.usesBrowserProjectStore()) {
@@ -766,7 +800,7 @@ export class ProjectService {
           source: 'blob-sync',
           url: modelLogUrl(blobUrl),
         })
-        return blobUrl
+        return { path: relativePath, url: blobUrl }
       }
     }
 
@@ -778,10 +812,11 @@ export class ProjectService {
       source: 'http-fallback',
       url: fallback,
     })
-    return fallback
+    return { path: relativePath, url: fallback }
   }
 
-  resolveModelResourceUrl(modelRelativePath: string, resourceFileName: string): string {
+  resolveModelResourceUrl(modelAssetId: AssetId, resourceFileName: string): string {
+    const modelRelativePath = this.resolveModelPath(modelAssetId)
     const assetsRoot = this.getAssetsRoot()
     const modelDir = modelRelativePath.includes('/')
       ? modelRelativePath.slice(0, modelRelativePath.lastIndexOf('/') + 1)
@@ -842,6 +877,14 @@ export class ProjectService {
       url: fallback,
     })
     return fallback
+  }
+
+  private resolveModelPath(assetId: AssetId): string {
+    if (!this.manifest) throw new Error('No project manifest is open')
+    return new ProjectAssetIndex(this.manifest).path(
+      { $ref: assetId, type: MODEL_ASSET_TYPE },
+      MODEL_ASSET_TYPE,
+    )
   }
 
   private trySyncModelBlobUrl(fullPath: string): string | null {
@@ -1089,27 +1132,117 @@ export class ProjectService {
     })
   }
 
-  /** Upgrade legacy `assets/` manifest paths to on-disk `public/assets/`. */
-  private async normalizeManifest(manifest: HakuProject): Promise<HakuProject> {
-    if (manifest.assetsDir !== 'assets') return manifest
+  private async normalizeManifest(manifest: ProjectManifest): Promise<ProjectManifest> {
+    new ProjectAssetIndex(manifest).require(manifest.entryScene, SCENE_ASSET_TYPE)
+    return manifest
+  }
 
-    const upgraded: HakuProject = {
-      ...manifest,
-      assetsDir: DEFAULT_ASSETS_DIR,
-      entryScene: manifest.entryScene.startsWith('assets/')
-        ? manifest.entryScene.replace(/^assets\//, `${DEFAULT_ASSETS_DIR}/`)
-        : manifest.entryScene,
+  private resolveEntryScenePath(manifest: ProjectManifest): string {
+    const relativePath = new ProjectAssetIndex(manifest).path(manifest.entryScene, SCENE_ASSET_TYPE)
+    return `${manifest.assetsDir}/${relativePath}`.replace(/\/+/g, '/')
+  }
+
+  private manifestAssetPath(projectPath: string): string {
+    if (!this.manifest) throw new Error('No project manifest is open')
+    const relativePath = relativeToAssetsDir(projectPath, this.manifest.assetsDir)
+    if (!relativePath) {
+      throw new Error(`Asset must be under ${this.manifest.assetsDir}/`)
+    }
+    return relativePath
+  }
+
+  private async registerImportedAsset(projectPath: string): Promise<void> {
+    if (!this.manifest) throw new Error('No project manifest is open')
+    const path = this.manifestAssetPath(projectPath)
+    if (this.manifest.assets.some((entry) => entry.path === path)) return
+
+    this.manifest = validateProjectManifest({
+      ...this.manifest,
+      assets: [
+        ...this.manifest.assets,
+        {
+          id: assetId(crypto.randomUUID()),
+          type: assetTypeForPath(path),
+          path,
+          dependencies: [],
+          metadata: {},
+        },
+      ],
+    })
+    await this.persistManifest()
+  }
+
+  private async registerDuplicatedAsset(
+    sourceProjectPath: string,
+    destProjectPath: string,
+  ): Promise<void> {
+    if (!this.manifest) throw new Error('No project manifest is open')
+    const sourcePath = this.manifestAssetPath(sourceProjectPath)
+    const destPath = this.manifestAssetPath(destProjectPath)
+    const source = this.manifest.assets.find((entry) => entry.path === sourcePath)
+    if (!source)
+      throw new Error(`Asset path is not registered in the project manifest: ${sourcePath}`)
+
+    this.manifest = validateProjectManifest({
+      ...this.manifest,
+      assets: [
+        ...this.manifest.assets,
+        {
+          ...source,
+          id: assetId(crypto.randomUUID()),
+          path: destPath,
+        },
+      ],
+    })
+    await this.persistManifest()
+  }
+
+  private async registerRenamedAsset(
+    sourceProjectPath: string,
+    destProjectPath: string,
+  ): Promise<void> {
+    if (!this.manifest) throw new Error('No project manifest is open')
+    const sourcePath = this.manifestAssetPath(sourceProjectPath)
+    const destPath = this.manifestAssetPath(destProjectPath)
+    const sourcePrefix = `${sourcePath}/`
+
+    this.manifest = validateProjectManifest({
+      ...this.manifest,
+      assets: this.manifest.assets.map((entry) => {
+        if (entry.path === sourcePath) return { ...entry, path: destPath }
+        if (entry.path.startsWith(sourcePrefix)) {
+          return { ...entry, path: `${destPath}/${entry.path.slice(sourcePrefix.length)}` }
+        }
+        return entry
+      }),
+    })
+    await this.persistManifest()
+  }
+
+  private async persistManifest(): Promise<void> {
+    if (!this.manifest) throw new Error('No project manifest is open')
+    const json = JSON.stringify(this.manifest, null, 2) + '\n'
+    if (this.storage === 'native') {
+      await nativeProjectStore.writeText('haku.project.json', json)
+      return
     }
 
-    if (this.storage !== 'native') return upgraded
-
-    try {
-      await nativeProjectStore.readText(upgraded.entryScene)
-      return upgraded
-    } catch {
-      return manifest
+    browserProjectStore.writeText('haku.project.json', json)
+    if (this.storage === 'playground') {
+      await this.writePlaygroundProjectFileToDisk('haku.project.json', json)
+    } else if (this.storage === 'dev-target') {
+      await this.writeDevTargetFileToDisk('haku.project.json', json)
     }
   }
+}
+
+function assetTypeForPath(path: string): AssetTypeId {
+  const lower = path.toLowerCase()
+  if (lower.endsWith('.scene.json')) return SCENE_ASSET_TYPE
+  if (lower.endsWith('.gltf') || lower.endsWith('.glb')) return MODEL_ASSET_TYPE
+  if (/\.(png|jpe?g|webp|gif|ktx2)$/.test(lower)) return TEXTURE_ASSET_TYPE
+  if (/\.(bin|wasm)$/.test(lower)) return BINARY_ASSET_TYPE
+  return DATA_ASSET_TYPE
 }
 
 function isBinaryFile(name: string): boolean {
@@ -1180,7 +1313,7 @@ export function extractPrefabSubtree(
 export function assignPrototype(
   document: SceneDocument,
   prototypeId: string,
-  sourceAsset: string,
+  sourceAsset: AssetRef,
 ): SceneDocument {
   return {
     ...document,

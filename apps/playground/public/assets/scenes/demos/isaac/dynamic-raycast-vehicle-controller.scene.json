@@ -125,7 +125,6 @@
               "height": 1,
               "depth": 600
             },
-            "modelAsset": "",
             "material": {
               "color": "#444444",
               "opacity": 1,
@@ -196,7 +195,7 @@
           "data": {
             "geometryType": "ModelGeometry",
             "geometryParams": {},
-            "modelAsset": "sketches/isaac-mason/racetrack.glb",
+            "modelAsset": { "$ref": "941c0b39-af2a-4e4b-9919-796880392961", "type": "20000000-0000-4000-8000-000000000003" },
             "material": {
               "color": "#cccccc",
               "opacity": 1,
@@ -286,7 +285,6 @@
               "height": 0.4,
               "depth": 0.8
             },
-            "modelAsset": "",
             "material": {
               "color": "#ff6b6b",
               "opacity": 1,

@@ -8,6 +8,8 @@ import {
   type ColliderShape,
   type PhysicsProjectSettings,
 } from '@haku/schema'
+import { MODEL_ASSET_TYPE } from '@haku/assets'
+import { projectService } from '../services/project-service.js'
 import { EDITOR_PHYSICS_CAPABILITIES } from '../physics/editor-physics-capabilities.js'
 import { ColliderBakeDialog } from './ColliderBakeDialog.js'
 import { NumberField } from './NumberField.js'
@@ -66,7 +68,9 @@ export const ColliderFields = memo(function ColliderFields({
     return isBakeSourceStale(bakeSource, revision)
   }, [currentMeshRevision, value])
 
-  const materialOptions = Object.keys(physicsSettings?.materials ?? { [DEFAULT_PHYSICS_MATERIAL_ID]: {} })
+  const materialOptions = Object.keys(
+    physicsSettings?.materials ?? { [DEFAULT_PHYSICS_MATERIAL_ID]: {} },
+  )
   const selectedMaterialId = value.materialId || DEFAULT_PHYSICS_MATERIAL_ID
 
   const shapeOptions = useMemo(() => {
@@ -142,18 +146,30 @@ export const ColliderFields = memo(function ColliderFields({
 
       {(value.shape === 'convexHull' || value.shape === 'trimesh') && (
         <div className="mesh-renderer-fields__section">
-          <label className="mesh-field" title="Optional collision LOD mesh asset id (manual assign).">
+          <label
+            className="mesh-field"
+            title="Optional collision LOD mesh asset id (manual assign)."
+          >
             <span className="mesh-field__label">Collision mesh asset</span>
             <input
               className="mesh-field__input"
-              value={value.bakeSource?.collisionMeshAsset ?? ''}
+              value={
+                value.bakeSource?.collisionMeshAsset
+                  ? projectService.getAssetPath(value.bakeSource.collisionMeshAsset)
+                  : ''
+              }
               disabled={disabled}
               onChange={(event) =>
                 patch({
                   bakeSource: {
                     kind: value.bakeSource?.kind ?? 'meshRenderer',
                     ...value.bakeSource,
-                    collisionMeshAsset: event.target.value.trim() || undefined,
+                    collisionMeshAsset: event.target.value.trim()
+                      ? projectService.getAssetRefByPath(
+                          event.target.value.trim(),
+                          MODEL_ASSET_TYPE,
+                        )
+                      : undefined,
                   },
                 } as Partial<Collider>)
               }
@@ -207,7 +223,10 @@ export const ColliderFields = memo(function ColliderFields({
           </select>
         </label>
 
-        <label className="mesh-field mesh-field--checkbox" title="Disable collider without removing it.">
+        <label
+          className="mesh-field mesh-field--checkbox"
+          title="Disable collider without removing it."
+        >
           <input
             type="checkbox"
             aria-label="Collider enabled"
@@ -218,7 +237,10 @@ export const ColliderFields = memo(function ColliderFields({
           <span className="mesh-field__label">Enabled</span>
         </label>
 
-        <label className="mesh-field mesh-field--checkbox" title="Sensor collider — overlap events without contact response.">
+        <label
+          className="mesh-field mesh-field--checkbox"
+          title="Sensor collider — overlap events without contact response."
+        >
           <input
             type="checkbox"
             aria-label="Collider trigger"
@@ -268,7 +290,10 @@ export const ColliderFields = memo(function ColliderFields({
       </div>
 
       <div className="mesh-renderer-fields__section">
-        <div style={{ color: '#aaa', fontSize: 12, marginBottom: 4 }} title="Local offset from entity origin.">
+        <div
+          style={{ color: '#aaa', fontSize: 12, marginBottom: 4 }}
+          title="Local offset from entity origin."
+        >
           offset
         </div>
         {value.offset.map((component, index) => (
@@ -285,7 +310,10 @@ export const ColliderFields = memo(function ColliderFields({
 
       {value.shape === 'box' && (
         <div className="mesh-renderer-fields__section">
-          <div style={{ color: '#aaa', fontSize: 12, marginBottom: 4 }} title="Box half-extents in local space.">
+          <div
+            style={{ color: '#aaa', fontSize: 12, marginBottom: 4 }}
+            title="Box half-extents in local space."
+          >
             halfExtents
           </div>
           {value.halfExtents.map((component, index) => (
@@ -343,7 +371,8 @@ export const ColliderFields = memo(function ColliderFields({
       {value.shape === 'convexHull' && (
         <div className="mesh-renderer-fields__section" style={{ color: '#aaa', fontSize: 12 }}>
           Convex hull: {value.points.length / 3} points
-          {value.points.length / 3 > (EDITOR_PHYSICS_CAPABILITIES.shapes.maxConvexHullVertices ?? 1024)
+          {value.points.length / 3 >
+          (EDITOR_PHYSICS_CAPABILITIES.shapes.maxConvexHullVertices ?? 1024)
             ? ' (exceeds recommended max)'
             : ''}
         </div>
@@ -351,7 +380,8 @@ export const ColliderFields = memo(function ColliderFields({
 
       {value.shape === 'trimesh' && (
         <div className="mesh-renderer-fields__section" style={{ color: '#aaa', fontSize: 12 }}>
-          Trimesh: {value.vertices.length / 3} vertices, {value.indices.length / 3} triangles (static only).
+          Trimesh: {value.vertices.length / 3} vertices, {value.indices.length / 3} triangles
+          (static only).
         </div>
       )}
     </div>

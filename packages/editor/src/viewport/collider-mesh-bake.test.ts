@@ -54,20 +54,16 @@ describe('collider mesh bake', () => {
     const revision = meshRevisionForRenderer({
       geometryType: 'BoxGeometry',
       geometryParams: { width: 1, height: 1, depth: 1 },
-      modelAsset: '',
       material: {},
       castShadow: true,
       receiveShadow: true,
       enabled: true,
     })
+    expect(isBakeSourceStale({ kind: 'meshRenderer', meshRevision: revision }, revision)).toBe(
+      false,
+    )
     expect(
-      isBakeSourceStale({ kind: 'meshRenderer', meshRevision: revision }, revision),
-    ).toBe(false)
-    expect(
-      isBakeSourceStale(
-        { kind: 'meshRenderer', meshRevision: revision },
-        `${revision}-changed`,
-      ),
+      isBakeSourceStale({ kind: 'meshRenderer', meshRevision: revision }, `${revision}-changed`),
     ).toBe(true)
   })
 })

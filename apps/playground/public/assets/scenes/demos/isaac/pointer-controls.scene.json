@@ -125,7 +125,6 @@
               "height": 2,
               "depth": 200
             },
-            "modelAsset": "",
             "material": {
               "color": "#888888",
               "opacity": 1,
@@ -200,7 +199,6 @@
               "height": 1.2,
               "depth": 1.2
             },
-            "modelAsset": "",
             "material": {
               "color": "#4dabf7",
               "opacity": 1,
@@ -285,7 +283,6 @@
               "radialSegments": 16,
               "tubularSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#ffd43b",
               "opacity": 1,
@@ -365,7 +362,6 @@
               "widthSegments": 32,
               "heightSegments": 16
             },
-            "modelAsset": "",
             "material": {
               "color": "#ff6b6b",
               "opacity": 1,

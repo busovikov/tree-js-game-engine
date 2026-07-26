@@ -125,7 +125,6 @@
               "height": 2,
               "depth": 200
             },
-            "modelAsset": "",
             "material": {
               "color": "#888888",
               "opacity": 1,
@@ -213,7 +212,6 @@
               "widthSegments": 32,
               "heightSegments": 16
             },
-            "modelAsset": "",
             "material": {
               "color": "#ffd43b",
               "opacity": 1,
@@ -285,7 +283,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#ff922b",
               "opacity": 1,
@@ -358,7 +355,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#f06595",
               "opacity": 1,
@@ -431,7 +427,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#22b8cf",
               "opacity": 1,
@@ -504,7 +499,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#ff922b",
               "opacity": 1,
@@ -577,7 +571,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#f06595",
               "opacity": 1,
@@ -650,7 +643,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#22b8cf",
               "opacity": 1,
@@ -723,7 +715,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#ff922b",
               "opacity": 1,
@@ -796,7 +787,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#f06595",
               "opacity": 1,
@@ -869,7 +859,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#22b8cf",
               "opacity": 1,
@@ -942,7 +931,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#ff922b",
               "opacity": 1,
@@ -1015,7 +1003,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#f06595",
               "opacity": 1,
@@ -1088,7 +1075,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#22b8cf",
               "opacity": 1,
@@ -1161,7 +1147,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#ff922b",
               "opacity": 1,
@@ -1234,7 +1219,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#f06595",
               "opacity": 1,
@@ -1307,7 +1291,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#22b8cf",
               "opacity": 1,
@@ -1380,7 +1363,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#ff922b",
               "opacity": 1,
@@ -1453,7 +1435,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#f06595",
               "opacity": 1,
@@ -1526,7 +1507,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#22b8cf",
               "opacity": 1,
@@ -1599,7 +1579,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#ff922b",
               "opacity": 1,
@@ -1672,7 +1651,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#f06595",
               "opacity": 1,
@@ -1745,7 +1723,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#22b8cf",
               "opacity": 1,
@@ -1818,7 +1795,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#ff922b",
               "opacity": 1,
@@ -1891,7 +1867,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#f06595",
               "opacity": 1,
@@ -1964,7 +1939,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#22b8cf",
               "opacity": 1,
@@ -2037,7 +2011,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#ff922b",
               "opacity": 1,
@@ -2110,7 +2083,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#f06595",
               "opacity": 1,
@@ -2183,7 +2155,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#22b8cf",
               "opacity": 1,
@@ -2256,7 +2227,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#ff922b",
               "opacity": 1,
@@ -2329,7 +2299,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#f06595",
               "opacity": 1,
@@ -2402,7 +2371,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#22b8cf",
               "opacity": 1,
@@ -2475,7 +2443,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#ff922b",
               "opacity": 1,
@@ -2548,7 +2515,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#f06595",
               "opacity": 1,
@@ -2621,7 +2587,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#22b8cf",
               "opacity": 1,
@@ -2694,7 +2659,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#ff922b",
               "opacity": 1,
@@ -2767,7 +2731,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#f06595",
               "opacity": 1,
@@ -2840,7 +2803,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#22b8cf",
               "opacity": 1,
@@ -2913,7 +2875,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#ff922b",
               "opacity": 1,
@@ -2986,7 +2947,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#f06595",
               "opacity": 1,
@@ -3059,7 +3019,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#22b8cf",
               "opacity": 1,
@@ -3132,7 +3091,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#ff922b",
               "opacity": 1,
@@ -3205,7 +3163,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#f06595",
               "opacity": 1,
@@ -3278,7 +3235,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#22b8cf",
               "opacity": 1,
@@ -3351,7 +3307,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#ff922b",
               "opacity": 1,
@@ -3424,7 +3379,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#f06595",
               "opacity": 1,
@@ -3497,7 +3451,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#22b8cf",
               "opacity": 1,
@@ -3570,7 +3523,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#ff922b",
               "opacity": 1,
@@ -3643,7 +3595,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#f06595",
               "opacity": 1,
@@ -3716,7 +3667,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#22b8cf",
               "opacity": 1,
@@ -3789,7 +3739,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#ff922b",
               "opacity": 1,
@@ -3862,7 +3811,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#f06595",
               "opacity": 1,
@@ -3935,7 +3883,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#22b8cf",
               "opacity": 1,
@@ -4008,7 +3955,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#ff922b",
               "opacity": 1,
@@ -4081,7 +4027,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#f06595",
               "opacity": 1,
@@ -4154,7 +4099,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#22b8cf",
               "opacity": 1,
@@ -4227,7 +4171,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#ff922b",
               "opacity": 1,
@@ -4300,7 +4243,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#f06595",
               "opacity": 1,
@@ -4373,7 +4315,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#22b8cf",
               "opacity": 1,
@@ -4446,7 +4387,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#ff922b",
               "opacity": 1,
@@ -4519,7 +4459,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#f06595",
               "opacity": 1,
@@ -4592,7 +4531,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#22b8cf",
               "opacity": 1,
@@ -4665,7 +4603,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#ff922b",
               "opacity": 1,
@@ -4738,7 +4675,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#f06595",
               "opacity": 1,
@@ -4811,7 +4747,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#22b8cf",
               "opacity": 1,
@@ -4884,7 +4819,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#ff922b",
               "opacity": 1,
@@ -4957,7 +4891,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#f06595",
               "opacity": 1,
@@ -5030,7 +4963,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#22b8cf",
               "opacity": 1,
@@ -5103,7 +5035,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#ff922b",
               "opacity": 1,
@@ -5176,7 +5107,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#f06595",
               "opacity": 1,
@@ -5249,7 +5179,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#22b8cf",
               "opacity": 1,
@@ -5322,7 +5251,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#ff922b",
               "opacity": 1,
@@ -5395,7 +5323,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#f06595",
               "opacity": 1,
@@ -5468,7 +5395,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#22b8cf",
               "opacity": 1,
@@ -5541,7 +5467,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#ff922b",
               "opacity": 1,
@@ -5614,7 +5539,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#f06595",
               "opacity": 1,
@@ -5687,7 +5611,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#22b8cf",
               "opacity": 1,

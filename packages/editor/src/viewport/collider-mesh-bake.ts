@@ -1,6 +1,6 @@
 import type { EntityId } from '@haku/core'
 import { MeshRendererComponent } from '@haku/core'
-import type { ColliderBakeSource, MeshRenderer } from '@haku/schema'
+import type { AssetRef, ColliderBakeSource, MeshRenderer } from '@haku/schema'
 import { meshRendererKey, normalizeMeshRenderer } from '@haku/schema'
 import * as THREE from 'three'
 import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js'
@@ -41,7 +41,7 @@ function samplePositions(positions: THREE.Vector3[], maxCount: number): THREE.Ve
 
 export interface ColliderMeshBakeOptions {
   maxConvexHullVertices?: number
-  collisionMeshAsset?: string
+  collisionMeshAsset?: AssetRef
   modelGeometryOnly?: boolean
 }
 
@@ -62,13 +62,13 @@ export interface ColliderMeshBakeContext {
 
 function collectMeshGeometries(
   rootObject: THREE.Object3D,
-  options: { collisionMeshAsset?: string; modelGeometryOnly?: boolean } = {},
+  options: { collisionMeshAsset?: AssetRef; modelGeometryOnly?: boolean } = {},
 ): THREE.BufferGeometry[] {
   rootObject.updateMatrixWorld(true)
   const geometries: THREE.BufferGeometry[] = []
   const modelRoot = rootObject.getObjectByName(MODEL_ROOT_NAME)
   const sourceRoot =
-    options.collisionMeshAsset || options.modelGeometryOnly ? modelRoot ?? rootObject : rootObject
+    options.collisionMeshAsset || options.modelGeometryOnly ? (modelRoot ?? rootObject) : rootObject
 
   sourceRoot.traverse((node) => {
     if (!(node instanceof THREE.Mesh)) return
@@ -82,10 +82,7 @@ function collectMeshGeometries(
   return geometries
 }
 
-function toLocalPositions(
-  positions: readonly number[],
-  rootInverse: THREE.Matrix4,
-): number[] {
+function toLocalPositions(positions: readonly number[], rootInverse: THREE.Matrix4): number[] {
   const local: number[] = []
   const point = new THREE.Vector3()
   for (let index = 0; index < positions.length; index += 3) {
@@ -96,7 +93,9 @@ function toLocalPositions(
   return local
 }
 
-function flatPositionsFromAttribute(attribute: THREE.BufferAttribute | THREE.InterleavedBufferAttribute): number[] {
+function flatPositionsFromAttribute(
+  attribute: THREE.BufferAttribute | THREE.InterleavedBufferAttribute,
+): number[] {
   const positions: number[] = []
   const vector = new THREE.Vector3()
   for (let index = 0; index < attribute.count; index += 1) {
@@ -133,7 +132,10 @@ function computeAabb(positions: readonly number[]): {
   }
 }
 
-export function hullContainsSourceAabb(source: readonly number[], hull: readonly number[]): boolean {
+export function hullContainsSourceAabb(
+  source: readonly number[],
+  hull: readonly number[],
+): boolean {
   const sourceAabb = computeAabb(source)
   const hullAabb = computeAabb(hull)
   return (
@@ -160,14 +162,14 @@ export function isBakeSourceStale(
 
 function buildBakeSource(
   meshRenderer: MeshRenderer | undefined,
-  collisionMeshAsset?: string,
+  collisionMeshAsset?: AssetRef,
 ): ColliderBakeSource {
   const normalized = meshRenderer ? normalizeMeshRenderer(meshRenderer) : undefined
   return {
     kind: 'meshRenderer',
     geometryType: normalized?.geometryType,
     modelAsset: normalized?.modelAsset || undefined,
-    collisionMeshAsset: collisionMeshAsset?.trim() || undefined,
+    collisionMeshAsset,
     meshRevision: normalized ? meshRevisionForRenderer(normalized) : undefined,
   }
 }
@@ -238,7 +240,9 @@ export function bakeColliderMeshFromObject3D(
     }
 
     if (points.length / 3 > maxVertices) {
-      warnings.push(`Convex hull has ${points.length / 3} vertices (max recommended ${maxVertices}).`)
+      warnings.push(
+        `Convex hull has ${points.length / 3} vertices (max recommended ${maxVertices}).`,
+      )
     }
 
     warnings.push(

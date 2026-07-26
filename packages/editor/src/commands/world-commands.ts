@@ -15,6 +15,8 @@ import { commitSceneEdit } from './scene-history.js'
 import { useEditorStore } from '../store/editor-store.js'
 import { extractPrefabSubtree } from '../services/project-service.js'
 import { modelAssetFileName } from '../components/model-picker-utils.js'
+import { MODEL_ASSET_TYPE } from '@haku/assets'
+import { projectService } from '../services/project-service.js'
 import { primarySelection } from '../selection/selection-utils.js'
 import {
   type EntityPlacement,
@@ -43,7 +45,10 @@ export function createEmptyEntity(placement: EntityPlacement = 'root'): void {
   })
 }
 
-export function createMeshPrimitive(geometryType: MeshGeometryType, placement: EntityPlacement = 'root'): void {
+export function createMeshPrimitive(
+  geometryType: MeshGeometryType,
+  placement: EntityPlacement = 'root',
+): void {
   const selected = primarySelection(useEditorStore.getState().selection)
   const label = MESH_PRIMITIVE_LABELS[geometryType]
 
@@ -72,7 +77,7 @@ export function createModelEntity(modelAsset: string, placement: EntityPlacement
       ...meshDefaults,
       geometryType: 'ModelGeometry',
       geometryParams: {},
-      modelAsset,
+      modelAsset: projectService.getAssetRefByPath(modelAsset, MODEL_ASSET_TYPE),
     })
     return [id]
   })
@@ -89,7 +94,10 @@ export function createCameraEntity(placement: EntityPlacement = 'root'): void {
   })
 }
 
-export function createLightEntity(lightType: Light['type'], placement: EntityPlacement = 'root'): void {
+export function createLightEntity(
+  lightType: Light['type'],
+  placement: EntityPlacement = 'root',
+): void {
   const selected = primarySelection(useEditorStore.getState().selection)
 
   commitSceneEdit((draft) => {
@@ -196,7 +204,10 @@ export function createPrefab(rootId: EntityId, prefabId: string): void {
   })
 }
 
-export function placePrefab(prefabId: string, position: [number, number, number] = [0, 0, 0]): void {
+export function placePrefab(
+  prefabId: string,
+  position: [number, number, number] = [0, 0, 0],
+): void {
   const { sceneDocument } = useEditorStore.getState()
   if (!sceneDocument?.prefabs[prefabId]) throw new Error(`Prefab not found: ${prefabId}`)
 

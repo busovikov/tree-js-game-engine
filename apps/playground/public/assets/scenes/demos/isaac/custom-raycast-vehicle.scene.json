@@ -168,7 +168,6 @@
               "height": 10,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#444444",
               "opacity": 1,
@@ -220,7 +219,6 @@
               "height": 0.2,
               "depth": 0.5
             },
-            "modelAsset": "",
             "material": {
               "color": "#444444",
               "opacity": 1,
@@ -271,7 +269,6 @@
               "width": 0.4,
               "height": 0.2
             },
-            "modelAsset": "",
             "material": {
               "color": "#ffffff",
               "opacity": 1,
@@ -427,7 +424,6 @@
               "height": 10,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#444444",
               "opacity": 1,
@@ -479,7 +475,6 @@
               "height": 0.2,
               "depth": 0.5
             },
-            "modelAsset": "",
             "material": {
               "color": "#444444",
               "opacity": 1,
@@ -530,7 +525,6 @@
               "width": 0.4,
               "height": 0.2
             },
-            "modelAsset": "",
             "material": {
               "color": "#ffffff",
               "opacity": 1,
@@ -686,7 +680,6 @@
               "height": 10,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#444444",
               "opacity": 1,
@@ -738,7 +731,6 @@
               "height": 0.2,
               "depth": 0.5
             },
-            "modelAsset": "",
             "material": {
               "color": "#444444",
               "opacity": 1,
@@ -789,7 +781,6 @@
               "width": 0.4,
               "height": 0.2
             },
-            "modelAsset": "",
             "material": {
               "color": "#ffffff",
               "opacity": 1,
@@ -945,7 +936,6 @@
               "height": 10,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#444444",
               "opacity": 1,
@@ -997,7 +987,6 @@
               "height": 0.2,
               "depth": 0.5
             },
-            "modelAsset": "",
             "material": {
               "color": "#444444",
               "opacity": 1,
@@ -1048,7 +1037,6 @@
               "width": 0.4,
               "height": 0.2
             },
-            "modelAsset": "",
             "material": {
               "color": "#ffffff",
               "opacity": 1,
@@ -1204,7 +1192,6 @@
               "height": 10,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "#444444",
               "opacity": 1,
@@ -1256,7 +1243,6 @@
               "height": 0.2,
               "depth": 0.5
             },
-            "modelAsset": "",
             "material": {
               "color": "#444444",
               "opacity": 1,
@@ -1307,7 +1293,6 @@
               "width": 0.4,
               "height": 0.2
             },
-            "modelAsset": "",
             "material": {
               "color": "#ffffff",
               "opacity": 1,
@@ -1451,7 +1436,7 @@
           "data": {
             "geometryType": "ModelGeometry",
             "geometryParams": {},
-            "modelAsset": "sketches/isaac-mason/chassis.glb",
+            "modelAsset": { "$ref": "62be2efd-fee5-4c66-9575-69ee2b4447e3", "type": "20000000-0000-4000-8000-000000000003" },
             "material": {
               "color": "#ffffff",
               "opacity": 1,
@@ -1603,7 +1588,7 @@
           "data": {
             "geometryType": "ModelGeometry",
             "geometryParams": {},
-            "modelAsset": "sketches/isaac-mason/wheel.glb",
+            "modelAsset": { "$ref": "a207e2bd-38a6-4eb5-85f0-ccf8ae01cee7", "type": "20000000-0000-4000-8000-000000000003" },
             "material": {
               "color": "#ffffff",
               "opacity": 1,
@@ -1651,7 +1636,7 @@
           "data": {
             "geometryType": "ModelGeometry",
             "geometryParams": {},
-            "modelAsset": "sketches/isaac-mason/wheel.glb",
+            "modelAsset": { "$ref": "a207e2bd-38a6-4eb5-85f0-ccf8ae01cee7", "type": "20000000-0000-4000-8000-000000000003" },
             "material": {
               "color": "#ffffff",
               "opacity": 1,
@@ -1699,7 +1684,7 @@
           "data": {
             "geometryType": "ModelGeometry",
             "geometryParams": {},
-            "modelAsset": "sketches/isaac-mason/wheel.glb",
+            "modelAsset": { "$ref": "a207e2bd-38a6-4eb5-85f0-ccf8ae01cee7", "type": "20000000-0000-4000-8000-000000000003" },
             "material": {
               "color": "#ffffff",
               "opacity": 1,
@@ -1747,7 +1732,7 @@
           "data": {
             "geometryType": "ModelGeometry",
             "geometryParams": {},
-            "modelAsset": "sketches/isaac-mason/wheel.glb",
+            "modelAsset": { "$ref": "a207e2bd-38a6-4eb5-85f0-ccf8ae01cee7", "type": "20000000-0000-4000-8000-000000000003" },
             "material": {
               "color": "#ffffff",
               "opacity": 1,
@@ -1799,7 +1784,6 @@
               "height": 10,
               "depth": 240
             },
-            "modelAsset": "",
             "material": {
               "color": "#303030",
               "opacity": 1,
@@ -1874,7 +1858,6 @@
               "height": 1,
               "depth": 10
             },
-            "modelAsset": "",
             "material": {
               "color": "orange",
               "opacity": 1,
@@ -1948,7 +1931,6 @@
               "width": 15,
               "height": 150
             },
-            "modelAsset": "",
             "material": {
               "color": "#222222",
               "opacity": 1,
@@ -2001,7 +1983,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "orange",
               "opacity": 1,
@@ -2074,7 +2055,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "orange",
               "opacity": 1,
@@ -2147,7 +2127,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "orange",
               "opacity": 1,
@@ -2220,7 +2199,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "orange",
               "opacity": 1,
@@ -2293,7 +2271,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "orange",
               "opacity": 1,
@@ -2366,7 +2343,6 @@
               "height": 1,
               "radialSegments": 32
             },
-            "modelAsset": "",
             "material": {
               "color": "orange",
               "opacity": 1,
@@ -2438,7 +2414,6 @@
               "height": 2,
               "depth": 1
             },
-            "modelAsset": "",
             "material": {
               "color": "orange",
               "opacity": 1,
@@ -2513,7 +2488,6 @@
               "height": 2,
               "depth": 1
             },
-            "modelAsset": "",
             "material": {
               "color": "orange",
               "opacity": 1,
@@ -2588,7 +2562,6 @@
               "height": 2,
               "depth": 1
             },
-            "modelAsset": "",
             "material": {
               "color": "orange",
               "opacity": 1,
@@ -2663,7 +2636,6 @@
               "height": 2,
               "depth": 1
             },
-            "modelAsset": "",
             "material": {
               "color": "orange",
               "opacity": 1,
@@ -2738,7 +2710,6 @@
               "height": 2,
               "depth": 1
             },
-            "modelAsset": "",
             "material": {
               "color": "orange",
               "opacity": 1,
@@ -2813,7 +2784,6 @@
               "height": 2,
               "depth": 1
             },
-            "modelAsset": "",
             "material": {
               "color": "orange",
               "opacity": 1,
@@ -2888,7 +2858,6 @@
               "height": 1,
               "depth": 2
             },
-            "modelAsset": "",
             "material": {
               "color": "orange",
               "opacity": 1,
@@ -2963,7 +2932,6 @@
               "height": 1,
               "depth": 2
             },
-            "modelAsset": "",
             "material": {
               "color": "orange",
               "opacity": 1,
@@ -3038,7 +3006,6 @@
               "height": 1,
               "depth": 2
             },
-            "modelAsset": "",
             "material": {
               "color": "orange",
               "opacity": 1,
@@ -3113,7 +3080,6 @@
               "height": 1,
               "depth": 2
             },
-            "modelAsset": "",
             "material": {
               "color": "orange",
               "opacity": 1,
@@ -3188,7 +3154,6 @@
               "height": 1,
               "depth": 2
             },
-            "modelAsset": "",
             "material": {
               "color": "orange",
               "opacity": 1,
@@ -3263,7 +3228,6 @@
               "height": 1,
               "depth": 2
             },
-            "modelAsset": "",
             "material": {
               "color": "orange",
               "opacity": 1,

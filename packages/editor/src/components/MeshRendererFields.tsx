@@ -11,7 +11,9 @@ import {
   type MeshGeometryType,
   type MeshMaterial,
   type MeshRenderer,
+  type AssetRef,
 } from '@haku/schema'
+import { MODEL_ASSET_TYPE } from '@haku/assets'
 import { modelLog } from '@haku/engine'
 import { projectService } from '../services/project-service.js'
 import { MaterialPropertiesPanel, type MaterialMixedValues } from './MaterialPropertiesPanel.js'
@@ -39,7 +41,7 @@ export const MeshRendererFields = memo(function MeshRendererFields({
   onPatch?: (patch: Partial<MeshRenderer>) => void
   onMaterialPatch?: (patch: Partial<MeshMaterial>) => void
   onGeometryTypeChange?: (geometryType: MeshGeometryType) => void
-  onModelAssetChange?: (modelAsset: string) => void
+  onModelAssetChange?: (modelAsset: AssetRef) => void
   onGeometryParamChange?: (key: string, value: number) => void
   mixedGeometryType?: string | null
   mixedModelAsset?: string | null
@@ -108,7 +110,7 @@ export const MeshRendererFields = memo(function MeshRendererFields({
     patch({
       geometryType,
       geometryParams: defaultGeometryParams(geometryType),
-      modelAsset: geometryType === 'ModelGeometry' ? value.modelAsset : '',
+      modelAsset: geometryType === 'ModelGeometry' ? value.modelAsset : undefined,
     })
   }
 
@@ -153,14 +155,18 @@ export const MeshRendererFields = memo(function MeshRendererFields({
               {mixedModelAsset === null
                 ? '—'
                 : value.modelAsset
-                  ? modelAssetFileName(value.modelAsset)
+                  ? modelAssetFileName(projectService.getAssetPath(value.modelAsset))
                   : 'Select model…'}
             </button>
             <ModelPickerDialog
               open={pickerOpen}
               assets={modelAssets}
-              selected={value.modelAsset}
-              onSelect={(modelAsset) => {
+              selected={value.modelAsset ? projectService.getAssetPath(value.modelAsset) : ''}
+              onSelect={(modelAssetPath) => {
+                const modelAsset = projectService.getAssetRefByPath(
+                  modelAssetPath,
+                  MODEL_ASSET_TYPE,
+                )
                 modelLog('inspector.model-selected', {
                   previous: value.modelAsset,
                   next: modelAsset,
@@ -221,7 +227,10 @@ export const MeshRendererFields = memo(function MeshRendererFields({
           disabled={disabled}
         />
 
-        <label className="mesh-field mesh-field--checkbox" title="This mesh casts shadows onto other objects.">
+        <label
+          className="mesh-field mesh-field--checkbox"
+          title="This mesh casts shadows onto other objects."
+        >
           <input
             type="checkbox"
             checked={value.castShadow}
@@ -230,7 +239,10 @@ export const MeshRendererFields = memo(function MeshRendererFields({
           />
           <span>Cast Shadow</span>
         </label>
-        <label className="mesh-field mesh-field--checkbox" title="Shadows from other objects are drawn on this mesh.">
+        <label
+          className="mesh-field mesh-field--checkbox"
+          title="Shadows from other objects are drawn on this mesh."
+        >
           <input
             type="checkbox"
             checked={value.receiveShadow}

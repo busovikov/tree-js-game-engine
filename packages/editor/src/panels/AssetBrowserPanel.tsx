@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { MeshRendererComponent } from '@haku/core'
 import { defaultGeometryParams, normalizeMeshRenderer, relativeToAssetsDir } from '@haku/schema'
+import { MODEL_ASSET_TYPE } from '@haku/assets'
 import { commitSceneEdit } from '../commands/scene-history.js'
 import { primarySelection } from '../selection/selection-utils.js'
 import { useEditorStore } from '../store/editor-store.js'
@@ -36,7 +37,13 @@ function FolderUpIcon() {
         strokeWidth="1.75"
         strokeLinejoin="round"
       />
-      <path d="M12 6V3M9 6l3-3 3 3" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M12 6V3M9 6l3-3 3 3"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </ToolbarIcon>
   )
 }
@@ -44,8 +51,19 @@ function FolderUpIcon() {
 function RefreshIcon() {
   return (
     <ToolbarIcon>
-      <path d="M20 12a8 8 0 1 1-2.3-5.7" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
-      <path d="M20 4v4h-4" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M20 12a8 8 0 1 1-2.3-5.7"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+      <path
+        d="M20 4v4h-4"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </ToolbarIcon>
   )
 }
@@ -54,7 +72,12 @@ function CopyIcon() {
   return (
     <ToolbarIcon>
       <rect x="8" y="8" width="11" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.75" />
-      <path d="M5 16V6a1.5 1.5 0 0 1 1.5-1.5H15" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+      <path
+        d="M5 16V6a1.5 1.5 0 0 1 1.5-1.5H15"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
     </ToolbarIcon>
   )
 }
@@ -96,7 +119,13 @@ function AssignIcon() {
   return (
     <ActionIcon>
       <path d="M12 3v12" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
-      <path d="M8 11l4 4 4-4" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M8 11l4 4 4-4"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
       <path d="M5 19h14" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
     </ActionIcon>
   )
@@ -106,7 +135,12 @@ function OpenSceneIcon() {
   return (
     <ActionIcon>
       <path d="M6 4h12v16H6V4Z" stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round" />
-      <path d="M9 8h6M9 12h6M9 16h4" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+      <path
+        d="M9 8h6M9 12h6M9 16h4"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
     </ActionIcon>
   )
 }
@@ -115,7 +149,12 @@ function DuplicateIcon() {
   return (
     <ActionIcon>
       <rect x="8" y="8" width="11" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.75" />
-      <path d="M5 16V6a1.5 1.5 0 0 1 1.5-1.5H15" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+      <path
+        d="M5 16V6a1.5 1.5 0 0 1 1.5-1.5H15"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
     </ActionIcon>
   )
 }
@@ -137,8 +176,19 @@ function RenameIcon() {
 function RevealIcon() {
   return (
     <ActionIcon>
-      <path d="M4 9h6l2 2h8v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9Z" stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round" />
-      <path d="M14 13l2 2 4-4" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M4 9h6l2 2h8v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9Z"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M14 13l2 2 4-4"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </ActionIcon>
   )
 }
@@ -147,7 +197,13 @@ function TerminalIcon() {
   return (
     <ActionIcon>
       <path d="M4 6h16v12H4V6Z" stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round" />
-      <path d="M7 10l3 3-3 3" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M7 10l3 3-3 3"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
       <path d="M12 16h5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
     </ActionIcon>
   )
@@ -218,8 +274,7 @@ const AssetDirectoryTree = memo(function AssetDirectoryTree({
     const children = treeChildren.get(path) ?? []
     const childDirs = children.filter(
       (entry) =>
-        entry.isDirectory &&
-        (!searchActive || searchIndex.dirsVisibleInTree.has(entry.path)),
+        entry.isDirectory && (!searchActive || searchIndex.dirsVisibleInTree.has(entry.path)),
     )
     const hasChildren = childDirs.length > 0
     const isCurrent = path === currentDir
@@ -245,7 +300,9 @@ const AssetDirectoryTree = memo(function AssetDirectoryTree({
             {hasChildren ? (isExpanded ? '▾' : '▸') : ''}
           </span>
           <span>{fileIcon(name, true)}</span>
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {name}
+          </span>
         </button>
         {isExpanded && childDirs.map((child) => renderNode(child.path, child.name, depth + 1))}
       </div>
@@ -321,7 +378,9 @@ const AssetQuickActions = memo(function AssetQuickActions({
     <div className="haku-asset-browser__actions" aria-label="Asset quick actions">
       {(kind === 'model' || kind === 'prefab') && (
         <ActionToolButton
-          title={primary ? 'Assign model to selected entity' : 'Select an entity in the hierarchy first'}
+          title={
+            primary ? 'Assign model to selected entity' : 'Select an entity in the hierarchy first'
+          }
           disabled={!primary}
           onClick={onAssignAsset}
         >
@@ -466,23 +525,26 @@ export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
     return () => window.removeEventListener('mousedown', onPointerDown)
   }, [])
 
-  const navigateTo = useCallback((path: string) => {
-    setCurrentDir(path)
-    setSelectedPath(null)
-    setPathEditing(false)
-    void loadDirectory(path)
-    setExpandedDirs((prev) => {
-      const next = new Set(prev)
-      next.add(path)
-      let parent = parentDirectory(path, assetsRoot)
-      while (parent !== assetsRoot && parent.startsWith(assetsRoot)) {
-        next.add(parent)
-        parent = parentDirectory(parent, assetsRoot)
-      }
-      next.add(assetsRoot)
-      return next
-    })
-  }, [assetsRoot, loadDirectory])
+  const navigateTo = useCallback(
+    (path: string) => {
+      setCurrentDir(path)
+      setSelectedPath(null)
+      setPathEditing(false)
+      void loadDirectory(path)
+      setExpandedDirs((prev) => {
+        const next = new Set(prev)
+        next.add(path)
+        let parent = parentDirectory(path, assetsRoot)
+        while (parent !== assetsRoot && parent.startsWith(assetsRoot)) {
+          next.add(parent)
+          parent = parentDirectory(parent, assetsRoot)
+        }
+        next.add(assetsRoot)
+        return next
+      })
+    },
+    [assetsRoot, loadDirectory],
+  )
 
   useEffect(() => {
     if (!searchIndex.query || !searchIndex.firstDirWithMatches) return
@@ -580,6 +642,7 @@ export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
     }
 
     commitSceneEdit((draft) => {
+      const modelAssetRef = projectService.getAssetRefByPath(modelAsset, MODEL_ASSET_TYPE)
       const entityId = primary
       if (!draft.world.hasComponent(entityId, MeshRendererComponent)) {
         const meshDefaults = MeshRendererComponent.defaults!()
@@ -587,16 +650,18 @@ export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
           ...meshDefaults,
           geometryType: 'ModelGeometry',
           geometryParams: defaultGeometryParams('ModelGeometry'),
-          modelAsset,
+          modelAsset: modelAssetRef,
         })
         return
       }
-      const current = normalizeMeshRenderer(draft.world.getComponent(entityId, MeshRendererComponent))
+      const current = normalizeMeshRenderer(
+        draft.world.getComponent(entityId, MeshRendererComponent),
+      )
       draft.world.addComponent(entityId, MeshRendererComponent, {
         ...current,
         geometryType: 'ModelGeometry',
         geometryParams: defaultGeometryParams('ModelGeometry'),
-        modelAsset,
+        modelAsset: modelAssetRef,
       })
     })
   }, [selectedPath, primary, world])
@@ -872,12 +937,19 @@ export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
         }}
       />
 
-      <PanelGroup direction="horizontal" autoSaveId="haku-asset-browser-cols" className="haku-asset-browser__body">
+      <PanelGroup
+        direction="horizontal"
+        autoSaveId="haku-asset-browser-cols"
+        className="haku-asset-browser__body"
+      >
         <Panel defaultSize={28} minSize={15} maxSize={55} className="haku-asset-browser__panel">
           <div className="haku-asset-browser__tree-column">
             <div className="haku-asset-browser__tree-toolbar">
               <div className="haku-asset-browser__add-menu" ref={addMenuRef}>
-                <TreeToolbarButton title="Create or import" onClick={() => setAddMenuOpen((open) => !open)}>
+                <TreeToolbarButton
+                  title="Create or import"
+                  onClick={() => setAddMenuOpen((open) => !open)}
+                >
                   <span className="haku-asset-browser__tree-tool-plus" aria-hidden="true">
                     +
                   </span>
@@ -923,7 +995,10 @@ export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
 
             {showNewFolder && (
               <div className="haku-asset-browser__new-folder">
-                <label className="haku-asset-browser__new-folder-label" htmlFor="asset-new-folder-name">
+                <label
+                  className="haku-asset-browser__new-folder-label"
+                  htmlFor="asset-new-folder-name"
+                >
                   Folder name
                 </label>
                 <input
@@ -941,13 +1016,23 @@ export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
                     if (event.key === 'Escape') onCancelNewFolder()
                   }}
                 />
-                <button type="button" className="haku-asset-browser__toolbar-btn" onClick={() => void onCreateFolder()}>
+                <button
+                  type="button"
+                  className="haku-asset-browser__toolbar-btn"
+                  onClick={() => void onCreateFolder()}
+                >
                   Create
                 </button>
-                <button type="button" className="haku-asset-browser__toolbar-btn" onClick={onCancelNewFolder}>
+                <button
+                  type="button"
+                  className="haku-asset-browser__toolbar-btn"
+                  onClick={onCancelNewFolder}
+                >
                   Cancel
                 </button>
-                {newFolderError && <span className="haku-asset-browser__error">{newFolderError}</span>}
+                {newFolderError && (
+                  <span className="haku-asset-browser__error">{newFolderError}</span>
+                )}
               </div>
             )}
 
@@ -967,7 +1052,12 @@ export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
 
         <PanelResizeHandle className="haku-resize-handle haku-resize-handle--horizontal" />
 
-        <Panel defaultSize={6} minSize={6} maxSize={6} className="haku-asset-browser__panel haku-asset-browser__panel--actions">
+        <Panel
+          defaultSize={6}
+          minSize={6}
+          maxSize={6}
+          className="haku-asset-browser__panel haku-asset-browser__panel--actions"
+        >
           <AssetQuickActions
             selectedEntry={actionTarget}
             selectedPath={selectedPath ?? currentDir}
@@ -989,7 +1079,10 @@ export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
           <div className="haku-asset-browser__files-column">
             {renamingPath && (
               <div className="haku-asset-browser__rename-bar">
-                <label className="haku-asset-browser__new-folder-label" htmlFor="asset-rename-input">
+                <label
+                  className="haku-asset-browser__new-folder-label"
+                  htmlFor="asset-rename-input"
+                >
                   Rename
                 </label>
                 <input
@@ -1007,10 +1100,18 @@ export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
                     if (event.key === 'Escape') onCancelRename()
                   }}
                 />
-                <button type="button" className="haku-asset-browser__toolbar-btn" onClick={() => void onCommitRename()}>
+                <button
+                  type="button"
+                  className="haku-asset-browser__toolbar-btn"
+                  onClick={() => void onCommitRename()}
+                >
                   Save
                 </button>
-                <button type="button" className="haku-asset-browser__toolbar-btn" onClick={onCancelRename}>
+                <button
+                  type="button"
+                  className="haku-asset-browser__toolbar-btn"
+                  onClick={onCancelRename}
+                >
                   Cancel
                 </button>
                 {renameError && <span className="haku-asset-browser__error">{renameError}</span>}
@@ -1048,7 +1149,9 @@ export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
             </div>
 
             <div className="haku-asset-browser__files-footer">
-              {copyFeedback && <div className="haku-asset-browser__copy-feedback">{copyFeedback}</div>}
+              {copyFeedback && (
+                <div className="haku-asset-browser__copy-feedback">{copyFeedback}</div>
+              )}
               <div className="haku-asset-browser__path-row">
                 {pathEditing ? (
                   <input

@@ -1,12 +1,71 @@
-import type { HakuProject } from '@haku/schema'
+import {
+  MODEL_ASSET_TYPE,
+  SCENE_ASSET_TYPE,
+  validateProjectManifest,
+  type ProjectManifest,
+} from '@haku/assets'
 
 /** Virtual playground project used when opening built-in demo scenes. */
-export const PLAYGROUND_PROJECT: HakuProject = {
+export const PLAYGROUND_PROJECT: ProjectManifest = validateProjectManifest({
+  schemaVersion: 1,
   name: 'playground',
-  entryScene: 'public/assets/scenes/menu.scene.json',
+  entryScene: {
+    $ref: 'bd98634b-3333-4b60-97fd-2979ca426687',
+    type: SCENE_ASSET_TYPE,
+  },
   assetsDir: 'public/assets',
   scriptsDir: 'scripts',
-}
+  assets: [
+    ['bd98634b-3333-4b60-97fd-2979ca426687', 'scenes/menu.scene.json', SCENE_ASSET_TYPE],
+    [
+      'c54d4ef2-9ca9-444a-88b2-8808ad7b8d93',
+      'scenes/demos/threejs/rapier-vehicle-controller.scene.json',
+      SCENE_ASSET_TYPE,
+    ],
+    [
+      '020e4cc0-0e16-46e4-84ef-fa8e584fb357',
+      'scenes/demos/isaac/custom-raycast-vehicle.scene.json',
+      SCENE_ASSET_TYPE,
+    ],
+    [
+      'fbe4b92a-a219-4b84-9bbc-8b25eacbfe1c',
+      'scenes/demos/isaac/dynamic-raycast-vehicle-controller.scene.json',
+      SCENE_ASSET_TYPE,
+    ],
+    [
+      'ffd0c46a-5bcd-4b9a-9ed9-613341962c6e',
+      'scenes/demos/isaac/arcade-vehicle-controller.scene.json',
+      SCENE_ASSET_TYPE,
+    ],
+    [
+      '3b94a68a-d3cc-4e79-b7c1-389ad8c2d3c5',
+      'scenes/demos/isaac/kinematic-character-controller.scene.json',
+      SCENE_ASSET_TYPE,
+    ],
+    [
+      'd5014363-bb1f-4454-aa3d-fa60d458b221',
+      'scenes/demos/isaac/pointer-controls.scene.json',
+      SCENE_ASSET_TYPE,
+    ],
+    [
+      '0aafa65d-33ac-4478-ae93-507557e39620',
+      'scenes/demos/isaac/revolute-joint-vehicle.scene.json',
+      SCENE_ASSET_TYPE,
+    ],
+    [
+      '941c0b39-af2a-4e4b-9919-796880392961',
+      'sketches/isaac-mason/racetrack.glb',
+      MODEL_ASSET_TYPE,
+    ],
+    [
+      'f91a931c-3cbb-4f18-9ef1-1099556e725e',
+      'sketches/isaac-mason/game-level-transformed.glb',
+      MODEL_ASSET_TYPE,
+    ],
+    ['62be2efd-fee5-4c66-9575-69ee2b4447e3', 'sketches/isaac-mason/chassis.glb', MODEL_ASSET_TYPE],
+    ['a207e2bd-38a6-4eb5-85f0-ccf8ae01cee7', 'sketches/isaac-mason/wheel.glb', MODEL_ASSET_TYPE],
+  ].map(([id, path, type]) => ({ id, path, type, dependencies: [] })),
+})
 
 const ISAAC_COMMIT = '1d474e6713a972c76dcabe8c8b074292d0e9d169'
 const ISAAC_SKETCHES_BASE = `https://github.com/isaac-mason/sketches/tree/${ISAAC_COMMIT}/sketches/rapier`

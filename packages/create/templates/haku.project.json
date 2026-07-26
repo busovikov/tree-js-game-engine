@@ -1,6 +1,18 @@
 {
+  "schemaVersion": 1,
   "name": "my-game",
-  "entryScene": "public/assets/scenes/menu.scene.json",
+  "entryScene": {
+    "$ref": "c957ac58-b35b-452d-8463-8a988c330dc2",
+    "type": "20000000-0000-4000-8000-000000000001"
+  },
   "assetsDir": "public/assets",
-  "scriptsDir": "scripts"
+  "scriptsDir": "scripts",
+  "assets": [
+    {
+      "id": "c957ac58-b35b-452d-8463-8a988c330dc2",
+      "type": "20000000-0000-4000-8000-000000000001",
+      "path": "scenes/menu.scene.json",
+      "dependencies": []
+    }
+  ]
 }

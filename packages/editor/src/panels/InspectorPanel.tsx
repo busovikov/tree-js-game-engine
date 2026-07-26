@@ -59,7 +59,10 @@ import { TagFields } from '../components/TagFields.js'
 import { ColliderFields, normalizeCollider } from '../components/ColliderFields.js'
 import { RigidBodyFields, normalizeRigidBody } from '../components/RigidBodyFields.js'
 import { PhysicsAreaFields, normalizePhysicsArea } from '../components/PhysicsAreaFields.js'
-import { AnimatableBodyFields, normalizeAnimatableBody } from '../components/AnimatableBodyFields.js'
+import {
+  AnimatableBodyFields,
+  normalizeAnimatableBody,
+} from '../components/AnimatableBodyFields.js'
 import {
   CustomRaycastControllerFields,
   DynamicRaycastControllerFields,
@@ -83,7 +86,13 @@ import { currentMeshRevision, type ColliderBakeMode } from '../viewport/collider
 import { SchemaFields } from '../components/SchemaFields.js'
 import { InspectorComponentSection } from '../components/InspectorComponentSection.js'
 import { AddComponentMenu } from '../components/AddComponentMenu.js'
-import { normalizeMeshRenderer, normalizeMeshMaterial, defaultGeometryParams, isComponentEnabled, withComponentEnabled } from '@haku/schema'
+import {
+  normalizeMeshRenderer,
+  normalizeMeshMaterial,
+  defaultGeometryParams,
+  isComponentEnabled,
+  withComponentEnabled,
+} from '@haku/schema'
 import { eulerAxisToQuat, quatToEulerDegrees } from '../transform/euler-degrees.js'
 import {
   commonComponentTypes,
@@ -147,13 +156,41 @@ const ADDABLE_COMPONENTS = [
 ]
 
 const ADDABLE_CONTROLLER_COMPONENTS = [
-  { id: 'CustomRaycastController' as const, component: CustomRaycastControllerComponent, label: 'Custom Raycast' },
-  { id: 'DynamicRaycastController' as const, component: DynamicRaycastControllerComponent, label: 'Dynamic Raycast' },
-  { id: 'ArcadeVehicleController' as const, component: ArcadeVehicleControllerComponent, label: 'Arcade Vehicle' },
-  { id: 'RevoluteJointVehicleController' as const, component: RevoluteJointVehicleControllerComponent, label: 'Revolute Joint Vehicle' },
-  { id: 'KinematicCharacterController' as const, component: KinematicCharacterControllerComponent, label: 'Kinematic Character' },
-  { id: 'CharacterBodyController' as const, component: CharacterBodyControllerComponent, label: 'Character Body' },
-  { id: 'PointerControlsController' as const, component: PointerControlsControllerComponent, label: 'Pointer Controls' },
+  {
+    id: 'CustomRaycastController' as const,
+    component: CustomRaycastControllerComponent,
+    label: 'Custom Raycast',
+  },
+  {
+    id: 'DynamicRaycastController' as const,
+    component: DynamicRaycastControllerComponent,
+    label: 'Dynamic Raycast',
+  },
+  {
+    id: 'ArcadeVehicleController' as const,
+    component: ArcadeVehicleControllerComponent,
+    label: 'Arcade Vehicle',
+  },
+  {
+    id: 'RevoluteJointVehicleController' as const,
+    component: RevoluteJointVehicleControllerComponent,
+    label: 'Revolute Joint Vehicle',
+  },
+  {
+    id: 'KinematicCharacterController' as const,
+    component: KinematicCharacterControllerComponent,
+    label: 'Kinematic Character',
+  },
+  {
+    id: 'CharacterBodyController' as const,
+    component: CharacterBodyControllerComponent,
+    label: 'Character Body',
+  },
+  {
+    id: 'PointerControlsController' as const,
+    component: PointerControlsControllerComponent,
+    label: 'Pointer Controls',
+  },
 ]
 
 const ALL_ADDABLE = [...ADDABLE_COMPONENTS, ...ADDABLE_CONTROLLER_COMPONENTS]
@@ -190,9 +227,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
     [selectedIds, world, worldRevision],
   )
   const mergedName = mergeStrings(entityNames)
-  const headerLabel = isMulti
-    ? `${selectedIds.length} entities selected`
-    : (mergedName ?? 'Entity')
+  const headerLabel = isMulti ? `${selectedIds.length} entities selected` : (mergedName ?? 'Entity')
 
   const entityTags = useMemo(() => {
     if (!world || selectedIds.length !== 1) return []
@@ -221,7 +256,9 @@ export const InspectorPanel = memo(function InspectorPanel() {
   const mixedRotation = useMemo(
     () =>
       mergeVec3(
-        transforms.map((value) => quatToEulerDegrees(value.rotation as [number, number, number, number])),
+        transforms.map((value) =>
+          quatToEulerDegrees(value.rotation as [number, number, number, number]),
+        ),
       ),
     [transforms],
   )
@@ -302,11 +339,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
   )
 
   const applyTransformAxis = useCallback(
-    (
-      field: 'position' | 'scale' | 'rotation',
-      axis: 0 | 1 | 2,
-      value: number,
-    ) => {
+    (field: 'position' | 'scale' | 'rotation', axis: 0 | 1 | 2, value: number) => {
       forEachSelectedTransform((id, draftWorld) => {
         const current = draftWorld.getComponent(id, TransformComponent) ?? DEFAULT_TRANSFORM
         const next = structuredClone(current)
@@ -315,7 +348,11 @@ export const InspectorPanel = memo(function InspectorPanel() {
         } else if (field === 'scale') {
           next.scale[axis] = value
         } else {
-          next.rotation = eulerAxisToQuat(axis, value, current.rotation as [number, number, number, number])
+          next.rotation = eulerAxisToQuat(
+            axis,
+            value,
+            current.rotation as [number, number, number, number],
+          )
         }
         draftWorld.addComponent(id, TransformComponent, next)
       })
@@ -608,7 +645,10 @@ export const InspectorPanel = memo(function InspectorPanel() {
       const normalized = tags
         .map((tag) => tag.trim())
         .filter(Boolean)
-        .filter((tag, index, list) => list.findIndex((item) => item.toLowerCase() === tag.toLowerCase()) === index)
+        .filter(
+          (tag, index, list) =>
+            list.findIndex((item) => item.toLowerCase() === tag.toLowerCase()) === index,
+        )
 
       commitSceneEdit((draft) => {
         if (normalized.length === 0) {
@@ -728,11 +768,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
   )
 
   if (!world || selectedIds.length === 0) {
-    return (
-      <div className="haku-inspector haku-inspector--empty">
-        Select an entity
-      </div>
-    )
+    return <div className="haku-inspector haku-inspector--empty">Select an entity</div>
   }
 
   const otherComponents = commonTypes.filter((typeId) => !HIDDEN_COMPONENTS.has(typeId))
@@ -741,330 +777,348 @@ export const InspectorPanel = memo(function InspectorPanel() {
   return (
     <div className="haku-inspector">
       <div className="haku-inspector__scroll">
-      <div className="haku-inspector__entity-header">
-        <input
-          type="text"
-          className="haku-inspector__name-input"
-          value={nameDraft}
-          disabled={!canEdit || isMulti}
-          onChange={(event) => setNameDraft(event.target.value)}
-          onBlur={() => updateEntityName(nameDraft)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') {
-              event.currentTarget.blur()
-            }
-          }}
-        />
-      </div>
-
-      {!isMulti && (
-        <div className="haku-inspector__tags">
-          <TagFields
-            key={selectedIds[0]!.value}
-            tags={entityTags}
-            disabled={!canEdit}
-            onChange={updateTags}
+        <div className="haku-inspector__entity-header">
+          <input
+            type="text"
+            className="haku-inspector__name-input"
+            value={nameDraft}
+            disabled={!canEdit || isMulti}
+            onChange={(event) => setNameDraft(event.target.value)}
+            onBlur={() => updateEntityName(nameDraft)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.currentTarget.blur()
+              }
+            }}
           />
         </div>
-      )}
 
-      <InspectorSeparator />
-
-      {showTransform && (
-        <InspectorComponentSection
-          title="Transform"
-          collapsed={collapsedSections.Transform === true}
-          canToggleEnabled={false}
-          canDelete={false}
-          disabled={!canEditTransform}
-          onToggleCollapsed={() => toggleSectionCollapsed('Transform')}
-          onCopy={() =>
-            copyComponentData(
-              TransformComponent.id,
-              structuredClone(transformDisplay) as Record<string, unknown>,
-            )
-          }
-          onPaste={() => {
-            if (!componentClipboard || componentClipboard.typeId !== TransformComponent.id) return
-            forEachSelectedTransform((id, draftWorld) => {
-              draftWorld.addComponent(
-                id,
-                TransformComponent,
-                TransformComponent.schema.parse(componentClipboard.data),
-              )
-            })
-          }}
-          canPaste={componentClipboard?.typeId === TransformComponent.id}
-        >
-          <div className="haku-inspector__section-toolbar">
-            <button
-              type="button"
-              className="haku-inspector__section-action"
-              title="Reset transform"
-              disabled={!canEditTransform}
-              onClick={resetTransform}
-            >
-              Reset
-            </button>
+        {!isMulti && (
+          <div className="haku-inspector__tags">
+            <TagFields
+              key={selectedIds[0]!.value}
+              tags={entityTags}
+              disabled={!canEdit}
+              onChange={updateTags}
+            />
           </div>
-          <TransformFields
-            value={transformDisplay}
-            mixedPosition={isMulti ? mixedPosition : undefined}
-            mixedRotation={isMulti ? mixedRotation : undefined}
-            mixedScale={isMulti ? mixedScale : undefined}
-            disabled={!canEditTransform}
-            onChange={isMulti ? undefined : updateTransform}
-            onPositionAxisChange={(axis, value) => applyTransformAxis('position', axis, value)}
-            onRotationAxisChange={(axis, value) => applyTransformAxis('rotation', axis, value)}
-            onScaleAxisChange={
-              isMulti ? (axis, value) => applyTransformAxis('scale', axis, value) : undefined
-            }
-            onUniformScaleAxisChange={(axis, value) => applyUniformScaleAxis(axis, value)}
-          />
-        </InspectorComponentSection>
-      )}
+        )}
 
-      <InspectorSeparator />
+        <InspectorSeparator />
 
-      {otherComponents.map((typeId) => {
-        const type = getCoreComponent(typeId)
-        if (!type) return null
-        const key = type.name as keyof typeof COMPONENT_MAP
-        if (!(key in COMPONENT_MAP)) return null
-
-        const component = COMPONENT_MAP[key]
-        const targets = selectedIds.filter((entityId) => world.hasComponent(entityId, component))
-        if (targets.length === 0) return null
-
-        const values = targets
-          .map((id) => world.getComponent(id, type))
-          .filter((value): value is NonNullable<typeof value> => value !== undefined && typeof value === 'object')
-
-        if (values.length === 0) return null
-        const data = values[0]!
-
-        const isActiveCamera =
-          key === 'Camera' &&
-          sceneDocument &&
-          targets.length === 1 &&
-          resolveActiveCameraId(sceneDocument) === targets[0]!.value
-
-        const enabledMixed = mergeComponentEnabled(component, targets)
-
-        const isChassisController = CHASSIS_CONTROLLER_IDS.has(key)
-
-        return (
+        {showTransform && (
           <InspectorComponentSection
-            key={typeId}
-            title={type.name}
-            badge={
-              isActiveCamera ? (
-                <span className="haku-inspector__active-camera-badge">Active</span>
-              ) : isChassisController ? (
-                <span className="haku-inspector__implicit-collider-badge" title="Physics chassis box is built into this controller">
-                  Chassis
-                </span>
-              ) : undefined
+            title="Transform"
+            collapsed={collapsedSections.Transform === true}
+            canToggleEnabled={false}
+            canDelete={false}
+            disabled={!canEditTransform}
+            onToggleCollapsed={() => toggleSectionCollapsed('Transform')}
+            onCopy={() =>
+              copyComponentData(
+                TransformComponent.id,
+                structuredClone(transformDisplay) as Record<string, unknown>,
+              )
             }
-            collapsed={collapsedSections[typeId] === true}
-            enabled={enabledMixed !== false}
-            disabled={!canEdit}
-            canPaste={componentClipboard?.typeId === typeId}
-            onToggleCollapsed={() => toggleSectionCollapsed(typeId)}
-            onToggleEnabled={() => toggleComponentEnabled(component, enabledMixed !== true)}
-            onCopy={() => copyComponentData(typeId, structuredClone(data) as Record<string, unknown>)}
-            onPaste={() => pasteComponentData(typeId, component)}
-            onDelete={() => removeComponent(component)}
+            onPaste={() => {
+              if (!componentClipboard || componentClipboard.typeId !== TransformComponent.id) return
+              forEachSelectedTransform((id, draftWorld) => {
+                draftWorld.addComponent(
+                  id,
+                  TransformComponent,
+                  TransformComponent.schema.parse(componentClipboard.data),
+                )
+              })
+            }}
+            canPaste={componentClipboard?.typeId === TransformComponent.id}
           >
-            {key === 'Camera' ? (
-              <>
-                <CameraFields
-                  value={normalizeCamera(data)}
-                  disabled={mode === 'play'}
-                  onChange={updateCamera}
-                />
-                {!isMulti && targets.length === 1 && !isActiveCamera && (
-                  <button
-                    type="button"
-                    className="haku-inspector__active-camera-btn"
-                    title="Make this camera the one the scene renders through in play mode."
-                    disabled={!canEdit}
-                    onClick={() => commitActiveSceneCamera(targets[0]!)}
-                  >
-                    Set as Active Camera
-                  </button>
-                )}
-              </>
-            ) : key === 'Light' ? (
-              <LightFields
-                value={normalizeLight(data)}
-                disabled={mode === 'play'}
-                onChange={updateLight}
-              />
-            ) : key === 'MeshRenderer' ? (
-              <MeshRendererFields
-                value={normalizeMeshRenderer(data)}
-                disabled={mode === 'play'}
-                mixedGeometryType={
-                  isMulti
-                    ? mergeStrings(values.map((value) => normalizeMeshRenderer(value).geometryType))
-                    : undefined
-                }
-                mixedModelAsset={
-                  isMulti
-                    ? mergeStrings(values.map((value) => normalizeMeshRenderer(value).modelAsset))
-                    : undefined
-                }
-                {...(isMulti
-                  ? buildMaterialMixedValues(values.map((value) => normalizeMeshRenderer(value).material))
-                  : {})}
-                onChange={isMulti ? undefined : updateMeshRenderer}
-                onPatch={
-                  isMulti
-                    ? (patch) => {
-                        patchMeshRenderer((current) => ({ ...current, ...patch }))
-                      }
-                    : undefined
-                }
-                onMaterialPatch={
-                  isMulti
-                    ? (patch: Partial<MeshMaterial>) => {
-                        patchMeshRenderer((current) => ({
-                          ...current,
-                          material: normalizeMeshMaterial({ ...current.material, ...patch }),
-                        }))
-                      }
-                    : undefined
-                }
-                onGeometryTypeChange={
-                  isMulti
-                    ? (geometryType) => {
-                        patchMeshRenderer((current) => ({
-                          ...current,
-                          geometryType,
-                          geometryParams: defaultGeometryParams(geometryType),
-                          modelAsset: geometryType === 'ModelGeometry' ? current.modelAsset : '',
-                        }))
-                      }
-                    : undefined
-                }
-                onModelAssetChange={
-                  isMulti ? (modelAsset) => patchMeshRenderer((current) => ({ ...current, modelAsset })) : undefined
-                }
-                onGeometryParamChange={
-                  isMulti
-                    ? (paramKey, num) => {
-                        patchMeshRenderer((current) => ({
-                          ...current,
-                          geometryParams: { ...current.geometryParams, [paramKey]: num },
-                        }))
-                      }
-                    : undefined
-                }
-              />
-            ) : key === 'Collider' ? (
-              <ColliderFields
-                value={normalizeCollider(data)}
-                physicsSettings={sceneDocument?.physicsSettings}
-                disabled={mode === 'play'}
-                nonUniformScaleWarning={colliderNonUniformScale}
-                entityId={isMulti ? undefined : selectedIds[0]?.value}
-                rigidBodyType={selectedRigidBodyType}
-                currentMeshRevision={selectedMeshRevision}
-                onBake={isMulti ? undefined : bakeColliderFromMesh}
-                onChange={isMulti ? undefined : updateCollider}
-              />
-            ) : key === 'RigidBody' ? (
-              <RigidBodyFields
-                value={normalizeRigidBody(data)}
-                disabled={mode === 'play'}
-                onChange={isMulti ? undefined : updateRigidBody}
-              />
-            ) : key === 'PhysicsArea' ? (
-              <PhysicsAreaFields
-                value={normalizePhysicsArea(data)}
-                physicsSettings={sceneDocument?.physicsSettings}
-                disabled={mode === 'play'}
-                onChange={isMulti ? undefined : updatePhysicsArea}
-              />
-            ) : key === 'AnimatableBody' ? (
-              <AnimatableBodyFields
-                value={normalizeAnimatableBody(data)}
-                disabled={mode === 'play'}
-                onChange={isMulti ? undefined : updateAnimatableBody}
-              />
-            ) : key === 'CustomRaycastController' ? (
-              <CustomRaycastControllerFields
-                value={normalizeCustomRaycastController(data)}
-                disabled={mode === 'play'}
-                onChange={isMulti ? undefined : updateCustomRaycastController}
-              />
-            ) : key === 'DynamicRaycastController' ? (
-              <DynamicRaycastControllerFields
-                value={normalizeDynamicRaycastController(data)}
-                disabled={mode === 'play'}
-                onChange={isMulti ? undefined : updateDynamicRaycastController}
-              />
-            ) : key === 'ArcadeVehicleController' ? (
-              <ArcadeVehicleControllerFields
-                value={normalizeArcadeVehicleController(data)}
-                disabled={mode === 'play'}
-                onChange={isMulti ? undefined : updateArcadeVehicleController}
-              />
-            ) : key === 'RevoluteJointVehicleController' ? (
-              <RevoluteJointVehicleControllerFields
-                value={normalizeRevoluteJointVehicleController(data)}
-                disabled={mode === 'play'}
-                onChange={isMulti ? undefined : updateRevoluteJointVehicleController}
-              />
-            ) : key === 'KinematicCharacterController' ? (
-              <KinematicCharacterControllerFields
-                value={normalizeKinematicCharacterController(data)}
-                disabled={mode === 'play'}
-                onChange={isMulti ? undefined : updateKinematicCharacterController}
-              />
-            ) : key === 'CharacterBodyController' ? (
-              <CharacterBodyControllerFields
-                value={normalizeCharacterBodyController(data)}
-                disabled={mode === 'play'}
-                onChange={isMulti ? undefined : updateCharacterBodyController}
-              />
-            ) : key === 'PointerControlsController' ? (
-              <PointerControlsControllerFields
-                value={normalizePointerControlsController(data)}
-                disabled={mode === 'play'}
-                onChange={isMulti ? undefined : updatePointerControlsController}
-              />
-            ) : key === 'PhysicsJoint' ? (
-              <PhysicsJointFields
-                value={normalizePhysicsJoint(data)}
-                disabled={mode === 'play'}
-                onChange={isMulti ? undefined : updatePhysicsJoint}
-              />
-            ) : key === 'Colliders' ? (
-              <CollidersFields
-                value={normalizeColliders(data)}
-                physicsSettings={sceneDocument?.physicsSettings}
-                disabled={mode === 'play'}
-                nonUniformScaleWarning={colliderNonUniformScale}
-                onChange={isMulti ? undefined : updateColliders}
-              />
-            ) : (
-              <SchemaFields
-                componentId={key}
-                data={data as Record<string, unknown>}
-                disabled={mode === 'play'}
-                onChange={(next) =>
-                  forEachSelected((id, draftWorld) => {
-                    draftWorld.addComponent(id, COMPONENT_MAP[key], next)
-                  })
-                }
-              />
-            )}
+            <div className="haku-inspector__section-toolbar">
+              <button
+                type="button"
+                className="haku-inspector__section-action"
+                title="Reset transform"
+                disabled={!canEditTransform}
+                onClick={resetTransform}
+              >
+                Reset
+              </button>
+            </div>
+            <TransformFields
+              value={transformDisplay}
+              mixedPosition={isMulti ? mixedPosition : undefined}
+              mixedRotation={isMulti ? mixedRotation : undefined}
+              mixedScale={isMulti ? mixedScale : undefined}
+              disabled={!canEditTransform}
+              onChange={isMulti ? undefined : updateTransform}
+              onPositionAxisChange={(axis, value) => applyTransformAxis('position', axis, value)}
+              onRotationAxisChange={(axis, value) => applyTransformAxis('rotation', axis, value)}
+              onScaleAxisChange={
+                isMulti ? (axis, value) => applyTransformAxis('scale', axis, value) : undefined
+              }
+              onUniformScaleAxisChange={(axis, value) => applyUniformScaleAxis(axis, value)}
+            />
           </InspectorComponentSection>
-        )
-      })}
+        )}
 
+        <InspectorSeparator />
+
+        {otherComponents.map((typeId) => {
+          const type = getCoreComponent(typeId)
+          if (!type) return null
+          const key = type.name as keyof typeof COMPONENT_MAP
+          if (!(key in COMPONENT_MAP)) return null
+
+          const component = COMPONENT_MAP[key]
+          const targets = selectedIds.filter((entityId) => world.hasComponent(entityId, component))
+          if (targets.length === 0) return null
+
+          const values = targets
+            .map((id) => world.getComponent(id, type))
+            .filter(
+              (value): value is NonNullable<typeof value> =>
+                value !== undefined && typeof value === 'object',
+            )
+
+          if (values.length === 0) return null
+          const data = values[0]!
+
+          const isActiveCamera =
+            key === 'Camera' &&
+            sceneDocument &&
+            targets.length === 1 &&
+            resolveActiveCameraId(sceneDocument) === targets[0]!.value
+
+          const enabledMixed = mergeComponentEnabled(component, targets)
+
+          const isChassisController = CHASSIS_CONTROLLER_IDS.has(key)
+
+          return (
+            <InspectorComponentSection
+              key={typeId}
+              title={type.name}
+              badge={
+                isActiveCamera ? (
+                  <span className="haku-inspector__active-camera-badge">Active</span>
+                ) : isChassisController ? (
+                  <span
+                    className="haku-inspector__implicit-collider-badge"
+                    title="Physics chassis box is built into this controller"
+                  >
+                    Chassis
+                  </span>
+                ) : undefined
+              }
+              collapsed={collapsedSections[typeId] === true}
+              enabled={enabledMixed !== false}
+              disabled={!canEdit}
+              canPaste={componentClipboard?.typeId === typeId}
+              onToggleCollapsed={() => toggleSectionCollapsed(typeId)}
+              onToggleEnabled={() => toggleComponentEnabled(component, enabledMixed !== true)}
+              onCopy={() =>
+                copyComponentData(typeId, structuredClone(data) as Record<string, unknown>)
+              }
+              onPaste={() => pasteComponentData(typeId, component)}
+              onDelete={() => removeComponent(component)}
+            >
+              {key === 'Camera' ? (
+                <>
+                  <CameraFields
+                    value={normalizeCamera(data)}
+                    disabled={mode === 'play'}
+                    onChange={updateCamera}
+                  />
+                  {!isMulti && targets.length === 1 && !isActiveCamera && (
+                    <button
+                      type="button"
+                      className="haku-inspector__active-camera-btn"
+                      title="Make this camera the one the scene renders through in play mode."
+                      disabled={!canEdit}
+                      onClick={() => commitActiveSceneCamera(targets[0]!)}
+                    >
+                      Set as Active Camera
+                    </button>
+                  )}
+                </>
+              ) : key === 'Light' ? (
+                <LightFields
+                  value={normalizeLight(data)}
+                  disabled={mode === 'play'}
+                  onChange={updateLight}
+                />
+              ) : key === 'MeshRenderer' ? (
+                <MeshRendererFields
+                  value={normalizeMeshRenderer(data)}
+                  disabled={mode === 'play'}
+                  mixedGeometryType={
+                    isMulti
+                      ? mergeStrings(
+                          values.map((value) => normalizeMeshRenderer(value).geometryType),
+                        )
+                      : undefined
+                  }
+                  mixedModelAsset={
+                    isMulti
+                      ? mergeStrings(
+                          values.map(
+                            (value) => normalizeMeshRenderer(value).modelAsset?.$ref ?? '',
+                          ),
+                        )
+                      : undefined
+                  }
+                  {...(isMulti
+                    ? buildMaterialMixedValues(
+                        values.map((value) => normalizeMeshRenderer(value).material),
+                      )
+                    : {})}
+                  onChange={isMulti ? undefined : updateMeshRenderer}
+                  onPatch={
+                    isMulti
+                      ? (patch) => {
+                          patchMeshRenderer((current) => ({ ...current, ...patch }))
+                        }
+                      : undefined
+                  }
+                  onMaterialPatch={
+                    isMulti
+                      ? (patch: Partial<MeshMaterial>) => {
+                          patchMeshRenderer((current) => ({
+                            ...current,
+                            material: normalizeMeshMaterial({ ...current.material, ...patch }),
+                          }))
+                        }
+                      : undefined
+                  }
+                  onGeometryTypeChange={
+                    isMulti
+                      ? (geometryType) => {
+                          patchMeshRenderer((current) => ({
+                            ...current,
+                            geometryType,
+                            geometryParams: defaultGeometryParams(geometryType),
+                            modelAsset:
+                              geometryType === 'ModelGeometry' ? current.modelAsset : undefined,
+                          }))
+                        }
+                      : undefined
+                  }
+                  onModelAssetChange={
+                    isMulti
+                      ? (modelAsset) => patchMeshRenderer((current) => ({ ...current, modelAsset }))
+                      : undefined
+                  }
+                  onGeometryParamChange={
+                    isMulti
+                      ? (paramKey, num) => {
+                          patchMeshRenderer((current) => ({
+                            ...current,
+                            geometryParams: { ...current.geometryParams, [paramKey]: num },
+                          }))
+                        }
+                      : undefined
+                  }
+                />
+              ) : key === 'Collider' ? (
+                <ColliderFields
+                  value={normalizeCollider(data)}
+                  physicsSettings={sceneDocument?.physicsSettings}
+                  disabled={mode === 'play'}
+                  nonUniformScaleWarning={colliderNonUniformScale}
+                  entityId={isMulti ? undefined : selectedIds[0]?.value}
+                  rigidBodyType={selectedRigidBodyType}
+                  currentMeshRevision={selectedMeshRevision}
+                  onBake={isMulti ? undefined : bakeColliderFromMesh}
+                  onChange={isMulti ? undefined : updateCollider}
+                />
+              ) : key === 'RigidBody' ? (
+                <RigidBodyFields
+                  value={normalizeRigidBody(data)}
+                  disabled={mode === 'play'}
+                  onChange={isMulti ? undefined : updateRigidBody}
+                />
+              ) : key === 'PhysicsArea' ? (
+                <PhysicsAreaFields
+                  value={normalizePhysicsArea(data)}
+                  physicsSettings={sceneDocument?.physicsSettings}
+                  disabled={mode === 'play'}
+                  onChange={isMulti ? undefined : updatePhysicsArea}
+                />
+              ) : key === 'AnimatableBody' ? (
+                <AnimatableBodyFields
+                  value={normalizeAnimatableBody(data)}
+                  disabled={mode === 'play'}
+                  onChange={isMulti ? undefined : updateAnimatableBody}
+                />
+              ) : key === 'CustomRaycastController' ? (
+                <CustomRaycastControllerFields
+                  value={normalizeCustomRaycastController(data)}
+                  disabled={mode === 'play'}
+                  onChange={isMulti ? undefined : updateCustomRaycastController}
+                />
+              ) : key === 'DynamicRaycastController' ? (
+                <DynamicRaycastControllerFields
+                  value={normalizeDynamicRaycastController(data)}
+                  disabled={mode === 'play'}
+                  onChange={isMulti ? undefined : updateDynamicRaycastController}
+                />
+              ) : key === 'ArcadeVehicleController' ? (
+                <ArcadeVehicleControllerFields
+                  value={normalizeArcadeVehicleController(data)}
+                  disabled={mode === 'play'}
+                  onChange={isMulti ? undefined : updateArcadeVehicleController}
+                />
+              ) : key === 'RevoluteJointVehicleController' ? (
+                <RevoluteJointVehicleControllerFields
+                  value={normalizeRevoluteJointVehicleController(data)}
+                  disabled={mode === 'play'}
+                  onChange={isMulti ? undefined : updateRevoluteJointVehicleController}
+                />
+              ) : key === 'KinematicCharacterController' ? (
+                <KinematicCharacterControllerFields
+                  value={normalizeKinematicCharacterController(data)}
+                  disabled={mode === 'play'}
+                  onChange={isMulti ? undefined : updateKinematicCharacterController}
+                />
+              ) : key === 'CharacterBodyController' ? (
+                <CharacterBodyControllerFields
+                  value={normalizeCharacterBodyController(data)}
+                  disabled={mode === 'play'}
+                  onChange={isMulti ? undefined : updateCharacterBodyController}
+                />
+              ) : key === 'PointerControlsController' ? (
+                <PointerControlsControllerFields
+                  value={normalizePointerControlsController(data)}
+                  disabled={mode === 'play'}
+                  onChange={isMulti ? undefined : updatePointerControlsController}
+                />
+              ) : key === 'PhysicsJoint' ? (
+                <PhysicsJointFields
+                  value={normalizePhysicsJoint(data)}
+                  disabled={mode === 'play'}
+                  onChange={isMulti ? undefined : updatePhysicsJoint}
+                />
+              ) : key === 'Colliders' ? (
+                <CollidersFields
+                  value={normalizeColliders(data)}
+                  physicsSettings={sceneDocument?.physicsSettings}
+                  disabled={mode === 'play'}
+                  nonUniformScaleWarning={colliderNonUniformScale}
+                  onChange={isMulti ? undefined : updateColliders}
+                />
+              ) : (
+                <SchemaFields
+                  componentId={key}
+                  data={data as Record<string, unknown>}
+                  disabled={mode === 'play'}
+                  onChange={(next) =>
+                    forEachSelected((id, draftWorld) => {
+                      draftWorld.addComponent(id, COMPONENT_MAP[key], next)
+                    })
+                  }
+                />
+              )}
+            </InspectorComponentSection>
+          )
+        })}
       </div>
 
       {canEdit && (
