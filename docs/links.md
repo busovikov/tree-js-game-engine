@@ -26,6 +26,11 @@
 | --- | ---- | -------- |
 | Index | [`README.md`](./README.md) | Start here |
 | **Agent workflow** | [`agent-workflow.md`](./agent-workflow.md) | **New task** — context rules, done criteria |
+| **Autonomous engine-game instruction** | [`autonomous-engine-game-agent.md`](./autonomous-engine-game-agent.md) | Full Bounce Run engine-improvement mission and constraints |
+| **Engine-game plan** | [`engine-game-development-plan.md`](./engine-game-development-plan.md) | Milestones, acceptance criteria, deferred backlog |
+| **Gameplay graph architecture** | [`node-graph-architecture.md`](./node-graph-architecture.md) | Target compiler/runtime/checkpoint/browser-authoring contracts |
+| Engine-game baseline | [`engine-game-current-state.md`](./engine-game-current-state.md) | Current capability matrix and current/target delta |
+| Stage handoff | [`stage-handoff.md`](./stage-handoff.md) | Fresh sub-agent stages and context rollover |
 | Tech stack | [`techstack.md`](./techstack.md) | Versions, deps, per-module tools |
 | Architecture | [`architecture.md`](./architecture.md) | Subsystems, data flow, folder rules |
 | Edge cases | [`edge-cases.md`](./edge-cases.md) | Failures, empty states, validation — not happy path |
@@ -161,6 +166,9 @@ WRITE: world + metadata → saveSceneDocument() → JSON.stringify → projectSe
 
 ### Project manifest (`haku.project.json`)
 
+> **Current API only.** The engine-game program deliberately replaces path identity with a
+> universal UUID asset manifest in M02. No compatibility branch is planned.
+
 ```json
 {
   "name": "my-game",
@@ -218,6 +226,11 @@ Append-only project log: `logs/haku.log` via `projectService.appendProjectLog()`
 
 > No separate migration tool — **Zod preprocess + defaults** at load time.  
 > **`schemaVersion` must be `1`** — other versions throw.
+>
+> This describes the current implementation. The approved engine-game transition is a
+> deliberate breaking replacement of all available repository assets and APIs, without a
+> compatibility layer or migration tool. After that stage lands, replace this section with
+> the new current contract rather than preserving both paths.
 
 | Legacy input | Migration (automatic) | Where |
 | ------------ | --------------------- | ----- |
@@ -309,6 +322,18 @@ Append-only project log: `logs/haku.log` via `projectService.appendProjectLog()`
 | `showDirectoryPicker` | https://developer.mozilla.org/en-US/docs/Web/API/Window/showDirectoryPicker |
 | `webkitdirectory` fallback | https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/webkitdirectory |
 | Fetch API | https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API |
+
+### Approved future editor/platform references
+
+These references inform target contracts; their packages/adapters are not implemented yet.
+
+| Topic | URL |
+| --- | --- |
+| React Flow | https://reactflow.dev/ |
+| Monaco Editor | https://github.com/microsoft/monaco-editor |
+| Yandex Games player data | https://yandex.com/dev/games/doc/en/sdk/sdk-player |
+| Poki HTML5 SDK / cloud gamesaves | https://sdk.poki.com/html5 |
+| Poki SDK lifecycle | https://sdk.poki.com/sdk-documentation |
 
 ### Rapier `@dimforge/rapier3d-compat` ^0.19.3
 

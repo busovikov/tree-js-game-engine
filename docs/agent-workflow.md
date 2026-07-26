@@ -85,6 +85,7 @@ Copy this into the task prompt or follow as agent:
 | Project I/O | `edge-cases.md`, `links.md` | `project-service.ts` |
 | Bug fix | `edge-cases.md` + failing test file | Minimal repro path from grep |
 | **Build from reference** | `reference-driven-cycle.md` | `@reference-driven-cycle` — orchestrator |
+| **Engine improvement via Bounce Run** | `autonomous-engine-game-agent.md`, `engine-game-development-plan.md` | Dispatch exactly one milestone/substage using `stage-handoff.md` |
 | Dependency / version | `techstack.md` | Relevant `package.json` only |
 | External game / create | `architecture.md`, `links.md` | `packages/create/templates/` |
 
@@ -166,6 +167,12 @@ Before finishing, confirm task did not violate:
 ---
 
 ## Session handoff (when context is full)
+
+For the Bounce Run engine-improvement program,
+[`stage-handoff.md`](./stage-handoff.md) is mandatory and supersedes the compact generic
+template below. Each semantic stage starts in a fresh sub-agent. Hand off at an available
+80% context indicator, or earlier when the remaining context cannot safely cover
+implementation, verification, and reporting.
 
 If the task is large, **split into sub-tasks** — each sub-task = **new session** with:
 
@@ -250,3 +257,7 @@ Project skills in `.agents/skills/` — each references `docs/`:
 | Edge cases | `docs/edge-cases.md` |
 | UI kit | `docs/ui-kit.md` |
 | Links / API | `docs/links.md` |
+| Autonomous engine-game instruction | `docs/autonomous-engine-game-agent.md` |
+| Engine-game milestones | `docs/engine-game-development-plan.md` |
+| Stable graph architecture | `docs/node-graph-architecture.md` |
+| Stage handoff protocol | `docs/stage-handoff.md` |

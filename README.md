@@ -2,6 +2,12 @@
 
 Three.js-based browser game **engine** + standalone **editor**. Production games depend on `@haku/engine` only.
 
+The active development program grows reusable engine/editor capabilities through the
+Bounce Run proving game. Start at
+[`docs/autonomous-engine-game-agent.md`](docs/autonomous-engine-game-agent.md); the current
+audit, stable graph architecture, and ordered backlog are indexed in
+[`docs/README.md`](docs/README.md).
+
 ## Quick start
 
 ```bash
@@ -63,4 +69,5 @@ pnpm install && pnpm dev
 - **Editor/engine split**: no React in engine/playground bundles
 - **Scene format**: `examples/minimal.scene.json`, validated by `@haku/schema`
 
-See `AGENTS.md` and the full plan in `/Users/pavel/haku/IMPLEMENTATION_PLAN.md`.
+See [`AGENTS.md`](AGENTS.md), [`docs/architecture.md`](docs/architecture.md), and the
+current [engine-game development plan](docs/engine-game-development-plan.md).

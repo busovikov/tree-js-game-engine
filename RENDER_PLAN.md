@@ -1,5 +1,14 @@
 # RENDER_PLAN — Haku Rendering Architecture & Roadmap
 
+> **Coordination note (2026-07-26):** this remains the rendering-specific roadmap. The
+> Bounce Run engine-improvement program is orchestrated by
+> [`docs/engine-game-development-plan.md`](docs/engine-game-development-plan.md) and its
+> package/scheduler boundaries by
+> [`docs/node-graph-architecture.md`](docs/node-graph-architecture.md). Preserve this plan's
+> simulation/presentation and editor/runtime boundaries, but do not let render work bypass
+> the active milestone order or reintroduce path-based assets/central registries after their
+> replacement.
+
 > **Audience:** Implementation agent.  
 > **Status:** Planning document only — no implementation implied by this file.  
 > **Goal:** Canonical, scalable rendering stack for `@haku/engine` + `@haku/editor`, aligned with Three.js best practices (WebGL today, WebGPU/TSL later).

@@ -1,5 +1,14 @@
 # @haku — Implementation Plan
 
+> **Program status note (2026-07-26):** this file remains a historical/current baseline.
+> The approved engine-improvement program intentionally supersedes conflicting decisions
+> here, including compatibility, testing scope, project placement, component registries,
+> asset identity, and runtime scheduling. Use
+> [`docs/autonomous-engine-game-agent.md`](docs/autonomous-engine-game-agent.md),
+> [`docs/node-graph-architecture.md`](docs/node-graph-architecture.md), and
+> [`docs/engine-game-development-plan.md`](docs/engine-game-development-plan.md) for new
+> work. Do not implement both old and target contracts.
+
 > **Audience:** Agent implementing the project from scratch (no prior conversation context).  
 > **Goal:** Browser game/app **engine** + separate **editor**. Production projects use only the engine and scene assets — never the editor.
 
@@ -938,4 +947,3 @@ Decisions confirmed with project owner:
 - ✅ Minimal testing (serializer roundtrip only)
 - ✅ Seven phases: **Skills Setup** → Foundation → Engine → Serializer → Editor → Undo/Assets/Play → **Game Project Scaffolder**
 - ✅ `@haku/create` — Phase 6; `createHakuProject()` + CLI (§8)
-

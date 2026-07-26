@@ -8,6 +8,12 @@
 | Document | When to read |
 | -------- | ------------ |
 | **[agent-workflow.md](./agent-workflow.md)** | **Every new task** — context rules, search strategy, done criteria |
+| **[autonomous-engine-game-agent.md](./autonomous-engine-game-agent.md)** | **Engine improvement through Bounce Run** — authority, constraints, full mission |
+| **[engine-game-development-plan.md](./engine-game-development-plan.md)** | Ordered sub-agent milestones, acceptance criteria, full MVP, deferred backlog |
+| **[node-graph-architecture.md](./node-graph-architecture.md)** | Stable target contracts for graph runtime, scheduler, checkpoint, browser authoring |
+| [engine-game-current-state.md](./engine-game-current-state.md) | Audited baseline capability matrix and current/target delta |
+| [stage-handoff.md](./stage-handoff.md) | Mandatory semantic-stage and 80%-context handoff protocol |
+| [next-session-prompt.md](./next-session-prompt.md) | Short launcher prompt for the autonomous implementation session |
 | **[reference-driven-cycle.md](./reference-driven-cycle.md)** | **Build game from reference** — orchestrator, subagents, iterative board |
 | [techstack.md](./techstack.md) | Choosing libraries, build tools, or package dependencies |
 | [architecture.md](./architecture.md) | System design, data flow, package boundaries |
@@ -51,6 +57,10 @@ Auto-loaded in Cursor (`.cursor/rules/`):
 | `RENDER_PLAN.md` | Rendering roadmap (RenderSettings, shadows, post FX) |
 | `README.md` | Human quick start |
 
+`IMPLEMENTATION_PLAN.md` is the historical/current baseline. For the Bounce Run
+engine-improvement program, explicit decisions in `autonomous-engine-game-agent.md` and
+`node-graph-architecture.md` supersede conflicts in that older plan.
+
 ## Commands
 
 ```bash
@@ -68,4 +78,7 @@ pnpm --filter @haku/editor-app dev
 2. **Component data lives in `IWorld`** — Three.js objects are derived by `RenderSyncSystem`, not stored in components.
 3. **All editor mutations go through `commitSceneEdit`** (undo/redo) or `globalCommandBus`.
 4. **Entity IDs are UUID v4 strings** — never array indices.
-5. **Do not revisit locked decisions** in `IMPLEMENTATION_PLAN.md` §2 unless the user explicitly asks.
+5. **Outside the approved engine-game overrides, do not revisit locked decisions** in
+   `IMPLEMENTATION_PLAN.md` §2 unless the user explicitly asks.
+6. **Engine-game stages use fresh sub-agents** and the handoff protocol; never load the
+   entire prior dialogue into a stage context.

@@ -3,6 +3,13 @@
 > Situations to anticipate, accepted solutions, and known gaps.  
 > **Read this before implementing** to avoid repeating failed approaches.
 
+Entries below describe the current v1 implementation unless marked otherwise. The
+engine-game program deliberately replaces current schemas/assets without a compatibility
+layer in M02. New graph, checkpoint, browser-code, activation, pool, UI, audio, save, and
+export failure contracts are acceptance criteria in
+[`engine-game-development-plan.md`](./engine-game-development-plan.md) and become current
+entries here as their stages land.
+
 ---
 
 ## Agent testing mandate

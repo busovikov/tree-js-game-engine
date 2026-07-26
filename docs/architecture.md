@@ -2,6 +2,16 @@
 
 > System design for @haku — browser game engine + standalone editor.
 
+This document describes the architecture implemented today. The audited capability delta is
+[`engine-game-current-state.md`](./engine-game-current-state.md). The approved target
+package, scheduler, gameplay graph, checkpoint, custom-code, and browser-authoring contracts
+are in [`node-graph-architecture.md`](./node-graph-architecture.md), delivered in the order
+defined by [`engine-game-development-plan.md`](./engine-game-development-plan.md).
+
+Do not describe target packages below as already implemented. During the active program,
+explicit target decisions supersede conflicting historical choices in
+[`IMPLEMENTATION_PLAN.md`](../IMPLEMENTATION_PLAN.md).
+
 ## Product split
 
 ```
@@ -259,6 +269,10 @@ Entities reference `RenderPrototype` (`mode: mesh | instanced | batched | sprite
 | New render feature | `render-settings.ts` feature flag + engine pass + Render Settings UI |
 | Custom game logic | `apps/playground/src/main.ts` — add `ISystem` to engine |
 | Editor command | `commands/*.ts` — implement `Command`, use `commitSceneEdit` for scene mutations |
+
+These are current extension points. Their approved replacements—package-owned component
+schemas, universal registries, Custom Node SDK, behavior graphs/systems, editor extensions,
+and asset UUIDs—are target work and become authoritative only as their milestones land.
 
 ---
 

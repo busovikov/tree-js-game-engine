@@ -2,6 +2,12 @@
 
 > Per-module technology choices. Use this when adding dependencies or choosing tools.
 
+This file documents installed/current technology. Approved target packages and replaceable
+React Flow/Monaco providers are described in
+[`node-graph-architecture.md`](./node-graph-architecture.md) and are added only in their
+milestones. The target remains browser-first: authoring cannot require a CLI, Node daemon,
+or server-side processing.
+
 ## Monorepo
 
 | Tool | Version / notes |
@@ -95,7 +101,7 @@ Root scripts: `pnpm build`, `pnpm test`, `pnpm lint`, `pnpm typecheck`.
 
 **Tests:** `packages/physics/src/stub-backend.test.ts`, `packages/physics/src/primitives.test.ts`
 
-**Vehicle solver references:** [`links.md` § Rapier](../links.md#rapier-dimforge-rapier3d-compat-0193) — Rapier docs + custom raycast vehicle examples (Isaac Mason sketch, Three.js Rapier vehicle controller).
+**Vehicle solver references:** [`links.md` § Rapier](./links.md#rapier-dimforge-rapier3d-compat-0193) — Rapier docs + custom raycast vehicle examples (Isaac Mason sketch, Three.js Rapier vehicle controller).
 
 ---
 

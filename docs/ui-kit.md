@@ -18,7 +18,11 @@
 | Collider wireframe preview | `viewport/scene-collider-gizmos.ts` — green wireframe on selected entity with `Collider` |
 | Dev shell (mount point) | `apps/editor/src/main.tsx` |
 
-**There is no separate `@haku/ui` package** — editor UI lives inside `@haku/editor`.
+**Current state:** there is no separate `@haku/ui` package; editor UI lives inside
+`@haku/editor`. The approved target adds a production DOM UI package and visual UI authoring
+in M10b. It does not replace the React editor UI kit and must not make production games
+depend on React. Graph canvas and code editor providers remain replaceable; see
+[`node-graph-architecture.md`](./node-graph-architecture.md).
 
 ---
 

@@ -961,8 +961,8 @@ RigidBody-компонента → `physicsBodyHandle` писать некуда
 ## 19. Кросс-чек: Simon Dev Gamedev 02-11 Physics (Rapier + Three.js)
 
 _Источники:_
-- **Theory** (~18 min): `02-11-physics-theory.vtt` → [`simon-02-11-physics-theory-transcript.txt`](../reference/simon-02-11-physics-theory-transcript.txt)
-- **Code** (~1:49): `02-11-physics-code.vtt` → [`simon-02-11-physics-transcript.txt`](../reference/simon-02-11-physics-transcript.txt)
+- **Theory** (~18 min): `02-11-physics-theory.vtt` → [`simon-02-11-physics-theory-transcript.txt`](./reference/simon-02-11-physics-theory-transcript.txt)
+- **Code** (~1:49): `02-11-physics-code.vtt` → [`simon-02-11-physics-transcript.txt`](./reference/simon-02-11-physics-transcript.txt)
 - финальный код `/Users/pavel/Downloads/02-11-physics-final/src/main.js`
 - Mux HLS (signed URLs не коммитить — токены истекают)
 
