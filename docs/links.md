@@ -71,7 +71,7 @@
 | ------ | ------- |
 | `validateSceneDocument(data)` | **Read gate** — parse + legacy preprocess |
 | `SceneDocumentSchema`, `SceneDocument` | Top-level scene type |
-| `HakuProjectSchema`, `HakuProject` | `haku.project.json` |
+| `AssetIdSchema`, `AssetTypeIdSchema`, `AssetRefSchema` | UUID identity and typed-reference primitives |
 | `TransformSchema`, `CameraSchema`, `LightSchema`, `MeshRendererSchema`, … | Component shapes |
 | `coreComponentSchemas` | Map component id → Zod schema (inspector) |
 | `CORE_COMPONENT_IDS` | Allowed component type strings |
@@ -81,6 +81,16 @@
 | `defaultEditorProjectSettings()`, `EDITOR_PROJECT_SETTINGS_PATH` | Editor-only prefs — [`.haku/editor.json`](../packages/schema/src/editor-project-settings.ts) |
 | `projectPathToUrl()`, `relativeToAssetsDir()`, `DEFAULT_ASSETS_DIR` | Asset path helpers — [`paths.ts`](../packages/schema/src/paths.ts) |
 | `isComponentEnabled()`, `withComponentEnabled()` | Component enable flag |
+
+### `@haku/assets` — `packages/assets/src/index.ts`
+
+| Export | Purpose |
+| ------ | ------- |
+| `validateProjectManifest(data)`, `ProjectManifestSchema` | `haku.project.json` read gate |
+| `ProjectAssetIndex` | Resolve a typed UUID reference to its manifest entry/path |
+| `AssetRegistry`, `AssetTypeDescriptor` | Decentralized asset-type registration |
+| `dependencyClosure()` | Deterministic dependency-first traversal |
+| `AssetDiagnosticError` | Structured manifest/reference diagnostics |
 
 ### `@haku/core` — `packages/core/src/index.ts`
 
@@ -166,19 +176,30 @@ WRITE: world + metadata → saveSceneDocument() → JSON.stringify → projectSe
 
 ### Project manifest (`haku.project.json`)
 
-> **Current API only.** The engine-game program deliberately replaces path identity with a
-> universal UUID asset manifest in M02. No compatibility branch is planned.
-
 ```json
 {
+  "schemaVersion": 1,
   "name": "my-game",
-  "entryScene": "public/assets/scenes/menu.scene.json",
+  "entryScene": {
+    "$ref": "10000000-0000-4000-8000-000000000001",
+    "type": "20000000-0000-4000-8000-000000000001"
+  },
   "assetsDir": "public/assets",
-  "scriptsDir": "scripts"
+  "scriptsDir": "scripts",
+  "assets": [
+    {
+      "id": "10000000-0000-4000-8000-000000000001",
+      "type": "20000000-0000-4000-8000-000000000001",
+      "path": "scenes/menu.scene.json",
+      "dependencies": []
+    }
+  ]
 }
 ```
 
-Parse with `HakuProjectSchema`. Playground: [`apps/playground/haku.project.json`](../apps/playground/haku.project.json).
+Paths are relative to `assetsDir`; UUIDs are identity. Moving an asset updates only its
+manifest `path`. Parse with `validateProjectManifest()`. Playground:
+[`apps/playground/haku.project.json`](../apps/playground/haku.project.json).
 
 ### Editor project settings (`.haku/editor.json`)
 
@@ -208,10 +229,11 @@ Never mutate `useEditorStore` world/sceneDocument directly for user actions. See
 ### Asset / model loading
 
 ```
-MeshRenderer.modelAsset path
-  → projectService.resolveModelAssetUrl(path)
+MeshRenderer.modelAsset.$ref
+  → ProjectAssetIndex resolves UUID to a manifest path
+  → projectService.resolveModelAsset(id)
   → setModelAssetResolver (editor wires this)
-  → loadModelTemplate(path) in engine
+  → loadModelTemplate(id) in engine
 ```
 
 Log categories: `modelLog`, `gltf.load.failed` — [`model-loader.ts`](../packages/engine/src/model-loader.ts).

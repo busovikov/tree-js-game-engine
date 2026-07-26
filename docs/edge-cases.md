@@ -53,7 +53,7 @@ Manual viewport checks **supplement** automated tests — never replace them.
 | **No model assets** | Asset dir empty | Model picker: `No model assets in project` | `ModelPickerDialog` |
 | **No camera in scene** | Zero `Camera` components | `resolveActiveCameraId()` → `null`; editor falls back to orbit camera | `scene-camera.ts` |
 | **No prefabs** | `prefabs` map empty | Place prefab menu → alert `No prefabs in scene` | `EditorApp.tsx` |
-| **Empty model path** | `MeshRenderer.modelAsset === ''` | `loadModelTemplate` throws `Model asset path is empty` | `model-loader.ts` |
+| **No model reference** | `MeshRenderer.modelAsset` omitted | Primitive renderers work; `ModelGeometry` has no model to load | `render-sync-system.ts` |
 | **Empty folder picker** | `fileList.length === 0` | `No files selected` | `browser-project-store.ts` |
 | **Selection outline** | No targets | Outline pass skipped (no GPU alloc) | `editor-selection-outline.ts` |
 | **Post-processing off** | `features.postProcessing === false` | No `EffectComposer` created | `post-process-chain.ts` |
@@ -99,8 +99,11 @@ Manual viewport checks **supplement** automated tests — never replace them.
 | Input | Result |
 | ----- | ------ |
 | Missing `haku.project.json` | Open project fails at manifest read |
-| Invalid manifest JSON | `HakuProjectSchema.parse()` throws |
-| `entryScene` path missing | Scene load → `File not found` / fetch 404 |
+| Invalid manifest JSON/schema | `validateProjectManifest()` throws `AssetDiagnosticError` with `manifest.invalid` diagnostics |
+| Duplicate asset UUID | `validateProjectManifest()` throws `asset.duplicate-id` |
+| Unknown asset UUID | `ProjectAssetIndex.require()` throws `asset.unknown-id` |
+| Typed reference points to the wrong asset type | `ProjectAssetIndex.require()` throws `asset.type-mismatch` |
+| `entryScene` UUID missing or not a scene | Project open fails before scene loading |
 
 ### Hierarchy / world invariants
 
@@ -193,7 +196,7 @@ There is **no SQL/NoSQL database** in @haku v1. Do not add DB error handling unl
 | Read without project open | `No project folder open` | `native-project-store` |
 | Write permission denied | `Write permission to the project folder was denied` | `ensureWritePermission` |
 | Read missing file | `File not found: {path}` | native + browser stores |
-| Invalid path traversal | Paths normalized; assets must be under `assetsDir` | `project-service` import guard |
+| Invalid path traversal | Imports are rejected unless the normalized path is under `assetsDir` | `project-service` manifest registration |
 
 **Not applicable (do not implement without explicit request):**
 - HTTP 401 / 403 from API

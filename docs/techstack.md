@@ -21,6 +21,18 @@ or server-side processing.
 
 Root scripts: `pnpm build`, `pnpm test`, `pnpm lint`, `pnpm typecheck`.
 
+## `@haku/assets`
+
+**Role:** UUID project asset manifest, typed references, structured diagnostics, asset-type
+registry, manifest index, and deterministic dependency closure.
+
+| Dependency | Purpose |
+| ---------- | ------- |
+| `@haku/schema` | Base UUID and typed-reference schemas |
+| **Zod** | Manifest and asset descriptor schemas |
+
+**Build:** `tsc` → `dist/`
+
 ---
 
 ## `@haku/schema`
@@ -183,6 +195,7 @@ Root scripts: `pnpm build`, `pnpm test`, `pnpm lint`, `pnpm typecheck`.
 
 | Dependency | Purpose |
 | ---------- | ------- |
+| `@haku/assets` | Validate and resolve template project manifests |
 | `@haku/schema` | Validate template scene JSON |
 | Node built-ins | File copy, `git init` |
 
@@ -198,10 +211,11 @@ Root scripts: `pnpm build`, `pnpm test`, `pnpm lint`, `pnpm typecheck`.
 
 | Dependency | Purpose |
 | ---------- | ------- |
+| `@haku/assets` | Project manifest validation and UUID asset lookup |
 | `@haku/engine` | Runtime |
 | **Vite** ^6 | Dev server + production bundle |
 
-**Layout:** `haku.project.json`, `assets/scenes/`, `src/main.ts`
+**Layout:** `haku.project.json`, `public/assets/scenes/`, `src/main.ts`
 
 ---
 
@@ -224,7 +238,7 @@ Root scripts: `pnpm build`, `pnpm test`, `pnpm lint`, `pnpm typecheck`.
 | Module format | ESM (`"type": "module"`) |
 | Package linking | `workspace:*` or `file:../` in monorepo |
 | Scene files | `*.scene.json`, schema v1 |
-| Project manifest | `haku.project.json` |
+| Project manifest | `haku.project.json`, schema v1 UUID asset inventory |
 | Rotation in JSON | Quaternion `[x, y, z, w]` |
 | Entity IDs | UUID v4 strings |
 

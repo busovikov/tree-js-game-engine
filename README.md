@@ -33,6 +33,7 @@ pnpm test
 | Package | Role |
 |---------|------|
 | `@haku/schema` | Scene JSON v1 Zod schemas |
+| `@haku/assets` | UUID asset manifests, registries, references, and dependency closure |
 | `@haku/core` | `IWorld`, components, systems |
 | `@haku/serializer` | Load/save scenes (+ `@haku/serializer/node` for fs) |
 | `@haku/engine` | Three.js runtime (`@haku/engine/runtime` for games) |

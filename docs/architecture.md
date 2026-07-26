@@ -33,19 +33,21 @@ scene assets (.scene.json)
 ```
 @haku/schema          (no deps)
     ↓
+@haku/assets          → schema
+    ↓
 @haku/core            → schema
     ↓
 @haku/physics         (abstract API — no Rapier/Three.js)
 @haku/physics-rapier  → physics, @dimforge/rapier3d-compat (adapter only)
 @haku/serializer      → schema, core
     ↓
-@haku/engine          → core, schema, serializer, physics, three
+@haku/engine          → assets, core, schema, serializer, physics, three
     ↓
 @haku/editor          → engine, core, schema, serializer, react*, zustand
     ↓
 @haku/editor-app      → editor
 
-@haku/playground      → engine only
+@haku/playground      → assets, engine
 @haku/create          → schema (templates)
 ```
 
@@ -237,10 +239,10 @@ External games and `apps/playground` share this layout:
 
 ```
 my-game/
-├── haku.project.json       # name, entryScene, assetsDir
-├── package.json            # @haku/engine only
+├── haku.project.json       # UUID asset inventory, paths, dependencies, entry scene ref
+├── package.json            # @haku/assets + @haku/engine
 ├── src/main.ts             # Engine bootstrap
-├── assets/
+├── public/assets/
 │   ├── scenes/*.scene.json
 │   ├── models/
 │   └── textures/
@@ -248,6 +250,7 @@ my-game/
 ```
 
 Editor opens folder containing `haku.project.json`; reads/writes scenes under project root.
+Asset paths are locations relative to `assetsDir`; manifest UUIDs are stable identity.
 
 ---
 
