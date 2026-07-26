@@ -13,17 +13,19 @@ import {
   validateProjectManifest,
 } from '@haku/assets'
 import { registerSerializedAssetTypes } from '@haku/serializer'
+import { GRAPH_ASSET_TYPE } from '@haku/graph'
 import { createEngineAssetRegistry } from './asset-registry.js'
 
 const sceneId = assetId('10000000-0000-4000-8000-000000000031')
 const modelId = assetId('10000000-0000-4000-8000-000000000032')
 
 describe('production asset registry composition', () => {
-  it('assembles concrete scene, prefab, model, and texture descriptors', () => {
+  it('assembles concrete scene, prefab, graph, model, and texture descriptors', () => {
     const registry = createEngineAssetRegistry()
 
     expect(registry.require(SCENE_ASSET_TYPE).name).toBe('Scene')
     expect(registry.require(PREFAB_ASSET_TYPE).name).toBe('Prefab')
+    expect(registry.require(GRAPH_ASSET_TYPE).name).toBe('Graph')
     expect(registry.require(MODEL_ASSET_TYPE).name).toBe('Model')
     expect(registry.require(TEXTURE_ASSET_TYPE).name).toBe('Texture')
 

@@ -31,3 +31,9 @@ export {
   type JsonValue,
   type TypeExpression,
 } from './graph-schema.js'
+
+export {
+  GRAPH_ASSET_DESCRIPTOR,
+  GRAPH_ASSET_TYPE,
+  registerGraphAssetTypes,
+} from './asset-types.js'

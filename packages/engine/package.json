@@ -25,6 +25,7 @@
   "dependencies": {
     "@haku/assets": "workspace:*",
     "@haku/core": "file:../core",
+    "@haku/graph": "workspace:*",
     "@haku/physics": "file:../physics",
     "@haku/schema": "file:../schema",
     "@haku/serializer": "file:../serializer",

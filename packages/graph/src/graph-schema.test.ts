@@ -84,4 +84,25 @@ describe('graph asset JSON schema', () => {
       }),
     ).toThrow()
   })
+
+  it('rejects UI-library objects nested inside generic graph metadata', () => {
+    const source = graphAsset()
+
+    expect(() =>
+      GraphAssetSchema.parse({
+        ...source,
+        graph: {
+          ...source.graph,
+          metadata: {
+            adapterState: {
+              reactFlow: {
+                nodes: [],
+                edges: [],
+              },
+            },
+          },
+        },
+      }),
+    ).toThrow(/UI-library field/)
+  })
 })

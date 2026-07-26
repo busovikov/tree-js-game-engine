@@ -206,6 +206,9 @@ importers:
       '@haku/core':
         specifier: file:../core
         version: file:packages/core
+      '@haku/graph':
+        specifier: workspace:*
+        version: link:../graph
       '@haku/physics':
         specifier: file:../physics
         version: link:../physics
@@ -2755,6 +2758,7 @@ snapshots:
     dependencies:
       '@haku/assets': link:packages/assets
       '@haku/core': file:packages/core
+      '@haku/graph': link:packages/graph
       '@haku/physics': file:packages/physics
       '@haku/schema': file:packages/schema
       '@haku/serializer': file:packages/serializer

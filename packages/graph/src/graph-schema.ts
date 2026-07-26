@@ -134,12 +134,55 @@ export const GraphDocumentSchema = z
   })
   .strict()
 
-export const GraphAssetSchema = z
+const GraphAssetDataSchema = z
   .object({
     schemaVersion: z.literal(1),
     graph: GraphDocumentSchema,
   })
   .strict()
+
+const UI_LIBRARY_FIELDS = new Set([
+  'reactFlow',
+  'positionAbsolute',
+  'handleBounds',
+  'selected',
+  'dragging',
+  'measured',
+  'sourcePosition',
+  'targetPosition',
+])
+
+function findUiLibraryField(
+  value: unknown,
+  path: (string | number)[] = [],
+): { readonly field: string; readonly path: (string | number)[] } | undefined {
+  if (Array.isArray(value)) {
+    for (const [index, item] of value.entries()) {
+      const found = findUiLibraryField(item, [...path, index])
+      if (found) return found
+    }
+    return undefined
+  }
+  if (typeof value !== 'object' || value === null) return undefined
+  for (const [key, item] of Object.entries(value)) {
+    if (UI_LIBRARY_FIELDS.has(key)) {
+      return { field: key, path: [...path, key] }
+    }
+    const found = findUiLibraryField(item, [...path, key])
+    if (found) return found
+  }
+  return undefined
+}
+
+export const GraphAssetSchema = GraphAssetDataSchema.superRefine((value, context) => {
+  const found = findUiLibraryField(value)
+  if (!found) return
+  context.addIssue({
+    code: z.ZodIssueCode.custom,
+    message: `UI-library field is not valid graph data: ${found.field}`,
+    path: found.path,
+  })
+})
 
 export type GraphPortKind = z.infer<typeof GraphPortKindSchema>
 export type GraphPortDirection = z.infer<typeof GraphPortDirectionSchema>
