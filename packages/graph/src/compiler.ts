@@ -51,6 +51,33 @@ export interface ExecutionPlanNode {
   readonly checkpoint: ReturnType<typeof analyzeNodeCheckpointEligibility>
 }
 
+export type CheckpointDependencyKind =
+  | 'dynamic-physics'
+  | 'unknown-effect'
+  | 'unbounded-scope'
+
+export interface CheckpointDependency {
+  readonly kind: CheckpointDependencyKind
+  readonly nodeId: string
+  readonly resource?: string
+  readonly effect?: string
+  readonly causalChain: readonly string[]
+}
+
+export interface CheckpointStateScope {
+  readonly nodes: readonly string[]
+  readonly resources: readonly string[]
+  readonly unbounded: boolean
+}
+
+export interface ExecutionPlanCheckpoint {
+  readonly nodeId: string
+  readonly eligible: boolean
+  readonly stateScope: CheckpointStateScope
+  readonly dependencies: readonly CheckpointDependency[]
+  readonly asyncPolicies: readonly never[]
+}
+
 export interface ExecutionPlanConnection {
   readonly id: string
   readonly kind: GraphCallsite['kind']
@@ -74,6 +101,7 @@ export interface GraphExecutionPlan {
   readonly connections: readonly ExecutionPlanConnection[]
   readonly publicInterface: GraphPublicInterface
   readonly subgraphs: readonly ExecutionPlanSubgraph[]
+  readonly checkpoints: readonly ExecutionPlanCheckpoint[]
   readonly checkpointEligible: boolean
 }
 
@@ -495,6 +523,103 @@ function topologicalOrder(
   return ordered
 }
 
+function analyzeCheckpoints(
+  analyses: ReadonlyMap<string, NodeAnalysis>,
+  connections: readonly ExecutionPlanConnection[],
+): ExecutionPlanCheckpoint[] {
+  const checkpoints: ExecutionPlanCheckpoint[] = []
+  for (const checkpoint of [...analyses.values()]
+    .filter((analysis) => analysis.definition.contract.checkpointRole === 'create')
+    .sort((left, right) => left.node.id.localeCompare(right.node.id))) {
+    const paths = new Map<string, readonly string[]>([
+      [checkpoint.node.id, []],
+    ])
+    const pending = [checkpoint.node.id]
+    while (pending.length > 0) {
+      const current = pending.shift()!
+      const currentPath = paths.get(current)!
+      for (const connection of connections) {
+        let next: string | undefined
+        let cause: string | undefined
+        if (
+          connection.operation === 'data-dependency' &&
+          connection.to.node === current
+        ) {
+          next = connection.from.node
+          cause = `data dependency ${connection.from.node} -> ${connection.to.node}`
+        } else if (
+          connection.operation !== 'data-dependency' &&
+          connection.from.node === current
+        ) {
+          next = connection.to.node
+          cause = `${connection.kind} dependency ${connection.from.node} -> ${connection.to.node}`
+        }
+        if (next === undefined || cause === undefined || paths.has(next)) continue
+        paths.set(next, [...currentPath, cause])
+        pending.push(next)
+      }
+    }
+
+    const scoped = [...paths.keys()]
+      .map((id) => analyses.get(id)!)
+      .sort((left, right) => left.node.id.localeCompare(right.node.id))
+    const dependencies: CheckpointDependency[] = []
+    for (const analysis of scoped) {
+      const prefix = [
+        `checkpoint ${checkpoint.node.id}`,
+        ...(paths.get(analysis.node.id) ?? []),
+        `node ${analysis.definition.contract.name} (${analysis.node.id})`,
+      ]
+      for (const read of analysis.definition.contract.reads) {
+        if (read.scope !== 'dynamic') continue
+        dependencies.push({
+          kind: 'dynamic-physics',
+          nodeId: analysis.node.id,
+          resource: read.resource,
+          causalChain: [...prefix, `dynamic physics read ${read.resource}`],
+        })
+      }
+      for (const effect of analysis.definition.contract.effects) {
+        if (effect !== 'unknown' && effect !== 'external') continue
+        dependencies.push({
+          kind: 'unknown-effect',
+          nodeId: analysis.node.id,
+          effect,
+          causalChain: [...prefix, `effect ${effect}`],
+        })
+      }
+      if (analysis.definition.contract.checkpointScope === 'unbounded') {
+        dependencies.push({
+          kind: 'unbounded-scope',
+          nodeId: analysis.node.id,
+          causalChain: [...prefix, 'unbounded mutable scope'],
+        })
+      }
+    }
+    dependencies.sort((left, right) =>
+      `${left.nodeId}:${left.kind}:${left.resource ?? ''}:${left.effect ?? ''}`
+        .localeCompare(
+          `${right.nodeId}:${right.kind}:${right.resource ?? ''}:${right.effect ?? ''}`,
+        ),
+    )
+    checkpoints.push({
+      nodeId: checkpoint.node.id,
+      eligible: dependencies.length === 0,
+      stateScope: {
+        nodes: scoped.map((analysis) => analysis.node.id),
+        resources: [...new Set(scoped.flatMap((analysis) => [
+          ...analysis.definition.contract.reads.map((read) => read.resource),
+          ...analysis.definition.contract.writes.map((write) => write.resource),
+        ]))].sort(),
+        unbounded: dependencies.some((item) => item.kind === 'unbounded-scope'),
+      },
+      dependencies,
+      asyncPolicies: [],
+    })
+  }
+  return checkpoints
+}
+
 function compileInternal(
   input: unknown,
   options: CompileGraphOptions,
@@ -866,6 +991,7 @@ function compileInternal(
       checkpoint: analyzeNodeCheckpointEligibility(analysis.definition),
     }
   })
+  const checkpoints = analyzeCheckpoints(analyses, planConnections)
   const registryFingerprint = createRegistryFingerprint(options.types, options.nodes)
   const planPayload = {
     schemaVersion: 1 as const,
@@ -877,7 +1003,10 @@ function compileInternal(
     ),
     publicInterface: asset.graph.publicInterface,
     subgraphs,
-    checkpointEligible: planNodes.every((node) => node.checkpoint.eligible),
+    checkpoints,
+    checkpointEligible: checkpoints.length > 0
+      ? checkpoints.every((checkpoint) => checkpoint.eligible)
+      : planNodes.every((node) => node.checkpoint.eligible),
   }
   const plan: GraphExecutionPlan = {
     ...planPayload,

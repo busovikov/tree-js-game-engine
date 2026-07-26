@@ -23,6 +23,8 @@ import {
 export type NodeKind = 'builtin' | 'custom' | 'subgraph'
 export type NodeExecutionContract = 'sync' | 'async'
 export type NodeCheckpointPolicy = 'safe' | 'conditional' | 'unsafe'
+export type NodeCheckpointRole = 'none' | 'create'
+export type NodeCheckpointScope = 'bounded' | 'unbounded'
 export type NodeResultPersistence = 'none' | 'execution' | 'checkpoint'
 export type NodeLiveness = 'pure' | 'on-flow' | 'on-event' | 'always'
 export type ResourceScope = 'static' | 'dynamic'
@@ -108,6 +110,8 @@ export interface NodeDefinitionContract {
   readonly effects: readonly NodeEffect[]
   readonly execution: NodeExecutionContract
   readonly checkpoint: NodeCheckpointPolicy
+  readonly checkpointRole: NodeCheckpointRole
+  readonly checkpointScope: NodeCheckpointScope
   readonly resultPersistence: NodeResultPersistence
   readonly liveness: NodeLiveness
   readonly exportedState: readonly ExportedNodeState[]
@@ -127,10 +131,15 @@ export interface NodePortInput {
 }
 
 export interface NodeDefinitionInput
-  extends Omit<NodeDefinitionContract, 'ports' | 'propertyContract'> {
+  extends Omit<
+    NodeDefinitionContract,
+    'ports' | 'propertyContract' | 'checkpointRole' | 'checkpointScope'
+  > {
   readonly ports: readonly NodePortInput[]
   readonly propertySchema: z.ZodType<Record<string, unknown>, z.ZodTypeDef, unknown>
   readonly propertyContract: unknown
+  readonly checkpointRole?: NodeCheckpointRole
+  readonly checkpointScope?: NodeCheckpointScope
 }
 
 function diagnostic(
@@ -229,6 +238,8 @@ export function defineNode(input: NodeDefinitionInput): NodeDefinition {
       effects: [...input.effects].sort(),
       execution: input.execution,
       checkpoint: input.checkpoint,
+      checkpointRole: input.checkpointRole ?? 'none',
+      checkpointScope: input.checkpointScope ?? 'bounded',
       resultPersistence: input.resultPersistence,
       liveness: input.liveness,
       exportedState: [...input.exportedState].sort((left, right) =>

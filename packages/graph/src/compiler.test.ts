@@ -486,6 +486,146 @@ describe('headless graph compiler', () => {
     ])
   })
 
+  it('keeps an independent checkpoint eligible beside unrelated dynamic physics', () => {
+    const types = createBuiltinTypeRegistry()
+    const nodes = new NodeRegistry()
+    nodes.register(
+      definition(20, [
+        { id: uid(120), name: 'Next', kind: 'flow', direction: 'output' },
+      ], {
+        name: 'SafeCheckpoint',
+        checkpointRole: 'create',
+      }),
+    )
+    nodes.register(
+      definition(21, [
+        { id: uid(121), name: 'In', kind: 'flow', direction: 'input' },
+      ], {
+        name: 'SafeLogic',
+        liveness: 'on-flow',
+        writes: [{ resource: 'logic.score', scope: 'static' }],
+      }),
+    )
+    nodes.register(
+      definition(22, [], {
+        name: 'UnrelatedDynamicBody',
+        reads: [{ resource: 'physics.dynamic-body', scope: 'dynamic' }],
+      }),
+    )
+
+    const result = compileGraph(
+      graph(
+        [
+          node(120, 20, [callsite(220, 120, 'flow', 'output')]),
+          node(121, 21, [callsite(221, 121, 'flow', 'input')]),
+          node(122, 22, []),
+        ],
+        [connection(320, 120, 220, 121, 221)],
+      ),
+      { types, nodes },
+    )
+
+    expect(result.diagnostics).toEqual([])
+    expect(result.plan?.checkpointEligible).toBe(true)
+    expect(result.plan?.checkpoints).toEqual([
+      {
+        nodeId: uid(120),
+        eligible: true,
+        stateScope: {
+          nodes: [uid(120), uid(121)],
+          resources: ['logic.score'],
+          unbounded: false,
+        },
+        dependencies: [],
+        asyncPolicies: [],
+      },
+    ])
+  })
+
+  it('rejects direct and transitive dynamic-physics reads with complete causal chains', () => {
+    const types = createBuiltinTypeRegistry()
+    const directNodes = new NodeRegistry()
+    directNodes.register(
+      definition(23, [], {
+        name: 'DirectCheckpoint',
+        checkpointRole: 'create',
+        reads: [{ resource: 'physics.dynamic-body', scope: 'dynamic' }],
+      }),
+    )
+
+    const direct = compileGraph(graph([node(123, 23, [])]), {
+      types,
+      nodes: directNodes,
+    })
+
+    expect(direct.plan?.checkpoints[0]).toMatchObject({
+      eligible: false,
+      dependencies: [
+        {
+          kind: 'dynamic-physics',
+          nodeId: uid(123),
+          resource: 'physics.dynamic-body',
+          causalChain: [
+            `checkpoint ${uid(123)}`,
+            `node DirectCheckpoint (${uid(123)})`,
+            'dynamic physics read physics.dynamic-body',
+          ],
+        },
+      ],
+    })
+
+    const transitiveNodes = new NodeRegistry()
+    transitiveNodes.register(
+      definition(24, [
+        { id: uid(124), name: 'Value', kind: 'data', direction: 'output', type: namedType(NUMBER_TYPE) },
+      ], {
+        name: 'DynamicQuery',
+        reads: [{ resource: 'physics.query.dynamic', scope: 'dynamic' }],
+        liveness: 'pure',
+      }),
+    )
+    transitiveNodes.register(
+      definition(25, [
+        { id: uid(125), name: 'Value', kind: 'data', direction: 'input', type: namedType(NUMBER_TYPE) },
+      ], {
+        name: 'TransitiveCheckpoint',
+        checkpointRole: 'create',
+      }),
+    )
+
+    const transitive = compileGraph(
+      graph(
+        [
+          node(124, 24, [
+            callsite(224, 124, 'data', 'output', namedType(NUMBER_TYPE)),
+          ]),
+          node(125, 25, [
+            callsite(225, 125, 'data', 'input', namedType(NUMBER_TYPE)),
+          ]),
+        ],
+        [connection(324, 124, 224, 125, 225)],
+      ),
+      { types, nodes: transitiveNodes },
+    )
+
+    expect(transitive.plan?.checkpoints[0]).toMatchObject({
+      eligible: false,
+      dependencies: [
+        {
+          kind: 'dynamic-physics',
+          nodeId: uid(124),
+          resource: 'physics.query.dynamic',
+          causalChain: [
+            `checkpoint ${uid(125)}`,
+            `data dependency ${uid(124)} -> ${uid(125)}`,
+            `node DynamicQuery (${uid(124)})`,
+            'dynamic physics read physics.query.dynamic',
+          ],
+        },
+      ],
+    })
+  })
+
   it('keeps pure data nodes only when a live node consumes them', () => {
     const types = createBuiltinTypeRegistry()
     const nodes = new NodeRegistry()
