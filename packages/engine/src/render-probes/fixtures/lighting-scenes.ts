@@ -116,7 +116,6 @@ export const directionalPositionInvarianceScene: SceneDocument = {
     },
   ],
   prototypes: {},
-  prefabs: {},
   physicsSettings: DEFAULT_PHYSICS_SETTINGS,
   renderSettings: RenderSettingsSchema.parse({
     features: { shadows: false },
@@ -180,7 +179,6 @@ export const shadowCastScene: SceneDocument = {
     },
   ],
   prototypes: {},
-  prefabs: {},
   physicsSettings: DEFAULT_PHYSICS_SETTINGS,
   renderSettings: SHADOWS_ON,
 }
@@ -225,7 +223,6 @@ export const hemisphereScene: SceneDocument = {
     },
   ],
   prototypes: {},
-  prefabs: {},
   physicsSettings: DEFAULT_PHYSICS_SETTINGS,
   renderSettings: RenderSettingsSchema.parse({
     features: { shadows: false, toneMapping: false },
@@ -298,7 +295,6 @@ export const multiLightScene: SceneDocument = {
     cubeEntity('44444444-4444-4444-8444-444444444404', 'Subject', [0, 0.5, 0]),
   ],
   prototypes: {},
-  prefabs: {},
   physicsSettings: DEFAULT_PHYSICS_SETTINGS,
   renderSettings: RenderSettingsSchema.parse({ ambient: { intensity: 0.05 } }),
 }

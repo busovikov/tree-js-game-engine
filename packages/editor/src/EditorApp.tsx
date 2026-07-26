@@ -135,23 +135,34 @@ export const EditorApp = memo(function EditorApp() {
     if (isDirty) setSaveStatus('idle')
   }, [isDirty])
 
-  const onCreatePrefab = useCallback(() => {
+  const onCreatePrefab = useCallback(async () => {
     if (!primary) return
-    const prefabId = prompt('Prefab id', `${useEditorStore.getState().world?.getEntityName(primary) ?? 'prefab'}`.toLowerCase())
-    if (!prefabId) return
-    createPrefab(primary, prefabId)
+    const prefabName = prompt(
+      'Prefab name',
+      `${useEditorStore.getState().world?.getEntityName(primary) ?? 'prefab'}`.toLowerCase(),
+    )
+    if (!prefabName) return
+    try {
+      await createPrefab(primary, prefabName)
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to create prefab')
+    }
   }, [primary])
 
   const onPlacePrefab = useCallback(() => {
-    const ids = Object.keys(sceneDocument?.prefabs ?? {})
-    if (ids.length === 0) {
-      alert('No prefabs in scene. Create one first.')
+    const prefabs = projectService.listPrefabAssetRefs()
+    if (prefabs.length === 0) {
+      alert('No prefab assets in project. Create one first.')
       return
     }
-    const prefabId = prompt(`Prefab id (${ids.join(', ')})`, ids[0])
-    if (!prefabId || !sceneDocument?.prefabs[prefabId]) return
-    placePrefab(prefabId, [0, 0, 0])
-  }, [sceneDocument])
+    const selected = prompt(
+      `Prefab asset ID (${prefabs.map((prefab) => prefab.$ref).join(', ')})`,
+      prefabs[0]?.$ref,
+    )
+    const prefab = prefabs.find((candidate) => candidate.$ref === selected)
+    if (!prefab) return
+    placePrefab(prefab, [0, 0, 0])
+  }, [])
 
   const onUndo = useCallback(() => {
     if (useEditorStore.getState().mode === 'play') return
@@ -288,7 +299,7 @@ export const EditorApp = memo(function EditorApp() {
     ],
   )
 
-  const hasPrefabs = Object.keys(sceneDocument?.prefabs ?? {}).length > 0
+  const hasPrefabs = projectService.listPrefabAssetRefs().length > 0
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>

@@ -3,6 +3,7 @@ import {
   EditorProjectSettingsSchema,
   defaultEditorProjectSettings,
   defaultSceneEditorState,
+  PrefabDefinitionSchema,
   type EditorProjectSettings,
   type PrefabDefinition,
   type SceneDocument,
@@ -16,11 +17,14 @@ import {
 } from '@haku/schema'
 import {
   BINARY_ASSET_TYPE,
+  PREFAB_ASSET_TYPE,
   DATA_ASSET_TYPE,
   MODEL_ASSET_TYPE,
   ProjectAssetIndex,
   SCENE_ASSET_TYPE,
   TEXTURE_ASSET_TYPE,
+  assetRef,
+  collectAssetReferences,
   validateProjectAssetComposition,
   validateProjectManifest,
   type ProjectManifest,
@@ -63,6 +67,7 @@ export class ProjectService {
   private readonly componentRegistry = createEngineComponentRegistry()
   private root: string | null = null
   private manifest: ProjectManifest | null = null
+  private prefabAssets = new Map<AssetId, PrefabDefinition>()
   private assetBaseUrl = ''
   private storage: ProjectStorage = 'memory'
   private modelBlobUrlCache = new Map<string, string>()
@@ -308,6 +313,10 @@ export class ProjectService {
     return this.manifest
   }
 
+  getPrefabAssets(): ReadonlyMap<AssetId, PrefabDefinition> {
+    return this.prefabAssets
+  }
+
   async loadScene(relativePath: string): Promise<{ world: IWorld; document: SceneDocument }> {
     sceneLog('load.start', {
       path: relativePath,
@@ -338,15 +347,17 @@ export class ProjectService {
         document = validateSceneDocument(await res.json())
       }
 
+      await this.loadPrefabAssets()
       const world = loadSceneDocument(document, {
         expandPrefabs: false,
         componentRegistry: this.componentRegistry,
+        prefabAssets: this.prefabAssets,
       })
       sceneLog('load.success', {
         path: relativePath,
         name: document.metadata?.name,
         entityCount: world.getAllEntities().length,
-        prefabCount: Object.keys(document.prefabs ?? {}).length,
+        prefabCount: this.prefabAssets.size,
         prototypeCount: Object.keys(document.prototypes ?? {}).length,
       })
       return { world, document }
@@ -404,7 +415,6 @@ export class ProjectService {
       world,
       document.metadata,
       document.prototypes,
-      document.prefabs,
       document.renderSettings,
       document.physicsSettings,
       this.componentRegistry,
@@ -427,6 +437,8 @@ export class ProjectService {
         await this.writeDevTargetFileToDisk(relativePath, json)
       }
     }
+
+    await this.updateSceneManifestDependencies(relativePath, saved)
 
     sceneLog('save.success', { path: relativePath, storage: this.storage, bytes: json.length })
 
@@ -1150,6 +1162,94 @@ export class ProjectService {
     return manifest
   }
 
+  async createPrefabAsset(
+    definition: PrefabDefinition,
+    displayName: string,
+  ): Promise<AssetRef> {
+    if (!this.manifest) throw new Error('No project manifest loaded')
+    const parsed = PrefabDefinitionSchema.parse(definition)
+    const id = assetId(crypto.randomUUID())
+    const safeName = displayName.trim().replace(/[^a-z0-9_-]+/gi, '-').replace(/^-|-$/g, '') || 'prefab'
+    const manifestPath = `prefabs/${safeName}-${id}.prefab.json`
+    const projectPath = `${this.manifest.assetsDir}/${manifestPath}`
+    await this.writeProjectText(projectPath, JSON.stringify(parsed, null, 2) + '\n')
+    this.manifest = validateProjectManifest({
+      ...this.manifest,
+      assets: [
+        ...this.manifest.assets,
+        {
+          id,
+          type: PREFAB_ASSET_TYPE,
+          path: manifestPath,
+          dependencies: collectAssetReferences(parsed),
+          metadata: { name: displayName },
+        },
+      ],
+    })
+    validateProjectAssetComposition(this.manifest, this.assetRegistry)
+    await this.persistManifest()
+    this.prefabAssets.set(id, parsed)
+    return assetRef(id, PREFAB_ASSET_TYPE)
+  }
+
+  listPrefabAssetRefs(): AssetRef[] {
+    if (!this.manifest) return []
+    return this.manifest.assets
+      .filter((entry) => entry.type === PREFAB_ASSET_TYPE)
+      .map((entry) => assetRef(entry.id, PREFAB_ASSET_TYPE))
+  }
+
+  private async loadPrefabAssets(): Promise<void> {
+    this.prefabAssets = new Map()
+    if (!this.manifest) return
+    for (const entry of this.manifest.assets) {
+      if (entry.type !== PREFAB_ASSET_TYPE) continue
+      const projectPath = `${this.manifest.assetsDir}/${entry.path}`.replace(/\/+/g, '/')
+      const raw = await this.readProjectText(projectPath)
+      this.prefabAssets.set(entry.id, PrefabDefinitionSchema.parse(JSON.parse(raw)))
+    }
+  }
+
+  private async readProjectText(path: string): Promise<string> {
+    if (this.storage === 'native') return nativeProjectStore.readText(path)
+    if (this.usesBrowserProjectStore()) return browserProjectStore.readText(path)
+    const url = `${this.assetBaseUrl}/${path}`.replace(/\/+/g, '/')
+    const response = await fetch(url)
+    if (!response.ok) throw new Error(`Failed to load asset: ${url}`)
+    return response.text()
+  }
+
+  private async writeProjectText(path: string, body: string): Promise<void> {
+    if (this.storage === 'native') {
+      await nativeProjectStore.writeText(path, body)
+      return
+    }
+    if (!this.usesBrowserProjectStore()) throw new Error('Project storage is read-only')
+    browserProjectStore.writeText(path, body)
+    if (this.storage === 'playground') await this.writePlaygroundFileToDisk(path, body)
+    if (this.storage === 'dev-target') await this.writeDevTargetFileToDisk(path, body)
+  }
+
+  private async updateSceneManifestDependencies(
+    projectPath: string,
+    document: SceneDocument,
+  ): Promise<void> {
+    if (!this.manifest) return
+    const manifestPath = this.manifestAssetPath(projectPath)
+    const index = this.manifest.assets.findIndex(
+      (entry) => entry.path === manifestPath && entry.type === SCENE_ASSET_TYPE,
+    )
+    if (index < 0) return
+    const assets = [...this.manifest.assets]
+    assets[index] = {
+      ...assets[index]!,
+      dependencies: collectAssetReferences(document),
+    }
+    this.manifest = validateProjectManifest({ ...this.manifest, assets })
+    validateProjectAssetComposition(this.manifest, this.assetRegistry)
+    await this.persistManifest()
+  }
+
   private resolveEntryScenePath(manifest: ProjectManifest): string {
     const relativePath = new ProjectAssetIndex(manifest).path(manifest.entryScene, SCENE_ASSET_TYPE)
     return `${manifest.assetsDir}/${relativePath}`.replace(/\/+/g, '/')
@@ -1291,7 +1391,6 @@ export const projectService = new ProjectService()
 export function extractPrefabSubtree(
   world: IWorld,
   rootId: EntityId,
-  prefabId: string,
 ): PrefabDefinition {
   const collect = (id: EntityId): EntityId[] => {
     const result = [id]
@@ -1320,7 +1419,7 @@ export function extractPrefabSubtree(
     }),
   }))
 
-  return { id: prefabId, entities }
+  return { entities }
 }
 
 export function assignPrototype(

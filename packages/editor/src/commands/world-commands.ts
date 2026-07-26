@@ -176,11 +176,12 @@ export function duplicateSelectedEntity(): void {
   })
 }
 
-export function createPrefab(rootId: EntityId, prefabId: string): void {
+export async function createPrefab(rootId: EntityId, displayName: string): Promise<void> {
   const { world, sceneDocument } = useEditorStore.getState()
   if (!world || !sceneDocument) return
 
-  const prefab = extractPrefabSubtree(world, rootId, prefabId)
+  const prefab = extractPrefabSubtree(world, rootId)
+  const prefabReference = await projectService.createPrefabAsset(prefab, displayName)
   const childIds = world.getChildren(rootId)
 
   commitSceneEdit((draft) => {
@@ -196,32 +197,29 @@ export function createPrefab(rootId: EntityId, prefabId: string): void {
       if (type) draft.world.removeComponent(rootId, type)
     }
 
-    draft.world.addComponent(rootId, PrefabInstanceComponent, { prefabId })
-    draft.sceneDocument = {
-      ...draft.sceneDocument,
-      prefabs: { ...draft.sceneDocument.prefabs, [prefabId]: prefab },
-    }
+    draft.world.addComponent(rootId, PrefabInstanceComponent, { prefab: prefabReference })
 
     return [rootId]
   })
 }
 
 export function placePrefab(
-  prefabId: string,
+  prefab: import('@haku/schema').AssetRef,
   position: [number, number, number] = [0, 0, 0],
 ): void {
-  const { sceneDocument } = useEditorStore.getState()
-  if (!sceneDocument?.prefabs[prefabId]) throw new Error(`Prefab not found: ${prefabId}`)
+  if (!projectService.getPrefabAssets().has(prefab.$ref)) {
+    throw new Error(`Prefab not found: ${prefab.$ref}`)
+  }
 
   commitSceneEdit((draft) => {
-    const id = draft.world.createEntity(prefabId)
+    const id = draft.world.createEntity('Prefab')
     draft.world.addComponent(id, TransformComponent, {
       position,
       rotation: [0, 0, 0, 1],
       scale: [1, 1, 1],
     })
     draft.world.addComponent(id, PrefabInstanceComponent, {
-      prefabId,
+      prefab,
       overrides: { Transform: { position } },
     })
     return [id]

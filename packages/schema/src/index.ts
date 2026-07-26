@@ -9,10 +9,8 @@ export const QuatSchema = z.tuple([z.number(), z.number(), z.number(), z.number(
 export type Quat = z.infer<typeof QuatSchema>
 
 export const EntityRefSchema = z.object({ $ref: z.string().regex(/^entity:[0-9a-f-]+$/i) })
-export const PrefabRefSchema = z.object({ $ref: z.string().regex(/^prefab:.+/) })
 
 export type EntityRef = z.infer<typeof EntityRefSchema>
-export type PrefabRef = z.infer<typeof PrefabRefSchema>
 
 export {
   AssetIdSchema,
@@ -72,7 +70,7 @@ export const ScriptRefSchema = z.object({
 export type ScriptRef = z.infer<typeof ScriptRefSchema>
 
 export const PrefabInstanceSchema = z.object({
-  prefabId: z.string(),
+  prefab: AssetRefSchema,
   overrides: z.record(z.record(z.unknown())).optional(),
 })
 export type PrefabInstance = z.infer<typeof PrefabInstanceSchema>
@@ -104,7 +102,6 @@ export const EntityRecordSchema = z.object({
 export type EntityRecord = z.infer<typeof EntityRecordSchema>
 
 export const PrefabDefinitionSchema = z.object({
-  id: z.string(),
   entities: z.array(EntityRecordSchema),
 })
 export type PrefabDefinition = z.infer<typeof PrefabDefinitionSchema>
@@ -139,7 +136,6 @@ export const SceneDocumentSchema = z.preprocess(
     metadata: SceneMetadataSchema,
     entities: z.array(EntityRecordSchema),
     prototypes: z.record(RenderPrototypeSchema).default({}),
-    prefabs: z.record(PrefabDefinitionSchema).default({}),
     renderSettings: RenderSettingsSchema.default({}),
     physicsSettings: PhysicsProjectSettingsSchema.default({}),
   }),

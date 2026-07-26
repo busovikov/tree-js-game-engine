@@ -4,6 +4,7 @@ import {
   PHYSICS_CATCH_UP_POLICY,
   PhysicsColliderSystem,
   createEngineAssetRegistry,
+  loadProjectPrefabAssets,
   startVehiclePlayMode,
   projectPathToUrl,
 } from '@haku/engine/runtime'
@@ -32,11 +33,16 @@ async function main() {
   configurePlaygroundViewport(engine, canvas)
 
   const entryScene = assets.path(manifest.entryScene, SCENE_ASSET_TYPE)
-  const loaded = await SceneLoader.load(projectPathToUrl(`${manifest.assetsDir}/${entryScene}`))
+  const prefabAssets = await loadProjectPrefabAssets(manifest)
+  const loaded = await SceneLoader.load(
+    projectPathToUrl(`${manifest.assetsDir}/${entryScene}`),
+    undefined,
+    prefabAssets,
+  )
   engine.loadWorld(
     loaded.world,
     loaded.prototypes,
-    loaded.prefabs,
+    loaded.prefabAssets,
     loaded.renderSettings,
     loaded.activeCameraId,
   )

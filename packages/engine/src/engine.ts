@@ -2,7 +2,14 @@ import type { IPhysicsBackend } from '@haku/physics'
 import { type IWorld, type ISystem } from '@haku/core'
 import { entityId } from '@haku/core'
 import { loadSceneDocument } from '@haku/serializer'
-import type { RenderPrototype, RenderSettings, SceneDocument, SceneMetadata } from '@haku/schema'
+import type {
+  AssetId,
+  PrefabDefinition,
+  RenderPrototype,
+  RenderSettings,
+  SceneDocument,
+  SceneMetadata,
+} from '@haku/schema'
 import { defaultPhysicsProjectSettings, defaultRenderSettings, validateSceneDocument } from '@haku/schema'
 import { ThreeRenderBackend } from './render-backend.js'
 import { resolveActiveCameraId } from './scene-camera.js'
@@ -27,7 +34,7 @@ export interface LoadedScene {
   world: IWorld
   prototypes: Record<string, RenderPrototype>
   metadata: SceneMetadata
-  prefabs: SceneDocument['prefabs']
+  prefabAssets: ReadonlyMap<AssetId, PrefabDefinition>
   renderSettings: RenderSettings
   physicsSettings: SceneDocument['physicsSettings']
   activeCameraId: string | null
@@ -51,14 +58,14 @@ export class Engine {
   loadWorld(
     world: IWorld,
     prototypes: Record<string, RenderPrototype> = {},
-    prefabs: SceneDocument['prefabs'] = {},
+    prefabAssets: ReadonlyMap<AssetId, PrefabDefinition> = new Map(),
     renderSettings?: SceneDocument['renderSettings'],
     activeCameraId?: string | null,
   ): void {
     this.world = world
     this.physicsSystem?.resetPresentationPoses()
     this.backend.setPrototypes(prototypes)
-    this.backend.setPrefabs(prefabs)
+    this.backend.setPrefabs(prefabAssets)
     if (renderSettings) {
       this.backend.setRenderSettings(renderSettings)
     }
@@ -201,19 +208,29 @@ export type SceneFetch = (path: string) => Promise<{
 const defaultSceneFetch: SceneFetch = (path) => fetch(path)
 
 export class SceneLoader {
-  static async load(path: string, fetchScene: SceneFetch = defaultSceneFetch): Promise<LoadedScene> {
+  static async load(
+    path: string,
+    fetchScene: SceneFetch = defaultSceneFetch,
+    prefabAssets: ReadonlyMap<AssetId, PrefabDefinition> = new Map(),
+  ): Promise<LoadedScene> {
     const response = await fetchScene(path)
     if (!response.ok) throw new Error(`Failed to load scene: ${path}`)
     const json = validateSceneDocument(await response.json())
-    return SceneLoader.fromDocument(json)
+    return SceneLoader.fromDocument(json, prefabAssets)
   }
 
-  static fromDocument(doc: SceneDocument): LoadedScene {
+  static fromDocument(
+    doc: SceneDocument,
+    prefabAssets: ReadonlyMap<AssetId, PrefabDefinition> = new Map(),
+  ): LoadedScene {
     return {
-      world: loadSceneDocument(doc, { componentRegistry: createEngineComponentRegistry() }),
+      world: loadSceneDocument(doc, {
+        componentRegistry: createEngineComponentRegistry(),
+        prefabAssets,
+      }),
       prototypes: doc.prototypes,
       metadata: doc.metadata,
-      prefabs: doc.prefabs,
+      prefabAssets,
       renderSettings: doc.renderSettings ?? defaultRenderSettings(),
       physicsSettings: doc.physicsSettings ?? defaultPhysicsProjectSettings(),
       activeCameraId: resolveActiveCameraId(doc),

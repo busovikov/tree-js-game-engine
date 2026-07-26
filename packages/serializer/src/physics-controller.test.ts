@@ -102,7 +102,6 @@ describe('controller serializer policy', () => {
         world,
         doc.metadata,
         {},
-        {},
         undefined,
         undefined,
         componentRegistry,

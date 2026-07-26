@@ -2,6 +2,7 @@ import {
   Engine,
   SceneLoader,
   createEngineAssetRegistry,
+  loadProjectPrefabAssets,
   projectPathToUrl,
 } from '@haku/engine/runtime'
 import {
@@ -26,11 +27,16 @@ async function main() {
   })
 
   const entryScene = assets.path(manifest.entryScene, SCENE_ASSET_TYPE)
-  const loaded = await SceneLoader.load(projectPathToUrl(`${manifest.assetsDir}/${entryScene}`))
+  const prefabAssets = await loadProjectPrefabAssets(manifest)
+  const loaded = await SceneLoader.load(
+    projectPathToUrl(`${manifest.assetsDir}/${entryScene}`),
+    undefined,
+    prefabAssets,
+  )
   engine.loadWorld(
     loaded.world,
     loaded.prototypes,
-    loaded.prefabs,
+    loaded.prefabAssets,
     loaded.renderSettings,
     loaded.activeCameraId,
   )

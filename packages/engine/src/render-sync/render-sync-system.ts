@@ -10,6 +10,7 @@ import {
 import { CameraComponent, LightComponent, MeshRendererComponent, RenderingLayersComponent } from '../components.js'
 import type {
   PrefabDefinition,
+  AssetId,
   RenderSettings,
   Transform,
 } from '@haku/schema'
@@ -72,7 +73,7 @@ export class RenderSyncSystem implements ISystem {
   readonly order = 100
   private readonly entityStates = new Map<string, EntityRenderState>()
   private readonly scene: THREE.Scene
-  private prefabs: Map<string, PrefabDefinition> = new Map()
+  private prefabs: Map<AssetId, PrefabDefinition> = new Map()
   private world: IWorld | null = null
   private renderSettings: RenderSettings = defaultRenderSettings()
   private shadowCasterCount = 0
@@ -88,11 +89,8 @@ export class RenderSyncSystem implements ISystem {
     this.renderSettings = settings
   }
 
-  setPrefabs(prefabs: Record<string, PrefabDefinition>): void {
-    this.prefabs.clear()
-    for (const [id, def] of Object.entries(prefabs)) {
-      this.prefabs.set(id, def)
-    }
+  setPrefabs(prefabs: ReadonlyMap<AssetId, PrefabDefinition>): void {
+    this.prefabs = new Map(prefabs)
   }
 
   setPresentationTransformResolver(resolver: PresentationTransformResolver | null): void {
@@ -306,7 +304,7 @@ export class RenderSyncSystem implements ISystem {
     const instance = this.world!.getComponent(id, PrefabInstanceComponent)
     if (!instance) return group
 
-    const prefab = this.prefabs.get(instance.prefabId)
+    const prefab = this.prefabs.get(instance.prefab.$ref)
     if (!prefab) return group
 
     for (const record of prefab.entities) {
@@ -352,7 +350,7 @@ export class RenderSyncSystem implements ISystem {
 
     if (this.world.hasComponent(id, PrefabInstanceComponent)) {
       const instance = this.world.getComponent(id, PrefabInstanceComponent)!
-      return `prefab:${instance.prefabId}`
+      return `prefab:${instance.prefab.$ref}`
     }
 
     return 'group'

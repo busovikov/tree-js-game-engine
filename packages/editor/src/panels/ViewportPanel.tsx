@@ -375,7 +375,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
     engine.loadWorld(
       world,
       sceneDocument?.prototypes ?? {},
-      sceneDocument?.prefabs ?? {},
+      projectService.getPrefabAssets(),
       sceneDocument?.renderSettings,
       sceneDocument ? resolveActiveCameraId(sceneDocument) : null,
     )

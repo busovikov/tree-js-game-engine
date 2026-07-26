@@ -2,7 +2,7 @@ import { type EntityId, type IRenderBackend, type IWorld, type ViewportRenderOve
 import { entityId } from '@haku/core'
 import { CameraComponent, RenderTextureComponent } from './components.js'
 import type { EngineFeatureFlags } from './engine.js'
-import type { PrefabDefinition, RenderSettings } from '@haku/schema'
+import type { AssetId, PrefabDefinition, RenderSettings } from '@haku/schema'
 import { defaultRenderSettings, isFeatureActive, RenderSettingsSchema, resolveShadowSettings } from '@haku/schema'
 import * as THREE from 'three'
 import {
@@ -173,7 +173,7 @@ export class ThreeRenderBackend implements IRenderBackend {
 
   setPrototypes(_prototypes: Record<string, import('@haku/schema').RenderPrototype>): void {}
 
-  setPrefabs(prefabs: Record<string, PrefabDefinition>): void {
+  setPrefabs(prefabs: ReadonlyMap<AssetId, PrefabDefinition>): void {
     this.syncSystem.setPrefabs(prefabs)
   }
 

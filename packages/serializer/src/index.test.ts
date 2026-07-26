@@ -33,7 +33,6 @@ describe('@haku/serializer roundtrip', () => {
       loadSceneDocument(doc, { componentRegistry }),
       doc.metadata,
       doc.prototypes,
-      doc.prefabs,
       renderSettings,
       undefined,
       componentRegistry,
@@ -46,58 +45,4 @@ describe('@haku/serializer roundtrip', () => {
     expect(() => validateSceneDocument({ schemaVersion: 2 })).toThrow()
   })
 
-  it('expands prefab instances by default', () => {
-    const doc = validateSceneDocument({
-      schemaVersion: 1,
-      metadata: { name: 'PrefabTest' },
-      prototypes: {},
-      prefabs: {
-        tree: {
-          id: 'tree',
-          entities: [
-            {
-              id: 'b0000000-0000-4000-8000-000000000001',
-              name: 'Trunk',
-              parent: null,
-              components: [
-                { type: '40000000-0000-4000-8000-000000000001', data: { position: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] } },
-                {
-                  type: '40000000-0000-4000-8000-000000000004',
-                  data: {
-                    geometryType: 'BoxGeometry',
-                    geometryParams: { width: 1, height: 1, depth: 1 },
-                    material: {
-                      color: '#6699ff',
-                      metalness: 0,
-                      roughness: 0.5,
-                      wireframe: false,
-                      opacity: 1,
-                      transparent: false,
-                    },
-                  },
-                },
-              ],
-            },
-          ],
-        },
-      },
-      entities: [
-        {
-          id: 'a0000000-0000-4000-8000-000000000001',
-          name: 'Instance',
-          parent: null,
-          components: [
-            { type: '40000000-0000-4000-8000-000000000001', data: { position: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] } },
-            { type: '40000000-0000-4000-8000-000000000006', data: { prefabId: 'tree' } },
-          ],
-        },
-      ],
-    })
-
-    const expanded = loadSceneDocument(doc, { expandPrefabs: true, componentRegistry })
-    expect(expanded.getAllEntities().length).toBeGreaterThan(1)
-
-    const collapsed = loadSceneDocument(doc, { expandPrefabs: false, componentRegistry })
-    expect(collapsed.getAllEntities()).toHaveLength(1)
-  })
 })

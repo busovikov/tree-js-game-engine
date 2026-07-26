@@ -52,7 +52,7 @@ describe('Collider serializer round-trip', () => {
     expect(loadedRigidBody?.type).toBe('dynamic')
     expect(loadedRigidBody?.physicsBodyHandle).toBe('body-42')
 
-    const saved = saveSceneDocument(world, doc.metadata, {}, {}, undefined, undefined, componentRegistry)
+    const saved = saveSceneDocument(world, doc.metadata, {}, undefined, undefined, componentRegistry)
     const colliderData = saved.entities[0].components.find((c) => c.type === '40000000-0000-4000-8000-000000000009')?.data
     const rigidBodyData = saved.entities[0].components.find((c) => c.type === '40000000-0000-4000-8000-000000000010')?.data
     expect(colliderData).toEqual({
@@ -230,7 +230,7 @@ describe('Collider serializer round-trip', () => {
     const id = world.getAllEntities()[0]
     expect(world.getComponent(id, ColliderComponent)).toBeUndefined()
 
-    const saved = saveSceneDocument(world, doc.metadata, {}, {}, undefined, undefined, componentRegistry)
+    const saved = saveSceneDocument(world, doc.metadata, {}, undefined, undefined, componentRegistry)
     expect(saved.entities[0].components.some((c) => c.type === '40000000-0000-4000-8000-000000000009')).toBe(false)
   })
 

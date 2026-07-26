@@ -1,5 +1,11 @@
 import { World, PrefabInstanceComponent, entityId, type ComponentRegistry, type ComponentDefinition, type EntityId, type IWorld } from '@haku/core'
 import {
+  AssetDiagnosticError,
+  PREFAB_ASSET_TYPE,
+  type AssetId,
+  type AssetRef,
+} from '@haku/assets'
+import {
   ColliderComponent,
   RigidBodyComponent,
   validateEntityPhysicsComponents,
@@ -94,14 +100,36 @@ function applyOverrides(
 function expandPrefabInstance(
   world: IWorld,
   parent: EntityId | null,
-  prefabId: string,
+  prefabReference: AssetRef,
   overrides: Record<string, Record<string, unknown>> | undefined,
-  prefabs: Record<string, PrefabDefinition>,
+  prefabAssets: ReadonlyMap<AssetId, PrefabDefinition>,
   idMap: Map<string, EntityId>,
   registry: ComponentRegistry,
 ): void {
-  const prefab = prefabs[prefabId]
-  if (!prefab) throw new Error(`Prefab not found: ${prefabId}`)
+  if (prefabReference.type !== PREFAB_ASSET_TYPE) {
+    throw new AssetDiagnosticError([
+      {
+        code: 'asset.type-mismatch',
+        severity: 'error',
+        message: `Asset ${prefabReference.$ref} has type ${prefabReference.type}; expected ${PREFAB_ASSET_TYPE}`,
+        assetId: prefabReference.$ref,
+        expectedType: PREFAB_ASSET_TYPE,
+        actualType: prefabReference.type,
+      },
+    ])
+  }
+  const prefab = prefabAssets.get(prefabReference.$ref)
+  if (!prefab) {
+    throw new AssetDiagnosticError([
+      {
+        code: 'asset.unknown-id',
+        severity: 'error',
+        message: `Unknown prefab asset ID: ${prefabReference.$ref}`,
+        assetId: prefabReference.$ref,
+        expectedType: PREFAB_ASSET_TYPE,
+      },
+    ])
+  }
 
   for (const record of prefab.entities) {
     const newId = entityId(crypto.randomUUID())
@@ -129,7 +157,7 @@ function expandPrefabInstance(
 function loadEntityRecords(
   world: World,
   records: EntityRecord[],
-  prefabs: Record<string, PrefabDefinition>,
+  prefabAssets: ReadonlyMap<AssetId, PrefabDefinition>,
   expandPrefabs: boolean,
   registry: ComponentRegistry,
 ): void {
@@ -144,7 +172,15 @@ function loadEntityRecords(
       if (comp.type === PrefabInstanceComponent.id) {
         const data = PrefabInstanceSchema.parse(comp.data)
         if (expandPrefabs) {
-          expandPrefabInstance(world, id, data.prefabId, data.overrides, prefabs, new Map(), registry)
+          expandPrefabInstance(
+            world,
+            id,
+            data.prefab,
+            data.overrides,
+            prefabAssets,
+            new Map(),
+            registry,
+          )
         } else {
           const type = getComponentType(registry, PrefabInstanceComponent.id)
           world.addComponent(id, type, data)
@@ -162,13 +198,23 @@ function loadEntityRecords(
 
 export function loadSceneDocument(
   input: unknown,
-  options: { expandPrefabs?: boolean; componentRegistry: ComponentRegistry },
+  options: {
+    expandPrefabs?: boolean
+    componentRegistry: ComponentRegistry
+    prefabAssets?: ReadonlyMap<AssetId, PrefabDefinition>
+  },
 ): World {
   const expandPrefabs = options.expandPrefabs ?? true
   const componentRegistry = options.componentRegistry
   const doc = validateSceneDocument(input)
   const world = new World()
-  loadEntityRecords(world, doc.entities, doc.prefabs, expandPrefabs, componentRegistry)
+  loadEntityRecords(
+    world,
+    doc.entities,
+    options.prefabAssets ?? new Map(),
+    expandPrefabs,
+    componentRegistry,
+  )
   return world
 }
 
@@ -176,7 +222,6 @@ export function saveSceneDocument(
   world: IWorld,
   metadata: SceneDocument['metadata'] = { name: 'Untitled' },
   prototypes: SceneDocument['prototypes'] = {},
-  prefabs: SceneDocument['prefabs'] = {},
   renderSettings: SceneDocument['renderSettings'] = defaultRenderSettings(),
   physicsSettings: SceneDocument['physicsSettings'] = defaultPhysicsProjectSettings(),
   componentRegistry: ComponentRegistry,
@@ -209,7 +254,6 @@ export function saveSceneDocument(
     metadata,
     entities,
     prototypes,
-    prefabs,
     renderSettings,
     physicsSettings,
   })
@@ -219,12 +263,11 @@ export function roundtripSceneDocument(
   doc: SceneDocument,
   componentRegistry: ComponentRegistry,
 ): SceneDocument {
-  const world = loadSceneDocument(doc, { componentRegistry })
+  const world = loadSceneDocument(doc, { componentRegistry, expandPrefabs: false })
   return saveSceneDocument(
     world,
     doc.metadata,
     doc.prototypes,
-    doc.prefabs,
     doc.renderSettings,
     doc.physicsSettings,
     componentRegistry,
