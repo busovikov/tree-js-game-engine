@@ -10,7 +10,9 @@ import { PREFAB_ASSET_TYPE } from '@haku/assets'
 import { z } from 'zod'
 import {
   EntityPool,
+  EntityPoolComponent,
   EntityPoolSchema,
+  createEntityPoolFromComponent,
   poolHandleRoot,
   type PoolLifecycleEvent,
 } from './index.js'
@@ -229,5 +231,36 @@ describe('EntityPool serializable configuration', () => {
         maximum: 4,
       }),
     ).toThrow('Pool capacity must not exceed maximum')
+  })
+
+  it('composes a runtime pool from the authored prefab-backed component', () => {
+    const world = new World()
+    const owner = world.createEntity('Pool owner')
+    const template = assetRef(
+      assetId('a1000000-0000-4000-8000-000000000021'),
+      PREFAB_ASSET_TYPE,
+    )
+    world.addComponent(owner, EntityPoolComponent, {
+      template,
+      capacity: 2,
+      maximum: 3,
+      prewarm: 2,
+      expansionPolicy: 'grow',
+      exhaustionPolicy: 'return-null',
+    })
+    const resolved: string[] = []
+
+    const pool = createEntityPoolFromComponent({
+      world,
+      entity: owner,
+      instantiatePrefab(reference) {
+        resolved.push(reference.$ref)
+        return world.createEntity('Prefab instance')
+      },
+    })
+
+    expect(pool.id).toBe(owner.value)
+    expect(pool.metrics()).toMatchObject({ capacity: 2, maximum: 3, total: 2, inactive: 2 })
+    expect(resolved).toEqual([template.$ref, template.$ref])
   })
 })

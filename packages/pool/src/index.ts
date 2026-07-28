@@ -6,7 +6,7 @@ import {
   type IWorld,
 } from '@haku/core'
 import { PREFAB_ASSET_TYPE } from '@haku/assets'
-import { AssetRefSchema, componentTypeId } from '@haku/schema'
+import { AssetRefSchema, componentTypeId, type AssetRef } from '@haku/schema'
 import { z } from 'zod'
 
 export const ENTITY_POOL_COMPONENT_TYPE_ID = componentTypeId(
@@ -467,6 +467,41 @@ export class EntityPool {
   scope(handle: PoolHandle): PoolRuntimeScope {
     return this.system.scope(handle)
   }
+}
+
+export interface EntityPoolComponentRuntimeOptions {
+  readonly world: IWorld
+  readonly entity: EntityId
+  readonly instantiatePrefab: (template: AssetRef) => EntityId
+  readonly participants?: readonly PoolLifecycleParticipant[]
+  readonly onLifecycle?: (event: PoolLifecycleEvent) => void
+}
+
+/**
+ * Runtime composition for the serializable EntityPool component. The owner entity UUID is the
+ * stable pool service ID; the injected prefab resolver keeps asset loading outside this package.
+ */
+export function createEntityPoolFromComponent(
+  options: EntityPoolComponentRuntimeOptions,
+): EntityPool {
+  const authored = options.world.getComponent(options.entity, EntityPoolComponent)
+  if (!authored) {
+    throw new Error(`Entity ${options.entity.value} has no EntityPool component`)
+  }
+  const data = EntityPoolSchema.parse(authored)
+  const pool = new EntityPool({
+    id: options.entity.value,
+    world: options.world,
+    createInstance: () => options.instantiatePrefab(data.template),
+    capacity: data.capacity,
+    maximum: data.maximum,
+    expansionPolicy: data.expansionPolicy,
+    exhaustionPolicy: data.exhaustionPolicy,
+    participants: options.participants,
+    onLifecycle: options.onLifecycle,
+  })
+  pool.prewarm(data.prewarm)
+  return pool
 }
 
 export interface PoolService {
