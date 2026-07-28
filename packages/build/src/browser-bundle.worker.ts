@@ -1,6 +1,9 @@
 import * as esbuild from 'esbuild-wasm'
 import wasmUrl from 'esbuild-wasm/esbuild.wasm?url'
-import { resolveBrowserProjectImport } from './browser-bundle.js'
+import {
+  browserSafeRuntimeModule,
+  resolveBrowserProjectImport,
+} from './browser-bundle.js'
 import type { BrowserBundleRequest } from './browser-worker-clients.js'
 import type { BrowserProjectBundles } from './browser-project-tooling.js'
 
@@ -36,6 +39,9 @@ async function bundleEntry(
           build.onResolve({ filter: /.*/ }, ({ path, importer }) => {
             if (!importer) return { path, namespace: 'haku-project' }
             const resolved = resolveBrowserProjectImport(path, importer)
+            if (browserSafeRuntimeModule(resolved)) {
+              return { path: resolved, namespace: 'haku-browser-runtime' }
+            }
             if (resolved.startsWith('@haku/')) return { path: resolved, external: true }
             return { path: resolved, namespace: 'haku-project' }
           })
@@ -44,6 +50,10 @@ async function bundleEntry(
             if (contents === undefined) return { errors: [{ text: `File not found: ${path}` }] }
             return { contents, loader: path.endsWith('.tsx') ? 'tsx' : 'ts' }
           })
+          build.onLoad({ filter: /.*/, namespace: 'haku-browser-runtime' }, ({ path }) => ({
+            contents: browserSafeRuntimeModule(path) ?? '',
+            loader: 'js',
+          }))
         },
       },
     ],

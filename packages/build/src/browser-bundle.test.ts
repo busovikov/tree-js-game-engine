@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { resolveBrowserProjectImport } from './browser-bundle.js'
+import {
+  browserSafeRuntimeModule,
+  resolveBrowserProjectImport,
+} from './browser-bundle.js'
 
 describe('browser project bundle resolver', () => {
   it('resolves only project-local relative modules', () => {
@@ -21,5 +24,12 @@ describe('browser project bundle resolver', () => {
 
   it('leaves public Haku APIs as explicit runtime imports', () => {
     expect(resolveBrowserProjectImport('@haku/core', 'src/gameplay.ts')).toBe('@haku/core')
+  })
+
+  it('provides the Custom Node SDK as a browser-safe local runtime module', () => {
+    expect(browserSafeRuntimeModule('@haku/node-sdk')).toContain(
+      'export const defineCustomNode',
+    )
+    expect(browserSafeRuntimeModule('@haku/core')).toBeNull()
   })
 })

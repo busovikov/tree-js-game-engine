@@ -19,6 +19,15 @@ function withTypeScriptExtension(path: string): string {
   return /\.[a-z0-9]+$/i.test(path) ? path : `${path}.ts`
 }
 
+const BROWSER_SAFE_RUNTIME_MODULES: Readonly<Record<string, string>> = Object.freeze({
+  '@haku/node-sdk': `export const defineCustomNode = (node) => node
+`,
+})
+
+export function browserSafeRuntimeModule(specifier: string): string | null {
+  return BROWSER_SAFE_RUNTIME_MODULES[specifier] ?? null
+}
+
 export function resolveBrowserProjectImport(specifier: string, importer: string): string {
   if (/^(?:https?|data|blob):/i.test(specifier)) {
     throw new Error('Remote URL imports are not allowed')
