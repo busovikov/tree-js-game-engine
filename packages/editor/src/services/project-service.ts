@@ -43,10 +43,7 @@ import {
   type IWorld,
 } from '@haku/core'
 import { World } from '@haku/core'
-import {
-  createEngineAssetRegistry,
-  createEngineComponentRegistry,
-} from '@haku/engine'
+import { createEngineAssetRegistry, createEngineComponentRegistry } from '@haku/engine'
 import { MeshRendererComponent } from '@haku/engine'
 import {
   clearModelCache,
@@ -60,11 +57,7 @@ import { browserProjectStore } from './browser-project-store.js'
 import { isFileSystemAccessSupported, nativeProjectStore } from './native-project-store.js'
 import { loadPersonalizedProjectTemplate } from './project-template.js'
 import { PLAYGROUND_PROJECT } from './playground-demos.js'
-import {
-  GRAPH_ASSET_TYPE,
-  GraphAssetSchema,
-  type GraphAsset,
-} from '@haku/graph'
+import { GRAPH_ASSET_TYPE, GraphAssetSchema, type GraphAsset } from '@haku/graph'
 import type { BrowserProjectTrustMode } from '@haku/build'
 import {
   BrowserProjectWorkspace,
@@ -358,6 +351,10 @@ export class ProjectService {
     return this.codeWorkspace
   }
 
+  getTrustMode(): BrowserProjectTrustMode {
+    return this.codeWorkspaceTrustMode()
+  }
+
   async openCodeWorkspace(
     options: OpenCodeWorkspaceOptions = {},
   ): Promise<BrowserProjectWorkspace> {
@@ -481,10 +478,7 @@ export class ProjectService {
       throw new Error(`Component type ${asset.id} already exists`)
     }
     const definition = createCustomComponentDefinition(asset)
-    await this.writeProjectText(
-      projectPath,
-      `${JSON.stringify(asset, null, 2)}\n`,
-    )
+    await this.writeProjectText(projectPath, `${JSON.stringify(asset, null, 2)}\n`)
     this.manifest = validateProjectManifest({
       ...this.manifest,
       assets: [
@@ -1194,9 +1188,7 @@ export class ProjectService {
     }
   }
 
-  private async readDevTargetWorkspaceFile(
-    relativePath: string,
-  ): Promise<BrowserProjectDiskFile> {
+  private async readDevTargetWorkspaceFile(relativePath: string): Promise<BrowserProjectDiskFile> {
     const res = await fetch('/__haku/dev/file', {
       method: 'GET',
       headers: { 'X-Haku-File-Path': relativePath },
@@ -1397,14 +1389,15 @@ export class ProjectService {
     return manifest
   }
 
-  async createPrefabAsset(
-    definition: PrefabDefinition,
-    displayName: string,
-  ): Promise<AssetRef> {
+  async createPrefabAsset(definition: PrefabDefinition, displayName: string): Promise<AssetRef> {
     if (!this.manifest) throw new Error('No project manifest loaded')
     const parsed = PrefabDefinitionSchema.parse(definition)
     const id = assetId(crypto.randomUUID())
-    const safeName = displayName.trim().replace(/[^a-z0-9_-]+/gi, '-').replace(/^-|-$/g, '') || 'prefab'
+    const safeName =
+      displayName
+        .trim()
+        .replace(/[^a-z0-9_-]+/gi, '-')
+        .replace(/^-|-$/g, '') || 'prefab'
     const manifestPath = `prefabs/${safeName}-${id}.prefab.json`
     const projectPath = `${this.manifest.assetsDir}/${manifestPath}`
     await this.writeProjectText(projectPath, JSON.stringify(parsed, null, 2) + '\n')
@@ -1451,10 +1444,7 @@ export class ProjectService {
     if (!this.manifest) return
     for (const entry of this.manifest.assets) {
       if (entry.type !== CUSTOM_COMPONENT_TYPE_ASSET_TYPE) continue
-      const projectPath = `${this.manifest.assetsDir}/${entry.path}`.replace(
-        /\/+/g,
-        '/',
-      )
+      const projectPath = `${this.manifest.assetsDir}/${entry.path}`.replace(/\/+/g, '/')
       const raw = await this.readProjectText(projectPath)
       const asset = CustomComponentTypeAssetSchema.parse(JSON.parse(raw))
       const definition = createCustomComponentDefinition(asset)
@@ -1666,10 +1656,7 @@ function suggestDuplicateAssetName(originalName: string, existingNames: Set<stri
 
 export const projectService = new ProjectService()
 
-export function extractPrefabSubtree(
-  world: IWorld,
-  rootId: EntityId,
-): PrefabDefinition {
+export function extractPrefabSubtree(world: IWorld, rootId: EntityId): PrefabDefinition {
   const collect = (id: EntityId): EntityId[] => {
     const result = [id]
     for (const child of world.getChildren(id)) {

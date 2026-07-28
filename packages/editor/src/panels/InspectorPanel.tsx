@@ -51,6 +51,11 @@ import { commitActiveSceneCamera } from '../commands/active-scene-camera.js'
 import { useEditorStore } from '../store/editor-store.js'
 import { commitSceneEdit } from '../commands/scene-history.js'
 import { projectService } from '../services/project-service.js'
+import { SandboxedCustomWidget } from '../extensions/SandboxedCustomWidget.js'
+import {
+  applyGizmoComponentEdit,
+  createExampleSpeedGizmoProvider,
+} from '../extensions/editor-extension-host.js'
 import { CameraFields, normalizeCamera } from '../components/CameraFields.js'
 import { LightFields, normalizeLight } from '../components/LightFields.js'
 import { TransformFields } from '../components/TransformFields.js'
@@ -750,9 +755,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
     return projectService.getCustomComponentTypes().map((component) => ({
       id: component.id,
       label: component.name,
-      disabled: selectedIds.every((entityId) =>
-        world.hasComponent(entityId, component),
-      ),
+      disabled: selectedIds.every((entityId) => world.hasComponent(entityId, component)),
     }))
   }, [world, selectedIds, worldRevision])
 
@@ -877,19 +880,18 @@ export const InspectorPanel = memo(function InspectorPanel() {
 
         {otherComponents.map((typeId) => {
           const type =
-            world.getComponentDefinition(selectedIds[0]!, typeId) ??
-            getEngineComponent(typeId)
+            world.getComponentDefinition(selectedIds[0]!, typeId) ?? getEngineComponent(typeId)
           if (!type) return null
           const key = type.name as keyof typeof COMPONENT_MAP
           const isBuiltin = key in COMPONENT_MAP
-          const component = isBuiltin ? COMPONENT_MAP[key] : type
+          const component: ComponentDefinition = isBuiltin ? COMPONENT_MAP[key] : type
           const targets = selectedIds.filter((entityId) => world.hasComponent(entityId, component))
           if (targets.length === 0) return null
 
           const values = targets
-            .map((id) => world.getComponent(id, type))
+            .map((id) => world.getComponent(id, component))
             .filter(
-              (value): value is NonNullable<typeof value> =>
+              (value): value is Record<string, unknown> =>
                 value !== undefined && typeof value === 'object',
             )
 
@@ -1120,17 +1122,83 @@ export const InspectorPanel = memo(function InspectorPanel() {
                   onChange={isMulti ? undefined : updateColliders}
                 />
               ) : (
-                <SchemaFields
-                  componentId={key}
-                  component={component}
-                  data={data as Record<string, unknown>}
-                  disabled={mode === 'play'}
-                  onChange={(next) =>
-                    forEachSelected((id, draftWorld) => {
-                      draftWorld.addComponent(id, component, next)
-                    })
-                  }
-                />
+                <>
+                  <SchemaFields
+                    componentId={typeId}
+                    component={component}
+                    data={data as Record<string, unknown>}
+                    disabled={mode === 'play'}
+                    onChange={(next) =>
+                      forEachSelected((id, draftWorld) => {
+                        draftWorld.addComponent(id, component, next)
+                      })
+                    }
+                  />
+                  {!isBuiltin &&
+                    component.editorExtension?.gizmoProvider === 'speed-radius' &&
+                    projectService.getTrustMode() !== 'imported-untrusted' &&
+                    !isMulti &&
+                    targets[0] && (
+                      <div className="haku-inspector__section-toolbar">
+                        <span>
+                          Gizmo preview: sphere radius{' '}
+                          {createExampleSpeedGizmoProvider().draw({
+                            entityId: targets[0].value,
+                            componentType: component.id,
+                            data: data as Record<string, unknown>,
+                          })[0]?.kind === 'sphere'
+                            ? (
+                                createExampleSpeedGizmoProvider().draw({
+                                  entityId: targets[0].value,
+                                  componentType: component.id,
+                                  data: data as Record<string, unknown>,
+                                })[0] as { radius: number }
+                              ).radius
+                            : 0}
+                        </span>
+                        <button
+                          type="button"
+                          aria-label="Increase speed with gizmo"
+                          disabled={!canEdit}
+                          onClick={() => {
+                            const speed = data.speed
+                            applyGizmoComponentEdit({
+                              entityId: targets[0]!.value,
+                              componentType: component.id,
+                              patch: {
+                                speed: typeof speed === 'number' ? speed + 1 : 1,
+                              },
+                            })
+                          }}
+                        >
+                          Gizmo +1
+                        </button>
+                      </div>
+                    )}
+                  {!isBuiltin && component.editorExtension?.customWidget === 'speed-slider' && (
+                    <SandboxedCustomWidget
+                      trustMode={projectService.getTrustMode()}
+                      componentName={component.name}
+                      value={data as Record<string, unknown>}
+                      onPatch={(patch) =>
+                        forEachSelected((id, draftWorld) => {
+                          const current = draftWorld.getComponent(id, component)
+                          if (typeof current !== 'object' || current === null) {
+                            return
+                          }
+                          draftWorld.addComponent(
+                            id,
+                            component,
+                            component.schema.parse({
+                              ...current,
+                              ...patch,
+                            }),
+                          )
+                        })
+                      }
+                    />
+                  )}
+                </>
               )}
             </InspectorComponentSection>
           )

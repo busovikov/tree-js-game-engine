@@ -1,8 +1,5 @@
 import { z } from 'zod'
-import {
-  ComponentTypeIdSchema,
-  type ComponentTypeId,
-} from './component-envelope.js'
+import { ComponentTypeIdSchema, type ComponentTypeId } from './component-envelope.js'
 
 const FieldNameSchema = z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/)
 const InspectorLabelSchema = z.string().min(1).optional()
@@ -83,11 +80,7 @@ const Vec3FieldSchema = z
   .object({
     name: FieldNameSchema,
     type: z.literal('vec3'),
-    default: z.tuple([
-      z.number().finite(),
-      z.number().finite(),
-      z.number().finite(),
-    ]),
+    default: z.tuple([z.number().finite(), z.number().finite(), z.number().finite()]),
     inspector: z.object({ label: InspectorLabelSchema }).strict().optional(),
   })
   .strict()
@@ -175,6 +168,20 @@ export const CustomComponentTypeAssetSchema = z
     name: z.string().trim().min(1),
     version: z.number().int().positive(),
     fields: z.array(CustomComponentFieldSchema),
+    behaviorGraph: CustomAssetReferenceDefaultSchema.optional(),
+    typescriptBehavior: z
+      .object({
+        exportName: z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/),
+      })
+      .strict()
+      .optional(),
+    editorExtension: z
+      .object({
+        gizmoProvider: z.string().min(1).optional(),
+        customWidget: z.string().min(1).optional(),
+      })
+      .strict()
+      .optional(),
     inspector: z
       .object({
         category: z.string().min(1).optional(),
@@ -210,12 +217,8 @@ export const CustomComponentTypeAssetSchema = z
   })
 
 export type CustomComponentField = z.output<typeof CustomComponentFieldSchema>
-export type CustomComponentTypeAsset = z.input<
-  typeof CustomComponentTypeAssetSchema
->
-export type ParsedCustomComponentTypeAsset = z.output<
-  typeof CustomComponentTypeAssetSchema
->
+export type CustomComponentTypeAsset = z.input<typeof CustomComponentTypeAssetSchema>
+export type ParsedCustomComponentTypeAsset = z.output<typeof CustomComponentTypeAssetSchema>
 export type CustomComponentAssetReferenceField = Extract<
   CustomComponentField,
   { readonly type: 'asset-ref' }

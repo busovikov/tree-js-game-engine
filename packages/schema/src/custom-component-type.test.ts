@@ -72,4 +72,28 @@ describe('CustomComponentTypeAssetSchema', () => {
       }),
     ).toThrow(/default/)
   })
+
+  it('parses graph behavior and editor-extension references as inert metadata', () => {
+    const asset = CustomComponentTypeAssetSchema.parse({
+      schemaVersion: 1,
+      id: componentTypeId,
+      name: 'Extended Mover',
+      version: 1,
+      fields: [{ name: 'speed', type: 'number', default: 1 }],
+      behaviorGraph: {
+        $ref: '10000000-0000-4000-8000-000000000081',
+        type: '20000000-0000-4000-8000-000000000007',
+      },
+      editorExtension: {
+        gizmoProvider: 'speed-radius',
+        customWidget: 'speed-slider',
+      },
+    })
+
+    expect(asset.behaviorGraph?.$ref).toBe('10000000-0000-4000-8000-000000000081')
+    expect(asset.editorExtension).toEqual({
+      gizmoProvider: 'speed-radius',
+      customWidget: 'speed-slider',
+    })
+  })
 })

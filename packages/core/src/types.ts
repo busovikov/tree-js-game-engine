@@ -1,9 +1,5 @@
 import type { ZodType, ZodTypeDef } from 'zod'
-import type {
-  AssetTypeId,
-  ComponentTypeId,
-  RenderSettings,
-} from '@haku/schema'
+import type { AssetTypeId, AssetRef, ComponentTypeId, RenderSettings } from '@haku/schema'
 
 export interface EntityId {
   readonly __brand: 'EntityId'
@@ -31,6 +27,14 @@ export interface ComponentDefinition<T = unknown> {
     readonly optional?: boolean
   }[]
   readonly inspector?: ComponentInspectorDescriptor
+  readonly behavior?: {
+    readonly graph?: AssetRef
+    readonly typescriptExport?: string
+  }
+  readonly editorExtension?: {
+    readonly gizmoProvider?: string
+    readonly customWidget?: string
+  }
   readonly lifecycle?: ComponentLifecycleHooks<T>
 }
 
@@ -91,10 +95,7 @@ export interface IWorld {
   addComponent<T>(id: EntityId, type: ComponentDefinition<T>, data: T): void
   removeComponent(id: EntityId, type: ComponentTypeReference): void
   getComponent<T>(id: EntityId, type: ComponentDefinition<T>): T | undefined
-  getComponentDefinition(
-    id: EntityId,
-    typeId: string,
-  ): ComponentDefinition | undefined
+  getComponentDefinition(id: EntityId, typeId: string): ComponentDefinition | undefined
   hasComponent(id: EntityId, type: ComponentTypeReference): boolean
   getComponentTypes(id: EntityId): readonly string[]
 

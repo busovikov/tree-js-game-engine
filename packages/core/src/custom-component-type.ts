@@ -41,11 +41,7 @@ function schemaForField(field: CustomComponentField): z.ZodTypeAny {
   }
   if (field.type === 'string') return z.string().default(field.default)
   if (field.type === 'boolean') return z.boolean().default(field.default)
-  if (
-    field.type === 'vec2' ||
-    field.type === 'vec3' ||
-    field.type === 'color'
-  ) {
+  if (field.type === 'vec2' || field.type === 'vec3' || field.type === 'color') {
     if (field.type === 'vec2') {
       return z
         .tuple([z.number().finite(), z.number().finite()])
@@ -57,12 +53,7 @@ function schemaForField(field: CustomComponentField): z.ZodTypeAny {
         .default(field.default as [number, number, number])
     }
     return z
-      .tuple([
-        z.number().finite(),
-        z.number().finite(),
-        z.number().finite(),
-        z.number().finite(),
-      ])
+      .tuple([z.number().finite(), z.number().finite(), z.number().finite(), z.number().finite()])
       .default(field.default as [number, number, number, number])
   }
 
@@ -82,9 +73,7 @@ function schemaForField(field: CustomComponentField): z.ZodTypeAny {
       })
       .strict()
       .refine(
-        (value) =>
-          field.componentType === undefined ||
-          value.component === field.componentType,
+        (value) => field.componentType === undefined || value.component === field.componentType,
         field.componentType === undefined
           ? 'Invalid component reference'
           : `Component reference must have type ${field.componentType}`,
@@ -120,9 +109,7 @@ export function createCustomComponentDefinition(
         optional: field.optional,
       })),
     inspector: {
-      ...(asset.inspector.category === undefined
-        ? {}
-        : { category: asset.inspector.category }),
+      ...(asset.inspector.category === undefined ? {} : { category: asset.inspector.category }),
       ...(asset.inspector.description === undefined
         ? {}
         : { description: asset.inspector.description }),
@@ -140,16 +127,27 @@ export function createCustomComponentDefinition(
         ...(field.type === 'number' && field.inspector?.step !== undefined
           ? { step: field.inspector.step }
           : {}),
-        ...(field.type === 'string' &&
-        field.inspector?.placeholder !== undefined
+        ...(field.type === 'string' && field.inspector?.placeholder !== undefined
           ? { placeholder: field.inspector.placeholder }
           : {}),
-        ...(field.type === 'string' &&
-        field.inspector?.multiline !== undefined
+        ...(field.type === 'string' && field.inspector?.multiline !== undefined
           ? { multiline: field.inspector.multiline }
           : {}),
       })),
     },
+    ...(!asset.behaviorGraph && !asset.typescriptBehavior
+      ? {}
+      : {
+          behavior: {
+            ...(asset.behaviorGraph ? { graph: AssetRefSchema.parse(asset.behaviorGraph) } : {}),
+            ...(asset.typescriptBehavior
+              ? {
+                  typescriptExport: asset.typescriptBehavior.exportName,
+                }
+              : {}),
+          },
+        }),
+    ...(asset.editorExtension ? { editorExtension: { ...asset.editorExtension } } : {}),
     schema,
     defaults: () => schema.parse({}),
   }

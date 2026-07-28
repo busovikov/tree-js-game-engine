@@ -44,6 +44,15 @@ describe('custom component type assets', () => {
       id: '42000000-0000-4000-8000-000000000002',
       name: 'Trail',
       version: 1,
+      behaviorGraph: {
+        $ref: '10000000-0000-4000-8000-000000000082',
+        type: '20000000-0000-4000-8000-000000000007',
+      },
+      typescriptBehavior: { exportName: 'accelerateMovers' },
+      editorExtension: {
+        gizmoProvider: 'speed-radius',
+        customWidget: 'speed-slider',
+      },
       inspector: { category: 'Gameplay', description: 'Trail controls' },
       fields: [
         {
@@ -89,5 +98,16 @@ describe('custom component type assets', () => {
         optional: true,
       },
     ])
+    expect(definition.behavior).toEqual({
+      graph: {
+        $ref: '10000000-0000-4000-8000-000000000082',
+        type: '20000000-0000-4000-8000-000000000007',
+      },
+      typescriptExport: 'accelerateMovers',
+    })
+    expect(definition.editorExtension).toEqual({
+      gizmoProvider: 'speed-radius',
+      customWidget: 'speed-slider',
+    })
   })
 })

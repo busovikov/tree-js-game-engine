@@ -23,6 +23,10 @@ describe('InspectorPanel project components', () => {
       id: '42000000-0000-4000-8000-000000000072',
       name: 'Mover',
       version: 1,
+      editorExtension: {
+        gizmoProvider: 'speed-radius',
+        customWidget: 'speed-slider',
+      },
       fields: [
         {
           name: 'speed',
@@ -32,9 +36,8 @@ describe('InspectorPanel project components', () => {
         },
       ],
     })
-    vi.spyOn(projectService, 'getCustomComponentTypes').mockReturnValue([
-      mover,
-    ])
+    vi.spyOn(projectService, 'getCustomComponentTypes').mockReturnValue([mover])
+    vi.spyOn(projectService, 'getTrustMode').mockReturnValue('local-trusted')
     const world = new World()
     const entity = world.createEntity('Runner')
     useEditorStore.getState().setScene(
@@ -52,16 +55,19 @@ describe('InspectorPanel project components', () => {
     fireEvent.click(screen.getByLabelText('Add Component'))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Mover' }))
 
-    expect(
-      useEditorStore.getState().world!.getComponent(entity, mover),
-    ).toEqual({ speed: 4 })
+    expect(useEditorStore.getState().world!.getComponent(entity, mover)).toEqual({ speed: 4 })
     expect(screen.getByText('Mover')).toBeTruthy()
     expect(screen.getByLabelText('Move Speed')).toBeTruthy()
+    expect(screen.getByTitle('Mover custom widget sandbox')).toBeTruthy()
+
+    fireEvent.click(screen.getByLabelText('Increase speed with gizmo'))
+    expect(useEditorStore.getState().world!.getComponent(entity, mover)).toEqual({ speed: 5 })
+
+    globalCommandBus.undo()
+    expect(useEditorStore.getState().world!.getComponent(entity, mover)).toEqual({ speed: 4 })
 
     globalCommandBus.undo()
 
-    expect(
-      useEditorStore.getState().world!.hasComponent(entity, mover),
-    ).toBe(false)
+    expect(useEditorStore.getState().world!.hasComponent(entity, mover)).toBe(false)
   })
 })
