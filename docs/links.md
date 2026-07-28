@@ -81,6 +81,7 @@
 | `defaultEditorProjectSettings()`, `EDITOR_PROJECT_SETTINGS_PATH` | Editor-only prefs — [`.haku/editor.json`](../packages/schema/src/editor-project-settings.ts) |
 | `projectPathToUrl()`, `relativeToAssetsDir()`, `DEFAULT_ASSETS_DIR` | Asset path helpers — [`paths.ts`](../packages/schema/src/paths.ts) |
 | `isComponentEnabled()`, `withComponentEnabled()` | Component enable flag |
+| `CustomComponentTypeAssetSchema` | Visual Component Type asset, behavior, Inspector, graph, and editor-extension metadata |
 
 ### `@haku/assets` — `packages/assets/src/index.ts`
 
@@ -92,6 +93,8 @@
 | `validateProjectAssetComposition()` | Production registry + manifest/reference gate |
 | `dependencyClosure()` | Deterministic dependency-first traversal |
 | `AssetDiagnosticError` | Structured manifest/reference diagnostics |
+| `CUSTOM_COMPONENT_TYPE_ASSET_TYPE` | Stable Component Type asset discriminator |
+| `collectAssetReferences()` | Typed refs in serializable data; project scene/prefab writes additionally collect custom component envelopes |
 
 ### `@haku/core` — `packages/core/src/index.ts`
 
@@ -104,6 +107,8 @@
 | `World.queryIncludingInactive()` | Explicit diagnostic/authoring query opt-in |
 | `ComponentLifecycleHooks` | Deterministic create/activate/deactivate/destroy hooks |
 | `EngineScheduler`, `SCHEDULER_PHASES` | Named frame/fixed phases, sole accumulator, queues, pause, and single-step |
+| `createCustomComponentDefinition()` | Convert a visual Component Type asset into a strict registry definition |
+| `defineComponentBehavior()`, `ComponentBehaviorRunner` | Declared scheduler batch/lifecycle/command contract and structured trace |
 | `*Component` | `TransformComponent`, `CameraComponent`, `LightComponent`, `MeshRendererComponent`, … |
 | `getCoreComponent(typeId)` | Registry lookup |
 | `IWorld`, `ISystem`, `IRenderBackend` | Stability contracts — [`types.ts`](../packages/core/src/types.ts) |
@@ -120,6 +125,7 @@
 | `compileGraph()` | Validate and compile a graph into a deterministic registry-bound plan |
 | `isExecutionPlanCompatible()` | Reject a plan when node/type registry contracts change |
 | `GraphDiagnosticError`, `GraphDiagnostic` | Exact graph/node/port diagnostics and causal chains |
+| `registerCustomComponentGraphContracts()` | Project component data type plus Get/Set/Add/Remove node contracts |
 
 ### `@haku/graph-runtime` — `packages/graph-runtime/src/index.ts`
 
@@ -136,6 +142,7 @@
 | `CheckpointPolicyError` | Typed invalid-callsite, unsupported-policy, reject, materialization, and wait-timeout failures |
 | `SaveService`, `PersistentCheckpointRecord` | Storage-agnostic async checkpoint-entry persistence contract and checksummed envelope |
 | `CheckpointMigrationRegistry` | Registered plan-fingerprint migration before persistent scoped resume |
+| `registerCustomComponentRuntimeAdapters()` | Runtime adapters for project component Get/Set/Add/Remove nodes |
 
 ### `@haku/serializer` — `packages/serializer/src/index.ts`
 
@@ -174,10 +181,10 @@
 | Export | Purpose |
 | ------ | ------- |
 | `createBrowserProjectIndex`, `generateBrowserProjectTooling` | Shared `tsconfig.json`, engine/project/Node SDK declarations, and Monaco/VS Code file map |
-| `runTrustedBrowserBuild`, `BrowserProjectTrustMode`, `BrowserProjectCapabilities` | Trust and requested-capability gate before compilation |
-| `TypeScriptLanguageWorkerClient`, `BrowserBundleWorkerClient` | Typed local Worker RPC clients |
+| `buildBrowserProject`, `BrowserProjectTrustMode`, `BrowserProjectCapabilityManifest` | Trust and requested-capability gate before compilation |
+| `TypeScriptLanguageClient`, `BrowserBundlerClient` | Lazy typed local Worker RPC clients |
 | `analyzeTypeScriptProject` | TypeScript diagnostics scoped to requested source paths |
-| `bundleBrowserProject` | Separate browser-safe gameplay and editor-extension bundles |
+| `BrowserProjectBundles` | Separate browser-safe gameplay and editor-extension outputs |
 
 ### `@haku/editor` — `packages/editor/src/index.ts`
 
@@ -458,6 +465,9 @@ These references inform implemented editor tooling and later platform adapters.
 | World commands | `packages/editor/src/commands/world-commands.ts` |
 | Viewport + engine lifecycle | `packages/editor/src/panels/ViewportPanel.tsx` |
 | Inspector | `packages/editor/src/panels/InspectorPanel.tsx` |
+| Visual Component Type dialog | `packages/editor/src/components/CustomComponentTypeDialog.tsx` |
+| Component extension host | `packages/editor/src/extensions/editor-extension-host.ts` |
+| Sandboxed custom widget | `packages/editor/src/extensions/SandboxedCustomWidget.tsx` |
 | Project I/O | `packages/editor/src/services/project-service.ts` |
 | Create templates | `packages/create/templates/` |
 | CI check | `scripts/check.sh` |

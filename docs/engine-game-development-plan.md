@@ -42,7 +42,7 @@ The program is done only when:
 | M06  | Checkpoint, rewind, async policies, and persistence hooks       | M05        | Complete                                 |
 | M07  | Minimal graph editor and diagnostic scene                       | M06        | Complete                                 |
 | M08  | Browser project TypeScript/build/trust tooling                  | M07        | Complete                                 |
-| M09  | Custom components and editor extensions                         | M08        | Pending                                  |
+| M09  | Custom components and editor extensions                         | M08        | Complete                                 |
 | M10a | Pool and activation integrations                                | M09        | Pending                                  |
 | M10b | DOM UI runtime and visual UI editor                             | M09        | Pending                                  |
 | M10c | Audio contracts, Web Audio, and editor support                  | M09        | Pending                                  |
@@ -243,13 +243,20 @@ Scope:
 
 Acceptance:
 
-- [ ] A component can be created, added to entities/prefabs, saved, loaded, graphed, and
+- [x] A component can be created, added to entities/prefabs, saved, loaded, graphed, and
       exported without changing engine packages.
-- [ ] Custom behavior declares domain/query/reads/writes/effects and is visible in tracing.
-- [ ] No hidden per-instance update loop is introduced.
-- [ ] Gizmo edits use undoable commands and cannot access editor DOM/Three.js internals.
-- [ ] Runtime and editor-extension code build into separate bundles.
-- [ ] Untrusted extensions are inert and visibly unresolved.
+- [x] Custom behavior declares domain/query/reads/writes/effects and is visible in tracing.
+- [x] No hidden per-instance update loop is introduced.
+- [x] Gizmo edits use undoable commands and cannot access editor DOM/Three.js internals.
+- [x] Runtime and editor-extension code build into separate bundles.
+- [x] Untrusted extensions are inert and visibly unresolved.
+
+Implemented in M09: visual Component Type assets use their type UUID as manifest identity;
+project-aware scene/prefab dependency collection retains their definitions in export closure.
+Generated Inspector fields, TypeScript declarations, graph nodes, scheduler batch contracts,
+undoable constrained gizmos, and opaque sandbox widgets share the project registry. Trusted
+and untrusted UI states and the separate real Worker outputs were verified in Chrome; the
+production playground bundle remains free of editor-extension, widget, and Inspector code.
 
 ## M10a — Pool and activation integrations
 

@@ -104,6 +104,8 @@ Manual viewport checks **supplement** automated tests — never replace them.
 | Unknown asset UUID | `ProjectAssetIndex.require()` throws `asset.unknown-id` |
 | Typed reference points to the wrong asset type | `ProjectAssetIndex.require()` throws `asset.type-mismatch` |
 | `entryScene` UUID missing or not a scene | Project open fails before scene loading |
+| Scene/prefab contains a project component envelope | Manifest dependencies add the Component Type asset reference before export closure |
+| Component Type manifest ID differs from its component type UUID | Unsupported identity split; scene/prefab dependency validation cannot resolve the type asset. One stable UUID owns both identities |
 
 ### Gameplay graph assets and compilation
 
@@ -266,6 +268,9 @@ There is **no SQL/NoSQL database** in @haku v1. Do not add DB error handling unl
 | Play code throws | Reports the crash, destroys the sandbox, keeps editor state | `play-sandbox`, `CodeWorkspacePanel` |
 | Play code does not yield | Ten-second timeout destroys the opaque-origin iframe; `Stop` remains available while running | `play-sandbox`, `CodeWorkspacePanel` |
 | Source is non-TypeScript workspace metadata | Persisted/shared with VS Code but not opened as a Monaco TypeScript model | `ProjectCodeWorkspacePanel` |
+| Imported-untrusted component declares behavior/editor extension | No bundle load; Inspector shows unresolved/inert behavior and widget status | `InspectorPanel`, `SandboxedCustomWidget`, `resolveEditorExtension` |
+| Trusted custom widget emits malformed/non-finite patch | Message is ignored; only a finite numeric `speed` patch crosses the iframe boundary | `SandboxedCustomWidget` |
+| Gizmo provider emits DOM/Three.js/runtime objects | Strict primitive validation rejects the output; provider contract accepts plain component data only | `editor-extension-host` |
 
 ---
 
@@ -283,6 +288,8 @@ There is **no SQL/NoSQL database** in @haku v1. Do not add DB error handling unl
 | **File picker user gesture** | Directory picker must run before `prompt()` | `createNewProject` ordering |
 | **CORS / same-origin for playground assets** | Assets served from dev server origin | Vite static files |
 | **Editor logs to project file** | `logs/haku.log` — no secrets in log payloads | `project-log-sink` |
+| **Custom widgets have opaque origin** | Prevent direct editor DOM access | `sandbox="allow-scripts"` + `default-src 'none'` |
+| **Project extensions excluded from games** | Editor-only code must not enter production output | Separate Worker entrypoints + playground bundle scan |
 
 **Agent rule:** never execute scene JSON fields as code; never bypass `projectService` for file access in editor.
 
@@ -323,7 +330,8 @@ These are final unless the user explicitly asks to change them. Full rationale i
 
 ### Verification
 
-CI / manual: build playground and confirm bundle has no `react-dom`, `TransformControls`, `inspector` strings.
+CI / manual: build playground and confirm bundle has no `react-dom`, `TransformControls`,
+`InspectorPanel`, `SandboxedCustomWidget`, `haku-inspector`, or editor-extension markers.
 
 ---
 

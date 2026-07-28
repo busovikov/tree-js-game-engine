@@ -90,6 +90,7 @@ Open the editor in browser — all components render in context (Hierarchy, Insp
 | `ColliderFields` | `components/ColliderFields.tsx` | Collider shape, size, static toggle |
 | `InspectorComponentSection` | `components/InspectorComponentSection.tsx` | Collapsible component block wrapper |
 | `AngleRangeSlider` | `components/AngleRangeSlider.tsx` | Spot light angles |
+| Generated project fields | `panels/InspectorPanel.tsx` | Registry-driven custom component fields, trace, gizmo preview, and widget host |
 
 ### Dialogs & menus
 
@@ -100,6 +101,15 @@ Open the editor in browser — all components render in context (Hierarchy, Insp
 | `ModelPickerDialog` | `components/ModelPickerDialog.tsx` | Pick glTF model asset |
 | `EntityCreateMenu` | `components/EntityCreateMenu.tsx` | Create entity / primitive / light |
 | `HierarchyFilterBar` | `components/HierarchyFilterBar.tsx` | Hierarchy search/filter |
+| `CustomComponentTypeDialog` | `components/CustomComponentTypeDialog.tsx` | Visual number/string/boolean Component Type authoring |
+
+### Editor extensions
+
+| Component / module | File | Role |
+| ------------------ | ---- | ---- |
+| `SandboxedCustomWidget` | `extensions/SandboxedCustomWidget.tsx` | Opaque script-only iframe; finite numeric patch boundary |
+| Extension host | `extensions/editor-extension-host.ts` | Trust resolution, validated gizmo primitives, undoable edits |
+| Behavior trace preview | `extensions/component-behavior-trace.ts` | Non-mutating core batch-runner contract trace |
 
 ### Hooks & utils (UI-related)
 
@@ -303,8 +313,14 @@ Alternative for atomic ops: implement `Command` class, call `globalCommandBus.ex
 | MeshRenderer | `MeshRendererFields.tsx` → `MaterialPropertiesPanel.tsx` |
 | Tag | `TagFields.tsx` |
 | ScriptRef | `SchemaFields.tsx` (generic) |
+| Project Component Type | Registry Inspector metadata in `InspectorPanel.tsx`; `NumberField` and standard inputs |
 
 Hidden from add menu but present: `Tag`, `Static`. Transform always shown.
+
+Project components appear under **Add Component → Project Components**. Their fields re-parse
+through the project schema and use `commitSceneEdit`. Trusted example extensions add a
+declared batch trace, constrained gizmo preview/edit, and sandbox widget. Imported-untrusted
+definitions remain visible, but behavior and extension surfaces render unresolved/inert.
 
 ### InspectorComponentSection
 

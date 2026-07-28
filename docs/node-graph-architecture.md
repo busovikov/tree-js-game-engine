@@ -90,6 +90,15 @@ Custom component gameplay can use:
 hidden callbacks embedded in component data. Lifecycle hooks cover create, activate,
 deactivate, destroy, pool acquire/release, and checkpoint restore.
 
+Implemented in M09: one visual Component Type UUID is both component type and manifest asset
+identity. Project registries load before scene hydration; scene and prefab manifest
+dependencies include every custom component envelope so production dependency closure retains
+the definition. The same definition produces strict runtime defaults/schema/reference
+metadata, generated Inspector fields and declarations, graph Get/Set/Add/Remove contracts,
+and one scheduler batch over the complete declared query. Inspector tracing invokes the real
+core batch runner with a non-mutating preview callback; it proves the scheduler contract and
+entity batch, but does not claim execution of the named project TypeScript export.
+
 ## Graph document and compiler
 
 The graph JSON is the sole editable source of truth. It contains stable UUIDs for graph,
@@ -429,6 +438,15 @@ Editor customization uses a separate Editor Extension API:
 
 Direct React/editor DOM access is not the component-extension contract. Dockable custom
 panels and an extension marketplace are deferred.
+
+Implemented in M09: trusted component extensions resolve only the bundled constrained
+descriptor example. `GizmoProvider` receives entity/type/plain-data input and emits validated
+line/sphere/box primitives; edits re-parse component data and enter command history. The
+custom widget runs in an opaque-origin `sandbox="allow-scripts"` iframe with
+`default-src 'none'` and accepts only a finite numeric `speed` patch. Imported-untrusted
+behavior and editor extensions do not load bundles and render an unresolved/inert state.
+Gameplay and editor-extension entrypoints are built separately, and production game scans
+exclude editor-extension, widget, and Inspector markers.
 
 ## Editor v1 contract
 

@@ -1,7 +1,7 @@
 # Engine improvement through Bounce Run: current-state audit
 
 > Baseline verified on 2026-07-26 at commit `d8e74a1`; current claims are updated through
-> M08. Target contracts live in
+> M09. Target contracts live in
 > [node-graph-architecture.md](./node-graph-architecture.md) and execution order lives in
 > [engine-game-development-plan.md](./engine-game-development-plan.md).
 
@@ -49,6 +49,8 @@ Browser editor
   -> conflict-safe TypeScript workspace + generated declarations
   -> local TypeScript/esbuild Workers + trust/capability gate
   -> lazy replaceable Monaco + disposable opaque-origin Play sandbox
+  -> visual project Component Types + generated Inspector/graph/type contracts
+  -> constrained gizmo primitives + opaque sandbox widgets + unresolved untrusted state
   -> same Engine for viewport and Play mode
   -> snapshot world on Play, restore on Stop
 ```
@@ -65,12 +67,12 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
 | Capability                   | Status                    | Current evidence and target gap                                                                                                                                                                                                          |
 | ---------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Scene documents              | **Ready for current v1**  | Zod validation, load/save, hierarchy, render/physics settings, and roundtrip tests exist. Target deliberately replaces the format; no compatibility layer is required.                                                                   |
-| Entity and component model   | **Ready as a foundation** | `World`, stable entity UUIDs, hierarchy, active-state propagation, inactive-aware queries, deterministic component lifecycle hooks, plain component data, package-owned schemas, and composition-root registries exist. Project custom components remain deferred. |
+| Entity and component model   | **Ready as a foundation** | `World`, stable entity UUIDs, hierarchy, active-state propagation, inactive-aware queries, deterministic component lifecycle hooks, plain component data, package/project registries, and visual Component Type assets exist. Project types survive scene/prefab save/load and export dependency closure. |
 | Prefabs                      | **Ready for current v1**  | Prefabs are standalone manifest assets referenced by typed UUID, with component-ID overrides and load-time expansion. Deep override paths and nested variants remain intentionally deferred.                                               |
 | Asset system                 | **Ready as a foundation** | Universal UUID manifests, typed references, package-contributed descriptors, structured diagnostics, path-independent identity, and deterministic dependency closure exist. Static export remains a later milestone.                     |
 | Runtime scheduler            | **Ready as a foundation** | `EngineScheduler` owns named frame/fixed phases, deterministic local ordering and typed queued commands, bounded fixed-step catch-up, tick/frame numbering, interpolation alpha, pause, and single-step. `@haku/graph-runtime` enters every domain through this scheduler and owns no second loop. |
 | Gameplay node system         | **Ready as a foundation**  | `@haku/graph` provides strict graph assets, registered types/nodes/effects, generics, diagnostics, checkpoint scope/taint and async-liveness metadata, and deterministic plans. `@haku/graph-runtime` adds instances, lazy snapshots, flow/event queues, scoped async work, tracing, bounded checkpoint/rewind, all seven async policies, effect reconciliation, and persistent checkpoint hooks. The M07 editor adds Haku-owned graph authoring, lazy replaceable canvas integration, compiler/checkpoint diagnostics, and Play trace/port values. |
-| Script/custom-node runtime   | **Partial foundation**     | Metadata-only Custom Node declarations are paired with type/version-bound runtime adapters behind a replaceable `ExecutionBackend`. M08 adds browser-local TypeScript diagnostics, gameplay/editor-extension bundling, the browser-safe `@haku/node-sdk` runtime, trust/capability gating, and disposable Play. M09 still owns authored custom component and editor-extension APIs. |
+| Script/custom-node runtime   | **Ready as a foundation**  | Metadata-only Custom Node declarations are paired with type/version-bound runtime adapters behind a replaceable `ExecutionBackend`. Browser-local TypeScript diagnostics and separate gameplay/editor-extension bundles are trust-gated. M09 adds scheduler batch behavior contracts, typed component commands, graph adapters, constrained gizmos, sandbox widgets, and visible inert untrusted state. Named project TypeScript exports are bundled but the Inspector trace is explicitly a non-mutating core-runner contract preview rather than export execution. |
 | Rapier integration           | **Ready as a foundation** | Abstract and Rapier packages support dynamic/static/kinematic bodies, CCD, layers, material properties, multiple worlds, joints, and debug rendering. Gameplay bindings and graph effects still need to be designed.                     |
 | Collision and trigger events | **Ready as a foundation** | Collision/trigger events and contact manifolds are supported; editor Play mode exposes contact buffers. No graph event bindings or landing/bounce controller exists.                                                                     |
 | Physics queries              | **Ready as a foundation** | Raycast, shapecast, and overlap exist in the abstract API and Rapier backend. Node/Custom Node SDK bindings are absent.                                                                                                                  |
@@ -94,12 +96,12 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
 | Named multi-phase scheduler     | Graph flow/events now use every existing frame/fixed domain                  |
 | Scheduler-owned accumulator     | Graph runtime adds no loop or accumulator                                    |
 | Typed gameplay graph compiler   | Graph authoring, diagnostics, and shared editor/headless diagnostic execution are implemented |
-| Runtime adapter boundary        | Browser project-code compilation and sandboxed Play are implemented; M09 adds custom component/editor-extension adapters |
+| Runtime adapter boundary        | Browser project-code compilation, sandboxed Play, and custom component/editor-extension adapters are implemented |
 | Hierarchy activation foundation | Build pooling and graph lifecycle integrations on the existing contract      |
 | No runtime pooling              | Package-level pool built on entity activation and baseline reset             |
 | Editor React UI only            | Separate production DOM UI subsystem and UI assets                           |
 | Checkpoint persistence hooks    | Add save-slot storage, replication, and platform capabilities in M10d        |
-| Browser-local code toolchain    | Extend the M08 Worker/trust boundary with M09 component and editor-extension authoring |
+| Browser-local code toolchain    | Separate gameplay/editor outputs and trust-gated component extensions are implemented; static ZIP export remains M10e |
 
 ## Confirmed risks
 
@@ -113,8 +115,10 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
 - **Browser toolchain risk:** TypeScript, bundling, custom code, and sandbox messaging are
   local and daemon-free; later extensions must preserve that boundary and the production
   bundle exclusion gate.
-- **Isolation risk:** trusted project code still must not receive editor DOM or file handles.
-  Editor customization therefore needs its own declarative and sandboxed extension APIs.
+- **Isolation risk:** declarative gizmos and opaque sandbox widgets now keep project extensions
+  away from editor DOM/file handles. Future extension features must preserve that constrained
+  boundary; Inspector behavior tracing currently previews the declared batch contract and does
+  not execute the named project TypeScript export.
 - **Persistent checkpoint risk:** checksums, fingerprints, registered migration, and
   per-graph fallback are enforced. M10d storage implementations must preserve this contract
   without broadening a graph failure into whole-slot invalidation.
