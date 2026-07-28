@@ -17,6 +17,8 @@ import {
 import type { CodeEditorProvider } from './code-editor-provider.js'
 import { CodeWorkspacePanel } from './CodeWorkspacePanel.js'
 
+const GAMEPLAY_PATH = 'src/gameplay.ts'
+
 class FakeProjectFileSystem implements BrowserProjectFileSystem {
   readonly files = new Map<string, BrowserProjectDiskFile>()
   readonly writes: Array<{ path: string; text: string }> = []
@@ -41,6 +43,15 @@ class FakeProjectFileSystem implements BrowserProjectFileSystem {
     this.files.set(path, file)
     this.writes.push({ path, text })
     return file
+  }
+
+  externalWrite(path: string, text: string): void {
+    const previous = this.files.get(path)
+    this.files.set(path, {
+      text,
+      lastModified: (previous?.lastModified ?? 0) + 10,
+      size: new Blob([text]).size,
+    })
   }
 }
 
@@ -184,5 +195,221 @@ describe('CodeWorkspacePanel', () => {
     expect(languageClient.analyze).not.toHaveBeenCalled()
     expect(bundlerClient.build).not.toHaveBeenCalled()
     expect(launchPlay).not.toHaveBeenCalled()
+  })
+
+  it('renders typed capability denial before creating bundler or Play work', async () => {
+    const disk = new FakeProjectFileSystem()
+    await disk.writeFile(GAMEPLAY_PATH, 'export const speed = 1\n')
+    const workspace = await BrowserProjectWorkspace.open({
+      projectId: 'local-project',
+      trustMode: 'local-trusted',
+      fileSystem: disk,
+    })
+    const bundlerClient = { build: vi.fn(), dispose: vi.fn() }
+    const launchPlay = vi.fn()
+
+    render(
+      <CodeWorkspacePanel
+        workspace={workspace}
+        tooling={TOOLING}
+        EditorProvider={TextareaEditor}
+        languageClient={{ analyze: vi.fn(), dispose: vi.fn() }}
+        bundlerClient={bundlerClient}
+        launchPlay={launchPlay}
+        capabilities={{ requested: ['network'], approved: [] }}
+      />,
+    )
+
+    expect(screen.getByRole('alert').textContent).toContain(
+      'trust.capability-not-approved',
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Build and Play' }))
+    await waitFor(() =>
+      expect(screen.getByRole('status').textContent).toContain(
+        'trust.capability-not-approved',
+      ),
+    )
+    expect(bundlerClient.build).not.toHaveBeenCalled()
+    expect(launchPlay).not.toHaveBeenCalled()
+  })
+
+  it('forks a built-in project and resolves external edits only through visible choices', async () => {
+    const builtInDisk = new FakeProjectFileSystem()
+    await builtInDisk.writeFile(GAMEPLAY_PATH, 'export const speed = 1\n')
+    const builtIn = await BrowserProjectWorkspace.open({
+      projectId: 'built-in-project',
+      trustMode: 'built-in',
+      fileSystem: builtInDisk,
+    })
+    const forkDisk = new FakeProjectFileSystem()
+    const forkWorkspace = vi.fn(() => builtIn.forkToDisk('forked-project', forkDisk))
+
+    render(
+      <CodeWorkspacePanel
+        workspace={builtIn}
+        tooling={TOOLING}
+        EditorProvider={TextareaEditor}
+        languageClient={{ analyze: vi.fn(), dispose: vi.fn() }}
+        bundlerClient={{ build: vi.fn(), dispose: vi.fn() }}
+        launchPlay={vi.fn()}
+        forkWorkspace={forkWorkspace}
+      />,
+    )
+
+    expect((screen.getByRole('textbox', { name: 'Code editor' }) as HTMLTextAreaElement).readOnly).toBe(
+      true,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Fork to disk' }))
+    await waitFor(() =>
+      expect(
+        (screen.getByRole('textbox', { name: 'Code editor' }) as HTMLTextAreaElement).readOnly,
+      ).toBe(false),
+    )
+    fireEvent.change(screen.getByRole('textbox', { name: 'Code editor' }), {
+      target: { value: 'export const speed = 3\n' },
+    })
+    forkDisk.externalWrite(GAMEPLAY_PATH, 'export const speed = 2\n')
+    fireEvent.click(screen.getByRole('button', { name: 'Reload external changes' }))
+
+    await screen.findByRole('alert')
+    expect(screen.getByRole('alert').textContent).toContain('External conflict')
+    expect((screen.getByRole('textbox', { name: 'Code editor' }) as HTMLTextAreaElement).value).toBe(
+      'export const speed = 3\n',
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Use disk changes' }))
+    expect((screen.getByRole('textbox', { name: 'Code editor' }) as HTMLTextAreaElement).value).toBe(
+      'export const speed = 2\n',
+    )
+    expect(forkWorkspace).toHaveBeenCalledTimes(1)
+  })
+
+  it('opens external VS Code only for an explicit absolute path', async () => {
+    const disk = new FakeProjectFileSystem()
+    await disk.writeFile(GAMEPLAY_PATH, 'export const speed = 1\n')
+    const workspace = await BrowserProjectWorkspace.open({
+      projectId: 'local-project',
+      trustMode: 'local-trusted',
+      fileSystem: disk,
+    })
+    const openExternalVsCode = vi.fn()
+
+    render(
+      <CodeWorkspacePanel
+        workspace={workspace}
+        tooling={TOOLING}
+        EditorProvider={TextareaEditor}
+        languageClient={{ analyze: vi.fn(), dispose: vi.fn() }}
+        bundlerClient={{ build: vi.fn(), dispose: vi.fn() }}
+        launchPlay={vi.fn()}
+        openExternalVsCode={openExternalVsCode}
+      />,
+    )
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Absolute project path' }), {
+      target: { value: 'relative/project' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Open in VS Code' }))
+    expect(screen.getByRole('status').textContent).toContain('absolute project path')
+    expect(openExternalVsCode).not.toHaveBeenCalled()
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Absolute project path' }), {
+      target: { value: '/Users/me/project' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Open in VS Code' }))
+    expect(openExternalVsCode).toHaveBeenCalledWith('/Users/me/project')
+  })
+
+  it.each([
+    {
+      result: { type: 'haku-play:crash' as const, message: 'Play crashed' },
+      expected: 'Play crashed',
+    },
+    {
+      result: { type: 'haku-play:timeout' as const, message: 'Play timed out' },
+      expected: 'Play timed out',
+    },
+  ])('recovers editor state after $result.type', async ({ result, expected }) => {
+    const disk = new FakeProjectFileSystem()
+    await disk.writeFile(GAMEPLAY_PATH, 'export const speed = 1\n')
+    const workspace = await BrowserProjectWorkspace.open({
+      projectId: 'local-project',
+      trustMode: 'local-trusted',
+      fileSystem: disk,
+    })
+    const launchPlay = vi.fn(() => ({
+      completion: Promise.resolve(result),
+      dispose: vi.fn(),
+    }))
+
+    render(
+      <CodeWorkspacePanel
+        workspace={workspace}
+        tooling={TOOLING}
+        EditorProvider={TextareaEditor}
+        languageClient={{ analyze: vi.fn(), dispose: vi.fn() }}
+        bundlerClient={{
+          build: vi.fn(async () => ({ gameplay: 'gameplay', editorExtension: 'editor' })),
+          dispose: vi.fn(),
+        }}
+        launchPlay={launchPlay}
+      />,
+    )
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Code editor' }), {
+      target: { value: 'export const speed = 7\n' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Build and Play' }))
+
+    await waitFor(() => expect(screen.getByRole('status').textContent).toContain(expected))
+    expect((screen.getByRole('textbox', { name: 'Code editor' }) as HTMLTextAreaElement).value).toBe(
+      'export const speed = 7\n',
+    )
+  })
+
+  it('stops a running disposable Play session without losing editor text', async () => {
+    const disk = new FakeProjectFileSystem()
+    await disk.writeFile(GAMEPLAY_PATH, 'export const speed = 1\n')
+    const workspace = await BrowserProjectWorkspace.open({
+      projectId: 'local-project',
+      trustMode: 'local-trusted',
+      fileSystem: disk,
+    })
+    const dispose = vi.fn()
+    const launchPlay = vi.fn(() => ({
+      completion: new Promise<never>(() => undefined),
+      dispose,
+    }))
+
+    render(
+      <CodeWorkspacePanel
+        workspace={workspace}
+        tooling={TOOLING}
+        EditorProvider={TextareaEditor}
+        languageClient={{ analyze: vi.fn(), dispose: vi.fn() }}
+        bundlerClient={{
+          build: vi.fn(async () => ({ gameplay: 'gameplay', editorExtension: 'editor' })),
+          dispose: vi.fn(),
+        }}
+        launchPlay={launchPlay}
+      />,
+    )
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Code editor' }), {
+      target: { value: 'export const speed = 8\n' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Build and Play' }))
+    await waitFor(
+      () =>
+        expect((screen.getByRole('button', { name: 'Stop' }) as HTMLButtonElement).disabled).toBe(
+          false,
+        ),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
+
+    expect(dispose).toHaveBeenCalled()
+    expect((screen.getByRole('textbox', { name: 'Code editor' }) as HTMLTextAreaElement).value).toBe(
+      'export const speed = 8\n',
+    )
+    expect(screen.getByRole('status').textContent).toContain('Play stopped')
   })
 })

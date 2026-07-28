@@ -38,6 +38,42 @@
   font-size: 12px;
 }
 
+.haku-code-workspace__conflict,
+.haku-code-workspace__external {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-bottom: 1px solid #444;
+  font-size: 12px;
+}
+
+.haku-code-workspace__conflict {
+  color: #ffd5a1;
+  background: #3b2d1e;
+}
+
+.haku-code-workspace__conflict span {
+  flex: 1;
+}
+
+.haku-code-workspace__external label {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+}
+
+.haku-code-workspace__external input {
+  flex: 1;
+  min-width: 120px;
+  padding: 4px 6px;
+  border: 1px solid #444;
+  border-radius: 3px;
+  color: #ddd;
+  background: #20202a;
+}
+
 .haku-code-workspace__body {
   display: flex;
   flex: 1;

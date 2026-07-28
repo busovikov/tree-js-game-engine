@@ -22,14 +22,20 @@ import {
   type PlaySandboxOptions,
   type PlaySandboxResult,
 } from './play-sandbox.js'
+import { openProjectInExternalVsCode } from './external-vscode.js'
 import './code-workspace-panel.css'
 
 const GAMEPLAY_PATH = 'src/gameplay.ts'
-const DEFAULT_GAMEPLAY_SOURCE = `export const gameplay = {
-  start() {
-    console.info('Haku gameplay started')
+const DEFAULT_GAMEPLAY_SOURCE = `import { defineCustomNode } from '@haku/node-sdk'
+
+export const gameplay = defineCustomNode({
+  id: 'gameplay',
+  run() {
+    return undefined
   },
-}
+})
+
+gameplay.run?.()
 `
 
 export interface CodeLanguageClient {
@@ -62,6 +68,8 @@ export interface CodeWorkspacePanelProps {
   readonly bundlerClient?: CodeBundlerClient
   readonly launchPlay?: CodePlayLauncher
   readonly capabilities?: BrowserProjectCapabilityManifest
+  readonly forkWorkspace?: () => Promise<BrowserProjectWorkspace>
+  readonly openExternalVsCode?: (absoluteProjectPath: string) => unknown
 }
 
 function workspaceFiles(
@@ -99,6 +107,8 @@ export const CodeWorkspacePanel = memo(function CodeWorkspacePanel({
   bundlerClient: injectedBundlerClient,
   launchPlay = createPlaySandbox,
   capabilities = { requested: [], approved: [] },
+  forkWorkspace,
+  openExternalVsCode = openProjectInExternalVsCode,
 }: CodeWorkspacePanelProps) {
   const languageClient = useMemo(
     () => injectedLanguageClient ?? new TypeScriptLanguageClient(),
@@ -108,6 +118,7 @@ export const CodeWorkspacePanel = memo(function CodeWorkspacePanel({
     () => injectedBundlerClient ?? new BrowserBundlerClient(),
     [injectedBundlerClient],
   )
+  const [currentWorkspace, setCurrentWorkspace] = useState(workspace)
   const [revision, setRevision] = useState(0)
   const [activePath, setActivePath] = useState<string | null>(
     workspace.listFiles().includes(GAMEPLAY_PATH)
@@ -117,12 +128,41 @@ export const CodeWorkspacePanel = memo(function CodeWorkspacePanel({
   const [diagnostics, setDiagnostics] = useState<readonly CodeEditorDiagnostic[]>([])
   const [status, setStatus] = useState('Ready')
   const [playSession, setPlaySession] = useState<CodePlaySession | null>(null)
-  const denied = workspace.trustMode === 'imported-untrusted'
+  const [absoluteProjectPath, setAbsoluteProjectPath] = useState('')
+  const denied = currentWorkspace.trustMode === 'imported-untrusted'
+  const readOnly = denied || currentWorkspace.trustMode === 'built-in'
+  const deniedCapability = capabilities.requested.find(
+    (capability) => !capabilities.approved.includes(capability),
+  )
+  const conflict = activePath ? currentWorkspace.getConflict(activePath) : undefined
   const files = useMemo(
-    () => workspaceFiles(workspace, tooling),
-    [revision, tooling, workspace],
+    () => workspaceFiles(currentWorkspace, tooling),
+    [currentWorkspace, revision, tooling],
   )
 
+  useEffect(() => {
+    setCurrentWorkspace(workspace)
+    setActivePath(
+      workspace.listFiles().includes(GAMEPLAY_PATH)
+        ? GAMEPLAY_PATH
+        : (workspace.listFiles().find((path) => path.endsWith('.ts')) ?? null),
+    )
+    setRevision((value) => value + 1)
+  }, [workspace])
+  useEffect(() => {
+    const watcher = currentWorkspace.watchExternalChanges((changes) => {
+      const changed = changes.find((change) => change.path === activePath) ?? changes[0]
+      if (changed) {
+        setStatus(
+          changed.status === 'conflict'
+            ? `External conflict in ${changed.path}`
+            : `Reloaded ${changed.path} from disk`,
+        )
+        setRevision((value) => value + 1)
+      }
+    })
+    return () => watcher.dispose()
+  }, [activePath, currentWorkspace])
   useEffect(
     () => () => {
       playSession?.dispose()
@@ -144,7 +184,7 @@ export const CodeWorkspacePanel = memo(function CodeWorkspacePanel({
 
   const createGameplay = async () => {
     try {
-      await workspace.createText(GAMEPLAY_PATH, DEFAULT_GAMEPLAY_SOURCE)
+      await currentWorkspace.createText(GAMEPLAY_PATH, DEFAULT_GAMEPLAY_SOURCE)
       setActivePath(GAMEPLAY_PATH)
       setRevision((value) => value + 1)
       setStatus(`Created ${GAMEPLAY_PATH}`)
@@ -171,7 +211,7 @@ export const CodeWorkspacePanel = memo(function CodeWorkspacePanel({
   const save = async () => {
     if (!activePath || denied) return
     try {
-      const result = await workspace.saveText(activePath)
+      const result = await currentWorkspace.saveText(activePath)
       setStatus(
         result.status === 'saved'
           ? `Saved ${activePath}`
@@ -191,8 +231,8 @@ export const CodeWorkspacePanel = memo(function CodeWorkspacePanel({
     try {
       const result = await buildBrowserProject(
         {
-          projectId: workspace.projectId,
-          trustMode: workspace.trustMode,
+          projectId: currentWorkspace.projectId,
+          trustMode: currentWorkspace.trustMode,
           files,
           capabilities,
         },
@@ -205,7 +245,7 @@ export const CodeWorkspacePanel = memo(function CodeWorkspacePanel({
         return
       }
       const session = launchPlay({
-        trustMode: workspace.trustMode,
+        trustMode: currentWorkspace.trustMode,
         bundle: result.bundles.gameplay,
         approvedCapabilities: approvedCapabilityData(capabilities),
       })
@@ -230,10 +270,67 @@ export const CodeWorkspacePanel = memo(function CodeWorkspacePanel({
     setStatus('Play stopped')
   }
 
+  const forkToDisk = async () => {
+    if (!forkWorkspace) return
+    try {
+      const forked = await forkWorkspace()
+      setCurrentWorkspace(forked)
+      setActivePath(
+        forked.listFiles().includes(GAMEPLAY_PATH)
+          ? GAMEPLAY_PATH
+          : (forked.listFiles().find((path) => path.endsWith('.ts')) ?? null),
+      )
+      setRevision((value) => value + 1)
+      setStatus(`Forked ${forked.projectId} to local trusted storage`)
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  const reloadExternalChanges = async () => {
+    try {
+      const changes = await currentWorkspace.pollExternalChanges()
+      const changed = changes.find((change) => change.path === activePath) ?? changes[0]
+      setStatus(
+        !changed
+          ? 'No external changes'
+          : changed.status === 'conflict'
+            ? `External conflict in ${changed.path}`
+            : `Reloaded ${changed.path} from disk`,
+      )
+      setRevision((value) => value + 1)
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  const resolveConflict = (resolution: 'reload-disk' | 'keep-editor') => {
+    if (!activePath) return
+    currentWorkspace.resolveConflict(activePath, resolution)
+    setRevision((value) => value + 1)
+    setStatus(
+      resolution === 'reload-disk'
+        ? `Using disk changes for ${activePath}`
+        : `Keeping editor changes for ${activePath}`,
+    )
+  }
+
+  const openVsCode = () => {
+    try {
+      if (!absoluteProjectPath.startsWith('/')) {
+        throw new Error('An absolute project path is required to open external VS Code.')
+      }
+      openExternalVsCode(absoluteProjectPath)
+      setStatus('Opened project in external VS Code')
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error))
+    }
+  }
+
   return (
     <section className="haku-code-workspace" aria-label="Code workspace">
       <div className="haku-code-workspace__toolbar">
-        <button type="button" disabled={denied} onClick={() => void createGameplay()}>
+        <button type="button" disabled={readOnly} onClick={() => void createGameplay()}>
           Create {GAMEPLAY_PATH}
         </button>
         <button type="button" disabled={denied || !activePath} onClick={() => void diagnose()}>
@@ -252,6 +349,14 @@ export const CodeWorkspacePanel = memo(function CodeWorkspacePanel({
         <button type="button" disabled={!playSession} onClick={stopPlay}>
           Stop
         </button>
+        <button type="button" onClick={() => void reloadExternalChanges()}>
+          Reload external changes
+        </button>
+        {currentWorkspace.trustMode === 'built-in' && (
+          <button type="button" disabled={!forkWorkspace} onClick={() => void forkToDisk()}>
+            Fork to disk
+          </button>
+        )}
       </div>
       {denied && (
         <div className="haku-code-workspace__diagnostic" role="alert">
@@ -259,6 +364,37 @@ export const CodeWorkspacePanel = memo(function CodeWorkspacePanel({
           can be compiled.
         </div>
       )}
+      {!denied && deniedCapability && (
+        <div className="haku-code-workspace__diagnostic" role="alert">
+          <code>trust.capability-not-approved</code>: Capability {deniedCapability} requires
+          local approval.
+        </div>
+      )}
+      {conflict && (
+        <div className="haku-code-workspace__conflict" role="alert">
+          <span>External conflict in {conflict.path}</span>
+          <button type="button" onClick={() => resolveConflict('reload-disk')}>
+            Use disk changes
+          </button>
+          <button type="button" onClick={() => resolveConflict('keep-editor')}>
+            Keep editor changes
+          </button>
+        </div>
+      )}
+      <div className="haku-code-workspace__external">
+        <label>
+          Absolute project path
+          <input
+            aria-label="Absolute project path"
+            value={absoluteProjectPath}
+            placeholder="/absolute/path/to/project"
+            onChange={(event) => setAbsoluteProjectPath(event.currentTarget.value)}
+          />
+        </label>
+        <button type="button" onClick={openVsCode}>
+          Open in VS Code
+        </button>
+      </div>
       <div className="haku-code-workspace__body">
         {activePath ? (
           <>
@@ -266,12 +402,12 @@ export const CodeWorkspacePanel = memo(function CodeWorkspacePanel({
             <Suspense fallback={<div className="haku-code-workspace__empty">Loading editor…</div>}>
               <EditorProvider
                 path={activePath}
-                value={workspace.readText(activePath)}
-                readOnly={denied || workspace.trustMode === 'built-in'}
+                value={currentWorkspace.readText(activePath)}
+                readOnly={readOnly}
                 diagnostics={diagnostics}
-                projectFiles={tooling.monacoFiles}
+                projectFiles={files}
                 onChange={(value) => {
-                  workspace.editText(activePath, value)
+                  currentWorkspace.editText(activePath, value)
                   setRevision((current) => current + 1)
                 }}
               />
