@@ -51,6 +51,11 @@ import { browserProjectStore } from './browser-project-store.js'
 import { isFileSystemAccessSupported, nativeProjectStore } from './native-project-store.js'
 import { loadPersonalizedProjectTemplate } from './project-template.js'
 import { PLAYGROUND_PROJECT } from './playground-demos.js'
+import {
+  GRAPH_ASSET_TYPE,
+  GraphAssetSchema,
+  type GraphAsset,
+} from '@haku/graph'
 
 export interface ProjectFileEntry {
   path: string
@@ -315,6 +320,71 @@ export class ProjectService {
 
   getPrefabAssets(): ReadonlyMap<AssetId, PrefabDefinition> {
     return this.prefabAssets
+  }
+
+  async createGraphAsset(
+    projectPath: string,
+    name: string,
+    id: GraphAsset['graph']['id'] = crypto.randomUUID(),
+  ): Promise<GraphAsset> {
+    if (!this.manifest) throw new Error('No project manifest loaded')
+    const path = this.manifestAssetPath(projectPath)
+    if (this.manifest.assets.some((entry) => entry.path === path)) {
+      throw new Error(`An asset already exists at ${path}`)
+    }
+    const asset = GraphAssetSchema.parse({
+      schemaVersion: 1,
+      graph: {
+        id,
+        name,
+        nodes: [],
+        connections: [],
+        publicInterface: { ports: [] },
+        metadata: {},
+      },
+    })
+    await this.writeProjectText(projectPath, `${JSON.stringify(asset, null, 2)}\n`)
+    this.manifest = validateProjectManifest({
+      ...this.manifest,
+      assets: [
+        ...this.manifest.assets,
+        {
+          id: assetId(id),
+          type: GRAPH_ASSET_TYPE,
+          path,
+          dependencies: collectAssetReferences(asset),
+          metadata: { name },
+        },
+      ],
+    })
+    validateProjectAssetComposition(this.manifest, this.assetRegistry)
+    await this.persistManifest()
+    return asset
+  }
+
+  async loadGraphAsset(projectPath: string): Promise<GraphAsset> {
+    return GraphAssetSchema.parse(JSON.parse(await this.readProjectText(projectPath)))
+  }
+
+  async saveGraphAsset(projectPath: string, input: GraphAsset): Promise<GraphAsset> {
+    if (!this.manifest) throw new Error('No project manifest loaded')
+    const path = this.manifestAssetPath(projectPath)
+    const index = this.manifest.assets.findIndex(
+      (entry) => entry.path === path && entry.type === GRAPH_ASSET_TYPE,
+    )
+    if (index < 0) throw new Error(`Graph asset is not registered: ${path}`)
+    const asset = GraphAssetSchema.parse(input)
+    await this.writeProjectText(projectPath, `${JSON.stringify(asset, null, 2)}\n`)
+    const assets = [...this.manifest.assets]
+    assets[index] = {
+      ...assets[index]!,
+      dependencies: collectAssetReferences(asset),
+      metadata: { ...assets[index]!.metadata, name: asset.graph.name },
+    }
+    this.manifest = validateProjectManifest({ ...this.manifest, assets })
+    validateProjectAssetComposition(this.manifest, this.assetRegistry)
+    await this.persistManifest()
+    return asset
   }
 
   async loadScene(relativePath: string): Promise<{ world: IWorld; document: SceneDocument }> {
@@ -1351,6 +1421,7 @@ export class ProjectService {
 
 function assetTypeForPath(path: string): AssetTypeId {
   const lower = path.toLowerCase()
+  if (lower.endsWith('.graph.json')) return GRAPH_ASSET_TYPE
   if (lower.endsWith('.scene.json')) return SCENE_ASSET_TYPE
   if (lower.endsWith('.gltf') || lower.endsWith('.glb')) return MODEL_ASSET_TYPE
   if (/\.(png|jpe?g|webp|gif|ktx2)$/.test(lower)) return TEXTURE_ASSET_TYPE
