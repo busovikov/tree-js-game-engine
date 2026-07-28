@@ -81,6 +81,19 @@ function workspaceFiles(
   return files
 }
 
+function initialSourcePath(workspace: BrowserProjectWorkspace): string | null {
+  const paths = workspace.listFiles()
+  if (paths.includes(GAMEPLAY_PATH)) return GAMEPLAY_PATH
+  return (
+    paths.find(
+      (path) =>
+        path.startsWith('src/') &&
+        !path.endsWith('.d.ts') &&
+        /\.(?:ts|tsx)$/.test(path),
+    ) ?? null
+  )
+}
+
 function approvedCapabilityData(
   capabilities: BrowserProjectCapabilityManifest,
 ): Readonly<Record<string, PlayCapabilityValue>> {
@@ -121,9 +134,7 @@ export const CodeWorkspacePanel = memo(function CodeWorkspacePanel({
   const [currentWorkspace, setCurrentWorkspace] = useState(workspace)
   const [revision, setRevision] = useState(0)
   const [activePath, setActivePath] = useState<string | null>(
-    workspace.listFiles().includes(GAMEPLAY_PATH)
-      ? GAMEPLAY_PATH
-      : (workspace.listFiles().find((path) => path.endsWith('.ts')) ?? null),
+    initialSourcePath(workspace),
   )
   const [diagnostics, setDiagnostics] = useState<readonly CodeEditorDiagnostic[]>([])
   const [status, setStatus] = useState('Ready')
@@ -142,11 +153,7 @@ export const CodeWorkspacePanel = memo(function CodeWorkspacePanel({
 
   useEffect(() => {
     setCurrentWorkspace(workspace)
-    setActivePath(
-      workspace.listFiles().includes(GAMEPLAY_PATH)
-        ? GAMEPLAY_PATH
-        : (workspace.listFiles().find((path) => path.endsWith('.ts')) ?? null),
-    )
+    setActivePath(initialSourcePath(workspace))
     setRevision((value) => value + 1)
   }, [workspace])
   useEffect(() => {
@@ -275,11 +282,7 @@ export const CodeWorkspacePanel = memo(function CodeWorkspacePanel({
     try {
       const forked = await forkWorkspace()
       setCurrentWorkspace(forked)
-      setActivePath(
-        forked.listFiles().includes(GAMEPLAY_PATH)
-          ? GAMEPLAY_PATH
-          : (forked.listFiles().find((path) => path.endsWith('.ts')) ?? null),
-      )
+      setActivePath(initialSourcePath(forked))
       setRevision((value) => value + 1)
       setStatus(`Forked ${forked.projectId} to local trusted storage`)
     } catch (error) {

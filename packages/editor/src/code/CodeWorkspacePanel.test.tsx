@@ -197,6 +197,34 @@ describe('CodeWorkspacePanel', () => {
     expect(launchPlay).not.toHaveBeenCalled()
   })
 
+  it('never selects generated declarations as the editable project source', async () => {
+    const disk = new FakeProjectFileSystem()
+    await disk.writeFile(
+      '.haku/generated/engine.d.ts',
+      'declare const engineVersion: string\n',
+    )
+    const workspace = await BrowserProjectWorkspace.open({
+      projectId: 'built-in-project',
+      trustMode: 'built-in',
+      fileSystem: disk,
+    })
+
+    render(
+      <CodeWorkspacePanel
+        workspace={workspace}
+        tooling={TOOLING}
+        EditorProvider={TextareaEditor}
+        languageClient={{ analyze: vi.fn(), dispose: vi.fn() }}
+        bundlerClient={{ build: vi.fn(), dispose: vi.fn() }}
+        launchPlay={vi.fn()}
+        forkWorkspace={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByRole('textbox', { name: 'Code editor' })).toBeNull()
+    expect(screen.getByText('No TypeScript source — create src/gameplay.ts')).toBeTruthy()
+  })
+
   it('renders typed capability denial before creating bundler or Play work', async () => {
     const disk = new FakeProjectFileSystem()
     await disk.writeFile(GAMEPLAY_PATH, 'export const speed = 1\n')
