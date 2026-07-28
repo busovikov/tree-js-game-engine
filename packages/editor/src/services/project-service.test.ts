@@ -8,6 +8,8 @@ import {
   CUSTOM_COMPONENT_TYPE_ASSET_TYPE,
   MODEL_ASSET_TYPE,
   SCENE_ASSET_TYPE,
+  assetRef,
+  dependencyClosure,
   validateProjectManifest,
 } from '@haku/assets'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -62,7 +64,6 @@ describe('ProjectService disk saving', () => {
   it('loads visual component type assets before hydrating a scene', async () => {
     const service = new ProjectService()
     const sceneAssetId = '10000000-0000-4000-8000-000000000021'
-    const componentAssetId = '10000000-0000-4000-8000-000000000022'
     const componentTypeId = '42000000-0000-4000-8000-000000000021'
     const entityId = 'a0000000-0000-4000-8000-000000000021'
     service.openFromManifest(
@@ -80,7 +81,7 @@ describe('ProjectService disk saving', () => {
             path: 'scenes/main.scene.json',
           },
           {
-            id: componentAssetId,
+            id: componentTypeId,
             type: CUSTOM_COMPONENT_TYPE_ASSET_TYPE,
             path: 'components/mover.component.json',
           },
@@ -201,6 +202,92 @@ describe('ProjectService disk saving', () => {
         asset,
       ),
     ).rejects.toThrow(/already exists/)
+  })
+
+  it('retains visual component type definitions in scene and prefab dependency closures', async () => {
+    const service = new ProjectService()
+    const sceneAssetId = '10000000-0000-4000-8000-000000000032'
+    const componentTypeId = '42000000-0000-4000-8000-000000000032'
+    const entityId = 'a0000000-0000-4000-8000-000000000032'
+    service.openFromManifest(
+      'component-export',
+      validateProjectManifest({
+        schemaVersion: 1,
+        name: 'Component export',
+        entryScene: assetRef(sceneAssetId, SCENE_ASSET_TYPE),
+        assetsDir: 'public/assets',
+        scriptsDir: 'src',
+        assets: [
+          {
+            id: sceneAssetId,
+            type: SCENE_ASSET_TYPE,
+            path: 'scenes/main.scene.json',
+          },
+        ],
+      }),
+    )
+    await service.createCustomComponentTypeAsset(
+      'public/assets/components/mover.component.json',
+      {
+        schemaVersion: 1,
+        id: componentTypeId,
+        name: 'Mover',
+        version: 1,
+        fields: [{ name: 'speed', type: 'number', default: 4 }],
+      },
+    )
+    browserProjectStore.registerFile('public/assets/scenes/main.scene.json', {
+      content: JSON.stringify({
+        schemaVersion: 1,
+        metadata: { name: 'Main' },
+        entities: [
+          {
+            id: entityId,
+            name: 'Runner',
+            parent: null,
+            components: [{ type: componentTypeId, data: { speed: 9 } }],
+          },
+        ],
+      }),
+    })
+
+    const loaded = await service.loadScene('public/assets/scenes/main.scene.json')
+    await service.saveScene(
+      'public/assets/scenes/main.scene.json',
+      loaded.world,
+      loaded.document,
+    )
+    const prefabRef = await service.createPrefabAsset(
+      {
+        entities: [
+          {
+            id: entityId,
+            name: 'Runner',
+            parent: null,
+            components: [{ type: componentTypeId, data: { speed: 9 } }],
+          },
+        ],
+      },
+      'Runner',
+    )
+
+    const manifest = service.getManifest()!
+    const componentTypeRef = assetRef(
+      componentTypeId,
+      CUSTOM_COMPONENT_TYPE_ASSET_TYPE,
+    )
+    expect(
+      manifest.assets.find((entry) => entry.id === sceneAssetId)?.dependencies,
+    ).toContainEqual(componentTypeRef)
+    expect(
+      manifest.assets.find((entry) => entry.id === prefabRef.$ref)?.dependencies,
+    ).toContainEqual(componentTypeRef)
+    expect(
+      dependencyClosure(manifest, [manifest.entryScene]).map((entry) => entry.id),
+    ).toContain(componentTypeId)
+    expect(
+      dependencyClosure(manifest, [prefabRef]).map((entry) => entry.id),
+    ).toContain(componentTypeId)
   })
 
   it('writes playground editor settings through the project file endpoint', async () => {

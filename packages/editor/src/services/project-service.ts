@@ -1416,7 +1416,7 @@ export class ProjectService {
           id,
           type: PREFAB_ASSET_TYPE,
           path: manifestPath,
-          dependencies: collectAssetReferences(parsed),
+          dependencies: this.collectProjectAssetReferences(parsed),
           metadata: { name: displayName },
         },
       ],
@@ -1523,11 +1523,48 @@ export class ProjectService {
     const assets = [...this.manifest.assets]
     assets[index] = {
       ...assets[index]!,
-      dependencies: collectAssetReferences(document),
+      dependencies: this.collectProjectAssetReferences(document),
     }
     this.manifest = validateProjectManifest({ ...this.manifest, assets })
     validateProjectAssetComposition(this.manifest, this.assetRegistry)
     await this.persistManifest()
+  }
+
+  private collectProjectAssetReferences(
+    document: SceneDocument | PrefabDefinition,
+  ): AssetRef[] {
+    const references = new Map(
+      collectAssetReferences(document).map((reference) => [
+        reference.$ref,
+        reference,
+      ]),
+    )
+    const visit = (candidate: unknown): void => {
+      if (Array.isArray(candidate)) {
+        for (const item of candidate) visit(item)
+        return
+      }
+      if (typeof candidate !== 'object' || candidate === null) return
+      const record = candidate as Record<string, unknown>
+      if (Array.isArray(record.components)) {
+        for (const component of record.components) {
+          if (typeof component !== 'object' || component === null) continue
+          const type = (component as { type?: unknown }).type
+          if (typeof type === 'string' && this.customComponentTypes.has(type)) {
+            const reference = assetRef(
+              assetId(type),
+              CUSTOM_COMPONENT_TYPE_ASSET_TYPE,
+            )
+            references.set(reference.$ref, reference)
+          }
+        }
+      }
+      for (const value of Object.values(record)) visit(value)
+    }
+    visit(document)
+    return [...references.values()].sort((left, right) =>
+      left.$ref.localeCompare(right.$ref),
+    )
   }
 
   private resolveEntryScenePath(manifest: ProjectManifest): string {
