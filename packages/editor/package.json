@@ -22,12 +22,15 @@
     "@haku/assets": "workspace:*",
     "@haku/core": "file:../core",
     "@haku/engine": "file:../engine",
+    "@haku/graph": "workspace:*",
     "@haku/physics": "file:../physics",
     "@haku/physics-rapier": "file:../physics-rapier",
     "@haku/schema": "file:../schema",
     "@haku/serializer": "file:../serializer",
+    "@xyflow/react": "^12.11.2",
     "react-resizable-panels": "^2.1.9",
     "three": "^0.171.0",
+    "zod": "^3.25.76",
     "zustand": "^5.0.14"
   },
   "peerDependencies": {

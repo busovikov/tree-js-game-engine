@@ -221,6 +221,7 @@ export type GraphPortDirection = z.infer<typeof GraphPortDirectionSchema>
 export type GraphCallsite = z.infer<typeof GraphCallsiteSchema>
 export type GraphNode = z.infer<typeof GraphNodeSchema>
 export type GraphConnection = z.infer<typeof GraphConnectionSchema>
+export type GraphConnectionEndpoint = z.infer<typeof GraphConnectionEndpointSchema>
 export type GraphPublicPort = z.infer<typeof GraphPublicPortSchema>
 export type GraphPublicInterface = z.infer<typeof GraphPublicInterfaceSchema>
 export type GraphDocument = z.infer<typeof GraphDocumentSchema>

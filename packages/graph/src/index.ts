@@ -24,6 +24,7 @@ export {
   type GraphAsset,
   type GraphCallsite,
   type GraphConnection,
+  type GraphConnectionEndpoint,
   type GraphDocument,
   type GraphNode,
   type GraphPortDirection,
