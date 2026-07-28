@@ -253,6 +253,22 @@ There is **no SQL/NoSQL database** in @haku v1. Do not add DB error handling unl
 
 ---
 
+## Browser code workspace
+
+| Scenario | Error / behavior | Enforcement |
+| -------- | ---------------- | ----------- |
+| Imported project code requests diagnose/build/Play | `trust.untrusted-code`; language, bundler, and Play clients are not invoked | `runTrustedBrowserBuild`, `CodeWorkspacePanel` |
+| Trusted project requests an unapproved capability | `trust.capability-not-approved`; bundle and Play are blocked | `runTrustedBrowserBuild` |
+| Built-in project source is edited | Workspace is read-only; user must `Fork to disk` through the native directory picker | `BrowserProjectWorkspace`, `ProjectService` |
+| Disk changed while editor buffer is clean | Reloads from disk and updates its baseline | `pollExternalChanges` |
+| Disk changed while editor buffer is dirty | Shows an external conflict; neither side overwrites until `Use disk changes` or `Keep editor changes` | `BrowserProjectWorkspace`, `CodeWorkspacePanel` |
+| Generated declaration is present | Included in language/VS Code project files, excluded from editable source selection | `ProjectCodeWorkspacePanel`, `CodeWorkspacePanel` |
+| Play code throws | Reports the crash, destroys the sandbox, keeps editor state | `play-sandbox`, `CodeWorkspacePanel` |
+| Play code does not yield | Ten-second timeout destroys the opaque-origin iframe; `Stop` remains available while running | `play-sandbox`, `CodeWorkspacePanel` |
+| Source is non-TypeScript workspace metadata | Persisted/shared with VS Code but not opened as a Monaco TypeScript model | `ProjectCodeWorkspacePanel` |
+
+---
+
 ## Security constraints
 
 | Constraint | Rationale | Enforcement |

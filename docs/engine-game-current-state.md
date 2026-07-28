@@ -1,7 +1,7 @@
 # Engine improvement through Bounce Run: current-state audit
 
 > Baseline verified on 2026-07-26 at commit `d8e74a1`; current claims are updated through
-> M07. Target contracts live in
+> M08. Target contracts live in
 > [node-graph-architecture.md](./node-graph-architecture.md) and execution order lives in
 > [engine-game-development-plan.md](./engine-game-development-plan.md).
 
@@ -46,6 +46,9 @@ Browser editor
   -> ProjectService (native File System Access or virtual project)
   -> graph asset create/open/save + Haku-owned authoring commands
   -> lazy replaceable React Flow canvas, compiler diagnostics, and Play trace/port values
+  -> conflict-safe TypeScript workspace + generated declarations
+  -> local TypeScript/esbuild Workers + trust/capability gate
+  -> lazy replaceable Monaco + disposable opaque-origin Play sandbox
   -> same Engine for viewport and Play mode
   -> snapshot world on Play, restore on Stop
 ```
@@ -67,7 +70,7 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
 | Asset system                 | **Ready as a foundation** | Universal UUID manifests, typed references, package-contributed descriptors, structured diagnostics, path-independent identity, and deterministic dependency closure exist. Static export remains a later milestone.                     |
 | Runtime scheduler            | **Ready as a foundation** | `EngineScheduler` owns named frame/fixed phases, deterministic local ordering and typed queued commands, bounded fixed-step catch-up, tick/frame numbering, interpolation alpha, pause, and single-step. `@haku/graph-runtime` enters every domain through this scheduler and owns no second loop. |
 | Gameplay node system         | **Ready as a foundation**  | `@haku/graph` provides strict graph assets, registered types/nodes/effects, generics, diagnostics, checkpoint scope/taint and async-liveness metadata, and deterministic plans. `@haku/graph-runtime` adds instances, lazy snapshots, flow/event queues, scoped async work, tracing, bounded checkpoint/rewind, all seven async policies, effect reconciliation, and persistent checkpoint hooks. The M07 editor adds Haku-owned graph authoring, lazy replaceable canvas integration, compiler/checkpoint diagnostics, and Play trace/port values. |
-| Script/custom-node runtime   | **Partial**                | Metadata-only Custom Node declarations are paired with type/version-bound runtime adapters behind a replaceable `ExecutionBackend`. Browser project-code compilation and sandboxing remain M08. |
+| Script/custom-node runtime   | **Partial foundation**     | Metadata-only Custom Node declarations are paired with type/version-bound runtime adapters behind a replaceable `ExecutionBackend`. M08 adds browser-local TypeScript diagnostics, gameplay/editor-extension bundling, the browser-safe `@haku/node-sdk` runtime, trust/capability gating, and disposable Play. M09 still owns authored custom component and editor-extension APIs. |
 | Rapier integration           | **Ready as a foundation** | Abstract and Rapier packages support dynamic/static/kinematic bodies, CCD, layers, material properties, multiple worlds, joints, and debug rendering. Gameplay bindings and graph effects still need to be designed.                     |
 | Collision and trigger events | **Ready as a foundation** | Collision/trigger events and contact manifolds are supported; editor Play mode exposes contact buffers. No graph event bindings or landing/bounce controller exists.                                                                     |
 | Physics queries              | **Ready as a foundation** | Raycast, shapecast, and overlap exist in the abstract API and Rapier backend. Node/Custom Node SDK bindings are absent.                                                                                                                  |
@@ -80,7 +83,7 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
 | Seeded random                | **Absent**                | A seeded demo description exists, but no general seeded RNG service or replay contract was found.                                                                                                                                        |
 | Replay/QA harness            | **Absent**                | There are tests and debug helpers, but no tick-action recorder, state hashes, replay artifact, or structured browser QA session report.                                                                                                  |
 | Tests                        | **Ready as a foundation** | Unit/integration coverage exists across core, schema, serializer, physics, engine, editor, and apps. Playwright/export gates and the new graph/generator suites are absent.                                                              |
-| Browser-only project editing | **Partial**               | Chrome File System Access supports local projects; built-in demos use a virtual project. In-browser TypeScript service, bundler Worker, trust model, code editor providers, and local ZIP export are absent.                             |
+| Browser-only project editing | **Partial foundation**    | Chrome File System Access and dev-target persistence feed a conflict-safe source workspace. Generated declarations are shared by lazy Monaco and external VS Code; TypeScript/esbuild run locally in Workers; built-in/imported/local trust modes gate compilation; Play is disposable and DOM/file-handle isolated. Static ZIP export remains M10e. |
 | Production export            | **Absent**                | Vite applications can be built conventionally, but there is no editor function that resolves reachable assets and downloads a self-contained static HTML5 ZIP.                                                                           |
 | Rendering                    | **Ready and evolving**    | Three.js backend, RenderSync, shadows/settings, render targets, post pipeline, and render-only RenderGraph exist. Bounce Run should use the backend offered by Haku and preserve the render roadmap boundaries.                          |
 
@@ -91,12 +94,12 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
 | Named multi-phase scheduler     | Graph flow/events now use every existing frame/fixed domain                  |
 | Scheduler-owned accumulator     | Graph runtime adds no loop or accumulator                                    |
 | Typed gameplay graph compiler   | Graph authoring, diagnostics, and shared editor/headless diagnostic execution are implemented |
-| Runtime adapter boundary        | Add browser project-code compilation and sandboxing in M08                   |
+| Runtime adapter boundary        | Browser project-code compilation and sandboxed Play are implemented; M09 adds custom component/editor-extension adapters |
 | Hierarchy activation foundation | Build pooling and graph lifecycle integrations on the existing contract      |
 | No runtime pooling              | Package-level pool built on entity activation and baseline reset             |
 | Editor React UI only            | Separate production DOM UI subsystem and UI assets                           |
 | Checkpoint persistence hooks    | Add save-slot storage, replication, and platform capabilities in M10d        |
-| Toolchain outside browser       | Browser-local TypeScript/bundling in Workers and sandboxed Play instances    |
+| Browser-local code toolchain    | Extend the M08 Worker/trust boundary with M09 component and editor-extension authoring |
 
 ## Confirmed risks
 
@@ -107,8 +110,9 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
   policies, rewind, effect reconciliation, and persistence hooks now have headless coverage.
   M07 exposes the same compiler/runtime diagnostic plan in editor Play and the playground;
   later tooling must preserve that shared-plan boundary.
-- **Browser toolchain risk:** TypeScript, bundling, custom code, and sandbox messaging must
-  remain local without requiring a daemon or sending project files to Haku servers.
+- **Browser toolchain risk:** TypeScript, bundling, custom code, and sandbox messaging are
+  local and daemon-free; later extensions must preserve that boundary and the production
+  bundle exclusion gate.
 - **Isolation risk:** trusted project code still must not receive editor DOM or file handles.
   Editor customization therefore needs its own declarative and sandboxed extension APIs.
 - **Persistent checkpoint risk:** checksums, fingerprints, registered migration, and

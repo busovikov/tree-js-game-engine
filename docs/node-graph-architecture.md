@@ -391,6 +391,15 @@ The provider is selectable in user settings. MVP project code may import public 
 APIs, relative local modules, and curated built-in browser-safe dependencies. Arbitrary npm
 installation and remote URL imports are deferred.
 
+Implemented in M08: `@haku/build` owns browser-safe project indexing, trust/capability
+gating, TypeScript and esbuild Worker clients, and the separate gameplay/editor-extension
+bundle contract. `@haku/editor` owns conflict-safe source buffers, generated declarations,
+the replaceable lazy Monaco provider, external VS Code launch/reload, and disposable
+sandboxed Play sessions. Built-in workspaces stay read-only until forked; imported
+workspaces fail before compilation; local trusted Play receives a message port rather than
+the editor DOM or file handles. The playground production bundle contains none of Monaco,
+the TypeScript Worker, or the browser bundler.
+
 The node canvas is a replaceable `GraphCanvasProvider`; MVP uses React Flow behind an
 adapter. Haku owns graph documents, commands, validation, serialization, and undo/redo.
 React Flow objects never become saved graph data.

@@ -69,6 +69,9 @@ Open the editor in browser — all components render in context (Hierarchy, Insp
 | `AssetBrowserPanel` | `panels/AssetBrowserPanel.tsx` | Asset tree, import, open scene |
 | `GraphEditorPanel` | `graph/GraphEditorPanel.tsx` | Graph assets, palette, Inspector, diagnostics, command history, Play trace |
 | `GraphCanvasProvider` | `graph/graph-canvas-provider.tsx` | Replaceable lazy graph canvas boundary; default adapter is React Flow |
+| `ProjectCodeWorkspacePanel` | `code/ProjectCodeWorkspacePanel.tsx` | Project source/declaration wiring and browser Worker clients |
+| `CodeWorkspacePanel` | `code/CodeWorkspacePanel.tsx` | Source list, diagnostics, save/build/Play, conflict and recovery actions |
+| `CodeEditorProvider` | `code/code-editor-provider.tsx` | Replaceable lazy editor boundary; default adapter is Monaco |
 
 ### Inspector fields (reuse first)
 
@@ -427,6 +430,26 @@ Engine exposes `pickEntityAt` / `pickEntitiesInRect`. Viewport handles click + m
 **Keyboard:** ⌘D duplicates the selected asset when the asset panel is focused — entity duplicate is suppressed in that context.
 
 **CSS:** `asset-browser-panel.css` (`haku-asset-browser__*`)
+
+---
+
+## Code workspace
+
+The `Code` viewport tab mounts `ProjectCodeWorkspacePanel`. It generates the shared
+`tsconfig.json` and `.haku/generated/*.d.ts` inputs, then passes a
+`BrowserProjectWorkspace` plus Worker-backed language and bundler clients into
+`CodeWorkspacePanel`.
+
+- Generated declarations are language-service inputs, never editable source selections.
+- Save checks the latest disk metadata before writing; conflicts require an explicit
+  `Use disk changes` or `Keep editor changes` action.
+- `Build and Play` launches only a trusted gameplay bundle in a disposable opaque-origin
+  iframe. `Stop`, timeout, and crash cleanup preserve editor buffers.
+- Built-in projects expose `Fork to disk`; imported-untrusted projects show the trust
+  denial before TypeScript or bundler clients run.
+- Monaco is loaded through `DefaultCodeEditorProvider` only after the Code tab mounts.
+
+**CSS:** `CodeWorkspacePanel.css` (`haku-code-workspace__*`)
 
 ---
 

@@ -41,7 +41,7 @@ The program is done only when:
 | M05  | Graph interpreter, domains, queues, and tracing                 | M04        | Complete                                 |
 | M06  | Checkpoint, rewind, async policies, and persistence hooks       | M05        | Complete                                 |
 | M07  | Minimal graph editor and diagnostic scene                       | M06        | Complete                                 |
-| M08  | Browser project TypeScript/build/trust tooling                  | M07        | Pending                                  |
+| M08  | Browser project TypeScript/build/trust tooling                  | M07        | Complete                                 |
 | M09  | Custom components and editor extensions                         | M08        | Pending                                  |
 | M10a | Pool and activation integrations                                | M09        | Pending                                  |
 | M10b | DOM UI runtime and visual UI editor                             | M09        | Pending                                  |
@@ -221,14 +221,14 @@ Scope:
 
 Acceptance:
 
-- [ ] A user creates and runs a custom node entirely in Chrome without CLI/Node/daemon.
-- [ ] Project source/assets never leave the local browser/file boundary.
-- [ ] Untrusted TypeScript/editor code never executes.
-- [ ] Trusted runtime still cannot access editor DOM or file handles.
-- [ ] Monaco and VS Code understand identical engine/project declarations.
-- [ ] External edits are detected and conflicts never overwrite silently.
-- [ ] A runaway/crashed Play instance can be destroyed without losing editor state.
-- [ ] Monaco, TS Worker, and bundler are lazy and absent from production games.
+- [x] A user creates and runs a custom node entirely in Chrome without CLI/Node/daemon.
+- [x] Project source/assets never leave the local browser/file boundary.
+- [x] Untrusted TypeScript/editor code never executes.
+- [x] Trusted runtime still cannot access editor DOM or file handles.
+- [x] Monaco and VS Code understand identical engine/project declarations.
+- [x] External edits are detected and conflicts never overwrite silently.
+- [x] A runaway/crashed Play instance can be destroyed without losing editor state.
+- [x] Monaco, TS Worker, and bundler are lazy and absent from production games.
 
 ## M09 — Custom components and editor extensions
 

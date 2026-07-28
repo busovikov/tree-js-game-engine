@@ -169,6 +169,16 @@
 
 **Playground pattern:** [`apps/playground/src/main.ts`](../apps/playground/src/main.ts)
 
+### `@haku/build` — `packages/build/src/index.ts`
+
+| Export | Purpose |
+| ------ | ------- |
+| `createBrowserProjectIndex`, `generateBrowserProjectTooling` | Shared `tsconfig.json`, engine/project/Node SDK declarations, and Monaco/VS Code file map |
+| `runTrustedBrowserBuild`, `BrowserProjectTrustMode`, `BrowserProjectCapabilities` | Trust and requested-capability gate before compilation |
+| `TypeScriptLanguageWorkerClient`, `BrowserBundleWorkerClient` | Typed local Worker RPC clients |
+| `analyzeTypeScriptProject` | TypeScript diagnostics scoped to requested source paths |
+| `bundleBrowserProject` | Separate browser-safe gameplay and editor-extension bundles |
+
 ### `@haku/editor` — `packages/editor/src/index.ts`
 
 | Export | Purpose |
@@ -177,6 +187,11 @@
 | `useEditorStore` | Zustand state |
 | `projectService` | Project read/write — [`project-service.ts`](../packages/editor/src/services/project-service.ts) |
 | `globalCommandBus`, `executeCommand` | Undo + world commands |
+| `BrowserProjectWorkspace` | Conflict-safe source buffers, disk baselines, fork, and explicit conflict resolution |
+| `CodeWorkspacePanel`, `ProjectCodeWorkspacePanel` | Code tab workflow and project/browser tooling composition |
+| `DefaultCodeEditorProvider`, `createLazyCodeEditorProvider` | Replaceable lazy Monaco boundary |
+| `createPlaySandbox` | Disposable opaque-origin iframe Play transport with timeout/Stop cleanup |
+| `openProjectInExternalVsCode` | External VS Code URI launch for an absolute local project path |
 
 **Not exported publicly (internal):** `commitSceneEdit` — import from `commands/scene-history.js` inside editor package only.
 
@@ -380,14 +395,17 @@ Append-only project log: `logs/haku.log` via `projectService.appendProjectLog()`
 | `showDirectoryPicker` | https://developer.mozilla.org/en-US/docs/Web/API/Window/showDirectoryPicker |
 | `webkitdirectory` fallback | https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/webkitdirectory |
 | Fetch API | https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API |
+| Web Workers | https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API |
 
-### Approved future editor/platform references
+### Editor/platform references
 
-These references inform target contracts; their packages/adapters are not implemented yet.
+These references inform implemented editor tooling and later platform adapters.
 
 | Topic | URL |
 | --- | --- |
 | Monaco Editor | https://github.com/microsoft/monaco-editor |
+| TypeScript Compiler API | https://github.com/microsoft/TypeScript/wiki/Using-the-Compiler-API |
+| esbuild browser API | https://esbuild.github.io/api/#running-in-the-browser |
 | Yandex Games player data | https://yandex.com/dev/games/doc/en/sdk/sdk-player |
 | Poki HTML5 SDK / cloud gamesaves | https://sdk.poki.com/html5 |
 | Poki SDK lifecycle | https://sdk.poki.com/sdk-documentation |
