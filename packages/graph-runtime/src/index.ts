@@ -2174,8 +2174,3 @@ function awaitAbortable<T>(
     )
   })
 }
-
-export {
-  runDiagnosticGraphPlan,
-  type DiagnosticGraphRun,
-} from './diagnostic-graph.js'

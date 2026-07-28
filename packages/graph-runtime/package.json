@@ -8,6 +8,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./diagnostic-graph": {
+      "types": "./dist/diagnostic-graph.d.ts",
+      "import": "./dist/diagnostic-graph.js"
     }
   },
   "files": ["dist"],

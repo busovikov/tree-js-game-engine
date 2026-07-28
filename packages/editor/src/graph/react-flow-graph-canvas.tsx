@@ -14,7 +14,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import type { GraphNode } from '@haku/graph'
-import type { GraphCanvasProviderProps } from './graph-canvas-provider.js'
+import type { GraphCanvasProviderProps } from './graph-canvas-types.js'
 import './react-flow-graph-canvas.css'
 
 interface HakuNodeData extends Record<string, unknown> {

@@ -17,7 +17,7 @@ import {
 import project from '../haku.project.json'
 import { configurePlaygroundViewport } from './playground-viewport.js'
 import { compileDiagnosticGraph } from '@haku/graph'
-import { runDiagnosticGraphPlan } from '@haku/graph-runtime'
+import { runDiagnosticGraphPlan } from '@haku/graph-runtime/diagnostic-graph'
 
 async function main() {
   const manifest = validateProjectManifest(project)

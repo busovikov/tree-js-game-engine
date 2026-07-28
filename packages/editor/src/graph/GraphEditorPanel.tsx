@@ -9,7 +9,7 @@ import {
 } from 'react'
 import { World } from '@haku/core'
 import { DIAGNOSTIC_GRAPH_IDS } from '@haku/graph'
-import { runDiagnosticGraphPlan } from '@haku/graph-runtime'
+import { runDiagnosticGraphPlan } from '@haku/graph-runtime/diagnostic-graph'
 import { projectService } from '../services/project-service.js'
 import { prepareBeforeUnload } from '../services/unsaved-changes.js'
 import { DefaultGraphCanvasProvider } from './graph-canvas-provider.js'
