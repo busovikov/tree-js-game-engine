@@ -72,6 +72,25 @@ export async function buildBrowserProject(
     }
   }
 
+  const approved = new Set(request.capabilities.approved)
+  const deniedCapability = request.capabilities.requested.find(
+    (capability) => !approved.has(capability),
+  )
+  if (deniedCapability) {
+    return {
+      ok: false,
+      diagnostics: [
+        {
+          code: 'trust.capability-not-approved',
+          kind: 'trust',
+          severity: 'error',
+          capability: deniedCapability,
+          message: `Capability "${deniedCapability}" requires approval for this project.`,
+        },
+      ],
+    }
+  }
+
   const trustedRequest: TrustedBrowserProjectBuildRequest = {
     ...request,
     trustMode: request.trustMode,

@@ -1,1 +1,5 @@
+export * from './browser-bundle.js'
+export * from './browser-project-index.js'
 export * from './browser-project-tooling.js'
+export * from './browser-worker-clients.js'
+export * from './typescript-language-service.js'

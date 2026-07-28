@@ -73,4 +73,39 @@ describe('browser project trust boundary', () => {
     })
     expect(worker.build).toHaveBeenCalledOnce()
   })
+
+  it('denies a requested capability until it is approved for the project', async () => {
+    const worker: BrowserBuildWorker = {
+      build: vi.fn(async () => ({
+        gameplay: 'compiled gameplay',
+        editorExtension: 'compiled editor extension',
+      })),
+    }
+
+    const result = await buildBrowserProject(
+      {
+        ...BASE_REQUEST,
+        trustMode: 'local-trusted',
+        capabilities: {
+          requested: ['network'],
+          approved: [],
+        },
+      },
+      worker,
+    )
+
+    expect(result).toEqual({
+      ok: false,
+      diagnostics: [
+        {
+          code: 'trust.capability-not-approved',
+          kind: 'trust',
+          severity: 'error',
+          capability: 'network',
+          message: 'Capability "network" requires approval for this project.',
+        },
+      ],
+    })
+    expect(worker.build).not.toHaveBeenCalled()
+  })
 })
