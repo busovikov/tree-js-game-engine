@@ -122,10 +122,25 @@ export interface NodeExecutionResult {
 
 export type CancelFallbackKind = 'option' | 'result'
 
+export interface RestartCheckpointAdapter {
+  readonly safety: 'pure' | 'idempotent'
+  readonly inputs: () => unknown
+}
+
+export interface ResumeCheckpointAdapter {
+  readonly stateMachineId: string
+  readonly serialize: () => unknown
+}
+
+export interface ReconnectCheckpointAdapter {
+  readonly operationId: string
+  readonly status: () => unknown
+}
+
 export interface CheckpointableTaskAdapter {
-  readonly restart?: () => unknown
-  readonly resume?: () => unknown
-  readonly reconnect?: () => unknown
+  readonly restart?: RestartCheckpointAdapter
+  readonly resume?: ResumeCheckpointAdapter
+  readonly reconnect?: ReconnectCheckpointAdapter
   readonly cancel?: () => void
   readonly fallback?: {
     readonly kind: CancelFallbackKind
@@ -983,23 +998,69 @@ export class GraphInstance {
           )
           break
         }
-        case 'restart':
-        case 'resume':
-        case 'reconnect': {
+        case 'restart': {
           if (!task) break
-          const capture = task.adapter?.[selection.policy]
-          if (!capture) {
+          const adapter = task.adapter?.restart
+          if (
+            !adapter ||
+            (adapter.safety !== 'pure' && adapter.safety !== 'idempotent')
+          ) {
             throw new CheckpointPolicyError(
               'checkpoint.missing-policy-adapter',
-              `Async callsite ${selection.callsiteId} has no ${selection.policy} adapter`,
+              `Async callsite ${selection.callsiteId} has no restart adapter`,
               selection.callsiteId,
             )
           }
           records.push({
             nodeId: policyMetadata.nodeId,
             callsiteId: policyMetadata.callsiteId,
-            policy: selection.policy,
-            payload: cloneValue(capture()),
+            policy: 'restart',
+            payload: cloneValue({
+              safety: adapter.safety,
+              inputs: adapter.inputs(),
+            }),
+          })
+          break
+        }
+        case 'resume': {
+          if (!task) break
+          const adapter = task.adapter?.resume
+          if (!adapter?.stateMachineId) {
+            throw new CheckpointPolicyError(
+              'checkpoint.missing-policy-adapter',
+              `Async callsite ${selection.callsiteId} has no declared state machine`,
+              selection.callsiteId,
+            )
+          }
+          records.push({
+            nodeId: policyMetadata.nodeId,
+            callsiteId: policyMetadata.callsiteId,
+            policy: 'resume',
+            payload: cloneValue({
+              stateMachineId: adapter.stateMachineId,
+              state: adapter.serialize(),
+            }),
+          })
+          break
+        }
+        case 'reconnect': {
+          if (!task) break
+          const adapter = task.adapter?.reconnect
+          if (!adapter?.operationId) {
+            throw new CheckpointPolicyError(
+              'checkpoint.missing-policy-adapter',
+              `Async callsite ${selection.callsiteId} has no durable operation ID`,
+              selection.callsiteId,
+            )
+          }
+          records.push({
+            nodeId: policyMetadata.nodeId,
+            callsiteId: policyMetadata.callsiteId,
+            policy: 'reconnect',
+            payload: cloneValue({
+              operationId: adapter.operationId,
+              status: adapter.status(),
+            }),
           })
           break
         }

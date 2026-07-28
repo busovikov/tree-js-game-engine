@@ -741,6 +741,70 @@ describe('headless graph compiler', () => {
     ])
   })
 
+  it('marks a live async callsite non-dominant when a flow path bypasses it', () => {
+    const types = createBuiltinTypeRegistry()
+    const nodes = new NodeRegistry()
+    nodes.register(
+      definition(29, [
+        { id: uid(129), name: 'Async', kind: 'flow', direction: 'output' },
+        { id: uid(130), name: 'Bypass', kind: 'flow', direction: 'output' },
+      ], { name: 'Branch' }),
+    )
+    nodes.register(
+      definition(30, [
+        { id: uid(131), name: 'In', kind: 'flow', direction: 'input' },
+        { id: uid(132), name: 'Next', kind: 'flow', direction: 'output' },
+      ], {
+        name: 'OptionalAsync',
+        execution: 'async',
+        liveness: 'on-flow',
+        asyncCheckpointPolicies: ['reject'],
+      }),
+    )
+    nodes.register(
+      definition(31, [
+        { id: uid(133), name: 'In', kind: 'flow', direction: 'input' },
+      ], {
+        name: 'JoinCheckpoint',
+        checkpointRole: 'create',
+        liveness: 'on-flow',
+      }),
+    )
+
+    const result = compileGraph(
+      graph(
+        [
+          node(129, 29, [
+            callsite(229, 129, 'flow', 'output'),
+            callsite(230, 130, 'flow', 'output'),
+          ]),
+          node(130, 30, [
+            callsite(231, 131, 'flow', 'input'),
+            callsite(232, 132, 'flow', 'output'),
+          ]),
+          node(131, 31, [callsite(233, 133, 'flow', 'input')]),
+        ],
+        [
+          connection(329, 129, 229, 130, 231),
+          connection(330, 130, 232, 131, 233),
+          connection(331, 129, 230, 131, 233),
+        ],
+      ),
+      { types, nodes },
+    )
+
+    expect(result.diagnostics).toEqual([])
+    expect(result.plan?.checkpoints[0].asyncPolicies).toEqual([
+      expect.objectContaining({
+        nodeId: uid(130),
+        callsiteId: uid(232),
+        live: true,
+        dominatesCheckpoint: false,
+        supported: ['reject'],
+      }),
+    ])
+  })
+
   it('keeps pure data nodes only when a live node consumes them', () => {
     const types = createBuiltinTypeRegistry()
     const nodes = new NodeRegistry()

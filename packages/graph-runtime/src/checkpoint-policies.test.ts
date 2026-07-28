@@ -170,12 +170,39 @@ describe('checkpoint async policies', () => {
   })
 
   it.each([
-    ['restart', { request: 'page-2' }],
-    ['resume', { state: 'step-3' }],
-    ['reconnect', { operationId: 'durable-7', status: 'running' }],
+    [
+      'restart',
+      {
+        restart: {
+          safety: 'idempotent',
+          inputs: () => ({ request: 'page-2' }),
+        },
+      },
+      { safety: 'idempotent', inputs: { request: 'page-2' } },
+    ],
+    [
+      'resume',
+      {
+        resume: {
+          stateMachineId: 'upload-v1',
+          serialize: () => ({ state: 'step-3' }),
+        },
+      },
+      { stateMachineId: 'upload-v1', state: { state: 'step-3' } },
+    ],
+    [
+      'reconnect',
+      {
+        reconnect: {
+          operationId: 'durable-7',
+          status: () => 'running',
+        },
+      },
+      { operationId: 'durable-7', status: 'running' },
+    ],
   ] as const)(
     'persists %s state and restores it through the owned backend task',
-    async (policy, payload) => {
+    async (policy, adapter, payload) => {
       const original = deferred<NodeExecutionResult>()
       const restored = deferred<NodeExecutionResult>()
       const records: AsyncCheckpointRecord[] = []
@@ -183,7 +210,7 @@ describe('checkpoint async policies', () => {
         execute: ({ node: current }) =>
           current.id === ASYNC
             ? checkpointableTask(original.promise, {
-              [policy]: () => payload,
+              ...adapter,
             })
             : {},
         restoreCheckpointTask(request) {
