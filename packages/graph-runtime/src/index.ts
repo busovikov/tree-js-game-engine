@@ -4,7 +4,9 @@ import {
   type SchedulerPhase,
 } from '@haku/core'
 import {
+  type AsyncCheckpointPolicy,
   type CheckpointStateScope,
+  type ExecutionPlanCheckpoint,
   type ExecutionPlanNode,
   type GraphExecutionPlan,
   type GraphPublicPort,
@@ -41,6 +43,18 @@ export class GraphRuntimeError extends Error {
     this.tickNumber = options.tickNumber
     this.frameNumber = options.frameNumber
     this.cause = options.cause
+  }
+}
+
+export class CheckpointPolicyError extends Error {
+  readonly code: string
+  readonly callsiteId?: string
+
+  constructor(code: string, message: string, callsiteId?: string) {
+    super(message)
+    this.name = 'CheckpointPolicyError'
+    this.code = code
+    this.callsiteId = callsiteId
   }
 }
 
@@ -105,6 +119,31 @@ export interface NodeExecutionResult {
   readonly effects?: readonly CheckpointEffectRecord[]
 }
 
+export type CancelFallbackKind = 'option' | 'result'
+
+export interface CheckpointableTaskAdapter {
+  readonly restart?: () => unknown
+  readonly resume?: () => unknown
+  readonly reconnect?: () => unknown
+  readonly cancel?: () => void
+  readonly fallback?: {
+    readonly kind: CancelFallbackKind
+    readonly result: NodeExecutionResult
+  }
+}
+
+export interface CheckpointableAsyncTask {
+  readonly task: Promise<NodeExecutionResult>
+  readonly checkpoint: CheckpointableTaskAdapter
+}
+
+export function checkpointableTask(
+  task: Promise<NodeExecutionResult>,
+  checkpoint: CheckpointableTaskAdapter,
+): CheckpointableAsyncTask {
+  return { task, checkpoint }
+}
+
 export interface CheckpointEffectRecord {
   readonly id: string
   readonly kind: string
@@ -114,8 +153,11 @@ export interface CheckpointEffectRecord {
 export interface ExecutionBackend {
   execute(
     request: NodeExecutionRequest,
-  ): NodeExecutionResult | Promise<NodeExecutionResult>
+  ): NodeExecutionResult | Promise<NodeExecutionResult> | CheckpointableAsyncTask
   lifecycle?(request: NodeLifecycleRequest): void
+  restoreCheckpointTask?(
+    request: RestoreCheckpointTaskRequest,
+  ): NodeExecutionResult | Promise<NodeExecutionResult>
 }
 
 export interface NodeRuntimeAdapter {
@@ -123,7 +165,7 @@ export interface NodeRuntimeAdapter {
   readonly version: string
   execute(
     request: NodeExecutionRequest,
-  ): NodeExecutionResult | Promise<NodeExecutionResult>
+  ): NodeExecutionResult | Promise<NodeExecutionResult> | CheckpointableAsyncTask
   lifecycle?(request: NodeLifecycleRequest): void
 }
 
@@ -154,7 +196,7 @@ export class InterpreterExecutionBackend implements ExecutionBackend {
 
   execute(
     request: NodeExecutionRequest,
-  ): NodeExecutionResult | Promise<NodeExecutionResult> {
+  ): NodeExecutionResult | Promise<NodeExecutionResult> | CheckpointableAsyncTask {
     return this.registry
       .require(request.node.nodeType, request.node.version)
       .execute(request)
@@ -285,6 +327,7 @@ export interface GraphCheckpoint {
   readonly frameNumber: number
   readonly queueSequence: number
   readonly scope: CheckpointStateScope
+  readonly asyncRecords: readonly AsyncCheckpointRecord[]
 }
 
 interface ActiveGraphCheckpoint extends GraphCheckpoint {
@@ -293,6 +336,43 @@ interface ActiveGraphCheckpoint extends GraphCheckpoint {
   readonly exportedState: ReadonlyMap<string, ReadonlyMap<string, unknown>>
   readonly resources: ReadonlyMap<string, unknown>
   readonly effects: readonly CheckpointEffectRecord[]
+}
+
+export interface AsyncCheckpointPolicySelection {
+  readonly callsiteId: string
+  readonly policy: AsyncCheckpointPolicy
+  readonly timeoutMs?: number
+}
+
+export interface CreateCheckpointOptions {
+  readonly asyncPolicies?: readonly AsyncCheckpointPolicySelection[]
+}
+
+export interface AsyncCheckpointRecord {
+  readonly nodeId: string
+  readonly callsiteId: string
+  readonly policy: Exclude<
+    AsyncCheckpointPolicy,
+    'wait' | 'reject' | 'cancel-fallback'
+  >
+  readonly payload: unknown
+}
+
+export interface RestoreCheckpointTaskRequest {
+  readonly instanceId: string
+  readonly graphId: string
+  readonly node: ExecutionPlanNode
+  readonly record: AsyncCheckpointRecord
+  readonly signal: AbortSignal
+}
+
+interface LiveAsyncTask {
+  readonly node: ExecutionPlanNode
+  readonly callsiteIds: readonly string[]
+  readonly promise: Promise<NodeExecutionResult>
+  readonly adapter?: CheckpointableTaskAdapter
+  cancelled: boolean
+  cancelRecorded: boolean
 }
 
 export class GraphInstance {
@@ -317,6 +397,8 @@ export class GraphInstance {
   private readonly resourceVersions = new Map<string, number>()
   private readonly childInstances: GraphInstance[] = []
   private readonly ownedTasks = new Set<Promise<unknown>>()
+  private readonly liveAsyncTasks = new Set<LiveAsyncTask>()
+  private readonly materializedResults = new Map<string, NodeExecutionResult>()
   private readonly effectJournal = new Map<string, CheckpointEffectRecord>()
   private readonly deliveredEffectIds = new Set<string>()
   private nextTraceSequence = 0
@@ -397,7 +479,11 @@ export class GraphInstance {
     return cloneValue(this.parameters.get(port.id))
   }
 
-  createCheckpoint(checkpointNodeId: string, label: string): GraphCheckpoint {
+  async createCheckpoint(
+    checkpointNodeId: string,
+    label: string,
+    options: CreateCheckpointOptions = {},
+  ): Promise<GraphCheckpoint> {
     const metadata = this.plan.checkpoints.find(
       (checkpoint) => checkpoint.nodeId === checkpointNodeId,
     )
@@ -414,6 +500,10 @@ export class GraphInstance {
     if (metadata.stateScope.unbounded) {
       throw new Error(`Checkpoint ${checkpointNodeId} has an unbounded state scope`)
     }
+    const asyncRecords = await this.applyCheckpointPolicies(
+      metadata,
+      options.asyncPolicies ?? [],
+    )
     const scopedNodes = new Set(metadata.stateScope.nodes)
     const record: ActiveGraphCheckpoint = {
       id: `${this.id}:checkpoint:${this.nextCheckpointSequence++}`,
@@ -426,6 +516,7 @@ export class GraphInstance {
       frameNumber: this.scheduler.frameNumber,
       queueSequence: this.scheduler.captureQueueSequence(),
       scope: cloneValue(metadata.stateScope),
+      asyncRecords,
       parameters: cloneMap(this.parameters),
       outputs: cloneMap(this.outputs),
       exportedState: new Map(
@@ -449,6 +540,161 @@ export class GraphInstance {
     }
     this.activeCheckpoint = record
     return this.checkpoint!
+  }
+
+  private async applyCheckpointPolicies(
+    metadata: ExecutionPlanCheckpoint,
+    selections: readonly AsyncCheckpointPolicySelection[],
+  ): Promise<readonly AsyncCheckpointRecord[]> {
+    const byCallsite = new Map<string, AsyncCheckpointPolicySelection>()
+    for (const selection of selections) {
+      if (byCallsite.has(selection.callsiteId)) {
+        throw new CheckpointPolicyError(
+          'checkpoint.duplicate-callsite',
+          `Checkpoint policy callsite ${selection.callsiteId} is duplicated`,
+          selection.callsiteId,
+        )
+      }
+      byCallsite.set(selection.callsiteId, selection)
+    }
+    for (const selection of selections) {
+      const policyMetadata = metadata.asyncPolicies.find(
+        (candidate) => candidate.callsiteId === selection.callsiteId,
+      )
+      if (!policyMetadata) {
+        throw new CheckpointPolicyError(
+          'checkpoint.unknown-callsite',
+          `Checkpoint ${metadata.nodeId} has no async callsite ${selection.callsiteId}`,
+          selection.callsiteId,
+        )
+      }
+      if (!policyMetadata.supported.includes(selection.policy)) {
+        throw new CheckpointPolicyError(
+          'checkpoint.unsupported-policy',
+          `Async callsite ${selection.callsiteId} does not support ${selection.policy}`,
+          selection.callsiteId,
+        )
+      }
+    }
+
+    const records: AsyncCheckpointRecord[] = []
+    for (const policyMetadata of metadata.asyncPolicies) {
+      const task = [...this.liveAsyncTasks].find(
+        (candidate) =>
+          candidate.node.id === policyMetadata.nodeId &&
+          candidate.callsiteIds.includes(policyMetadata.callsiteId) &&
+          !candidate.cancelled,
+      )
+      const selection = byCallsite.get(policyMetadata.callsiteId)
+      if (!task && selection?.policy !== 'materialized') continue
+      if (!selection) {
+        throw new CheckpointPolicyError(
+          'checkpoint.missing-policy',
+          `Live async callsite ${policyMetadata.callsiteId} requires a checkpoint policy`,
+          policyMetadata.callsiteId,
+        )
+      }
+
+      switch (selection.policy) {
+        case 'wait': {
+          if (!task) break
+          if (
+            selection.timeoutMs !== undefined &&
+            (!Number.isFinite(selection.timeoutMs) || selection.timeoutMs <= 0)
+          ) {
+            throw new CheckpointPolicyError(
+              'checkpoint.invalid-timeout',
+              'Checkpoint wait timeout must be a positive finite number',
+              selection.callsiteId,
+            )
+          }
+          await waitForCheckpointTask(
+            task.promise,
+            selection.timeoutMs,
+            selection.callsiteId,
+          )
+          break
+        }
+        case 'restart':
+        case 'resume':
+        case 'reconnect': {
+          if (!task) break
+          const capture = task.adapter?.[selection.policy]
+          if (!capture) {
+            throw new CheckpointPolicyError(
+              'checkpoint.missing-policy-adapter',
+              `Async callsite ${selection.callsiteId} has no ${selection.policy} adapter`,
+              selection.callsiteId,
+            )
+          }
+          records.push({
+            nodeId: policyMetadata.nodeId,
+            callsiteId: policyMetadata.callsiteId,
+            policy: selection.policy,
+            payload: cloneValue(capture()),
+          })
+          break
+        }
+        case 'materialized': {
+          if (task) {
+            throw new CheckpointPolicyError(
+              'checkpoint.result-not-materialized',
+              `Async callsite ${selection.callsiteId} has not completed`,
+              selection.callsiteId,
+            )
+          }
+          const result = this.materializedResults.get(selection.callsiteId)
+          if (!result) {
+            throw new CheckpointPolicyError(
+              'checkpoint.result-not-materialized',
+              `Async callsite ${selection.callsiteId} has no materialized result`,
+              selection.callsiteId,
+            )
+          }
+          records.push({
+            nodeId: policyMetadata.nodeId,
+            callsiteId: policyMetadata.callsiteId,
+            policy: 'materialized',
+            payload: cloneValue(result),
+          })
+          break
+        }
+        case 'cancel-fallback': {
+          if (!task) break
+          if (!task.adapter?.cancel || !task.adapter.fallback) {
+            throw new CheckpointPolicyError(
+              'checkpoint.missing-policy-adapter',
+              `Async callsite ${selection.callsiteId} has no typed fallback adapter`,
+              selection.callsiteId,
+            )
+          }
+          task.cancelled = true
+          task.adapter.cancel()
+          this.recordTaskCancellation(task)
+          const snapshot = this.createSnapshot(task.node.domain)
+          const completed = this.completeNode(
+            task.node,
+            cloneValue(task.adapter.fallback.result),
+            snapshot,
+            { steps: 0 },
+          )
+          if (completed instanceof Promise) await completed
+          break
+        }
+        case 'reject':
+          if (task) {
+            throw new CheckpointPolicyError(
+              'checkpoint.async-rejected',
+              `Checkpoint rejected by live async callsite ${selection.callsiteId}`,
+              selection.callsiteId,
+            )
+          }
+          break
+      }
+    }
+    return records.sort((left, right) =>
+      left.callsiteId.localeCompare(right.callsiteId),
+    )
   }
 
   rewind(): void {
@@ -490,10 +736,71 @@ export class GraphInstance {
       this.effectJournal.set(effect.id, cloneValue(effect))
     }
     this.effectReconciler?.reconcile(checkpoint.effects.map(cloneValue))
+    for (const record of checkpoint.asyncRecords) {
+      if (record.policy === 'materialized') continue
+      if (!this.backend.restoreCheckpointTask) {
+        throw new Error(
+          `Checkpoint ${checkpoint.id} cannot restore ${record.policy} async callsite ${record.callsiteId}`,
+        )
+      }
+      const node = this.nodes.get(record.nodeId)
+      if (!node) {
+        throw new Error(
+          `Checkpoint ${checkpoint.id} references missing async node ${record.nodeId}`,
+        )
+      }
+      this.restoreCheckpointTask(node, record)
+    }
     this.runLifecycle(
       'after-rewind',
       this.plan.nodes.filter((node) => scopedNodes.has(node.id)),
     )
+  }
+
+  private restoreCheckpointTask(
+    node: ExecutionPlanNode,
+    record: AsyncCheckpointRecord,
+  ): void {
+    this.record('task-start', node)
+    let restored: NodeExecutionResult | Promise<NodeExecutionResult>
+    try {
+      restored = this.backend.restoreCheckpointTask!({
+        instanceId: this.id,
+        graphId: this.plan.graphId,
+        node,
+        record: cloneValue(record),
+        signal: this.scopeController.signal,
+      })
+    } catch (error) {
+      restored = Promise.reject(error)
+    }
+    const task = awaitAbortable(
+      Promise.resolve(restored),
+      this.scopeController.signal,
+    ).then(
+      async (result) => {
+        if (this.scopeController.signal.aborted) {
+          this.record('task-cancel', node)
+          return
+        }
+        const completed = this.completeNode(
+          node,
+          result,
+          this.createSnapshot(node.domain),
+          { steps: 0 },
+        )
+        if (completed instanceof Promise) await completed
+        this.record('task-complete', node)
+      },
+      (error: unknown) => {
+        if (this.scopeController.signal.aborted) {
+          this.record('task-cancel', node)
+          return
+        }
+        throw error
+      },
+    )
+    this.trackOwnedTask(task)
   }
 
   invalidateResource(resource: string): void {
@@ -648,9 +955,12 @@ export class GraphInstance {
           }
         : undefined,
     )
-    let result: NodeExecutionResult | Promise<NodeExecutionResult>
+    let executionResult:
+      | NodeExecutionResult
+      | Promise<NodeExecutionResult>
+      | CheckpointableAsyncTask
     try {
-      result = this.backend.execute(request)
+      executionResult = this.backend.execute(request)
     } catch (error) {
       throw this.runtimeError(
         node,
@@ -661,13 +971,24 @@ export class GraphInstance {
         'node-error',
       )
     }
+    const adapter = isCheckpointableAsyncTask(executionResult)
+      ? executionResult.checkpoint
+      : undefined
+    const result = isCheckpointableAsyncTask(executionResult)
+      ? executionResult.task
+      : executionResult
     if (result instanceof Promise || childTasks.length > 0) {
+      const liveTask = result instanceof Promise
+        ? this.registerLiveAsyncTask(node, result, adapter)
+        : undefined
       return this.finishAsyncNode(
         node,
         result,
         childTasks,
         snapshot,
         budget,
+        request.signal,
+        liveTask,
       )
     }
     return this.completeNode(node, result, snapshot, budget)
@@ -853,20 +1174,27 @@ export class GraphInstance {
     childTasks: readonly Promise<unknown>[],
     snapshot: SnapshotState,
     budget: ExecutionBudget,
+    signal: AbortSignal,
+    liveTask?: LiveAsyncTask,
   ): Promise<NodeExecutionResult> {
     this.record('task-start', node)
     try {
       const resolved = await awaitAbortable(
         Promise.resolve(result),
-        this.scopeController.signal,
+        signal,
       )
       await awaitAbortable(
         Promise.all(childTasks),
-        this.scopeController.signal,
+        signal,
       )
-      if (this.scopeController.signal.aborted) {
-        this.record('task-cancel', node)
+      if (liveTask?.cancelled) return {}
+      if (signal.aborted) {
+        if (liveTask) this.recordTaskCancellation(liveTask)
+        else this.record('task-cancel', node)
         return {}
+      }
+      for (const callsiteId of liveTask?.callsiteIds ?? []) {
+        this.materializedResults.set(callsiteId, cloneValue(resolved))
       }
       const completed = this.completeNode(node, resolved, snapshot, budget)
       const finalResult =
@@ -874,8 +1202,9 @@ export class GraphInstance {
       this.record('task-complete', node)
       return finalResult
     } catch (error) {
-      if (this.scopeController.signal.aborted) {
-        this.record('task-cancel', node)
+      if (signal.aborted) {
+        if (liveTask) this.recordTaskCancellation(liveTask)
+        else this.record('task-cancel', node)
         return {}
       }
       if (error instanceof GraphRuntimeError) throw error
@@ -887,7 +1216,39 @@ export class GraphInstance {
         error,
         'node-error',
       )
+    } finally {
+      if (liveTask) this.liveAsyncTasks.delete(liveTask)
     }
+  }
+
+  private registerLiveAsyncTask(
+    node: ExecutionPlanNode,
+    promise: Promise<NodeExecutionResult>,
+    adapter?: CheckpointableTaskAdapter,
+  ): LiveAsyncTask {
+    const callsites = [...new Set(
+      (this.plan.checkpoints ?? []).flatMap((checkpoint) =>
+        (checkpoint.asyncPolicies ?? [])
+          .filter((metadata) => metadata.nodeId === node.id)
+          .map((metadata) => metadata.callsiteId)
+      ),
+    )].sort()
+    const task: LiveAsyncTask = {
+      node,
+      callsiteIds: callsites,
+      promise,
+      adapter,
+      cancelled: false,
+      cancelRecorded: false,
+    }
+    this.liveAsyncTasks.add(task)
+    return task
+  }
+
+  private recordTaskCancellation(task: LiveAsyncTask): void {
+    if (task.cancelRecorded) return
+    task.cancelRecorded = true
+    this.record('task-cancel', task.node)
   }
 
   private spawnChild<T>(
@@ -1242,6 +1603,47 @@ function isQueuedInvocation(value: unknown): value is QueuedInvocation {
     value !== null &&
     typeof (value as Partial<QueuedInvocation>).instanceId === 'string' &&
     typeof (value as Partial<QueuedInvocation>).nodeId === 'string'
+}
+
+function isCheckpointableAsyncTask(
+  value:
+    | NodeExecutionResult
+    | Promise<NodeExecutionResult>
+    | CheckpointableAsyncTask,
+): value is CheckpointableAsyncTask {
+  return typeof value === 'object' &&
+    value !== null &&
+    'task' in value &&
+    (value as Partial<CheckpointableAsyncTask>).task instanceof Promise &&
+    typeof (value as Partial<CheckpointableAsyncTask>).checkpoint === 'object'
+}
+
+async function waitForCheckpointTask(
+  task: Promise<unknown>,
+  timeoutMs: number | undefined,
+  callsiteId: string,
+): Promise<void> {
+  if (timeoutMs === undefined) {
+    await task
+    return
+  }
+  let timeout: ReturnType<typeof setTimeout> | undefined
+  try {
+    await Promise.race([
+      task,
+      new Promise<never>((_resolve, reject) => {
+        timeout = setTimeout(() => {
+          reject(new CheckpointPolicyError(
+            'checkpoint.wait-timeout',
+            `Checkpoint timed out waiting for async callsite ${callsiteId}`,
+            callsiteId,
+          ))
+        }, timeoutMs)
+      }),
+    ])
+  } finally {
+    if (timeout !== undefined) clearTimeout(timeout)
+  }
 }
 
 function effectNodeId(record: CheckpointEffectRecord): string | undefined {

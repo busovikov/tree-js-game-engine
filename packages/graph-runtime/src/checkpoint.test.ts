@@ -91,7 +91,7 @@ function plan(): GraphExecutionPlan {
 }
 
 describe('GraphInstance checkpoint and rewind', () => {
-  it('atomically restores only the proven scope and removes post-checkpoint work in one tick', () => {
+  it('atomically restores only the proven scope and removes post-checkpoint work in one tick', async () => {
     const scheduler = new EngineScheduler()
     const world = new World()
     const lifecycle: string[] = []
@@ -147,12 +147,12 @@ describe('GraphInstance checkpoint and rewind', () => {
     instance.start(MUTATE)
     scheduler.runFrame(world, 0)
     expect(queued).toEqual(['ran'])
-    const first = instance.createCheckpoint(CHECKPOINT, 'first')
+    const first = await instance.createCheckpoint(CHECKPOINT, 'first')
 
     instance.setParameter(INPUT, 2)
     score = 99
     instance.start(MUTATE)
-    const replacement = instance.createCheckpoint(CHECKPOINT, 'replacement')
+    const replacement = await instance.createCheckpoint(CHECKPOINT, 'replacement')
     expect(replacement.id).not.toBe(first.id)
     score = 123
     unrelatedPhysics = 77
@@ -191,7 +191,7 @@ describe('GraphInstance checkpoint and rewind', () => {
     ])
   })
 
-  it('rejects an ineligible or unknown checkpoint without replacing the active record', () => {
+  it('rejects an ineligible or unknown checkpoint without replacing the active record', async () => {
     const unsafe = plan()
     unsafe.checkpoints[0] = {
       ...unsafe.checkpoints[0],
@@ -211,10 +211,10 @@ describe('GraphInstance checkpoint and rewind', () => {
       backend: { execute: () => ({}) },
     })
 
-    expect(() => instance.createCheckpoint(CHECKPOINT, 'unsafe')).toThrow(
+    await expect(instance.createCheckpoint(CHECKPOINT, 'unsafe')).rejects.toThrow(
       'dynamic physics read',
     )
-    expect(() => instance.createCheckpoint(uid(404), 'missing')).toThrow(
+    await expect(instance.createCheckpoint(uid(404), 'missing')).rejects.toThrow(
       'Unknown checkpoint node',
     )
     expect(instance.checkpoint).toBeUndefined()
