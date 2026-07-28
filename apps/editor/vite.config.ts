@@ -15,6 +15,7 @@ export default defineConfig({
     hakuTemplatesPlugin(),
   ],
   resolve: {
+    dedupe: ['react', 'react-dom'],
     alias: {
       '@haku/editor': resolve(__dirname, '../../packages/editor/src'),
       '@haku/engine': resolve(__dirname, '../../packages/engine/src'),
