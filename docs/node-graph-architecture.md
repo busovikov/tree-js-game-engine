@@ -292,6 +292,8 @@ objects and physics bodies synchronously so reacquired bodies start with no reta
 Future audio implementations use the same lifecycle participant boundary rather than adding
 pool-specific ownership. Acquire/release/prewarm/release-all/clear nodes declare the bounded
 `pool` resource and `pool` effect; metrics is a read-only checkpoint-safe node.
+Runtime composition reads the registered `EntityPool` component, uses its owner entity UUID
+as the pool service ID, and delegates its typed prefab reference to an injected asset resolver.
 
 ## Checkpoint and rewind
 

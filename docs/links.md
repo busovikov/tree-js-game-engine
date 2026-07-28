@@ -149,7 +149,7 @@
 | Export | Purpose |
 | ------ | ------- |
 | `EntityPool`, `PoolHandle`, `PoolRegistry` | Deterministic pooled leases, generational handles, and pool lookup |
-| `EntityPoolComponent`, `EntityPoolSchema`, `registerPoolComponents()` | Prefab-backed serializable pool configuration |
+| `EntityPoolComponent`, `EntityPoolSchema`, `registerPoolComponents()`, `createEntityPoolFromComponent()` | Prefab-backed serializable configuration and injected runtime prefab composition |
 | `PoolRuntimeScope`, `PoolLifecycleParticipant` | Task cancellation, reverse cleanup, flags, and external runtime-resource lifecycle |
 | `createGraphPoolParticipant()` | Destroy/recreate graph runtimes at lease boundaries |
 | `createPoolSdk()` | General prewarm/acquire/release/release-all/clear/metrics service API |
