@@ -1,4 +1,4 @@
-import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises'
+import { appendFile, mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { readFileSync, statSync } from 'node:fs'
 import { basename, dirname, extname, join, normalize, resolve, sep } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
@@ -44,6 +44,49 @@ export async function writeTargetTextFile(
   }
   await mkdir(dirname(filePath), { recursive: true })
   await writeFile(filePath, content, 'utf8')
+}
+
+async function collectTargetWorkspaceFiles(
+  targetRoot: string,
+  relativeDirectory: string,
+  files: Record<string, string>,
+): Promise<void> {
+  const directoryPath = resolveTargetFile(targetRoot, relativeDirectory)
+  if (!directoryPath) return
+  let entries
+  try {
+    entries = await readdir(directoryPath, { withFileTypes: true })
+  } catch {
+    return
+  }
+  for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
+    const relativePath = `${relativeDirectory}/${entry.name}`.replace(/^\/+/, '')
+    if (entry.isDirectory()) {
+      await collectTargetWorkspaceFiles(targetRoot, relativePath, files)
+    } else if (/\.[cm]?tsx?$/.test(entry.name)) {
+      const filePath = resolveTargetFile(targetRoot, relativePath)
+      if (filePath) files[relativePath] = await readFile(filePath, 'utf8')
+    }
+  }
+}
+
+export async function scanTargetWorkspaceFiles(
+  targetRoot: string,
+): Promise<Readonly<Record<string, string>>> {
+  const files: Record<string, string> = {}
+  await collectTargetWorkspaceFiles(targetRoot, '.haku/generated', files)
+  await collectTargetWorkspaceFiles(targetRoot, 'src', files)
+  const tsconfigPath = resolveTargetFile(targetRoot, 'tsconfig.json')
+  if (tsconfigPath) {
+    try {
+      files['tsconfig.json'] = await readFile(tsconfigPath, 'utf8')
+    } catch {
+      // A target without tsconfig is valid; the editor generates one.
+    }
+  }
+  return Object.fromEntries(
+    Object.entries(files).sort(([left], [right]) => left.localeCompare(right)),
+  )
 }
 
 function vehicleLogPath(targetRoot: string): string {
@@ -126,6 +169,12 @@ async function handleDevRequest(
 
   if (pathname === '/__haku/dev/project.json') {
     sendFile(res, join(targetRoot, 'haku.project.json'))
+    return true
+  }
+
+  if (pathname === '/__haku/dev/workspace.json') {
+    res.setHeader('Content-Type', 'application/json')
+    res.end(JSON.stringify({ files: await scanTargetWorkspaceFiles(targetRoot) }))
     return true
   }
 

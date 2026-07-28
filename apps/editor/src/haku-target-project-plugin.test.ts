@@ -1,8 +1,11 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { writeTargetTextFile } from '../haku-target-project-plugin.js'
+import {
+  scanTargetWorkspaceFiles,
+  writeTargetTextFile,
+} from '../haku-target-project-plugin.js'
 
 const temporaryRoots: string[] = []
 
@@ -31,5 +34,26 @@ describe('target project writes', () => {
     await expect(writeTargetTextFile(root, '../outside.json', '{}')).rejects.toThrow(
       'Invalid target path',
     )
+  })
+
+  it('scans only browser code workspace text files from the target', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'haku-target-'))
+    temporaryRoots.push(root)
+    await mkdir(join(root, 'src'), { recursive: true })
+    await mkdir(join(root, '.haku/generated'), { recursive: true })
+    await mkdir(join(root, 'node_modules/package'), { recursive: true })
+    await mkdir(join(root, 'public/assets'), { recursive: true })
+    await writeFile(join(root, 'src/gameplay.ts'), 'export const gameplay = true\n')
+    await writeFile(join(root, 'src/readme.md'), 'not source')
+    await writeFile(join(root, 'tsconfig.json'), '{}\n')
+    await writeFile(join(root, '.haku/generated/project.d.ts'), 'declare const project: true\n')
+    await writeFile(join(root, 'node_modules/package/index.ts'), 'ignored')
+    await writeFile(join(root, 'public/assets/data.json'), '{}')
+
+    await expect(scanTargetWorkspaceFiles(root)).resolves.toEqual({
+      '.haku/generated/project.d.ts': 'declare const project: true\n',
+      'src/gameplay.ts': 'export const gameplay = true\n',
+      'tsconfig.json': '{}\n',
+    })
   })
 })

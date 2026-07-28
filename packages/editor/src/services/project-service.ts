@@ -299,6 +299,16 @@ export class ProjectService {
     this.clearModelAssetCache()
 
     await this.seedVirtualAssetsFromManifest('/__haku/dev/assets/manifest.json')
+    const workspaceRes = await fetch('/__haku/dev/workspace.json')
+    if (!workspaceRes.ok) {
+      throw new Error('Failed to load target browser code workspace')
+    }
+    const workspaceFiles = (await workspaceRes.json()) as {
+      readonly files?: Readonly<Record<string, string>>
+    }
+    for (const [path, content] of Object.entries(workspaceFiles.files ?? {})) {
+      browserProjectStore.registerFile(path, { content })
+    }
     await this.loadEditorSettings()
 
     sceneLog('project.open', {
