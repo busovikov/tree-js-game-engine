@@ -12,6 +12,7 @@ export default defineConfig({
     alias: {
       '@haku/schema': join(root, 'packages/schema/src'),
       '@haku/core': join(root, 'packages/core/src'),
+      '@haku/pool': join(root, 'packages/pool/src'),
       '@haku/serializer': join(root, 'packages/serializer/src'),
       '@haku/physics': join(root, 'packages/physics/src'),
       '@haku/physics-rapier': join(root, 'packages/physics-rapier/src'),

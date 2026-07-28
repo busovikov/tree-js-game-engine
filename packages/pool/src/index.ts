@@ -220,7 +220,20 @@ class PoolSystem {
     record.active = true
     record.acquiredSequence = this.nextAcquireSequence++
     this.options.world.setActiveSelf(record.root, true)
-    this.dispatch(record, 'acquire')
+    try {
+      this.dispatch(record, 'acquire')
+    } catch (error) {
+      this.options.world.setActiveSelf(record.root, false)
+      try {
+        this.dispatch(record, 'release')
+      } catch {
+        // Preserve the acquisition failure; every owned scope is still reset below.
+      }
+      record.scope.reset()
+      this.restoreBaseline(record, false)
+      record.active = false
+      throw error
+    }
     this.acquisitions += 1
     return this.handleFor(record)
   }
@@ -494,4 +507,37 @@ function requirePositiveInteger(value: number, name: string): void {
 
 export function poolHandleRoot(handle: PoolHandle): EntityId {
   return entityId(handle.entity)
+}
+
+export interface PoolGraphInstance {
+  activate(): void
+  destroy(): void
+}
+
+export interface GraphPoolParticipantOptions {
+  readonly create: (event: PoolLifecycleEvent) => readonly PoolGraphInstance[]
+}
+
+/**
+ * Owns graph runtimes at the lease boundary. Release destroys each runtime rather than retaining
+ * interpreter state, queued tasks, or subscriptions; the next acquire receives fresh instances.
+ */
+export function createGraphPoolParticipant(
+  options: GraphPoolParticipantOptions,
+): PoolLifecycleParticipant {
+  const instances = new Map<string, readonly PoolGraphInstance[]>()
+  return {
+    onPoolLifecycle(event) {
+      const key = event.root.value
+      if (event.action === 'acquire') {
+        for (const stale of instances.get(key) ?? []) stale.destroy()
+        const created = [...options.create(event)]
+        instances.set(key, created)
+        for (const instance of created) instance.activate()
+        return
+      }
+      for (const instance of instances.get(key) ?? []) instance.destroy()
+      instances.delete(key)
+    },
+  }
 }

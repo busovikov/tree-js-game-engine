@@ -7,6 +7,7 @@ export {
   PhysicsQuerySystem,
   PhysicsJointSystem,
   PhysicsAreaGravitySystem,
+  createEnginePoolParticipant,
   VehicleControllerSystem,
   InputManager,
   InputBindingSystem,
@@ -17,3 +18,4 @@ export * from './asset-registry.js'
 export * from './scene-camera.js'
 export { DEFAULT_ASSETS_DIR, projectPathToUrl, relativeToAssetsDir } from '@haku/schema'
 export type { EngineOptions, LoadedScene, SceneFetch } from './engine.js'
+export type { EnginePoolParticipantOptions } from './systems/pool-lifecycle.js'

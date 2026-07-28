@@ -11,6 +11,7 @@ export {
   PhysicsQuerySystem,
   PhysicsJointSystem,
   PhysicsAreaGravitySystem,
+  createEnginePoolParticipant,
   VehicleControllerSystem,
   VehicleVisualSyncSystem,
   DynamicRaycastVisualSyncSystem,
@@ -60,6 +61,7 @@ export * from './render-texture.js'
 export * from './scene-camera.js'
 export type { EngineOptions, EngineFeatureFlags, LoadedScene, SceneFetch } from './engine.js'
 export type { PhysicsWorldSystemOptions } from './systems/physics-world-system.js'
+export type { EnginePoolParticipantOptions } from './systems/pool-lifecycle.js'
 export type {
   PhysicsCollisionEvent,
   PhysicsContactPoint,

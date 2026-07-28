@@ -283,6 +283,10 @@ export { PhysicsQuerySystem } from './systems/physics-query-system.js'
 export { PhysicsJointSystem } from './systems/physics-joint-system.js'
 export { PhysicsAreaGravitySystem } from './systems/physics-area-gravity-system.js'
 export {
+  createEnginePoolParticipant,
+  type EnginePoolParticipantOptions,
+} from './systems/pool-lifecycle.js'
+export {
   VehicleControllerSystem,
   computeIsaacDriveControlState,
   vehicleWheelConfigs,

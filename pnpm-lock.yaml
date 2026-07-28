@@ -252,6 +252,9 @@ importers:
       '@haku/physics':
         specifier: file:../physics
         version: link:../physics
+      '@haku/pool':
+        specifier: workspace:*
+        version: link:../pool
       '@haku/schema':
         specifier: file:../schema
         version: link:../schema
@@ -2971,6 +2974,7 @@ snapshots:
       '@haku/core': file:packages/core
       '@haku/graph': link:packages/graph
       '@haku/physics': file:packages/physics
+      '@haku/pool': link:packages/pool
       '@haku/schema': file:packages/schema
       '@haku/serializer': file:packages/serializer
       three: 0.171.0
