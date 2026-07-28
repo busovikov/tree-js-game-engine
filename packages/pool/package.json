@@ -1,0 +1,31 @@
+{
+  "name": "@haku/pool",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "pnpm --dir ../.. exec vitest run packages/pool"
+  },
+  "dependencies": {
+    "@haku/assets": "workspace:*",
+    "@haku/core": "workspace:*",
+    "@haku/graph": "workspace:*",
+    "@haku/graph-runtime": "workspace:*",
+    "@haku/schema": "workspace:*",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
