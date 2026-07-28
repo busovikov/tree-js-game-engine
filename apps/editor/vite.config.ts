@@ -18,6 +18,7 @@ export default defineConfig({
     dedupe: ['react', 'react-dom'],
     alias: {
       '@haku/editor': resolve(__dirname, '../../packages/editor/src'),
+      '@haku/build': resolve(__dirname, '../../packages/build/src'),
       '@haku/engine': resolve(__dirname, '../../packages/engine/src'),
       '@haku/core': resolve(__dirname, '../../packages/core/src'),
       '@haku/schema': resolve(__dirname, '../../packages/schema/src'),

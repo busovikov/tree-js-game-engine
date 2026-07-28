@@ -21,6 +21,7 @@ export {
   type CodeEditorProviderLoader,
   type CodeEditorProviderProps,
 } from './code/code-editor-provider.js'
+export { openProjectInExternalVsCode } from './code/external-vscode.js'
 export {
   DefaultGraphCanvasProvider,
   createLazyGraphCanvasProvider,
