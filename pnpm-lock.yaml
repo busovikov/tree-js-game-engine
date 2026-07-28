@@ -90,6 +90,9 @@ importers:
       '@haku/assets':
         specifier: workspace:*
         version: link:../../packages/assets
+      '@haku/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@haku/engine':
         specifier: workspace:*
         version: link:../../packages/engine
@@ -102,6 +105,9 @@ importers:
       '@haku/physics-rapier':
         specifier: workspace:*
         version: link:../../packages/physics-rapier
+      '@haku/pool':
+        specifier: workspace:*
+        version: link:../../packages/pool
     devDependencies:
       typescript:
         specifier: ^5.7.2

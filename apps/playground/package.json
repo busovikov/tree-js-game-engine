@@ -11,9 +11,11 @@
   },
   "dependencies": {
     "@haku/assets": "workspace:*",
+    "@haku/core": "workspace:*",
     "@haku/engine": "workspace:*",
     "@haku/graph": "workspace:^",
     "@haku/graph-runtime": "workspace:^",
+    "@haku/pool": "workspace:*",
     "@haku/physics-rapier": "workspace:*"
   },
   "devDependencies": {
