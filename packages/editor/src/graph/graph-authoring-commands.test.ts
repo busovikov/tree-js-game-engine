@@ -7,7 +7,7 @@ import {
   namedType,
   NodeRegistry,
 } from '@haku/graph'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CommandBus } from '../commands/command-bus.js'
 import { GraphAuthoringSession } from './graph-authoring-session.js'
 
@@ -98,6 +98,35 @@ describe('Haku graph authoring commands', () => {
       })(),
     })
     session.create('graphs/commands.graph.json', 'Commands', uid(999))
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('invokes the browser UUID generator with its crypto receiver', () => {
+    let next = 2000
+    const browserCrypto = {
+      randomUUID() {
+        if (this !== browserCrypto) throw new TypeError('Illegal invocation')
+        return uid(next++)
+      },
+    }
+    vi.stubGlobal('crypto', browserCrypto)
+    const browserSession = new GraphAuthoringSession(commands, {
+      readText: async () => '',
+      writeText: async () => undefined,
+    }, {
+      nodes,
+      types: createBuiltinTypeRegistry(),
+    })
+    browserSession.create('graphs/browser.graph.json', 'Browser', uid(1999))
+
+    expect(() => browserSession.addNode(
+      sourceDefinition.contract.id,
+      { x: 10, y: 20 },
+      { value: 4 },
+    )).not.toThrow()
   })
 
   it('adds typed palette nodes and updates layout/properties through undoable commands', () => {

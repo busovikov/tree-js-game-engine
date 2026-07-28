@@ -419,7 +419,7 @@ export class GraphAuthoringSession {
   }
 
   private uuid(): string {
-    return (this.environment?.uuid ?? crypto.randomUUID)()
+    return this.environment?.uuid?.() ?? crypto.randomUUID()
   }
 
   private findCallsite(asset: GraphAsset, endpoint: GraphConnectionEndpoint) {
