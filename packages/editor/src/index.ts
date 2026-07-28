@@ -21,6 +21,14 @@ export {
   type CodeEditorProviderLoader,
   type CodeEditorProviderProps,
 } from './code/code-editor-provider.js'
+export {
+  CodeWorkspacePanel,
+  type CodeBundlerClient,
+  type CodeLanguageClient,
+  type CodePlayLauncher,
+  type CodePlaySession,
+  type CodeWorkspacePanelProps,
+} from './code/CodeWorkspacePanel.js'
 export { openProjectInExternalVsCode } from './code/external-vscode.js'
 export {
   createPlaySandbox,

@@ -1,0 +1,70 @@
+.haku-code-workspace {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  color: #ddd;
+  background: #15151d;
+}
+
+.haku-code-workspace__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  border-bottom: 1px solid #333;
+}
+
+.haku-code-workspace__toolbar button {
+  padding: 4px 10px;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #ddd;
+  background: #2a2a38;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.haku-code-workspace__toolbar button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.haku-code-workspace__diagnostic {
+  padding: 8px 10px;
+  border-bottom: 1px solid #5c3535;
+  color: #ffb4ab;
+  background: #351f24;
+  font-size: 12px;
+}
+
+.haku-code-workspace__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.haku-code-workspace__path,
+.haku-code-workspace__status {
+  padding: 5px 8px;
+  color: #aaa;
+  background: #20202a;
+  font-size: 12px;
+}
+
+.haku-code-workspace__path {
+  border-bottom: 1px solid #333;
+}
+
+.haku-code-workspace__status {
+  border-top: 1px solid #333;
+}
+
+.haku-code-workspace__empty {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  color: #777;
+  font-size: 13px;
+}

@@ -83,6 +83,20 @@ export class BrowserProjectWorkspace {
     return this.requireFile(path).text
   }
 
+  async createText(path: string, text: string): Promise<void> {
+    this.assertWritable()
+    if (this.files.has(path)) throw new Error(`File already exists: ${path}`)
+    if ((await this.fileSystem.listFiles()).includes(path)) {
+      throw new Error(`File already exists on disk: ${path}`)
+    }
+    const written = await this.fileSystem.writeFile(path, text)
+    this.files.set(path, {
+      text,
+      baseline: written,
+      dirty: false,
+    })
+  }
+
   editText(path: string, text: string): void {
     this.assertWritable()
     const file = this.requireFile(path)
