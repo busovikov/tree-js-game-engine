@@ -208,7 +208,7 @@ class PoolSystem {
           .filter((candidate) => candidate.active)
           .sort((left, right) => left.acquiredSequence - right.acquiredSequence)[0]
         if (record) {
-          this.releaseRecord(record, true)
+          this.releaseRecord(record)
           this.forcedReleases += 1
         }
       }
@@ -230,18 +230,18 @@ class PoolSystem {
     if (!record.active || record.generation !== handle.generation) {
       throw new Error(`Stale pool handle for entity ${handle.entity}`)
     }
-    this.releaseRecord(record, false)
+    this.releaseRecord(record)
   }
 
   releaseAll(): void {
     for (const record of this.records.values()) {
-      if (record.active) this.releaseRecord(record, false)
+      if (record.active) this.releaseRecord(record)
     }
   }
 
   clear(): void {
     for (const record of [...this.records.values()]) {
-      if (record.active) this.releaseRecord(record, false)
+      if (record.active) this.releaseRecord(record)
       this.dispatch(record, 'clear')
       this.destroyOwnedHierarchy(record)
       this.records.delete(record.root.value)
@@ -313,13 +313,13 @@ class PoolSystem {
     return record
   }
 
-  private releaseRecord(record: PoolRecord, forced: boolean): void {
+  private releaseRecord(record: PoolRecord): void {
     this.options.world.setActiveSelf(record.root, false)
     this.dispatch(record, 'release')
     record.scope.reset()
     this.restoreBaseline(record, false)
     record.active = false
-    if (!forced) this.releases += 1
+    this.releases += 1
   }
 
   private restoreBaseline(record: PoolRecord, activateRoot: boolean): void {
