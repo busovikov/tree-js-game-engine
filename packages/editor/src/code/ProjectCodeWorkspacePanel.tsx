@@ -36,7 +36,16 @@ export function createProjectBrowserTooling(service: ProjectService): BrowserPro
         path: asset.path,
         type: asset.type,
       })) ?? [],
-    components: [],
+    components: service.getCustomComponentTypes().map((component) => ({
+      id: component.id,
+      name: component.name,
+      fields:
+        component.inspector?.fields.map((field) => ({
+          name: field.name,
+          type: field.type,
+          optional: field.optional,
+        })) ?? [],
+    })),
     graphs:
       manifest?.assets
         .filter((asset) => asset.type === GRAPH_ASSET_TYPE)

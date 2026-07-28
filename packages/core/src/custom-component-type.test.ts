@@ -37,4 +37,57 @@ describe('custom component type assets', () => {
     expect(first.fingerprint).toBe(second.fingerprint)
     expect(first.fingerprint).toMatch(/^haku-component-v1-/)
   })
+
+  it('projects declarative Inspector and asset-reference metadata', () => {
+    const definition = createCustomComponentDefinition({
+      schemaVersion: 1,
+      id: '42000000-0000-4000-8000-000000000002',
+      name: 'Trail',
+      version: 1,
+      inspector: { category: 'Gameplay', description: 'Trail controls' },
+      fields: [
+        {
+          name: 'intensity',
+          type: 'number',
+          default: 1,
+          inspector: { label: 'Intensity', min: 0, max: 2, step: 0.1 },
+        },
+        {
+          name: 'texture',
+          type: 'asset-ref',
+          assetType: '20000000-0000-4000-8000-000000000004',
+          optional: true,
+        },
+      ],
+    })
+
+    expect(definition.inspector).toEqual({
+      category: 'Gameplay',
+      description: 'Trail controls',
+      fields: [
+        {
+          name: 'intensity',
+          type: 'number',
+          label: 'Intensity',
+          min: 0,
+          max: 2,
+          step: 0.1,
+          optional: false,
+        },
+        {
+          name: 'texture',
+          type: 'asset-ref',
+          label: 'texture',
+          optional: true,
+        },
+      ],
+    })
+    expect(definition.references).toEqual([
+      {
+        path: 'texture',
+        assetType: '20000000-0000-4000-8000-000000000004',
+        optional: true,
+      },
+    ])
+  })
 })

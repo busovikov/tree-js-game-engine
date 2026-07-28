@@ -4,6 +4,7 @@ import {
   defaultEditorProjectSettings,
   defaultSceneEditorState,
   PrefabDefinitionSchema,
+  CustomComponentTypeAssetSchema,
   type EditorProjectSettings,
   type PrefabDefinition,
   type SceneDocument,
@@ -17,6 +18,7 @@ import {
 } from '@haku/schema'
 import {
   BINARY_ASSET_TYPE,
+  CUSTOM_COMPONENT_TYPE_ASSET_TYPE,
   PREFAB_ASSET_TYPE,
   DATA_ASSET_TYPE,
   MODEL_ASSET_TYPE,
@@ -31,7 +33,13 @@ import {
 } from '@haku/assets'
 import type { AssetId, AssetRef, AssetTypeId } from '@haku/schema'
 import { loadSceneDocument, saveSceneDocument } from '@haku/serializer'
-import { PrefabInstanceComponent, type EntityId, type IWorld } from '@haku/core'
+import {
+  PrefabInstanceComponent,
+  createCustomComponentDefinition,
+  type ComponentDefinition,
+  type EntityId,
+  type IWorld,
+} from '@haku/core'
 import { World } from '@haku/core'
 import {
   createEngineAssetRegistry,
@@ -78,7 +86,8 @@ const PROJECT_LOG_PATH = 'logs/haku.log'
 
 export class ProjectService {
   private readonly assetRegistry = createEngineAssetRegistry()
-  private readonly componentRegistry = createEngineComponentRegistry()
+  private componentRegistry = createEngineComponentRegistry()
+  private customComponentTypes = new Map<string, ComponentDefinition>()
   private root: string | null = null
   private manifest: ProjectManifest | null = null
   private prefabAssets = new Map<AssetId, PrefabDefinition>()
@@ -407,6 +416,12 @@ export class ProjectService {
     return this.prefabAssets
   }
 
+  getCustomComponentTypes(): readonly ComponentDefinition[] {
+    return [...this.customComponentTypes.values()].sort((left, right) =>
+      left.id.localeCompare(right.id),
+    )
+  }
+
   async createGraphAsset(
     projectPath: string,
     name: string,
@@ -502,6 +517,7 @@ export class ProjectService {
         document = validateSceneDocument(await res.json())
       }
 
+      await this.loadCustomComponentTypes()
       await this.loadPrefabAssets()
       const world = loadSceneDocument(document, {
         expandPrefabs: false,
@@ -1383,6 +1399,24 @@ export class ProjectService {
       const projectPath = `${this.manifest.assetsDir}/${entry.path}`.replace(/\/+/g, '/')
       const raw = await this.readProjectText(projectPath)
       this.prefabAssets.set(entry.id, PrefabDefinitionSchema.parse(JSON.parse(raw)))
+    }
+  }
+
+  private async loadCustomComponentTypes(): Promise<void> {
+    this.componentRegistry = createEngineComponentRegistry()
+    this.customComponentTypes = new Map()
+    if (!this.manifest) return
+    for (const entry of this.manifest.assets) {
+      if (entry.type !== CUSTOM_COMPONENT_TYPE_ASSET_TYPE) continue
+      const projectPath = `${this.manifest.assetsDir}/${entry.path}`.replace(
+        /\/+/g,
+        '/',
+      )
+      const raw = await this.readProjectText(projectPath)
+      const asset = CustomComponentTypeAssetSchema.parse(JSON.parse(raw))
+      const definition = createCustomComponentDefinition(asset)
+      this.componentRegistry.register(definition)
+      this.customComponentTypes.set(definition.id, definition)
     }
   }
 

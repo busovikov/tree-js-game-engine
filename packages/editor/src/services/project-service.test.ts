@@ -4,7 +4,12 @@
 import { World } from '@haku/core'
 import { setHakuLogSink } from '@haku/engine'
 import { validateSceneDocument } from '@haku/schema'
-import { MODEL_ASSET_TYPE, SCENE_ASSET_TYPE, validateProjectManifest } from '@haku/assets'
+import {
+  CUSTOM_COMPONENT_TYPE_ASSET_TYPE,
+  MODEL_ASSET_TYPE,
+  SCENE_ASSET_TYPE,
+  validateProjectManifest,
+} from '@haku/assets'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { globalCommandBus } from '../commands/command-bus.js'
 import { useEditorStore } from '../store/editor-store.js'
@@ -52,6 +57,87 @@ describe('ProjectService disk saving', () => {
     )
     expect(useEditorStore.getState().selection).toEqual([selected])
     expect(globalCommandBus.canUndo()).toBe(true)
+  })
+
+  it('loads visual component type assets before hydrating a scene', async () => {
+    const service = new ProjectService()
+    const sceneAssetId = '10000000-0000-4000-8000-000000000021'
+    const componentAssetId = '10000000-0000-4000-8000-000000000022'
+    const componentTypeId = '42000000-0000-4000-8000-000000000021'
+    const entityId = 'a0000000-0000-4000-8000-000000000021'
+    service.openFromManifest(
+      'custom-components',
+      validateProjectManifest({
+        schemaVersion: 1,
+        name: 'Custom components',
+        entryScene: { $ref: sceneAssetId, type: SCENE_ASSET_TYPE },
+        assetsDir: 'public/assets',
+        scriptsDir: 'src',
+        assets: [
+          {
+            id: sceneAssetId,
+            type: SCENE_ASSET_TYPE,
+            path: 'scenes/main.scene.json',
+          },
+          {
+            id: componentAssetId,
+            type: CUSTOM_COMPONENT_TYPE_ASSET_TYPE,
+            path: 'components/mover.component.json',
+          },
+        ],
+      }),
+    )
+    browserProjectStore.registerFile(
+      'public/assets/components/mover.component.json',
+      {
+        content: JSON.stringify({
+          schemaVersion: 1,
+          id: componentTypeId,
+          name: 'Mover',
+          version: 1,
+          fields: [{ name: 'speed', type: 'number', default: 4 }],
+        }),
+      },
+    )
+    browserProjectStore.registerFile('public/assets/scenes/main.scene.json', {
+      content: JSON.stringify({
+        schemaVersion: 1,
+        metadata: { name: 'Main' },
+        entities: [
+          {
+            id: entityId,
+            name: 'Runner',
+            parent: null,
+            components: [{ type: componentTypeId, data: { speed: 9 } }],
+          },
+        ],
+      }),
+    })
+
+    const loaded = await service.loadScene(
+      'public/assets/scenes/main.scene.json',
+    )
+    const entity = loaded.world.getAllEntities()[0]!
+    const definition = loaded.world.getComponentDefinition(
+      entity,
+      componentTypeId,
+    )!
+
+    expect(definition.name).toBe('Mover')
+    expect(loaded.world.getComponent(entity, definition)).toEqual({ speed: 9 })
+    expect(
+      await service.saveScene(
+        'public/assets/scenes/main.scene.json',
+        loaded.world,
+        loaded.document,
+      ),
+    ).toMatchObject({
+      entities: [
+        {
+          components: [{ type: componentTypeId, data: { speed: 9 } }],
+        },
+      ],
+    })
   })
 
   it('writes playground editor settings through the project file endpoint', async () => {

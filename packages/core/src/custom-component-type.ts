@@ -96,7 +96,7 @@ function schemaForField(field: CustomComponentField): z.ZodTypeAny {
 
 export function createCustomComponentDefinition(
   input: CustomComponentTypeAsset,
-): ComponentDefinition<Record<string, unknown>> {
+): ComponentDefinition {
   const asset = CustomComponentTypeAssetSchema.parse(input)
   const shape: Record<string, z.ZodTypeAny> = {}
   for (const field of asset.fields) {
@@ -119,6 +119,37 @@ export function createCustomComponentDefinition(
         assetType: assetTypeId(field.assetType),
         optional: field.optional,
       })),
+    inspector: {
+      ...(asset.inspector.category === undefined
+        ? {}
+        : { category: asset.inspector.category }),
+      ...(asset.inspector.description === undefined
+        ? {}
+        : { description: asset.inspector.description }),
+      fields: asset.fields.map((field) => ({
+        name: field.name,
+        type: field.type,
+        label: field.inspector?.label ?? field.name,
+        optional: 'optional' in field ? field.optional : false,
+        ...(field.type === 'number' && field.inspector?.min !== undefined
+          ? { min: field.inspector.min }
+          : {}),
+        ...(field.type === 'number' && field.inspector?.max !== undefined
+          ? { max: field.inspector.max }
+          : {}),
+        ...(field.type === 'number' && field.inspector?.step !== undefined
+          ? { step: field.inspector.step }
+          : {}),
+        ...(field.type === 'string' &&
+        field.inspector?.placeholder !== undefined
+          ? { placeholder: field.inspector.placeholder }
+          : {}),
+        ...(field.type === 'string' &&
+        field.inspector?.multiline !== undefined
+          ? { multiline: field.inspector.multiline }
+          : {}),
+      })),
+    },
     schema,
     defaults: () => schema.parse({}),
   }

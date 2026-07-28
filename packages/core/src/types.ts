@@ -30,7 +30,26 @@ export interface ComponentDefinition<T = unknown> {
     readonly assetType: AssetTypeId
     readonly optional?: boolean
   }[]
+  readonly inspector?: ComponentInspectorDescriptor
   readonly lifecycle?: ComponentLifecycleHooks<T>
+}
+
+export interface ComponentInspectorFieldDescriptor {
+  readonly name: string
+  readonly type: string
+  readonly label: string
+  readonly optional: boolean
+  readonly min?: number
+  readonly max?: number
+  readonly step?: number
+  readonly placeholder?: string
+  readonly multiline?: boolean
+}
+
+export interface ComponentInspectorDescriptor {
+  readonly category?: string
+  readonly description?: string
+  readonly fields: readonly ComponentInspectorFieldDescriptor[]
 }
 
 export interface ComponentLifecycleContext<T = unknown> {
