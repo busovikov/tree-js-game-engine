@@ -1,21 +1,14 @@
 import type { IWorld } from './types.js'
+import type {
+  SchedulerPhase,
+  SchedulerSourcePhase,
+} from './scheduler-phase.js'
 
-export const SCHEDULER_PHASES = [
-  'FrameInput',
-  'AccumulateTime',
-  'FixedInputSnapshot',
-  'FixedPrePhysics',
-  'PhysicsStep',
-  'PostPhysics',
-  'FixedGameplay',
-  'FrameGameplay',
-  'LateUpdate',
-  'Presentation',
-  'Render',
-] as const
-
-export type SchedulerPhase = (typeof SCHEDULER_PHASES)[number]
-export type SchedulerSourcePhase = SchedulerPhase | 'External'
+export {
+  SCHEDULER_PHASES,
+  type SchedulerPhase,
+  type SchedulerSourcePhase,
+} from './scheduler-phase.js'
 
 export interface SchedulerSystem {
   readonly phase: SchedulerPhase

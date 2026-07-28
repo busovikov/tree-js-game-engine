@@ -4,11 +4,25 @@ import {
   type IWorld,
 } from '@haku/core'
 import type { CustomComponentGraphContract } from '@haku/graph'
-import type {
-  NodeExecutionRequest,
-  NodeExecutionResult,
-  NodeRuntimeRegistry,
-} from './index.js'
+
+interface CustomComponentNodeExecutionRequest {
+  readData(inputCallsiteId: string): unknown
+}
+
+interface CustomComponentNodeExecutionResult {
+  readonly flow?: readonly string[]
+  readonly data?: Readonly<Record<string, unknown>>
+}
+
+interface CustomComponentNodeRuntimeRegistry {
+  register(adapter: {
+    readonly nodeType: string
+    readonly version: string
+    execute(
+      request: CustomComponentNodeExecutionRequest,
+    ): CustomComponentNodeExecutionResult
+  }): void
+}
 
 export interface CustomComponentRuntimeOptions {
   readonly world: IWorld
@@ -41,7 +55,7 @@ function portId(
 
 export function registerCustomComponentRuntimeAdapters(
   contracts: readonly CustomComponentGraphContract[],
-  registry: NodeRuntimeRegistry,
+  registry: CustomComponentNodeRuntimeRegistry,
   options: CustomComponentRuntimeOptions,
 ): void {
   for (const contract of contracts) {
@@ -55,7 +69,7 @@ export function registerCustomComponentRuntimeAdapters(
     registry.register({
       nodeType: readNode.id,
       version: contract.version,
-      execute(request): NodeExecutionResult {
+      execute(request): CustomComponentNodeExecutionResult {
         const entity = entityFromReference(
           request.readData(portId(readNode, 'entity')),
         )
@@ -80,7 +94,9 @@ export function registerCustomComponentRuntimeAdapters(
       registry.register({
         nodeType: node.id,
         version: contract.version,
-        execute(request: NodeExecutionRequest): NodeExecutionResult {
+        execute(
+          request: CustomComponentNodeExecutionRequest,
+        ): CustomComponentNodeExecutionResult {
           const entity = entityFromReference(
             request.readData(portId(node, 'entity')),
           )

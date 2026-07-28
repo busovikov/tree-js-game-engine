@@ -1,6 +1,6 @@
 import type { ZodType, ZodTypeDef } from 'zod'
 import type { AssetTypeId, AssetRef, ComponentTypeId, RenderSettings } from '@haku/schema'
-import type { SchedulerPhase } from './scheduler.js'
+import type { SchedulerPhase } from './scheduler-phase.js'
 
 export interface EntityId {
   readonly __brand: 'EntityId'
