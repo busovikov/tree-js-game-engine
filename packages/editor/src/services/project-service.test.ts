@@ -306,7 +306,24 @@ describe('ProjectService browser code workspace', () => {
   })
 
   it('writes dev-target code workspace creates and saves through to disk', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
+    let diskText = ''
+    let lastModified = 0
+    const fetchMock = vi.fn().mockImplementation(
+      async (_url: string, init?: RequestInit) => {
+        if (init?.method === 'PUT') {
+          diskText = String(init.body)
+          lastModified += 1
+          return new Response(null, { status: 204 })
+        }
+        return new Response(diskText, {
+          status: 200,
+          headers: {
+            'X-Haku-Last-Modified': String(lastModified),
+            'X-Haku-File-Size': String(new Blob([diskText]).size),
+          },
+        })
+      },
+    )
     vi.stubGlobal('fetch', fetchMock)
     const service = new ProjectService()
     service.openFromManifest(
@@ -336,24 +353,76 @@ describe('ProjectService browser code workspace', () => {
     workspace.editText('src/gameplay.ts', 'export const speed = 2\n')
     await workspace.saveText('src/gameplay.ts')
 
-    expect(fetchMock).toHaveBeenCalledTimes(2)
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      1,
+    const putCalls = fetchMock.mock.calls.filter(([, init]) => init?.method === 'PUT')
+    expect(putCalls).toHaveLength(2)
+    expect(putCalls[0]).toEqual([
       '/__haku/dev/file',
       expect.objectContaining({
         method: 'PUT',
         headers: { 'X-Haku-File-Path': 'src/gameplay.ts' },
         body: 'export const speed = 1\n',
       }),
-    )
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      2,
+    ])
+    expect(putCalls[1]).toEqual([
       '/__haku/dev/file',
       expect.objectContaining({
         method: 'PUT',
         headers: { 'X-Haku-File-Path': 'src/gameplay.ts' },
         body: 'export const speed = 2\n',
       }),
+    ])
+  })
+
+  it('reads dev-target workspace files from disk when polling external changes', async () => {
+    let diskText = 'export const speed = 1\n'
+    let lastModified = 100
+    const fetchMock = vi.fn().mockImplementation(async () => {
+      return new Response(diskText, {
+        status: 200,
+        headers: {
+          'X-Haku-Last-Modified': String(lastModified),
+          'X-Haku-File-Size': String(new Blob([diskText]).size),
+        },
+      })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const service = new ProjectService()
+    service.openFromManifest(
+      'dev-target-project',
+      validateProjectManifest({
+        schemaVersion: 1,
+        name: 'Dev target project',
+        entryScene: {
+          $ref: '10000000-0000-4000-8000-000000000001',
+          type: SCENE_ASSET_TYPE,
+        },
+        assetsDir: 'public/assets',
+        scriptsDir: 'scripts',
+        assets: [
+          {
+            id: '10000000-0000-4000-8000-000000000001',
+            type: SCENE_ASSET_TYPE,
+            path: 'scenes/main.scene.json',
+          },
+        ],
+      }),
     )
+    ;(service as unknown as { storage: 'dev-target' }).storage = 'dev-target'
+    browserProjectStore.registerFile('src/gameplay.ts', { content: diskText })
+    const workspace = await service.openCodeWorkspace()
+
+    workspace.editText('src/gameplay.ts', 'export const speed = 3\n')
+    diskText = 'export const speed = 2\n'
+    lastModified = 200
+
+    expect(await workspace.pollExternalChanges()).toEqual([
+      { path: 'src/gameplay.ts', status: 'conflict' },
+    ])
+    expect(workspace.readText('src/gameplay.ts')).toBe('export const speed = 3\n')
+    expect(workspace.getConflict('src/gameplay.ts')).toEqual({
+      path: 'src/gameplay.ts',
+      diskText: 'export const speed = 2\n',
+      editorText: 'export const speed = 3\n',
+    })
   })
 })

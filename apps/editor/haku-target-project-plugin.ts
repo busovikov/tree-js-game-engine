@@ -179,12 +179,6 @@ async function handleDevRequest(
   }
 
   if (pathname === '/__haku/dev/file') {
-    if (req.method !== 'PUT') {
-      res.statusCode = 405
-      res.end('Method not allowed')
-      return true
-    }
-
     const relativePath = req.headers['x-haku-file-path']
     if (typeof relativePath !== 'string' || !relativePath.trim()) {
       res.statusCode = 400
@@ -192,9 +186,41 @@ async function handleDevRequest(
       return true
     }
 
-    await writeTargetTextFile(targetRoot, relativePath, await readRequestBody(req))
-    res.statusCode = 204
-    res.end()
+    if (req.method === 'GET') {
+      const filePath = resolveTargetFile(targetRoot, relativePath)
+      if (!filePath || filePath === normalize(resolve(targetRoot))) {
+        res.statusCode = 400
+        res.end('Invalid target path')
+        return true
+      }
+      try {
+        const stats = statSync(filePath)
+        if (!stats.isFile()) {
+          res.statusCode = 404
+          res.end('Not found')
+          return true
+        }
+        res.statusCode = 200
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8')
+        res.setHeader('X-Haku-Last-Modified', String(stats.mtimeMs))
+        res.setHeader('X-Haku-File-Size', String(stats.size))
+        res.end(await readFile(filePath, 'utf8'))
+      } catch {
+        res.statusCode = 404
+        res.end('Not found')
+      }
+      return true
+    }
+
+    if (req.method === 'PUT') {
+      await writeTargetTextFile(targetRoot, relativePath, await readRequestBody(req))
+      res.statusCode = 204
+      res.end()
+      return true
+    }
+
+    res.statusCode = 405
+    res.end('Method not allowed')
     return true
   }
 

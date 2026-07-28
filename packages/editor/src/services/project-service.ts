@@ -57,7 +57,11 @@ import {
   type GraphAsset,
 } from '@haku/graph'
 import type { BrowserProjectTrustMode } from '@haku/build'
-import { BrowserProjectWorkspace, type BrowserProjectFileSystem } from './browser-project-workspace.js'
+import {
+  BrowserProjectWorkspace,
+  type BrowserProjectDiskFile,
+  type BrowserProjectFileSystem,
+} from './browser-project-workspace.js'
 
 export interface ProjectFileEntry {
   path: string
@@ -359,13 +363,17 @@ export class ProjectService {
           }
         : {
             listFiles: async () => browserProjectStore.listWorkspaceFiles(),
-            readFile: (path) => browserProjectStore.readWorkspaceFile(path),
+            readFile: (path) =>
+              this.storage === 'dev-target'
+                ? this.readDevTargetWorkspaceFile(path)
+                : browserProjectStore.readWorkspaceFile(path),
             writeFile: async (path, text) => {
-              const written = await browserProjectStore.writeWorkspaceFile(path, text)
               if (this.storage === 'dev-target') {
                 await this.writeDevTargetFileToDisk(path, text)
+                await browserProjectStore.writeWorkspaceFile(path, text)
+                return this.readDevTargetWorkspaceFile(path)
               }
-              return written
+              return browserProjectStore.writeWorkspaceFile(path, text)
             },
           }
 
@@ -1125,6 +1133,27 @@ export class ProjectService {
     if (!res.ok) {
       const message = await res.text()
       throw new Error(message || `Failed to write target file: ${relativePath}`)
+    }
+  }
+
+  private async readDevTargetWorkspaceFile(
+    relativePath: string,
+  ): Promise<BrowserProjectDiskFile> {
+    const res = await fetch('/__haku/dev/file', {
+      method: 'GET',
+      headers: { 'X-Haku-File-Path': relativePath },
+    })
+
+    if (!res.ok) {
+      const message = await res.text()
+      throw new Error(message || `Failed to read target file: ${relativePath}`)
+    }
+
+    const text = await res.text()
+    return {
+      text,
+      lastModified: Number(res.headers.get('X-Haku-Last-Modified') ?? 0),
+      size: Number(res.headers.get('X-Haku-File-Size') ?? new Blob([text]).size),
     }
   }
 
