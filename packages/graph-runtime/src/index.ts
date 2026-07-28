@@ -10,6 +10,7 @@ import {
   type ExecutionPlanNode,
   type GraphExecutionPlan,
   type GraphPublicPort,
+  stableFingerprint,
 } from '@haku/graph'
 
 export class GraphRuntimeError extends Error {
@@ -271,7 +272,114 @@ export interface GraphInstanceOptions {
   readonly subgraphPlans?: ReadonlyMap<string, GraphExecutionPlan>
   readonly resources?: ResourceSnapshotProvider
   readonly effects?: CheckpointEffectReconciler
+  readonly persistence?: CheckpointPersistenceOptions
   readonly limits?: Partial<GraphRuntimeLimits>
+}
+
+export type CheckpointPersistencePolicy =
+  | 'memory-only'
+  | 'persist-automatically'
+  | 'persist-explicitly'
+
+const CHECKPOINT_PERSISTENCE_POLICIES: readonly CheckpointPersistencePolicy[] = [
+  'memory-only',
+  'persist-automatically',
+  'persist-explicitly',
+]
+
+export interface CheckpointReference {
+  readonly id: string
+  readonly fingerprint: string
+}
+
+export interface SaveService {
+  saveCheckpoint(
+    slotId: string,
+    record: PersistentCheckpointRecord,
+  ): Promise<void>
+  loadCheckpoint(
+    slotId: string,
+    instanceId: string,
+  ): Promise<PersistentCheckpointRecord | undefined>
+}
+
+export interface CheckpointPersistenceOptions {
+  readonly saveService: SaveService
+  readonly slotId: string
+  readonly policy?: CheckpointPersistencePolicy
+  readonly references?: readonly CheckpointReference[]
+  readonly migrations?: CheckpointMigrationRegistry
+  readonly fallbackEntryNodeId: string
+}
+
+export interface PersistentCheckpointSnapshot {
+  readonly parameters: readonly (readonly [string, unknown])[]
+  readonly outputs: readonly (readonly [string, unknown])[]
+  readonly exportedState: readonly (
+    readonly [string, readonly (readonly [string, unknown])[]]
+  )[]
+  readonly resources: readonly (readonly [string, unknown])[]
+  readonly effects: readonly CheckpointEffectRecord[]
+  readonly asyncRecords: readonly AsyncCheckpointRecord[]
+}
+
+export interface PersistentCheckpointRecord {
+  readonly schemaVersion: 1
+  readonly id: string
+  readonly label: string
+  readonly graphId: string
+  readonly instanceId: string
+  readonly checkpointNodeId: string
+  readonly planFingerprint: string
+  readonly registryFingerprint: string
+  readonly scopeFingerprint: string
+  readonly references: readonly CheckpointReference[]
+  readonly tickNumber: number
+  readonly frameNumber: number
+  readonly scope: CheckpointStateScope
+  readonly snapshot: PersistentCheckpointSnapshot
+  readonly checksum: string
+}
+
+export interface CheckpointMigration {
+  readonly graphId: string
+  readonly fromPlanFingerprint: string
+  readonly toPlanFingerprint: string
+  migrate(record: PersistentCheckpointRecord): PersistentCheckpointRecord
+}
+
+export class CheckpointMigrationRegistry {
+  private readonly migrations = new Map<string, CheckpointMigration>()
+
+  register(migration: CheckpointMigration): void {
+    const key = checkpointMigrationKey(
+      migration.graphId,
+      migration.fromPlanFingerprint,
+      migration.toPlanFingerprint,
+    )
+    if (this.migrations.has(key)) {
+      throw new Error(`Duplicate checkpoint migration ${key}`)
+    }
+    this.migrations.set(key, migration)
+  }
+
+  find(
+    graphId: string,
+    fromPlanFingerprint: string,
+    toPlanFingerprint: string,
+  ): CheckpointMigration | undefined {
+    return this.migrations.get(checkpointMigrationKey(
+      graphId,
+      fromPlanFingerprint,
+      toPlanFingerprint,
+    ))
+  }
+}
+
+export interface RestoreCheckpointResult {
+  readonly status: 'restored' | 'fallback' | 'missing'
+  readonly checkpointId?: string
+  readonly reason?: string
 }
 
 export interface ResourceSnapshotProvider {
@@ -386,6 +494,10 @@ export class GraphInstance {
   private readonly subgraphPlans: ReadonlyMap<string, GraphExecutionPlan>
   private readonly resources?: ResourceSnapshotProvider
   private readonly effectReconciler?: CheckpointEffectReconciler
+  private readonly persistence?: CheckpointPersistenceOptions & {
+    readonly policy: CheckpointPersistencePolicy
+    readonly references: readonly CheckpointReference[]
+  }
   private readonly limits: GraphRuntimeLimits
   private scopeController = new AbortController()
   private readonly traceEntries: ExecutionTraceEntry[] = []
@@ -431,6 +543,22 @@ export class GraphInstance {
     this.subgraphPlans = options.subgraphPlans ?? new Map()
     this.resources = options.resources
     this.effectReconciler = options.effects
+    if (options.persistence) {
+      const policy = options.persistence.policy ?? 'persist-automatically'
+      if (!CHECKPOINT_PERSISTENCE_POLICIES.includes(policy)) {
+        throw new Error(`Unknown checkpoint persistence policy: ${policy}`)
+      }
+      if (!options.persistence.slotId) {
+        throw new Error('Checkpoint persistence slotId must not be empty')
+      }
+      this.persistence = {
+        ...options.persistence,
+        policy,
+        references: normalizeCheckpointReferences(
+          options.persistence.references ?? [],
+        ),
+      }
+    }
     this.limits = {
       maxStepsPerExecution: options.limits?.maxStepsPerExecution ?? 1_000,
     }
@@ -441,6 +569,14 @@ export class GraphInstance {
       throw new Error('maxStepsPerExecution must be a positive integer')
     }
     this.nodes = new Map(options.plan.nodes.map((node) => [node.id, node]))
+    if (
+      this.persistence &&
+      !this.nodes.has(this.persistence.fallbackEntryNodeId)
+    ) {
+      throw new Error(
+        `Unknown checkpoint fallback entry ${this.persistence.fallbackEntryNodeId}`,
+      )
+    }
     this.publicPorts = new Map(
       options.plan.publicInterface.ports.map((port) => [port.id, port]),
     )
@@ -539,7 +675,239 @@ export class GraphInstance {
         .sort((left, right) => left.id.localeCompare(right.id)),
     }
     this.activeCheckpoint = record
+    if (this.persistence?.policy === 'persist-automatically') {
+      await this.persistCheckpoint()
+    }
     return this.checkpoint!
+  }
+
+  async persistCheckpoint(): Promise<PersistentCheckpointRecord> {
+    if (!this.persistence) {
+      throw new Error(`Graph instance ${this.id} has no SaveService`)
+    }
+    if (this.persistence.policy === 'memory-only') {
+      throw new Error(`Graph instance ${this.id} checkpoint is memory-only`)
+    }
+    const checkpoint = this.activeCheckpoint
+    if (!checkpoint) {
+      throw new Error(`Graph instance ${this.id} has no active checkpoint`)
+    }
+    const record = this.createPersistentRecord(checkpoint)
+    await this.persistence.saveService.saveCheckpoint(
+      this.persistence.slotId,
+      record,
+    )
+    return record
+  }
+
+  async restoreCheckpoint(): Promise<RestoreCheckpointResult> {
+    if (!this.persistence) {
+      throw new Error(`Graph instance ${this.id} has no SaveService`)
+    }
+    if (this.persistence.policy === 'memory-only') {
+      throw new Error(`Graph instance ${this.id} checkpoint is memory-only`)
+    }
+    const loaded = await this.persistence.saveService.loadCheckpoint(
+      this.persistence.slotId,
+      this.id,
+    )
+    if (!loaded) return { status: 'missing' }
+
+    try {
+      const record = this.preparePersistentRecord(loaded)
+      this.restorePersistentRecord(record)
+      return { status: 'restored', checkpointId: record.id }
+    } catch (error) {
+      const reason = errorMessage(error)
+      const execution = this.start(this.persistence.fallbackEntryNodeId)
+      if (execution instanceof Promise) await execution
+      return { status: 'fallback', reason }
+    }
+  }
+
+  private createPersistentRecord(
+    checkpoint: ActiveGraphCheckpoint,
+  ): PersistentCheckpointRecord {
+    const withoutChecksum: Omit<PersistentCheckpointRecord, 'checksum'> = {
+      schemaVersion: 1,
+      id: checkpoint.id,
+      label: checkpoint.label,
+      graphId: checkpoint.graphId,
+      instanceId: checkpoint.instanceId,
+      checkpointNodeId: checkpoint.checkpointNodeId,
+      planFingerprint: checkpoint.planFingerprint,
+      registryFingerprint: this.plan.registryFingerprint,
+      scopeFingerprint: stableFingerprint(checkpoint.scope),
+      references: this.persistence?.references ?? [],
+      tickNumber: checkpoint.tickNumber,
+      frameNumber: checkpoint.frameNumber,
+      scope: cloneValue(checkpoint.scope),
+      snapshot: {
+        parameters: mapEntries(checkpoint.parameters),
+        outputs: mapEntries(checkpoint.outputs),
+        exportedState: [...checkpoint.exportedState]
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([nodeId, state]) => [nodeId, mapEntries(state)] as const),
+        resources: mapEntries(checkpoint.resources),
+        effects: checkpoint.effects.map(cloneValue),
+        asyncRecords: checkpoint.asyncRecords.map(cloneValue),
+      },
+    }
+    return {
+      ...withoutChecksum,
+      checksum: checksumCheckpointRecord(withoutChecksum),
+    }
+  }
+
+  private preparePersistentRecord(
+    loaded: PersistentCheckpointRecord,
+  ): PersistentCheckpointRecord {
+    if (loaded.schemaVersion !== 1) {
+      throw new Error(
+        `Unsupported checkpoint schema version ${String(loaded.schemaVersion)}`,
+      )
+    }
+    if (loaded.checksum !== checksumCheckpointRecord(loaded)) {
+      throw new Error(`Checkpoint ${loaded.id} checksum mismatch`)
+    }
+    if (loaded.graphId !== this.plan.graphId || loaded.instanceId !== this.id) {
+      throw new Error(`Checkpoint ${loaded.id} targets another graph instance`)
+    }
+
+    let record = cloneValue(loaded)
+    if (record.planFingerprint !== this.plan.planFingerprint) {
+      const migration = this.persistence?.migrations?.find(
+        record.graphId,
+        record.planFingerprint,
+        this.plan.planFingerprint,
+      )
+      if (!migration) {
+        throw new Error(
+          `Checkpoint ${record.id} has incompatible plan fingerprint ${record.planFingerprint}`,
+        )
+      }
+      record = cloneValue(migration.migrate(record))
+      if (
+        record.graphId !== this.plan.graphId ||
+        record.instanceId !== this.id ||
+        record.planFingerprint !== this.plan.planFingerprint
+      ) {
+        throw new Error('Checkpoint migration returned an incompatible record')
+      }
+      record = {
+        ...record,
+        checksum: checksumCheckpointRecord({ ...record, checksum: '' }),
+      }
+    }
+    if (record.registryFingerprint !== this.plan.registryFingerprint) {
+      throw new Error(
+        `Checkpoint ${record.id} has incompatible registry fingerprint`,
+      )
+    }
+    const metadata = this.plan.checkpoints.find(
+      (checkpoint) => checkpoint.nodeId === record.checkpointNodeId,
+    )
+    if (!metadata || !metadata.eligible) {
+      throw new Error(
+        `Checkpoint ${record.id} references an ineligible checkpoint node`,
+      )
+    }
+    const expectedScopeFingerprint = stableFingerprint(metadata.stateScope)
+    if (
+      record.scopeFingerprint !== expectedScopeFingerprint ||
+      stableFingerprint(record.scope) !== expectedScopeFingerprint
+    ) {
+      throw new Error(`Checkpoint ${record.id} scope fingerprint mismatch`)
+    }
+    if (!sameCheckpointReferences(
+      record.references,
+      this.persistence?.references ?? [],
+    )) {
+      throw new Error(`Checkpoint ${record.id} reference fingerprint mismatch`)
+    }
+    const asyncMetadata = metadata.asyncPolicies
+    for (const asyncRecord of record.snapshot.asyncRecords) {
+      const callsite = asyncMetadata.find(
+        (candidate) =>
+          candidate.nodeId === asyncRecord.nodeId &&
+          candidate.callsiteId === asyncRecord.callsiteId,
+      )
+      if (!callsite || !callsite.supported.includes(asyncRecord.policy)) {
+        throw new Error(
+          `Checkpoint ${record.id} has invalid async policy callsite ${asyncRecord.callsiteId}`,
+        )
+      }
+    }
+    validatePersistentSnapshot(record)
+    return record
+  }
+
+  private restorePersistentRecord(record: PersistentCheckpointRecord): void {
+    const snapshot = record.snapshot
+    const active: ActiveGraphCheckpoint = {
+      id: record.id,
+      label: record.label,
+      graphId: record.graphId,
+      instanceId: record.instanceId,
+      checkpointNodeId: record.checkpointNodeId,
+      planFingerprint: record.planFingerprint,
+      tickNumber: record.tickNumber,
+      frameNumber: record.frameNumber,
+      queueSequence: this.scheduler.captureQueueSequence(),
+      scope: cloneValue(record.scope),
+      asyncRecords: record.snapshot.asyncRecords.map(cloneValue),
+      parameters: new Map(snapshot.parameters.map(cloneValue)),
+      outputs: new Map(snapshot.outputs.map(cloneValue)),
+      exportedState: new Map(
+        snapshot.exportedState.map(([nodeId, entries]) => [
+          nodeId,
+          new Map(entries.map(cloneValue)),
+        ]),
+      ),
+      resources: new Map(snapshot.resources.map(cloneValue)),
+      effects: snapshot.effects.map(cloneValue),
+    }
+    replaceMap(this.parameters, active.parameters)
+    replaceMap(this.outputs, active.outputs)
+    this.exportedState.clear()
+    for (const [nodeId, state] of active.exportedState) {
+      this.exportedState.set(nodeId, cloneMap(state))
+    }
+    for (const [resource, value] of active.resources) {
+      if (!this.resources?.restore) {
+        throw new Error(`Resource ${resource} does not support checkpoint restore`)
+      }
+      this.resources.restore(resource, cloneValue(value))
+    }
+    this.resources?.recompute?.(active.scope.resources)
+    this.effectJournal.clear()
+    for (const effect of active.effects) {
+      this.effectJournal.set(effect.id, cloneValue(effect))
+      this.deliveredEffectIds.add(effect.id)
+    }
+    this.effectReconciler?.reconcile(active.effects.map(cloneValue))
+    this.activeCheckpoint = active
+    this._status = 'active'
+    const scopedNodes = new Set(active.scope.nodes)
+    this.runLifecycle(
+      'resume-from-checkpoint',
+      this.plan.nodes.filter((node) => scopedNodes.has(node.id)),
+    )
+    for (const asyncRecord of active.asyncRecords) {
+      if (asyncRecord.policy === 'materialized') continue
+      if (!this.backend.restoreCheckpointTask) {
+        throw new Error(
+          `Checkpoint ${record.id} cannot restore ${asyncRecord.policy} async callsite ${asyncRecord.callsiteId}`,
+        )
+      }
+      const node = this.nodes.get(asyncRecord.nodeId)
+      if (!node) {
+        throw new Error(
+          `Checkpoint ${record.id} references missing async node ${asyncRecord.nodeId}`,
+        )
+      }
+      this.restoreCheckpointTask(node, asyncRecord)
+    }
   }
 
   private async applyCheckpointPolicies(
@@ -1593,9 +1961,72 @@ function cloneMap<K, V>(source: ReadonlyMap<K, V>): Map<K, V> {
   return new Map([...source].map(([key, value]) => [key, cloneValue(value)]))
 }
 
+function mapEntries<V>(
+  source: ReadonlyMap<string, V>,
+): readonly (readonly [string, V])[] {
+  return [...source]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, value]) => [key, cloneValue(value)] as const)
+}
+
 function replaceMap<K, V>(target: Map<K, V>, source: ReadonlyMap<K, V>): void {
   target.clear()
   for (const [key, value] of source) target.set(key, cloneValue(value))
+}
+
+export function checksumCheckpointRecord(
+  record:
+    | PersistentCheckpointRecord
+    | Omit<PersistentCheckpointRecord, 'checksum'>,
+): string {
+  const { checksum: _checksum, ...payload } =
+    record as PersistentCheckpointRecord
+  return stableFingerprint(payload)
+}
+
+function normalizeCheckpointReferences(
+  references: readonly CheckpointReference[],
+): readonly CheckpointReference[] {
+  const normalized = references
+    .map((reference) => cloneValue(reference))
+    .sort((left, right) => left.id.localeCompare(right.id))
+  for (let index = 0; index < normalized.length; index += 1) {
+    const reference = normalized[index]
+    if (!reference.id || !reference.fingerprint) {
+      throw new Error('Checkpoint references require an ID and fingerprint')
+    }
+    if (index > 0 && normalized[index - 1].id === reference.id) {
+      throw new Error(`Duplicate checkpoint reference ${reference.id}`)
+    }
+  }
+  return normalized
+}
+
+function sameCheckpointReferences(
+  left: readonly CheckpointReference[],
+  right: readonly CheckpointReference[],
+): boolean {
+  const normalizedLeft = normalizeCheckpointReferences(left)
+  const normalizedRight = normalizeCheckpointReferences(right)
+  return stableFingerprint(normalizedLeft) === stableFingerprint(normalizedRight)
+}
+
+function validatePersistentSnapshot(record: PersistentCheckpointRecord): void {
+  try {
+    cloneValue(record.snapshot)
+  } catch (error) {
+    throw new Error(
+      `Checkpoint ${record.id} contains a non-snapshot-safe value: ${errorMessage(error)}`,
+    )
+  }
+}
+
+function checkpointMigrationKey(
+  graphId: string,
+  fromPlanFingerprint: string,
+  toPlanFingerprint: string,
+): string {
+  return `${graphId}:${fromPlanFingerprint}->${toPlanFingerprint}`
 }
 
 function isQueuedInvocation(value: unknown): value is QueuedInvocation {
