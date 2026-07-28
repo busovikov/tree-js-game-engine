@@ -50,6 +50,7 @@ import { sanitizeComponentDataForPersistence } from '@haku/serializer'
 import { commitActiveSceneCamera } from '../commands/active-scene-camera.js'
 import { useEditorStore } from '../store/editor-store.js'
 import { commitSceneEdit } from '../commands/scene-history.js'
+import { projectService } from '../services/project-service.js'
 import { CameraFields, normalizeCamera } from '../components/CameraFields.js'
 import { LightFields, normalizeLight } from '../components/LightFields.js'
 import { TransformFields } from '../components/TransformFields.js'
@@ -744,6 +745,17 @@ export const InspectorPanel = memo(function InspectorPanel() {
     }))
   }, [world, selectedIds, worldRevision])
 
+  const projectComponentMenuItems = useMemo(() => {
+    if (!world || selectedIds.length === 0) return []
+    return projectService.getCustomComponentTypes().map((component) => ({
+      id: component.id,
+      label: component.name,
+      disabled: selectedIds.every((entityId) =>
+        world.hasComponent(entityId, component),
+      ),
+    }))
+  }, [world, selectedIds, worldRevision])
+
   const controllerMenuItems = useMemo(() => {
     if (!world || selectedIds.length === 0) return []
     return ADDABLE_CONTROLLER_COMPONENTS.map(({ id, component, label }) => ({
@@ -756,8 +768,14 @@ export const InspectorPanel = memo(function InspectorPanel() {
   const handleAddComponent = useCallback(
     (id: string) => {
       const entry = ALL_ADDABLE.find((item) => item.id === id)
-      if (!entry) return
-      addComponent(entry.component)
+      if (entry) {
+        addComponent(entry.component)
+        return
+      }
+      const projectComponent = projectService
+        .getCustomComponentTypes()
+        .find((component) => component.id === id)
+      if (projectComponent) addComponent(projectComponent)
     },
     [addComponent],
   )
@@ -858,12 +876,13 @@ export const InspectorPanel = memo(function InspectorPanel() {
         <InspectorSeparator />
 
         {otherComponents.map((typeId) => {
-          const type = getEngineComponent(typeId)
+          const type =
+            world.getComponentDefinition(selectedIds[0]!, typeId) ??
+            getEngineComponent(typeId)
           if (!type) return null
           const key = type.name as keyof typeof COMPONENT_MAP
-          if (!(key in COMPONENT_MAP)) return null
-
-          const component = COMPONENT_MAP[key]
+          const isBuiltin = key in COMPONENT_MAP
+          const component = isBuiltin ? COMPONENT_MAP[key] : type
           const targets = selectedIds.filter((entityId) => world.hasComponent(entityId, component))
           if (targets.length === 0) return null
 
@@ -906,6 +925,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
               collapsed={collapsedSections[typeId] === true}
               enabled={enabledMixed !== false}
               disabled={!canEdit}
+              canToggleEnabled={isBuiltin}
               canPaste={componentClipboard?.typeId === typeId}
               onToggleCollapsed={() => toggleSectionCollapsed(typeId)}
               onToggleEnabled={() => toggleComponentEnabled(component, enabledMixed !== true)}
@@ -1102,12 +1122,12 @@ export const InspectorPanel = memo(function InspectorPanel() {
               ) : (
                 <SchemaFields
                   componentId={key}
-                  component={COMPONENT_MAP[key]}
+                  component={component}
                   data={data as Record<string, unknown>}
                   disabled={mode === 'play'}
                   onChange={(next) =>
                     forEachSelected((id, draftWorld) => {
-                      draftWorld.addComponent(id, COMPONENT_MAP[key], next)
+                      draftWorld.addComponent(id, component, next)
                     })
                   }
                 />
@@ -1121,7 +1141,22 @@ export const InspectorPanel = memo(function InspectorPanel() {
         <div className="haku-inspector__footer">
           <AddComponentMenu
             items={addableItems}
-            groups={[{ id: 'controllers', label: 'Controllers', items: controllerMenuItems }]}
+            groups={[
+              {
+                id: 'controllers',
+                label: 'Controllers',
+                items: controllerMenuItems,
+              },
+              ...(projectComponentMenuItems.length === 0
+                ? []
+                : [
+                    {
+                      id: 'project-components',
+                      label: 'Project Components',
+                      items: projectComponentMenuItems,
+                    },
+                  ]),
+            ]}
             onAdd={handleAddComponent}
           />
         </div>

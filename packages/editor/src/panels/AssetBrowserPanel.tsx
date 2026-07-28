@@ -10,6 +10,10 @@ import { useEditorStore } from '../store/editor-store.js'
 import { projectService } from '../services/project-service.js'
 import type { ProjectFileEntry } from '../services/project-service.js'
 import {
+  CustomComponentTypeDialog,
+  type VisualComponentTypeDraft,
+} from '../components/CustomComponentTypeDialog.js'
+import {
   buildAssetSearchIndex,
   fileIcon,
   getAssetKind,
@@ -448,6 +452,8 @@ export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
   const [renamingPath, setRenamingPath] = useState<string | null>(null)
   const [renameDraft, setRenameDraft] = useState('')
   const [renameError, setRenameError] = useState<string | null>(null)
+  const [componentTypeDialogOpen, setComponentTypeDialogOpen] =
+    useState(false)
 
   const shellActionsAvailable = projectService.supportsShellActions()
   const shellActionsEnabled = projectService.canUseShellActions()
@@ -704,6 +710,32 @@ export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
     }
   }, [currentDir, newFolderName, loadDirectory])
 
+  const onCreateComponentType = useCallback(
+    async (draft: VisualComponentTypeDraft) => {
+      const baseName =
+        draft.name
+          .trim()
+          .replace(/[^a-z0-9_-]+/gi, '-')
+          .replace(/^-|-$/g, '')
+          .toLowerCase() || 'component'
+      const path = `${currentDir}/${baseName}.component.json`
+      await projectService.createCustomComponentTypeAsset(path, {
+        schemaVersion: 1,
+        id: crypto.randomUUID(),
+        name: draft.name,
+        version: 1,
+        fields: [...draft.fields],
+      })
+      setComponentTypeDialogOpen(false)
+      setSelectedPath(path)
+      setRefreshKey((key) => key + 1)
+      setTreeChildren(new Map())
+      await loadDirectory(currentDir)
+      if (world) useEditorStore.getState().setWorld(world)
+    },
+    [currentDir, loadDirectory, world],
+  )
+
   const onCancelNewFolder = useCallback(() => {
     setShowNewFolder(false)
     setNewFolderName('')
@@ -916,6 +948,11 @@ export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
       tabIndex={-1}
       onFocusCapture={() => undefined}
     >
+      <CustomComponentTypeDialog
+        open={componentTypeDialogOpen}
+        onClose={() => setComponentTypeDialogOpen(false)}
+        onCreate={onCreateComponentType}
+      />
       <div className="haku-asset-browser__search-row">
         <input
           type="search"
@@ -967,6 +1004,17 @@ export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
                       }}
                     >
                       New Folder
+                    </button>
+                    <button
+                      type="button"
+                      className="haku-asset-browser__dropdown-item"
+                      role="menuitem"
+                      onClick={() => {
+                        setAddMenuOpen(false)
+                        setComponentTypeDialogOpen(true)
+                      }}
+                    >
+                      New Component Type
                     </button>
                     <button
                       type="button"
@@ -1128,7 +1176,7 @@ export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
                     ? searchIndex.dirsWithMatches.has(currentDir)
                       ? `No files match “${searchQuery.trim()}” in this folder`
                       : `No matches in this folder — select a highlighted folder in the tree`
-                    : `Empty folder — use + → Import, New Folder, or add files under ${currentDir}/`}
+                    : `Empty folder — use + → Import, New Folder, New Component Type, or add files under ${currentDir}/`}
                 </div>
               ) : (
                 filteredEntries.map((entry) => {

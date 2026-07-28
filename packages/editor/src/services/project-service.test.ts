@@ -140,6 +140,69 @@ describe('ProjectService disk saving', () => {
     })
   })
 
+  it('creates and registers a visual component type asset in the project', async () => {
+    const service = new ProjectService()
+    service.openFromManifest(
+      'component-authoring',
+      validateProjectManifest({
+        schemaVersion: 1,
+        name: 'Component authoring',
+        entryScene: {
+          $ref: '10000000-0000-4000-8000-000000000031',
+          type: SCENE_ASSET_TYPE,
+        },
+        assetsDir: 'public/assets',
+        scriptsDir: 'src',
+        assets: [
+          {
+            id: '10000000-0000-4000-8000-000000000031',
+            type: SCENE_ASSET_TYPE,
+            path: 'scenes/main.scene.json',
+          },
+        ],
+      }),
+    )
+    const componentTypeId = '42000000-0000-4000-8000-000000000031'
+
+    const asset = await service.createCustomComponentTypeAsset(
+      'public/assets/components/mover.component.json',
+      {
+        schemaVersion: 1,
+        id: componentTypeId,
+        name: 'Mover',
+        version: 1,
+        fields: [{ name: 'speed', type: 'number', default: 4 }],
+      },
+    )
+
+    expect(asset.id).toBe(componentTypeId)
+    expect(service.getCustomComponentTypes()).toEqual([
+      expect.objectContaining({ id: componentTypeId, name: 'Mover' }),
+    ])
+    expect(service.getManifest()?.assets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: componentTypeId,
+          type: CUSTOM_COMPONENT_TYPE_ASSET_TYPE,
+          path: 'components/mover.component.json',
+        }),
+      ]),
+    )
+    expect(
+      JSON.parse(
+        await browserProjectStore.readText(
+          'public/assets/components/mover.component.json',
+        ),
+      ),
+    ).toEqual(asset)
+    await expect(
+      service.createCustomComponentTypeAsset(
+        'public/assets/components/mover.component.json',
+        asset,
+      ),
+    ).rejects.toThrow(/already exists/)
+  })
+
   it('writes playground editor settings through the project file endpoint', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
     vi.stubGlobal('fetch', fetchMock)

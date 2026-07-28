@@ -6,6 +6,8 @@ import {
   PrefabDefinitionSchema,
   CustomComponentTypeAssetSchema,
   type EditorProjectSettings,
+  type CustomComponentTypeAsset,
+  type ParsedCustomComponentTypeAsset,
   type PrefabDefinition,
   type SceneDocument,
   type SceneEditorState,
@@ -459,6 +461,47 @@ export class ProjectService {
     })
     validateProjectAssetComposition(this.manifest, this.assetRegistry)
     await this.persistManifest()
+    return asset
+  }
+
+  async createCustomComponentTypeAsset(
+    projectPath: string,
+    input: CustomComponentTypeAsset,
+  ): Promise<ParsedCustomComponentTypeAsset> {
+    if (!this.manifest) throw new Error('No project manifest loaded')
+    const path = this.manifestAssetPath(projectPath)
+    if (this.manifest.assets.some((entry) => entry.path === path)) {
+      throw new Error(`An asset already exists at ${path}`)
+    }
+    const asset = CustomComponentTypeAssetSchema.parse(input)
+    if (this.manifest.assets.some((entry) => entry.id === asset.id)) {
+      throw new Error(`An asset with ID ${asset.id} already exists`)
+    }
+    if (this.customComponentTypes.has(asset.id)) {
+      throw new Error(`Component type ${asset.id} already exists`)
+    }
+    const definition = createCustomComponentDefinition(asset)
+    await this.writeProjectText(
+      projectPath,
+      `${JSON.stringify(asset, null, 2)}\n`,
+    )
+    this.manifest = validateProjectManifest({
+      ...this.manifest,
+      assets: [
+        ...this.manifest.assets,
+        {
+          id: assetId(asset.id),
+          type: CUSTOM_COMPONENT_TYPE_ASSET_TYPE,
+          path,
+          dependencies: collectAssetReferences(asset),
+          metadata: { name: asset.name },
+        },
+      ],
+    })
+    validateProjectAssetComposition(this.manifest, this.assetRegistry)
+    await this.persistManifest()
+    this.componentRegistry.register(definition)
+    this.customComponentTypes.set(definition.id, definition)
     return asset
   }
 

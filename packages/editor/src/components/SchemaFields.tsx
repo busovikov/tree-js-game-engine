@@ -55,6 +55,142 @@ export const SchemaFields = memo(function SchemaFields({
   onChange: (next: Record<string, unknown>) => void
   disabled?: boolean
 }) {
+  if (component.inspector) {
+    return (
+      <div>
+        {component.inspector.fields.map((field) => {
+          const value = data[field.name]
+          const hint = fieldHint(
+            componentId,
+            field.name,
+            `${field.label} (${field.type}).`,
+          )
+          if (field.type === 'number' && typeof value === 'number') {
+            return (
+              <NumberField
+                key={field.name}
+                label={field.label}
+                value={value}
+                min={field.min}
+                max={field.max}
+                step={field.step}
+                disabled={disabled}
+                hint={hint}
+                onChange={(next) =>
+                  onChange({ ...data, [field.name]: next })
+                }
+              />
+            )
+          }
+          if (field.type === 'string' && typeof value === 'string') {
+            return (
+              <StringField
+                key={field.name}
+                label={field.label}
+                value={value}
+                disabled={disabled}
+                hint={hint}
+                onChange={(next) =>
+                  onChange({ ...data, [field.name]: next })
+                }
+              />
+            )
+          }
+          if (field.type === 'boolean' && typeof value === 'boolean') {
+            return (
+              <label key={field.name} className="mesh-field" title={hint}>
+                <span className="mesh-field__label">{field.label}</span>
+                <input
+                  type="checkbox"
+                  checked={value}
+                  disabled={disabled}
+                  onChange={(event) =>
+                    onChange({
+                      ...data,
+                      [field.name]: event.target.checked,
+                    })
+                  }
+                />
+              </label>
+            )
+          }
+          if (
+            (field.type === 'vec2' ||
+              field.type === 'vec3' ||
+              field.type === 'color') &&
+            Array.isArray(value)
+          ) {
+            return (
+              <div key={field.name} style={{ marginBottom: 8 }}>
+                <div
+                  style={{ color: '#aaa', fontSize: 12, marginBottom: 4 }}
+                  title={hint}
+                >
+                  {field.label}
+                </div>
+                {value.map((item, index) => (
+                  <NumberField
+                    key={`${field.name}-${index}`}
+                    label={`${field.label}[${index}]`}
+                    value={Number(item)}
+                    disabled={disabled}
+                    hint={hint}
+                    onChange={(nextValue) => {
+                      const next = [...value]
+                      next[index] = nextValue
+                      onChange({ ...data, [field.name]: next })
+                    }}
+                  />
+                ))}
+              </div>
+            )
+          }
+          if (field.type === 'entity-ref' || field.type === 'asset-ref') {
+            const reference =
+              typeof value === 'object' &&
+              value !== null &&
+              '$ref' in value &&
+              typeof value.$ref === 'string'
+                ? value.$ref
+                : ''
+            return (
+              <StringField
+                key={field.name}
+                label={field.label}
+                value={reference}
+                disabled={disabled}
+                hint={hint}
+                onChange={(next) =>
+                  onChange({
+                    ...data,
+                    [field.name]: next ? { $ref: next } : null,
+                  })
+                }
+              />
+            )
+          }
+          if (field.type === 'component-ref') {
+            const reference =
+              typeof value === 'object' && value !== null
+                ? JSON.stringify(value)
+                : ''
+            return (
+              <StringField
+                key={field.name}
+                label={field.label}
+                value={reference}
+                disabled
+                hint={`${hint} Component references are selected through graph/entity pickers.`}
+                onChange={() => undefined}
+              />
+            )
+          }
+          return null
+        })}
+      </div>
+    )
+  }
+
   const shape = (component.schema as unknown as {
     shape: Record<string, { _def?: { typeName?: string; values?: string[] } }>
   }).shape
