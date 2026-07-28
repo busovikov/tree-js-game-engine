@@ -225,6 +225,38 @@ describe('CodeWorkspacePanel', () => {
     expect(screen.getByText('No TypeScript source — create src/gameplay.ts')).toBeTruthy()
   })
 
+  it('feeds Monaco only TypeScript models while keeping non-source files out', async () => {
+    const disk = new FakeProjectFileSystem()
+    await disk.writeFile(GAMEPLAY_PATH, 'export const speed = 1\n')
+    await disk.writeFile('public/assets/scenes/main.scene.json', '{"schemaVersion":1}\n')
+    const workspace = await BrowserProjectWorkspace.open({
+      projectId: 'local-project',
+      trustMode: 'local-trusted',
+      fileSystem: disk,
+    })
+    const observedProjectFiles: Array<Readonly<Record<string, string>> | undefined> = []
+    const ObservingEditor: CodeEditorProvider = (props) => {
+      observedProjectFiles.push(props.projectFiles)
+      return <textarea aria-label="Code editor" value={props.value} readOnly />
+    }
+
+    render(
+      <CodeWorkspacePanel
+        workspace={workspace}
+        tooling={TOOLING}
+        EditorProvider={ObservingEditor}
+        languageClient={{ analyze: vi.fn(), dispose: vi.fn() }}
+        bundlerClient={{ build: vi.fn(), dispose: vi.fn() }}
+        launchPlay={vi.fn()}
+      />,
+    )
+
+    expect(Object.keys(observedProjectFiles.at(-1) ?? {}).sort()).toEqual([
+      '.haku/generated/engine.d.ts',
+      'src/gameplay.ts',
+    ])
+  })
+
   it('renders typed capability denial before creating bundler or Play work', async () => {
     const disk = new FakeProjectFileSystem()
     await disk.writeFile(GAMEPLAY_PATH, 'export const speed = 1\n')

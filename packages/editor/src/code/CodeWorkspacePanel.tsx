@@ -94,6 +94,14 @@ function initialSourcePath(workspace: BrowserProjectWorkspace): string | null {
   )
 }
 
+function monacoTypeScriptFiles(
+  files: Readonly<Record<string, string>>,
+): Readonly<Record<string, string>> {
+  return Object.fromEntries(
+    Object.entries(files).filter(([path]) => /\.[cm]?tsx?$/.test(path)),
+  )
+}
+
 function approvedCapabilityData(
   capabilities: BrowserProjectCapabilityManifest,
 ): Readonly<Record<string, PlayCapabilityValue>> {
@@ -150,6 +158,7 @@ export const CodeWorkspacePanel = memo(function CodeWorkspacePanel({
     () => workspaceFiles(currentWorkspace, tooling),
     [currentWorkspace, revision, tooling],
   )
+  const monacoFiles = useMemo(() => monacoTypeScriptFiles(files), [files])
 
   useEffect(() => {
     setCurrentWorkspace(workspace)
@@ -408,7 +417,7 @@ export const CodeWorkspacePanel = memo(function CodeWorkspacePanel({
                 value={currentWorkspace.readText(activePath)}
                 readOnly={readOnly}
                 diagnostics={diagnostics}
-                projectFiles={files}
+                projectFiles={monacoFiles}
                 onChange={(value) => {
                   currentWorkspace.editText(activePath, value)
                   setRevision((current) => current + 1)
