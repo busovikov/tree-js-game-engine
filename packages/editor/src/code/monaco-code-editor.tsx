@@ -56,6 +56,7 @@ export default function MonacoCodeEditor({
     const editor = monaco.editor.create(container, {
       model,
       automaticLayout: true,
+      editContext: false,
       minimap: { enabled: false },
       readOnly,
       theme: 'vs-dark',
