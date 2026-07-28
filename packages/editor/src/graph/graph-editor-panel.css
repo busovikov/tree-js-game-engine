@@ -1,0 +1,118 @@
+.haku-graph-editor {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  color: #ddd;
+  background: #1a1a2e;
+  outline: none;
+}
+
+.haku-graph-editor--empty,
+.haku-graph-editor__loading {
+  display: grid;
+  place-items: center;
+  color: #888;
+}
+
+.haku-graph-editor__toolbar {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 8px;
+  border-bottom: 1px solid #333;
+  background: #12121a;
+}
+
+.haku-graph-editor__toolbar span {
+  margin-left: auto;
+  color: #aaa;
+  font-size: 12px;
+}
+
+.haku-graph-editor__workspace {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: 190px minmax(320px, 1fr) 260px;
+}
+
+.haku-graph-editor__palette,
+.haku-graph-editor__inspector {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  overflow: auto;
+  background: #22222c;
+}
+
+.haku-graph-editor__palette {
+  border-right: 1px solid #333;
+}
+
+.haku-graph-editor__inspector {
+  border-left: 1px solid #333;
+}
+
+.haku-graph-editor h3 {
+  margin: 4px 0;
+  font-size: 13px;
+}
+
+.haku-graph-editor__palette button {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.haku-graph-editor__palette small {
+  color: #888;
+}
+
+.haku-graph-editor__canvas {
+  min-width: 0;
+  min-height: 0;
+}
+
+.haku-graph-editor__canvas .react-flow {
+  background: #181820;
+}
+
+.haku-graph-editor__inspector textarea {
+  width: 100%;
+  min-height: 110px;
+  box-sizing: border-box;
+  resize: vertical;
+  color: #ddd;
+  border: 1px solid #444;
+  background: #181820;
+  font-family: monospace;
+}
+
+.haku-graph-editor__checkpoint {
+  padding: 6px;
+  color: #ffcc80;
+  border: 1px solid #70552f;
+  background: #2b251d;
+}
+
+.haku-graph-editor__diagnostic {
+  text-align: left;
+}
+
+.haku-graph-editor__diagnostic--error {
+  color: #ff8a80;
+}
+
+.haku-graph-editor__diagnostic--warning {
+  color: #ffcc80;
+}
+
+.haku-graph-editor__status {
+  padding: 4px 8px;
+  color: #aaa;
+  border-top: 1px solid #333;
+  font-size: 12px;
+}

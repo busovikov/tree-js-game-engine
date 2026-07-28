@@ -1,12 +1,14 @@
-import { memo } from 'react'
+import { memo, useState } from 'react'
 import { useEditorStore } from './store/editor-store.js'
 import { projectService } from './services/project-service.js'
 import { ViewportPanel } from './panels/ViewportPanel.js'
 import { ViewportErrorBoundary } from './components/ViewportErrorBoundary.js'
 import { PlaygroundDemoBanner } from './components/PlaygroundDemoBanner.js'
+import { GraphEditorPanel } from './graph/GraphEditorPanel.js'
 import './viewport-tabs.css'
 
 export const ViewportTabsShell = memo(function ViewportTabsShell() {
+  const [workspace, setWorkspace] = useState<'viewport' | 'graph'>('viewport')
   const activeViewportTab = useEditorStore((s) => s.activeViewportTab)
   const setActiveViewportTab = useEditorStore((s) => s.setActiveViewportTab)
   const scenePath = useEditorStore((s) => s.scenePath)
@@ -29,7 +31,10 @@ export const ViewportTabsShell = memo(function ViewportTabsShell() {
             role="tab"
             className={`haku-viewport-tab${activeViewportTab === 'scene' ? ' haku-viewport-tab--active' : ''}`}
             aria-selected={activeViewportTab === 'scene'}
-            onClick={() => onSelectTab('scene')}
+            onClick={() => {
+              setWorkspace('viewport')
+              onSelectTab('scene')
+            }}
           >
             Scene
           </button>
@@ -38,20 +43,36 @@ export const ViewportTabsShell = memo(function ViewportTabsShell() {
             role="tab"
             className={`haku-viewport-tab${activeViewportTab === 'view' ? ' haku-viewport-tab--active' : ''}`}
             aria-selected={activeViewportTab === 'view'}
-            onClick={() => onSelectTab('view')}
+            onClick={() => {
+              setWorkspace('viewport')
+              onSelectTab('view')
+            }}
           >
             View
+          </button>
+          <button
+            type="button"
+            role="tab"
+            className={`haku-viewport-tab${workspace === 'graph' ? ' haku-viewport-tab--active' : ''}`}
+            aria-selected={workspace === 'graph'}
+            onClick={() => setWorkspace('graph')}
+          >
+            Graph
           </button>
         </div>
         {mode === 'play' && activeViewportTab === 'view' && (
           <span className="haku-viewport-shell__play-badge">PLAYING</span>
         )}
       </div>
-      <PlaygroundDemoBanner scenePath={scenePath} />
+      {workspace === 'viewport' && <PlaygroundDemoBanner scenePath={scenePath} />}
       <div className="haku-viewport-shell__body">
-        <ViewportErrorBoundary resetKey={`${scenePath ?? 'empty'}:${worldRevision}`}>
-          <ViewportPanel />
-        </ViewportErrorBoundary>
+        {workspace === 'graph' ? (
+          <GraphEditorPanel />
+        ) : (
+          <ViewportErrorBoundary resetKey={`${scenePath ?? 'empty'}:${worldRevision}`}>
+            <ViewportPanel />
+          </ViewportErrorBoundary>
+        )}
       </div>
     </div>
   )

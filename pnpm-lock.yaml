@@ -58,7 +58,7 @@ importers:
     dependencies:
       '@haku/editor':
         specifier: file:../../packages/editor
-        version: file:packages/editor(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(use-sync-external-store@1.6.0(react@18.3.1))
+        version: file:packages/editor(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(use-sync-external-store@1.6.0(react@18.3.1))
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -90,6 +90,12 @@ importers:
       '@haku/engine':
         specifier: workspace:*
         version: link:../../packages/engine
+      '@haku/graph':
+        specifier: workspace:^
+        version: link:../../packages/graph
+      '@haku/graph-runtime':
+        specifier: workspace:^
+        version: link:../../packages/graph-runtime
       '@haku/physics-rapier':
         specifier: workspace:*
         version: link:../../packages/physics-rapier
@@ -160,6 +166,9 @@ importers:
       '@haku/graph':
         specifier: workspace:*
         version: link:../graph
+      '@haku/graph-runtime':
+        specifier: workspace:^
+        version: link:../graph-runtime
       '@haku/physics':
         specifier: file:../physics
         version: link:../physics
@@ -2861,23 +2870,27 @@ snapshots:
       '@haku/schema': link:packages/schema
       zod: 3.25.76
 
-  '@haku/editor@file:packages/editor(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(use-sync-external-store@1.6.0(react@18.3.1))':
+  '@haku/editor@file:packages/editor(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(use-sync-external-store@1.6.0(react@18.3.1))':
     dependencies:
       '@haku/assets': link:packages/assets
       '@haku/core': file:packages/core
       '@haku/engine': file:packages/engine
       '@haku/graph': link:packages/graph
+      '@haku/graph-runtime': link:packages/graph-runtime
       '@haku/physics': file:packages/physics
       '@haku/physics-rapier': file:packages/physics-rapier
       '@haku/schema': file:packages/schema
       '@haku/serializer': file:packages/serializer
+      '@xyflow/react': 12.11.2(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
       react-resizable-panels: 2.1.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       three: 0.171.0
+      zod: 3.25.76
       zustand: 5.0.14(@types/react@18.3.31)(react@18.3.1)(use-sync-external-store@1.6.0(react@18.3.1))
     transitivePeerDependencies:
       - '@types/react'
+      - '@types/react-dom'
       - immer
       - use-sync-external-store
 

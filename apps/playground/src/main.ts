@@ -16,6 +16,8 @@ import {
 } from '@haku/assets'
 import project from '../haku.project.json'
 import { configurePlaygroundViewport } from './playground-viewport.js'
+import { compileDiagnosticGraph } from '@haku/graph'
+import { runDiagnosticGraphPlan } from '@haku/graph-runtime'
 
 async function main() {
   const manifest = validateProjectManifest(project)
@@ -37,6 +39,18 @@ async function main() {
     projectPathToUrl(`${manifest.assetsDir}/${entryScene}`),
     undefined,
     prefabAssets,
+  )
+  const diagnostic = compileDiagnosticGraph()
+  if (!diagnostic.plan || diagnostic.diagnostics.some((item) => item.severity === 'error')) {
+    throw new Error(
+      `M07 diagnostic graph failed to compile: ${diagnostic.diagnostics
+        .map((item) => item.message)
+        .join('; ')}`,
+    )
+  }
+  const diagnosticRun = runDiagnosticGraphPlan(diagnostic.plan, loaded.world)
+  console.info(
+    `[haku] M07 graph plan ${diagnosticRun.planFingerprint} reached the playground world`,
   )
   engine.loadWorld(
     loaded.world,

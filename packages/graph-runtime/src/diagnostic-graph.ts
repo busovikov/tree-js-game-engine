@@ -1,4 +1,4 @@
-import { EngineScheduler, TagComponent, type World } from '@haku/core'
+import { EngineScheduler, TagComponent, type IWorld } from '@haku/core'
 import {
   DIAGNOSTIC_GRAPH_IDS,
   type GraphExecutionPlan,
@@ -18,7 +18,7 @@ export interface DiagnosticGraphRun {
 
 export function runDiagnosticGraphPlan(
   plan: GraphExecutionPlan,
-  world: World,
+  world: IWorld,
 ): DiagnosticGraphRun {
   if (plan.graphId !== DIAGNOSTIC_GRAPH_IDS.graph) {
     throw new Error(`Expected M07 diagnostic graph, received ${plan.graphId}`)

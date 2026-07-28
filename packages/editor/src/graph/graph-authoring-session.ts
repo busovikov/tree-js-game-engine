@@ -125,9 +125,16 @@ export class GraphAuthoringSession {
 
   async open(path: string): Promise<GraphAsset> {
     const asset = GraphAssetSchema.parse(JSON.parse(await this.storage.readText(path)))
+    this.openAsset(path, asset)
+    return asset
+  }
+
+  openAsset(path: string, input: unknown): GraphAsset {
+    const asset = GraphAssetSchema.parse(input)
     this.currentAsset = cloneAsset(asset)
     this.currentPath = path
     this.savedAssetJson = serialized(asset)
+    this.selectedIds = []
     this.notify()
     return asset
   }
