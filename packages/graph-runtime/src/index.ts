@@ -13,6 +13,11 @@ import {
   stableFingerprint,
 } from '@haku/graph'
 
+export {
+  registerCustomComponentRuntimeAdapters,
+  type CustomComponentRuntimeOptions,
+} from './custom-component-runtime.js'
+
 export class GraphRuntimeError extends Error {
   readonly code: string
   readonly graphId: string

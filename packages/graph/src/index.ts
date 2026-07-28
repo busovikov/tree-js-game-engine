@@ -142,3 +142,9 @@ export {
   createDiagnosticGraphAsset,
   createDiagnosticNodeRegistry,
 } from './diagnostic-graph.js'
+
+export {
+  registerCustomComponentGraphContracts,
+  type CustomComponentGraphContract,
+  type CustomComponentGraphNode,
+} from './custom-component-nodes.js'
