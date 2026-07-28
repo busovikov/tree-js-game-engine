@@ -5,6 +5,14 @@ export { projectService } from './services/project-service.js'
 export { globalCommandBus } from './commands/command-bus.js'
 export { executeCommand } from './commands/world-commands.js'
 export {
+  DefaultCodeEditorProvider,
+  createLazyCodeEditorProvider,
+  type CodeEditorDiagnostic,
+  type CodeEditorProvider,
+  type CodeEditorProviderLoader,
+  type CodeEditorProviderProps,
+} from './code/code-editor-provider.js'
+export {
   DefaultGraphCanvasProvider,
   createLazyGraphCanvasProvider,
   type GraphCanvasProvider,
