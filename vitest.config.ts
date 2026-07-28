@@ -14,6 +14,7 @@ export default {
     alias: {
       '@haku/schema': join(fileURLToPath(new URL('.', import.meta.url)), 'packages/schema/src'),
       '@haku/assets': join(fileURLToPath(new URL('.', import.meta.url)), 'packages/assets/src'),
+      '@haku/build': join(fileURLToPath(new URL('.', import.meta.url)), 'packages/build/src'),
       '@haku/graph': join(fileURLToPath(new URL('.', import.meta.url)), 'packages/graph/src'),
       '@haku/graph-runtime': join(
         fileURLToPath(new URL('.', import.meta.url)),

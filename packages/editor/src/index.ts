@@ -2,6 +2,15 @@ export { EditorApp } from './EditorApp.js'
 export { EditorLayout } from './EditorLayout.js'
 export { useEditorStore } from './store/editor-store.js'
 export { projectService } from './services/project-service.js'
+export {
+  BrowserProjectWorkspace,
+  type BrowserProjectConflict,
+  type BrowserProjectDiskFile,
+  type BrowserProjectExternalChange,
+  type BrowserProjectFileSystem,
+  type BrowserProjectWatcher,
+  type BrowserProjectWorkspaceOptions,
+} from './services/browser-project-workspace.js'
 export { globalCommandBus } from './commands/command-bus.js'
 export { executeCommand } from './commands/world-commands.js'
 export {

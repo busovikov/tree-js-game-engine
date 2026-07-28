@@ -123,6 +123,15 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.19.21)(happy-dom@15.11.7)
 
+  packages/build:
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.19.21)(happy-dom@15.11.7)
+
   packages/core:
     dependencies:
       '@haku/schema':
@@ -157,6 +166,9 @@ importers:
       '@haku/assets':
         specifier: workspace:*
         version: link:../assets
+      '@haku/build':
+        specifier: workspace:*
+        version: link:../build
       '@haku/core':
         specifier: file:../core
         version: file:packages/core
@@ -2873,6 +2885,7 @@ snapshots:
   '@haku/editor@file:packages/editor(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(use-sync-external-store@1.6.0(react@18.3.1))':
     dependencies:
       '@haku/assets': link:packages/assets
+      '@haku/build': link:packages/build
       '@haku/core': file:packages/core
       '@haku/engine': file:packages/engine
       '@haku/graph': link:packages/graph

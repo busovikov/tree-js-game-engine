@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@haku/assets": "workspace:*",
+    "@haku/build": "workspace:*",
     "@haku/core": "file:../core",
     "@haku/engine": "file:../engine",
     "@haku/graph": "workspace:*",
