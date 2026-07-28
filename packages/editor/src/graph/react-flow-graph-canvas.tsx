@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo } from 'react'
+import { memo, useCallback, useEffect, useMemo } from 'react'
 import {
   Background,
   Controls,
@@ -6,6 +6,7 @@ import {
   MiniMap,
   Position,
   ReactFlow,
+  useNodesState,
   type Connection,
   type Edge,
   type Node,
@@ -102,11 +103,25 @@ export default function ReactFlowGraphCanvas({
     [diagnostics],
   )
   const activeNode = trace.at(-1)?.nodeId
-  const nodes = useMemo<HakuFlowNode[]>(
+  const modelNodes = useMemo<HakuFlowNode[]>(
     () => asset.graph.nodes.map((node) => ({
       id: node.id,
       type: 'haku',
       position: { x: node.layout.x, y: node.layout.y },
+      initialWidth: 180,
+      initialHeight: 48 + node.callsites.length * 22,
+      handles: node.callsites.map((callsite, index) => {
+        const source = callsite.direction === 'output'
+        return {
+          id: callsite.id,
+          type: source ? 'source' : 'target',
+          position: source ? Position.Right : Position.Left,
+          x: source ? 176 : -4,
+          y: 39 + index * 22,
+          width: 8,
+          height: 8,
+        }
+      }),
       selected: selected.has(node.id),
       data: {
         node,
@@ -117,6 +132,8 @@ export default function ReactFlowGraphCanvas({
     })),
     [activeNode, asset.graph.nodes, diagnosticNodes, portValues, selected],
   )
+  const [nodes, setNodes, onNodesChange] = useNodesState<HakuFlowNode>(modelNodes)
+  useEffect(() => setNodes(modelNodes), [modelNodes, setNodes])
   const edges = useMemo<Edge[]>(
     () => asset.graph.connections.map((connection) => ({
       id: connection.id,
@@ -143,6 +160,7 @@ export default function ReactFlowGraphCanvas({
       nodes={nodes}
       edges={edges}
       nodeTypes={nodeTypes}
+      onNodesChange={onNodesChange}
       fitView
       minZoom={0.15}
       maxZoom={2.5}
