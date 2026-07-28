@@ -1,28 +1,17 @@
 import { z } from 'zod'
-import { ComponentTypeIdSchema } from '@haku/schema'
+import {
+  AssetRefSchema,
+  ComponentTypeIdSchema,
+  CustomComponentTypeAssetSchema,
+  EntityRefSchema,
+  assetTypeId,
+  type CustomComponentField,
+  type CustomComponentTypeAsset,
+  type ParsedCustomComponentTypeAsset,
+} from '@haku/schema'
 import type { ComponentDefinition } from './types.js'
 
-const CustomComponentNumberFieldSchema = z
-  .object({
-    name: z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/),
-    type: z.literal('number'),
-    default: z.number().finite(),
-  })
-  .strict()
-
-export const CustomComponentTypeAssetSchema = z
-  .object({
-    schemaVersion: z.literal(1),
-    id: ComponentTypeIdSchema,
-    name: z.string().min(1),
-    version: z.number().int().positive(),
-    fields: z.array(CustomComponentNumberFieldSchema),
-  })
-  .strict()
-
-export type CustomComponentTypeAsset = z.input<
-  typeof CustomComponentTypeAssetSchema
->
+export { CustomComponentTypeAssetSchema, type CustomComponentTypeAsset }
 
 function canonicalStringify(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonicalStringify).join(',')}]`
@@ -33,7 +22,7 @@ function canonicalStringify(value: unknown): string {
     .join(',')}}`
 }
 
-function componentFingerprint(asset: z.output<typeof CustomComponentTypeAssetSchema>): string {
+function componentFingerprint(asset: ParsedCustomComponentTypeAsset): string {
   const canonical = canonicalStringify(asset)
   let hash = 0x811c9dc5
   for (let index = 0; index < canonical.length; index += 1) {
@@ -43,13 +32,75 @@ function componentFingerprint(asset: z.output<typeof CustomComponentTypeAssetSch
   return `haku-component-v1-${(hash >>> 0).toString(16).padStart(8, '0')}`
 }
 
+function schemaForField(field: CustomComponentField): z.ZodTypeAny {
+  if (field.type === 'number') {
+    let schema = z.number().finite()
+    if (field.inspector?.min !== undefined) schema = schema.min(field.inspector.min)
+    if (field.inspector?.max !== undefined) schema = schema.max(field.inspector.max)
+    return schema.default(field.default)
+  }
+  if (field.type === 'string') return z.string().default(field.default)
+  if (field.type === 'boolean') return z.boolean().default(field.default)
+  if (
+    field.type === 'vec2' ||
+    field.type === 'vec3' ||
+    field.type === 'color'
+  ) {
+    if (field.type === 'vec2') {
+      return z
+        .tuple([z.number().finite(), z.number().finite()])
+        .default(field.default as [number, number])
+    }
+    if (field.type === 'vec3') {
+      return z
+        .tuple([z.number().finite(), z.number().finite(), z.number().finite()])
+        .default(field.default as [number, number, number])
+    }
+    return z
+      .tuple([
+        z.number().finite(),
+        z.number().finite(),
+        z.number().finite(),
+        z.number().finite(),
+      ])
+      .default(field.default as [number, number, number, number])
+  }
+
+  let referenceSchema: z.ZodTypeAny
+  if (field.type === 'entity-ref') {
+    referenceSchema = EntityRefSchema
+  } else if (field.type === 'asset-ref') {
+    referenceSchema = AssetRefSchema.refine(
+      (value) => value.type === undefined || value.type === field.assetType,
+      `Asset reference must have type ${field.assetType}`,
+    )
+  } else {
+    referenceSchema = z
+      .object({
+        entity: EntityRefSchema,
+        component: ComponentTypeIdSchema,
+      })
+      .strict()
+      .refine(
+        (value) =>
+          field.componentType === undefined ||
+          value.component === field.componentType,
+        field.componentType === undefined
+          ? 'Invalid component reference'
+          : `Component reference must have type ${field.componentType}`,
+      )
+  }
+  if (field.optional) return referenceSchema.nullable().default(field.default ?? null)
+  return referenceSchema.default(field.default)
+}
+
 export function createCustomComponentDefinition(
   input: CustomComponentTypeAsset,
-): ComponentDefinition<Record<string, number>> {
+): ComponentDefinition<Record<string, unknown>> {
   const asset = CustomComponentTypeAssetSchema.parse(input)
   const shape: Record<string, z.ZodTypeAny> = {}
   for (const field of asset.fields) {
-    shape[field.name] = z.number().finite().default(field.default)
+    shape[field.name] = schemaForField(field)
   }
   const schema = z.object(shape).strict()
 
@@ -58,6 +109,16 @@ export function createCustomComponentDefinition(
     name: asset.name,
     version: asset.version,
     fingerprint: componentFingerprint(asset),
+    references: asset.fields
+      .filter(
+        (field): field is Extract<CustomComponentField, { type: 'asset-ref' }> =>
+          field.type === 'asset-ref',
+      )
+      .map((field) => ({
+        path: field.name,
+        assetType: assetTypeId(field.assetType),
+        optional: field.optional,
+      })),
     schema,
     defaults: () => schema.parse({}),
   }

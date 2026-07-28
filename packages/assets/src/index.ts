@@ -3,12 +3,14 @@ import {
   AssetIdSchema,
   AssetRefSchema,
   AssetTypeIdSchema,
+  CustomComponentTypeAssetSchema,
   assetId,
   assetRef,
   assetTypeId,
   type AssetId,
   type AssetRef,
   type AssetTypeId,
+  type ParsedCustomComponentTypeAsset,
 } from '@haku/schema'
 
 export {
@@ -29,6 +31,9 @@ export const MODEL_ASSET_TYPE = assetTypeId('20000000-0000-4000-8000-00000000000
 export const TEXTURE_ASSET_TYPE = assetTypeId('20000000-0000-4000-8000-000000000004')
 export const BINARY_ASSET_TYPE = assetTypeId('20000000-0000-4000-8000-000000000005')
 export const DATA_ASSET_TYPE = assetTypeId('20000000-0000-4000-8000-000000000006')
+export const CUSTOM_COMPONENT_TYPE_ASSET_TYPE = assetTypeId(
+  '20000000-0000-4000-8000-000000000007',
+)
 
 export type AssetDiagnosticCode =
   | 'manifest.invalid'
@@ -173,6 +178,13 @@ export const DATA_ASSET_DESCRIPTOR = {
   dependencies: collectAssetReferences,
 } satisfies AssetTypeDescriptor<DataAsset>
 
+export const CUSTOM_COMPONENT_TYPE_ASSET_DESCRIPTOR = {
+  type: CUSTOM_COMPONENT_TYPE_ASSET_TYPE,
+  name: 'Component Type',
+  schema: CustomComponentTypeAssetSchema,
+  dependencies: collectAssetReferences,
+} satisfies AssetTypeDescriptor<ParsedCustomComponentTypeAsset>
+
 export class AssetRegistry {
   private readonly descriptors = new Map<AssetTypeId, AssetTypeDescriptor>()
 
@@ -219,6 +231,7 @@ export function registerBuiltinAssetTypes(registry: AssetRegistry): void {
   registry.register(TEXTURE_ASSET_DESCRIPTOR)
   registry.register(BINARY_ASSET_DESCRIPTOR)
   registry.register(DATA_ASSET_DESCRIPTOR)
+  registry.register(CUSTOM_COMPONENT_TYPE_ASSET_DESCRIPTOR)
 }
 
 export function collectAssetReferences(value: unknown): AssetRef[] {

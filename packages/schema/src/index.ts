@@ -93,6 +93,16 @@ export {
   type ComponentTypeId,
 } from './component-envelope.js'
 
+export {
+  CustomComponentFieldSchema,
+  CustomComponentTypeAssetSchema,
+  type CustomComponentAssetReferenceField,
+  type CustomComponentComponentReference,
+  type CustomComponentField,
+  type CustomComponentTypeAsset,
+  type ParsedCustomComponentTypeAsset,
+} from './custom-component-type.js'
+
 export const EntityRecordSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
