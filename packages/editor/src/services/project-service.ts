@@ -36,7 +36,6 @@ import { World } from '@haku/core'
 import {
   createEngineAssetRegistry,
   createEngineComponentRegistry,
-  getEngineComponent,
 } from '@haku/engine'
 import { MeshRendererComponent } from '@haku/engine'
 import {
@@ -1615,7 +1614,7 @@ export function extractPrefabSubtree(
       return idSet.has(p.value) ? p.value : null
     })(),
     components: world.getComponentTypes(id).flatMap((typeId) => {
-      const type = getEngineComponent(typeId)
+      const type = world.getComponentDefinition(id, typeId)
       if (!type || typeId === PrefabInstanceComponent.id) return []
       const data = world.getComponent(id, type)
       return data !== undefined ? [{ type: typeId, data: data as Record<string, unknown> }] : []

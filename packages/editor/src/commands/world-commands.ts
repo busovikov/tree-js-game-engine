@@ -7,7 +7,6 @@ import {
   MeshRendererComponent,
   MESH_GEOMETRY_TYPE_LABELS,
   defaultGeometryParams,
-  getEngineComponent,
   type Light,
   type MeshGeometryType,
 } from '@haku/engine'
@@ -193,7 +192,7 @@ export async function createPrefab(rootId: EntityId, displayName: string): Promi
 
     for (const typeId of [...draft.world.getComponentTypes(rootId)]) {
       if (typeId === TransformComponent.id) continue
-      const type = getEngineComponent(typeId)
+      const type = draft.world.getComponentDefinition(rootId, typeId)
       if (type) draft.world.removeComponent(rootId, type)
     }
 

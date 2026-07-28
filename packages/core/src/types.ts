@@ -72,6 +72,10 @@ export interface IWorld {
   addComponent<T>(id: EntityId, type: ComponentDefinition<T>, data: T): void
   removeComponent(id: EntityId, type: ComponentTypeReference): void
   getComponent<T>(id: EntityId, type: ComponentDefinition<T>): T | undefined
+  getComponentDefinition(
+    id: EntityId,
+    typeId: string,
+  ): ComponentDefinition | undefined
   hasComponent(id: EntityId, type: ComponentTypeReference): boolean
   getComponentTypes(id: EntityId): readonly string[]
 

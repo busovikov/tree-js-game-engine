@@ -2,6 +2,7 @@
  * @vitest-environment happy-dom
  */
 import {
+  createCustomComponentDefinition,
   PrefabInstanceComponent,
   TransformComponent,
   World,
@@ -71,6 +72,28 @@ describe('prefab commands', () => {
 
     expect(extracted.entities[0]!.components.map((component) => component.type)).toEqual([
       TransformComponent.id,
+    ])
+  })
+
+  it('preserves project component definitions when extracting a prefab subtree', () => {
+    const custom = createCustomComponentDefinition({
+      schemaVersion: 1,
+      id: '42000000-0000-4000-8000-000000000011',
+      name: 'Mover',
+      version: 1,
+      fields: [{ name: 'speed', type: 'number', default: 4 }],
+    })
+    const world = new World()
+    const root = world.createEntity('Custom root')
+    world.addComponent(root, custom, { speed: 8 })
+
+    const extracted = extractPrefabSubtree(world, root)
+
+    expect(extracted.entities[0]!.components).toEqual([
+      {
+        type: custom.id,
+        data: { speed: 8 },
+      },
     ])
   })
 })
