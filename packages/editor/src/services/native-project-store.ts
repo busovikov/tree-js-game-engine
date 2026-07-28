@@ -1,4 +1,5 @@
 import type { DirectoryEntry } from './browser-project-store.js'
+import type { BrowserProjectDiskFile } from './browser-project-workspace.js'
 
 export function isFileSystemAccessSupported(): boolean {
   return typeof window !== 'undefined' && 'showDirectoryPicker' in window
@@ -77,6 +78,43 @@ class NativeProjectStore {
     const writable = await fileHandle.createWritable()
     await writable.write(content)
     await writable.close()
+  }
+
+  async listWorkspaceFiles(): Promise<readonly string[]> {
+    if (!this.rootHandle) throw new Error('No project folder open')
+    const paths: string[] = []
+    await this.collectWorkspaceFiles(this.rootHandle, '', paths)
+    return paths.sort()
+  }
+
+  async readWorkspaceFile(path: string): Promise<BrowserProjectDiskFile> {
+    const file = await this.getFile(path)
+    return {
+      text: await file.text(),
+      lastModified: file.lastModified,
+      size: file.size,
+    }
+  }
+
+  async writeWorkspaceFile(path: string, text: string): Promise<BrowserProjectDiskFile> {
+    await this.writeText(path, text)
+    return this.readWorkspaceFile(path)
+  }
+
+  private async collectWorkspaceFiles(
+    directory: FileSystemDirectoryHandle,
+    parentPath: string,
+    paths: string[],
+  ): Promise<void> {
+    for await (const [name, handle] of directory.entries()) {
+      if (name === '.git' || name === 'node_modules' || name === 'dist') continue
+      const path = parentPath ? `${parentPath}/${name}` : name
+      if (handle.kind === 'directory') {
+        await this.collectWorkspaceFiles(handle as FileSystemDirectoryHandle, path, paths)
+      } else if (/\.(?:[cm]?[jt]sx?|json|css|html|md)$/i.test(path)) {
+        paths.push(path)
+      }
+    }
   }
 
   async writeFile(path: string, file: File | Blob): Promise<void> {

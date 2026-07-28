@@ -56,6 +56,8 @@ import {
   GraphAssetSchema,
   type GraphAsset,
 } from '@haku/graph'
+import type { BrowserProjectTrustMode } from '@haku/build'
+import { BrowserProjectWorkspace, type BrowserProjectFileSystem } from './browser-project-workspace.js'
 
 export interface ProjectFileEntry {
   path: string
@@ -64,6 +66,10 @@ export interface ProjectFileEntry {
 }
 
 type ProjectStorage = 'memory' | 'native' | 'playground' | 'dev-target'
+
+export interface OpenCodeWorkspaceOptions {
+  readonly generatedFiles?: Readonly<Record<string, string>>
+}
 
 const PROJECT_LOG_PATH = 'logs/haku.log'
 
@@ -77,6 +83,7 @@ export class ProjectService {
   private storage: ProjectStorage = 'memory'
   private modelBlobUrlCache = new Map<string, string>()
   private editorSettings: EditorProjectSettings = defaultEditorProjectSettings()
+  private codeWorkspace: BrowserProjectWorkspace | null = null
 
   isFileSystemAccessSupported(): boolean {
     return isFileSystemAccessSupported()
@@ -121,6 +128,7 @@ export class ProjectService {
     await nativeProjectStore.scaffoldProject(projectHandle, templateFiles)
 
     this.storage = 'native'
+    this.codeWorkspace = null
     this.root = projectHandle.name
     this.assetBaseUrl = ''
     this.clearModelAssetCache()
@@ -159,6 +167,7 @@ export class ProjectService {
 
     const rootName = await nativeProjectStore.openDirectoryPicker()
     this.storage = 'native'
+    this.codeWorkspace = null
     this.root = rootName
     this.assetBaseUrl = ''
     this.clearModelAssetCache()
@@ -191,6 +200,7 @@ export class ProjectService {
   async openFromFileList(fileList: FileList): Promise<ProjectManifest> {
     const rootName = browserProjectStore.loadFromFileList(fileList)
     this.storage = 'memory'
+    this.codeWorkspace = null
     this.root = rootName
     this.assetBaseUrl = ''
     this.clearModelAssetCache()
@@ -228,6 +238,7 @@ export class ProjectService {
     this.manifest = manifest
     this.assetBaseUrl = assetBaseUrl
     this.storage = rootPath === 'playground' ? 'playground' : 'memory'
+    this.codeWorkspace = null
     this.clearModelAssetCache()
     sceneLog('project.open', {
       source: rootPath === 'playground' ? 'playground' : 'manifest',
@@ -284,6 +295,7 @@ export class ProjectService {
     this.manifest = manifest
     this.assetBaseUrl = '/__haku/dev/assets'
     this.storage = 'dev-target'
+    this.codeWorkspace = null
     this.clearModelAssetCache()
 
     await this.seedVirtualAssetsFromManifest('/__haku/dev/assets/manifest.json')
@@ -316,6 +328,37 @@ export class ProjectService {
 
   getManifest(): ProjectManifest | null {
     return this.manifest
+  }
+
+  getCodeWorkspace(): BrowserProjectWorkspace | null {
+    return this.codeWorkspace
+  }
+
+  async openCodeWorkspace(
+    options: OpenCodeWorkspaceOptions = {},
+  ): Promise<BrowserProjectWorkspace> {
+    if (!this.root || !this.manifest) throw new Error('No project open')
+    await this.persistGeneratedCodeFiles(options.generatedFiles ?? {})
+
+    const fileSystem: BrowserProjectFileSystem =
+      this.storage === 'native'
+        ? {
+            listFiles: () => nativeProjectStore.listWorkspaceFiles(),
+            readFile: (path) => nativeProjectStore.readWorkspaceFile(path),
+            writeFile: (path, text) => nativeProjectStore.writeWorkspaceFile(path, text),
+          }
+        : {
+            listFiles: async () => browserProjectStore.listWorkspaceFiles(),
+            readFile: (path) => browserProjectStore.readWorkspaceFile(path),
+            writeFile: (path, text) => browserProjectStore.writeWorkspaceFile(path, text),
+          }
+
+    this.codeWorkspace = await BrowserProjectWorkspace.open({
+      projectId: this.root,
+      trustMode: this.codeWorkspaceTrustMode(),
+      fileSystem,
+    })
+    return this.codeWorkspace
   }
 
   getPrefabAssets(): ReadonlyMap<AssetId, PrefabDefinition> {
@@ -1287,6 +1330,30 @@ export class ProjectService {
     const response = await fetch(url)
     if (!response.ok) throw new Error(`Failed to load asset: ${url}`)
     return response.text()
+  }
+
+  private async persistGeneratedCodeFiles(files: Readonly<Record<string, string>>): Promise<void> {
+    for (const [path, text] of Object.entries(files).sort(([left], [right]) =>
+      left.localeCompare(right),
+    )) {
+      if (path !== 'tsconfig.json' && !path.startsWith('.haku/generated/')) {
+        throw new Error(`Generated code tooling cannot write outside .haku/generated: ${path}`)
+      }
+      if (this.storage === 'native') {
+        await nativeProjectStore.writeText(path, text)
+        continue
+      }
+      browserProjectStore.writeText(path, text)
+      if (this.storage === 'dev-target') {
+        await this.writeDevTargetFileToDisk(path, text)
+      }
+    }
+  }
+
+  private codeWorkspaceTrustMode(): BrowserProjectTrustMode {
+    if (this.storage === 'playground') return 'built-in'
+    if (this.storage === 'native' || this.storage === 'dev-target') return 'local-trusted'
+    return 'imported-untrusted'
   }
 
   private async writeProjectText(path: string, body: string): Promise<void> {

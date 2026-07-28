@@ -183,3 +183,125 @@ describe('ProjectService disk saving', () => {
     expect(duplicate.$ref).not.toBe('10000000-0000-4000-8000-000000000002')
   })
 })
+
+describe('ProjectService browser code workspace', () => {
+  afterEach(() => {
+    browserProjectStore.clear()
+  })
+
+  it('persists generated files and exposes imported projects through conflict-safe storage', async () => {
+    const service = new ProjectService()
+    service.openFromManifest(
+      'imported-project',
+      validateProjectManifest({
+        schemaVersion: 1,
+        name: 'Imported project',
+        entryScene: {
+          $ref: '10000000-0000-4000-8000-000000000001',
+          type: SCENE_ASSET_TYPE,
+        },
+        assetsDir: 'public/assets',
+        scriptsDir: 'scripts',
+        assets: [
+          {
+            id: '10000000-0000-4000-8000-000000000001',
+            type: SCENE_ASSET_TYPE,
+            path: 'scenes/main.scene.json',
+          },
+        ],
+      }),
+    )
+    browserProjectStore.registerFile('src/gameplay.ts', {
+      content: 'export const speed = 1',
+    })
+
+    const workspace = await service.openCodeWorkspace({
+      generatedFiles: {
+        'tsconfig.json': '{"compilerOptions":{"strict":true}}\n',
+        '.haku/generated/project.d.ts': 'export type ProjectId = "imported-project"\n',
+      },
+    })
+
+    expect(workspace.trustMode).toBe('imported-untrusted')
+    expect(workspace.listFiles()).toEqual([
+      '.haku/generated/project.d.ts',
+      'src/gameplay.ts',
+      'tsconfig.json',
+    ])
+    expect(await browserProjectStore.readText('.haku/generated/project.d.ts')).toBe(
+      'export type ProjectId = "imported-project"\n',
+    )
+
+    workspace.editText('src/gameplay.ts', 'export const speed = 3')
+    browserProjectStore.writeText('src/gameplay.ts', 'export const speed = 2')
+
+    expect(await workspace.pollExternalChanges()).toEqual([
+      { path: 'src/gameplay.ts', status: 'conflict' },
+    ])
+    expect(workspace.readText('src/gameplay.ts')).toBe('export const speed = 3')
+    expect(service.getCodeWorkspace()).toBe(workspace)
+  })
+
+  it('opens playground projects as read-only built-ins', async () => {
+    const service = new ProjectService()
+    service.openFromManifest(
+      'playground',
+      validateProjectManifest({
+        schemaVersion: 1,
+        name: 'Built-in project',
+        entryScene: {
+          $ref: '10000000-0000-4000-8000-000000000001',
+          type: SCENE_ASSET_TYPE,
+        },
+        assetsDir: 'public/assets',
+        scriptsDir: 'scripts',
+        assets: [
+          {
+            id: '10000000-0000-4000-8000-000000000001',
+            type: SCENE_ASSET_TYPE,
+            path: 'scenes/main.scene.json',
+          },
+        ],
+      }),
+    )
+    browserProjectStore.registerFile('src/gameplay.ts', {
+      content: 'export const builtIn = true',
+    })
+
+    const workspace = await service.openCodeWorkspace()
+
+    expect(workspace.trustMode).toBe('built-in')
+    expect(() => workspace.editText('src/gameplay.ts', 'changed')).toThrow(
+      'Built-in projects are read-only. Fork the project to edit it.',
+    )
+  })
+
+  it('keeps an empty source file available to the code workspace', async () => {
+    const service = new ProjectService()
+    service.openFromManifest(
+      'empty-source-project',
+      validateProjectManifest({
+        schemaVersion: 1,
+        name: 'Empty source project',
+        entryScene: {
+          $ref: '10000000-0000-4000-8000-000000000001',
+          type: SCENE_ASSET_TYPE,
+        },
+        assetsDir: 'public/assets',
+        scriptsDir: 'scripts',
+        assets: [
+          {
+            id: '10000000-0000-4000-8000-000000000001',
+            type: SCENE_ASSET_TYPE,
+            path: 'scenes/main.scene.json',
+          },
+        ],
+      }),
+    )
+    browserProjectStore.registerFile('src/empty.ts', { content: '' })
+
+    const workspace = await service.openCodeWorkspace()
+
+    expect(workspace.readText('src/empty.ts')).toBe('')
+  })
+})

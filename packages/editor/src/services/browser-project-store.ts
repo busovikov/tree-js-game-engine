@@ -1,3 +1,5 @@
+import type { BrowserProjectDiskFile } from './browser-project-workspace.js'
+
 const DIRECTORY_PLACEHOLDER = '.gitkeep'
 
 /** In-memory project files loaded from folder picker (browser). */
@@ -6,6 +8,7 @@ export interface VirtualFile {
   content?: string
   file?: File
   isBinary?: boolean
+  lastModified?: number
 }
 
 export interface DirectoryEntry {
@@ -17,6 +20,7 @@ export interface DirectoryEntry {
 class BrowserProjectStore {
   private files = new Map<string, VirtualFile>()
   private rootName = ''
+  private revision = 0
 
   loadFromFileList(fileList: FileList): string {
     this.files.clear()
@@ -37,7 +41,11 @@ class BrowserProjectStore {
 
   registerFile(path: string, entry: Omit<VirtualFile, 'path'>): void {
     const normalized = normalizePath(path)
-    this.files.set(normalized, { path: normalized, ...entry })
+    this.files.set(normalized, {
+      path: normalized,
+      ...entry,
+      lastModified: entry.lastModified ?? entry.file?.lastModified ?? ++this.revision,
+    })
   }
 
   async registerFromUrl(path: string, url: string): Promise<void> {
@@ -67,7 +75,7 @@ class BrowserProjectStore {
   async readText(path: string): Promise<string> {
     const entry = this.files.get(normalizePath(path))
     if (!entry) throw new Error(`File not found: ${path}`)
-    if (entry.content) return entry.content
+    if (entry.content !== undefined) return entry.content
     if (!entry.file) throw new Error(`File not readable: ${path}`)
     if (entry.isBinary && !isGltfJsonPath(path)) {
       throw new Error(`Binary file cannot be read as text: ${path}`)
@@ -89,7 +97,34 @@ class BrowserProjectStore {
   writeText(path: string, content: string): void {
     const normalized = normalizePath(path)
     const existing = this.files.get(normalized)
-    this.files.set(normalized, { path: normalized, content, file: existing?.file, isBinary: false })
+    this.files.set(normalized, {
+      path: normalized,
+      content,
+      file: existing?.file,
+      isBinary: false,
+      lastModified: ++this.revision,
+    })
+  }
+
+  listWorkspaceFiles(): readonly string[] {
+    return [...this.files.keys()].filter(isWorkspaceTextPath).sort()
+  }
+
+  async readWorkspaceFile(path: string): Promise<BrowserProjectDiskFile> {
+    const normalized = normalizePath(path)
+    const entry = this.files.get(normalized)
+    if (!entry) throw new Error(`File not found: ${path}`)
+    const text = await this.readText(normalized)
+    return {
+      text,
+      lastModified: entry.lastModified ?? 0,
+      size: new Blob([text]).size,
+    }
+  }
+
+  async writeWorkspaceFile(path: string, text: string): Promise<BrowserProjectDiskFile> {
+    this.writeText(path, text)
+    return this.readWorkspaceFile(path)
   }
 
   /** Register a placeholder so empty folders appear in listDirectory. */
@@ -154,6 +189,7 @@ class BrowserProjectStore {
   clear(): void {
     this.files.clear()
     this.rootName = ''
+    this.revision = 0
   }
 
   removeUnderPrefix(prefix: string): void {
@@ -253,6 +289,10 @@ function normalizePath(path: string): string {
 function isBinaryPath(path: string): boolean {
   const ext = path.split('.').pop()?.toLowerCase()
   return ext === 'glb' || ext === 'bin' || ext === 'png' || ext === 'jpg' || ext === 'jpeg' || ext === 'webp'
+}
+
+function isWorkspaceTextPath(path: string): boolean {
+  return /\.(?:[cm]?[jt]sx?|json|css|html|md)$/i.test(path)
 }
 
 function isGltfJsonPath(path: string): boolean {
