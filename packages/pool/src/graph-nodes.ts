@@ -14,11 +14,32 @@ import {
   type NodeRuntimeRegistry,
 } from '@haku/graph-runtime'
 import { z } from 'zod'
-import {
-  createPoolSdk,
-  type PoolHandle,
-  type PoolService,
-} from './index.js'
+
+interface PoolHandleValue {
+  readonly pool: string
+  readonly entity: string
+  readonly generation: number
+}
+
+interface PoolGraphTarget {
+  prewarm(count?: number): void
+  acquire(): PoolHandleValue | null
+  release(handle: PoolHandleValue): void
+  releaseAll(): void
+  clear(): void
+  metrics(): {
+    readonly total: number
+    readonly active: number
+    readonly inactive: number
+    readonly acquisitions: number
+    readonly releases: number
+    readonly exhaustions: number
+  }
+}
+
+export interface PoolGraphService {
+  require(poolId: string): PoolGraphTarget
+}
 
 const id = (value: number): string =>
   `a3000000-0000-4000-8000-${value.toString().padStart(12, '0')}`
@@ -224,7 +245,7 @@ export function registerPoolNodeContracts(registry: NodeRegistry): void {
   )
 }
 
-const PoolHandleSchema: z.ZodType<PoolHandle> = z.object({
+const PoolHandleSchema: z.ZodType<PoolHandleValue> = z.object({
   pool: z.string().uuid(),
   entity: z.string().uuid(),
   generation: z.number().int().nonnegative(),
@@ -232,9 +253,8 @@ const PoolHandleSchema: z.ZodType<PoolHandle> = z.object({
 
 export function registerPoolRuntimeAdapters(
   registry: NodeRuntimeRegistry,
-  service: PoolService,
+  service: PoolGraphService,
 ): void {
-  const sdk = createPoolSdk(service)
   const register = (
     nodeType: string,
     execute: (request: NodeExecutionRequest) => NodeExecutionResult,
@@ -242,7 +262,7 @@ export function registerPoolRuntimeAdapters(
 
   register(POOL_GRAPH_CONTRACTS.acquire.nodeType, (request) => {
     const poolId = poolIdFrom(request)
-    const handle = sdk.acquire(poolId)
+    const handle = service.require(poolId).acquire()
     return {
       flow: [POOL_GRAPH_CONTRACTS.acquire.ports.flowOut],
       data: {
@@ -257,7 +277,7 @@ export function registerPoolRuntimeAdapters(
     const handle = PoolHandleSchema.parse(
       request.readData(POOL_GRAPH_CONTRACTS.release.ports.handle),
     )
-    sdk.release(handle)
+    service.require(handle.pool).release(handle)
     return {
       flow: [POOL_GRAPH_CONTRACTS.release.ports.flowOut],
       effects: [effect(request, 'pool.release', handle)],
@@ -266,7 +286,7 @@ export function registerPoolRuntimeAdapters(
 
   register(POOL_GRAPH_CONTRACTS.prewarm.nodeType, (request) => {
     const properties = PrewarmProperties.parse(request.node.properties)
-    sdk.prewarm(properties.poolId, properties.count)
+    service.require(properties.poolId).prewarm(properties.count)
     return {
       flow: [POOL_GRAPH_CONTRACTS.prewarm.ports.flowOut],
       effects: [effect(request, 'pool.prewarm', properties)],
@@ -275,7 +295,7 @@ export function registerPoolRuntimeAdapters(
 
   register(POOL_GRAPH_CONTRACTS.releaseAll.nodeType, (request) => {
     const poolId = poolIdFrom(request)
-    sdk.releaseAll(poolId)
+    service.require(poolId).releaseAll()
     return {
       flow: [POOL_GRAPH_CONTRACTS.releaseAll.ports.flowOut],
       effects: [effect(request, 'pool.release-all', { pool: poolId })],
@@ -284,7 +304,7 @@ export function registerPoolRuntimeAdapters(
 
   register(POOL_GRAPH_CONTRACTS.clear.nodeType, (request) => {
     const poolId = poolIdFrom(request)
-    sdk.clear(poolId)
+    service.require(poolId).clear()
     return {
       flow: [POOL_GRAPH_CONTRACTS.clear.ports.flowOut],
       effects: [effect(request, 'pool.clear', { pool: poolId })],
@@ -292,7 +312,7 @@ export function registerPoolRuntimeAdapters(
   })
 
   register(POOL_GRAPH_CONTRACTS.metrics.nodeType, (request) => {
-    const metrics = sdk.metrics(poolIdFrom(request))
+    const metrics = service.require(poolIdFrom(request)).metrics()
     return {
       data: Object.fromEntries(
         Object.entries(POOL_GRAPH_CONTRACTS.metrics.ports).map(([name, portId]) => [

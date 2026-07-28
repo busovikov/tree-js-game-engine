@@ -601,5 +601,6 @@ export {
   POOL_GRAPH_CONTRACTS,
   registerPoolNodeContracts,
   registerPoolRuntimeAdapters,
+  type PoolGraphService,
   type PoolGraphContracts,
 } from './graph-nodes.js'
