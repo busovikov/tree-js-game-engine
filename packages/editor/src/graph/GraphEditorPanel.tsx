@@ -1,32 +1,22 @@
-import {
-  Suspense,
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useReducer,
-  useState,
-} from 'react'
+import { Suspense, memo, useCallback, useEffect, useMemo, useReducer, useState } from 'react'
 import { World } from '@haku/core'
 import { DIAGNOSTIC_GRAPH_IDS } from '@haku/graph'
 import { runDiagnosticGraphPlan } from '@haku/graph-runtime/diagnostic-graph'
 import { projectService } from '../services/project-service.js'
 import { prepareBeforeUnload } from '../services/unsaved-changes.js'
 import { DefaultGraphCanvasProvider } from './graph-canvas-provider.js'
-import {
-  createGraphInspectorModel,
-  searchGraphPalette,
-} from './graph-editor-model.js'
+import { createGraphInspectorModel, searchGraphPalette } from './graph-editor-model.js'
 import {
   graphAuthoringSession,
   graphCommandBus,
   graphNodeRegistry,
+  graphTypeRegistry,
+  syncProjectComponentGraphContracts,
 } from './graph-editor-service.js'
 import './graph-editor-panel.css'
 
 function confirmDiscard(): boolean {
-  return !graphAuthoringSession.isDirty ||
-    window.confirm('Discard unsaved graph changes?')
+  return !graphAuthoringSession.isDirty || window.confirm('Discard unsaved graph changes?')
 }
 
 export const GraphEditorPanel = memo(function GraphEditorPanel() {
@@ -40,6 +30,13 @@ export const GraphEditorPanel = memo(function GraphEditorPanel() {
   useEffect(() => graphAuthoringSession.subscribe(refresh), [])
   useEffect(() => graphCommandBus.subscribe(refresh), [])
   useEffect(() => {
+    const sync = () => {
+      if (syncProjectComponentGraphContracts().length > 0) refresh()
+    }
+    sync()
+    return projectService.subscribeCustomComponentTypes(sync)
+  }, [])
+  useEffect(() => {
     if (!graphAuthoringSession.isDirty) return
     const beforeUnload = (event: BeforeUnloadEvent) => prepareBeforeUnload(event, true)
     window.addEventListener('beforeunload', beforeUnload)
@@ -47,15 +44,17 @@ export const GraphEditorPanel = memo(function GraphEditorPanel() {
   })
 
   const asset = graphAuthoringSession.asset
+  const registryFingerprint = `${graphNodeRegistry.fingerprint()}:${graphTypeRegistry.fingerprint()}`
   const compiled = useMemo(
-    () => asset ? graphAuthoringSession.compile() : { diagnostics: [] },
-    [asset],
+    () => (asset ? graphAuthoringSession.compile() : { diagnostics: [] }),
+    [asset, registryFingerprint],
   )
   const selectedNodeId = graphAuthoringSession.selectedNodeIds[0]
   const inspector = useMemo(
-    () => asset
-      ? createGraphInspectorModel(asset, graphNodeRegistry, compiled, selectedNodeId)
-      : { diagnostics: [] },
+    () =>
+      asset
+        ? createGraphInspectorModel(asset, graphNodeRegistry, compiled, selectedNodeId)
+        : { diagnostics: [] },
     [asset, compiled, selectedNodeId],
   )
   useEffect(() => {
@@ -63,7 +62,7 @@ export const GraphEditorPanel = memo(function GraphEditorPanel() {
   }, [inspector.selectedNode?.id, inspector.selectedNode?.properties])
   const palette = useMemo(
     () => searchGraphPalette(graphNodeRegistry, query),
-    [query],
+    [query, registryFingerprint],
   )
 
   const createGraph = useCallback(async () => {
@@ -71,10 +70,9 @@ export const GraphEditorPanel = memo(function GraphEditorPanel() {
     const name = window.prompt('Graph name', 'Gameplay Graph')?.trim()
     if (!name) return
     const fileName = name.toLowerCase().replace(/[^a-z0-9_-]+/g, '-') || 'graph'
-    const path = window.prompt(
-      'Graph path',
-      `${projectService.getAssetsRoot()}/graphs/${fileName}.graph.json`,
-    )?.trim()
+    const path = window
+      .prompt('Graph path', `${projectService.getAssetsRoot()}/graphs/${fileName}.graph.json`)
+      ?.trim()
     if (!path) return
     try {
       const created = await projectService.createGraphAsset(path, name)
@@ -87,10 +85,9 @@ export const GraphEditorPanel = memo(function GraphEditorPanel() {
 
   const openGraph = useCallback(async () => {
     if (!confirmDiscard()) return
-    const path = window.prompt(
-      'Graph path',
-      `${projectService.getAssetsRoot()}/graphs/diagnostic.graph.json`,
-    )?.trim()
+    const path = window
+      .prompt('Graph path', `${projectService.getAssetsRoot()}/graphs/diagnostic.graph.json`)
+      ?.trim()
     if (!path) return
     try {
       await graphAuthoringSession.open(path)
@@ -145,27 +142,54 @@ export const GraphEditorPanel = memo(function GraphEditorPanel() {
       }}
     >
       <div className="haku-graph-editor__toolbar">
-        <button type="button" onClick={() => void createGraph()}>New</button>
-        <button type="button" onClick={() => void openGraph()}>Open</button>
+        <button type="button" onClick={() => void createGraph()}>
+          New
+        </button>
+        <button type="button" onClick={() => void openGraph()}>
+          Open
+        </button>
         <button
           type="button"
-          disabled={!graphAuthoringSession.isDirty || graphAuthoringSession.path?.startsWith('builtin:')}
+          disabled={
+            !graphAuthoringSession.isDirty || graphAuthoringSession.path?.startsWith('builtin:')
+          }
           onClick={() => void saveGraph()}
         >
           Save
         </button>
-        <button type="button" disabled={!graphCommandBus.canUndo()} onClick={() => graphCommandBus.undo()}>
+        <button
+          type="button"
+          disabled={!graphCommandBus.canUndo()}
+          onClick={() => graphCommandBus.undo()}
+        >
           Undo
         </button>
-        <button type="button" disabled={!graphCommandBus.canRedo()} onClick={() => graphCommandBus.redo()}>
+        <button
+          type="button"
+          disabled={!graphCommandBus.canRedo()}
+          onClick={() => graphCommandBus.redo()}
+        >
           Redo
         </button>
-        <button type="button" onClick={() => graphAuthoringSession.copySelection()}>Copy</button>
-        <button type="button" onClick={() => graphAuthoringSession.paste()}>Paste</button>
-        <button type="button" onClick={() => graphAuthoringSession.duplicateSelection()}>Duplicate</button>
-        <button type="button" onClick={() => graphAuthoringSession.deleteSelection()}>Delete</button>
-        <button type="button" onClick={playGraph}>▶ Play Graph</button>
-        <span>{graphAuthoringSession.path}{graphAuthoringSession.isDirty ? ' *' : ''}</span>
+        <button type="button" onClick={() => graphAuthoringSession.copySelection()}>
+          Copy
+        </button>
+        <button type="button" onClick={() => graphAuthoringSession.paste()}>
+          Paste
+        </button>
+        <button type="button" onClick={() => graphAuthoringSession.duplicateSelection()}>
+          Duplicate
+        </button>
+        <button type="button" onClick={() => graphAuthoringSession.deleteSelection()}>
+          Delete
+        </button>
+        <button type="button" onClick={playGraph}>
+          ▶ Play Graph
+        </button>
+        <span>
+          {graphAuthoringSession.path}
+          {graphAuthoringSession.isDirty ? ' *' : ''}
+        </span>
       </div>
       <div className="haku-graph-editor__workspace">
         <aside className="haku-graph-editor__palette">
@@ -181,13 +205,15 @@ export const GraphEditorPanel = memo(function GraphEditorPanel() {
               key={item.id}
               type="button"
               title={item.description}
-              onClick={() => graphAuthoringSession.addNode(
-                item.id,
-                { x: 80 + asset.graph.nodes.length * 24, y: 80 },
-                item.id === DIAGNOSTIC_GRAPH_IDS.nodeTypes.markWorld
-                  ? { tag: 'graph-authored' }
-                  : {},
-              )}
+              onClick={() =>
+                graphAuthoringSession.addNode(
+                  item.id,
+                  { x: 80 + asset.graph.nodes.length * 24, y: 80 },
+                  item.id === DIAGNOSTIC_GRAPH_IDS.nodeTypes.markWorld
+                    ? { tag: 'graph-authored' }
+                    : {},
+                )
+              }
             >
               <small>{item.category}</small>
               {item.name}
@@ -195,7 +221,9 @@ export const GraphEditorPanel = memo(function GraphEditorPanel() {
           ))}
         </aside>
         <main className="haku-graph-editor__canvas">
-          <Suspense fallback={<div className="haku-graph-editor__loading">Loading graph canvas…</div>}>
+          <Suspense
+            fallback={<div className="haku-graph-editor__loading">Loading graph canvas…</div>}
+          >
             <DefaultGraphCanvasProvider
               asset={asset}
               selectedNodeIds={graphAuthoringSession.selectedNodeIds}
@@ -245,11 +273,14 @@ export const GraphEditorPanel = memo(function GraphEditorPanel() {
               </button>
               <p>Effects: {inspector.selectedNode.effects.join(', ') || 'none'}</p>
               <p>
-                Async policies: {inspector.selectedNode.asyncCheckpointPolicies.join(', ') || 'none'}
+                Async policies:{' '}
+                {inspector.selectedNode.asyncCheckpointPolicies.join(', ') || 'none'}
               </p>
               {inspector.checkpoint && (
                 <div className="haku-graph-editor__checkpoint">
-                  <strong>Checkpoint: {inspector.checkpoint.eligible ? 'eligible' : 'rejected'}</strong>
+                  <strong>
+                    Checkpoint: {inspector.checkpoint.eligible ? 'eligible' : 'rejected'}
+                  </strong>
                   {inspector.checkpoint.dynamicPhysicsRejected && (
                     <p>Dynamic physics state cannot be checkpointed.</p>
                   )}
@@ -265,20 +296,28 @@ export const GraphEditorPanel = memo(function GraphEditorPanel() {
             <p>Select a graph node</p>
           )}
           <h3>Diagnostics</h3>
-          {inspector.diagnostics.length === 0 ? <p>No diagnostics</p> : inspector.diagnostics.map((item, index) => (
-            <button
-              key={`${item.code}:${index}`}
-              type="button"
-              className={`haku-graph-editor__diagnostic haku-graph-editor__diagnostic--${item.severity}`}
-              onClick={() => item.navigateTo.nodeId &&
-                graphAuthoringSession.selectNodes([item.navigateTo.nodeId])}
-            >
-              {item.code}: {item.message}
-            </button>
-          ))}
+          {inspector.diagnostics.length === 0 ? (
+            <p>No diagnostics</p>
+          ) : (
+            inspector.diagnostics.map((item, index) => (
+              <button
+                key={`${item.code}:${index}`}
+                type="button"
+                className={`haku-graph-editor__diagnostic haku-graph-editor__diagnostic--${item.severity}`}
+                onClick={() =>
+                  item.navigateTo.nodeId &&
+                  graphAuthoringSession.selectNodes([item.navigateTo.nodeId])
+                }
+              >
+                {item.code}: {item.message}
+              </button>
+            ))
+          )}
         </aside>
       </div>
-      <footer className="haku-graph-editor__status" role="status">{status}</footer>
+      <footer className="haku-graph-editor__status" role="status">
+        {status}
+      </footer>
     </section>
   )
 })

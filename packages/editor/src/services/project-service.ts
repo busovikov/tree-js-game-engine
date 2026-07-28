@@ -83,6 +83,7 @@ export class ProjectService {
   private readonly assetRegistry = createEngineAssetRegistry()
   private componentRegistry = createEngineComponentRegistry()
   private customComponentTypes = new Map<string, ComponentDefinition>()
+  private readonly customComponentTypeListeners = new Set<() => void>()
   private root: string | null = null
   private manifest: ProjectManifest | null = null
   private prefabAssets = new Map<AssetId, PrefabDefinition>()
@@ -421,6 +422,11 @@ export class ProjectService {
     )
   }
 
+  subscribeCustomComponentTypes(listener: () => void): () => void {
+    this.customComponentTypeListeners.add(listener)
+    return () => this.customComponentTypeListeners.delete(listener)
+  }
+
   async createGraphAsset(
     projectPath: string,
     name: string,
@@ -496,6 +502,7 @@ export class ProjectService {
     await this.persistManifest()
     this.componentRegistry.register(definition)
     this.customComponentTypes.set(definition.id, definition)
+    this.notifyCustomComponentTypesChanged()
     return asset
   }
 
@@ -1441,16 +1448,22 @@ export class ProjectService {
   private async loadCustomComponentTypes(): Promise<void> {
     this.componentRegistry = createEngineComponentRegistry()
     this.customComponentTypes = new Map()
-    if (!this.manifest) return
-    for (const entry of this.manifest.assets) {
-      if (entry.type !== CUSTOM_COMPONENT_TYPE_ASSET_TYPE) continue
-      const projectPath = `${this.manifest.assetsDir}/${entry.path}`.replace(/\/+/g, '/')
-      const raw = await this.readProjectText(projectPath)
-      const asset = CustomComponentTypeAssetSchema.parse(JSON.parse(raw))
-      const definition = createCustomComponentDefinition(asset)
-      this.componentRegistry.register(definition)
-      this.customComponentTypes.set(definition.id, definition)
+    if (this.manifest) {
+      for (const entry of this.manifest.assets) {
+        if (entry.type !== CUSTOM_COMPONENT_TYPE_ASSET_TYPE) continue
+        const projectPath = `${this.manifest.assetsDir}/${entry.path}`.replace(/\/+/g, '/')
+        const raw = await this.readProjectText(projectPath)
+        const asset = CustomComponentTypeAssetSchema.parse(JSON.parse(raw))
+        const definition = createCustomComponentDefinition(asset)
+        this.componentRegistry.register(definition)
+        this.customComponentTypes.set(definition.id, definition)
+      }
     }
+    this.notifyCustomComponentTypesChanged()
+  }
+
+  private notifyCustomComponentTypesChanged(): void {
+    for (const listener of this.customComponentTypeListeners) listener()
   }
 
   private async readProjectText(path: string): Promise<string> {
