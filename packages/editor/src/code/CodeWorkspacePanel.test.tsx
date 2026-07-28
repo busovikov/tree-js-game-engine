@@ -144,6 +144,7 @@ describe('CodeWorkspacePanel', () => {
         ...TOOLING.files,
         'src/gameplay.ts': 'export const customNode = { speed: 3 }\n',
       },
+      diagnosticPaths: ['src/gameplay.ts'],
     })
     expect(bundlerClient.build).toHaveBeenCalledWith({
       files: {

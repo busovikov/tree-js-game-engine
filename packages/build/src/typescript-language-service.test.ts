@@ -37,4 +37,16 @@ node.run()`
       }),
     ])
   })
+
+  it('keeps the whole project for resolution but diagnoses only requested paths', () => {
+    const result = analyzeTypeScriptProject({
+      files: {
+        'src/gameplay.ts': 'export const speed = 3',
+        'src/unrelated.ts': 'const broken: string = 42',
+      },
+      diagnosticPaths: ['src/gameplay.ts'],
+    })
+
+    expect(result.diagnostics).toEqual([])
+  })
 })

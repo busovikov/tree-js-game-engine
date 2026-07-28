@@ -212,7 +212,10 @@ export const CodeWorkspacePanel = memo(function CodeWorkspacePanel({
   const diagnose = async () => {
     if (!activePath || denied) return
     try {
-      const result = await languageClient.analyze({ files })
+      const result = await languageClient.analyze({
+        files,
+        diagnosticPaths: [activePath],
+      })
       setDiagnostics(toEditorDiagnostics(result, activePath))
       setStatus(
         result.diagnostics.length === 0

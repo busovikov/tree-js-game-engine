@@ -17,6 +17,7 @@ export interface TypeScriptLanguageDiagnostic {
 
 export interface TypeScriptLanguageRequest {
   readonly files: Readonly<Record<string, string>>
+  readonly diagnosticPaths?: readonly string[]
   readonly completions?: {
     readonly path: string
     readonly position: number

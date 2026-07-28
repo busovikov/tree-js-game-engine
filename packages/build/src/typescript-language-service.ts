@@ -40,7 +40,9 @@ export function analyzeTypeScriptProject(
   }
   const service = ts.createLanguageService(host, ts.createDocumentRegistry())
   const diagnostics: TypeScriptLanguageDiagnostic[] = []
-  for (const path of files.keys()) {
+  const diagnosticPaths = request.diagnosticPaths ?? [...files.keys()]
+  for (const path of diagnosticPaths) {
+    if (!files.has(path)) continue
     if (!/\.[cm]?tsx?$|\.d\.ts$/.test(path)) continue
     const fileDiagnostics = [
       ...service.getSyntacticDiagnostics(path),
