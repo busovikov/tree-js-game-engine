@@ -1,6 +1,7 @@
 import {
   entityId,
   type ComponentDefinition,
+  type ComponentRegistry,
   type EntityId,
   type IWorld,
 } from '@haku/core'
@@ -9,7 +10,7 @@ import { AssetRefSchema, componentTypeId } from '@haku/schema'
 import { z } from 'zod'
 
 export const ENTITY_POOL_COMPONENT_TYPE_ID = componentTypeId(
-  '40000000-0000-4000-8000-000000000009',
+  '40000000-0000-4000-8000-000000000024',
 )
 
 export const PoolExpansionPolicySchema = z.enum(['fixed', 'grow'])
@@ -45,11 +46,15 @@ export type EntityPoolData = z.infer<typeof EntityPoolSchema>
 export type PoolExpansionPolicy = z.infer<typeof PoolExpansionPolicySchema>
 export type PoolExhaustionPolicy = z.infer<typeof PoolExhaustionPolicySchema>
 
-export const EntityPoolComponent: ComponentDefinition<EntityPoolData> = {
+export const EntityPoolComponent = {
   id: ENTITY_POOL_COMPONENT_TYPE_ID,
   name: 'EntityPool',
   schema: EntityPoolSchema,
   references: [{ path: 'template', assetType: PREFAB_ASSET_TYPE }],
+} satisfies ComponentDefinition<EntityPoolData>
+
+export function registerPoolComponents(registry: ComponentRegistry): void {
+  registry.register(EntityPoolComponent)
 }
 
 export interface PoolHandle {
