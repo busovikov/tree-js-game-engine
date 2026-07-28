@@ -361,6 +361,25 @@ export class ProjectService {
     return this.codeWorkspace
   }
 
+  async forkBuiltInCodeWorkspaceToDisk(): Promise<BrowserProjectWorkspace> {
+    const source = this.codeWorkspace
+    if (!source || source.trustMode !== 'built-in') {
+      throw new Error('Only an open built-in code workspace can be forked to disk.')
+    }
+    const destinationHandle = await nativeProjectStore.pickProjectDirectory()
+    await nativeProjectStore.scaffoldProject(destinationHandle, new Map())
+    const destination: BrowserProjectFileSystem = {
+      listFiles: () => nativeProjectStore.listWorkspaceFiles(),
+      readFile: (path) => nativeProjectStore.readWorkspaceFile(path),
+      writeFile: (path, text) => nativeProjectStore.writeWorkspaceFile(path, text),
+    }
+    const forked = await source.forkToDisk(destinationHandle.name, destination)
+    this.storage = 'native'
+    this.root = destinationHandle.name
+    this.codeWorkspace = forked
+    return forked
+  }
+
   getPrefabAssets(): ReadonlyMap<AssetId, PrefabDefinition> {
     return this.prefabAssets
   }

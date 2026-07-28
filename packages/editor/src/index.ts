@@ -29,6 +29,11 @@ export {
   type CodePlaySession,
   type CodeWorkspacePanelProps,
 } from './code/CodeWorkspacePanel.js'
+export {
+  ProjectCodeWorkspacePanel,
+  createProjectBrowserTooling,
+  type ProjectCodeWorkspacePanelProps,
+} from './code/ProjectCodeWorkspacePanel.js'
 export { openProjectInExternalVsCode } from './code/external-vscode.js'
 export {
   createPlaySandbox,

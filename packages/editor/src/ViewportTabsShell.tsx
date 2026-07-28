@@ -5,10 +5,11 @@ import { ViewportPanel } from './panels/ViewportPanel.js'
 import { ViewportErrorBoundary } from './components/ViewportErrorBoundary.js'
 import { PlaygroundDemoBanner } from './components/PlaygroundDemoBanner.js'
 import { GraphEditorPanel } from './graph/GraphEditorPanel.js'
+import { ProjectCodeWorkspacePanel } from './code/ProjectCodeWorkspacePanel.js'
 import './viewport-tabs.css'
 
 export const ViewportTabsShell = memo(function ViewportTabsShell() {
-  const [workspace, setWorkspace] = useState<'viewport' | 'graph'>('viewport')
+  const [workspace, setWorkspace] = useState<'viewport' | 'graph' | 'code'>('viewport')
   const activeViewportTab = useEditorStore((s) => s.activeViewportTab)
   const setActiveViewportTab = useEditorStore((s) => s.setActiveViewportTab)
   const scenePath = useEditorStore((s) => s.scenePath)
@@ -59,6 +60,15 @@ export const ViewportTabsShell = memo(function ViewportTabsShell() {
           >
             Graph
           </button>
+          <button
+            type="button"
+            role="tab"
+            className={`haku-viewport-tab${workspace === 'code' ? ' haku-viewport-tab--active' : ''}`}
+            aria-selected={workspace === 'code'}
+            onClick={() => setWorkspace('code')}
+          >
+            Code
+          </button>
         </div>
         {mode === 'play' && activeViewportTab === 'view' && (
           <span className="haku-viewport-shell__play-badge">PLAYING</span>
@@ -68,6 +78,8 @@ export const ViewportTabsShell = memo(function ViewportTabsShell() {
       <div className="haku-viewport-shell__body">
         {workspace === 'graph' ? (
           <GraphEditorPanel />
+        ) : workspace === 'code' ? (
+          <ProjectCodeWorkspacePanel />
         ) : (
           <ViewportErrorBoundary resetKey={`${scenePath ?? 'empty'}:${worldRevision}`}>
             <ViewportPanel />
