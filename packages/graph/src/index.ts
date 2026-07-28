@@ -135,3 +135,10 @@ export {
   type GraphExecutionPlan,
   type PlanConnectionOperation,
 } from './compiler.js'
+
+export {
+  DIAGNOSTIC_GRAPH_IDS,
+  compileDiagnosticGraph,
+  createDiagnosticGraphAsset,
+  createDiagnosticNodeRegistry,
+} from './diagnostic-graph.js'
