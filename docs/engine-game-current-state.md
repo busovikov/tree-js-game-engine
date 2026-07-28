@@ -1,7 +1,7 @@
 # Engine improvement through Bounce Run: current-state audit
 
 > Baseline verified on 2026-07-26 at commit `d8e74a1`; current claims are updated through
-> M06. Target contracts live in
+> M07. Target contracts live in
 > [node-graph-architecture.md](./node-graph-architecture.md) and execution order lives in
 > [engine-game-development-plan.md](./engine-game-development-plan.md).
 
@@ -44,6 +44,8 @@ SceneDocument v1
 Browser editor
   -> React + Zustand + command history
   -> ProjectService (native File System Access or virtual project)
+  -> graph asset create/open/save + Haku-owned authoring commands
+  -> lazy replaceable React Flow canvas, compiler diagnostics, and Play trace/port values
   -> same Engine for viewport and Play mode
   -> snapshot world on Play, restore on Stop
 ```
@@ -64,7 +66,7 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
 | Prefabs                      | **Ready for current v1**  | Prefabs are standalone manifest assets referenced by typed UUID, with component-ID overrides and load-time expansion. Deep override paths and nested variants remain intentionally deferred.                                               |
 | Asset system                 | **Ready as a foundation** | Universal UUID manifests, typed references, package-contributed descriptors, structured diagnostics, path-independent identity, and deterministic dependency closure exist. Static export remains a later milestone.                     |
 | Runtime scheduler            | **Ready as a foundation** | `EngineScheduler` owns named frame/fixed phases, deterministic local ordering and typed queued commands, bounded fixed-step catch-up, tick/frame numbering, interpolation alpha, pause, and single-step. `@haku/graph-runtime` enters every domain through this scheduler and owns no second loop. |
-| Gameplay node system         | **Ready as a foundation**  | `@haku/graph` provides strict graph assets, registered types/nodes/effects, generics, diagnostics, checkpoint scope/taint and async-liveness metadata, and deterministic plans. `@haku/graph-runtime` adds instances, lazy snapshots, flow/event queues, scoped async work, tracing, bounded checkpoint/rewind, all seven async policies, effect reconciliation, and persistent checkpoint hooks. The visual editor remains M07. |
+| Gameplay node system         | **Ready as a foundation**  | `@haku/graph` provides strict graph assets, registered types/nodes/effects, generics, diagnostics, checkpoint scope/taint and async-liveness metadata, and deterministic plans. `@haku/graph-runtime` adds instances, lazy snapshots, flow/event queues, scoped async work, tracing, bounded checkpoint/rewind, all seven async policies, effect reconciliation, and persistent checkpoint hooks. The M07 editor adds Haku-owned graph authoring, lazy replaceable canvas integration, compiler/checkpoint diagnostics, and Play trace/port values. |
 | Script/custom-node runtime   | **Partial**                | Metadata-only Custom Node declarations are paired with type/version-bound runtime adapters behind a replaceable `ExecutionBackend`. Browser project-code compilation and sandboxing remain M08. |
 | Rapier integration           | **Ready as a foundation** | Abstract and Rapier packages support dynamic/static/kinematic bodies, CCD, layers, material properties, multiple worlds, joints, and debug rendering. Gameplay bindings and graph effects still need to be designed.                     |
 | Collision and trigger events | **Ready as a foundation** | Collision/trigger events and contact manifolds are supported; editor Play mode exposes contact buffers. No graph event bindings or landing/bounce controller exists.                                                                     |
@@ -88,7 +90,7 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
 | ------------------------------- | ---------------------------------------------------------------------------- |
 | Named multi-phase scheduler     | Graph flow/events now use every existing frame/fixed domain                  |
 | Scheduler-owned accumulator     | Graph runtime adds no loop or accumulator                                    |
-| Typed gameplay graph compiler   | Checkpoint/rewind is implemented; add the graph editor in M07                |
+| Typed gameplay graph compiler   | Graph authoring, diagnostics, and shared editor/headless diagnostic execution are implemented |
 | Runtime adapter boundary        | Add browser project-code compilation and sandboxing in M08                   |
 | Hierarchy activation foundation | Build pooling and graph lifecycle integrations on the existing contract      |
 | No runtime pooling              | Package-level pool built on entity activation and baseline reset             |
@@ -103,7 +105,8 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
   than create a second loop or accumulator.
 - **Graph-runtime risk:** multi-domain execution, structured task ownership, checkpoint
   policies, rewind, effect reconciliation, and persistence hooks now have headless coverage.
-  M07 must expose the same compiler/runtime diagnostics without adding editor-only semantics.
+  M07 exposes the same compiler/runtime diagnostic plan in editor Play and the playground;
+  later tooling must preserve that shared-plan boundary.
 - **Browser toolchain risk:** TypeScript, bundling, custom code, and sandbox messaging must
   remain local without requiring a daemon or sending project files to Haku servers.
 - **Isolation risk:** trusted project code still must not receive editor DOM or file handles.

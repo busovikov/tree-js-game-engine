@@ -67,6 +67,8 @@ Open the editor in browser — all components render in context (Hierarchy, Insp
 | `InspectorPanel` | `panels/InspectorPanel.tsx` | Selection properties orchestrator |
 | `ViewportPanel` | `panels/ViewportPanel.tsx` | Canvas + engine lifecycle |
 | `AssetBrowserPanel` | `panels/AssetBrowserPanel.tsx` | Asset tree, import, open scene |
+| `GraphEditorPanel` | `graph/GraphEditorPanel.tsx` | Graph assets, palette, Inspector, diagnostics, command history, Play trace |
+| `GraphCanvasProvider` | `graph/graph-canvas-provider.tsx` | Replaceable lazy graph canvas boundary; default adapter is React Flow |
 
 ### Inspector fields (reuse first)
 
@@ -164,6 +166,7 @@ When building editor UI, **start from these** — do not rebuild equivalents:
 | UI framework | React 18 + TypeScript |
 | State | Zustand (`useEditorStore`) |
 | Layout | `react-resizable-panels` |
+| Graph canvas | Lazy `@xyflow/react` adapter behind `GraphCanvasProvider` |
 | Styling | Co-located CSS files, BEM-like `haku-*` / `mesh-field*` classes |
 | 3D viewport | `@haku/engine` in `useEffect` — gizmos via Three.js addons in editor only |
 

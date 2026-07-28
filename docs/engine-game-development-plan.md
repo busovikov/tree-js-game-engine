@@ -40,7 +40,7 @@ The program is done only when:
 | M04  | Graph schema, type/effect system, and compiler                  | M03        | Complete                                 |
 | M05  | Graph interpreter, domains, queues, and tracing                 | M04        | Complete                                 |
 | M06  | Checkpoint, rewind, async policies, and persistence hooks       | M05        | Complete                                 |
-| M07  | Minimal graph editor and diagnostic scene                       | M06        | Pending                                  |
+| M07  | Minimal graph editor and diagnostic scene                       | M06        | Complete                                 |
 | M08  | Browser project TypeScript/build/trust tooling                  | M07        | Pending                                  |
 | M09  | Custom components and editor extensions                         | M08        | Pending                                  |
 | M10a | Pool and activation integrations                                | M09        | Pending                                  |
@@ -198,13 +198,13 @@ Scope:
 
 Acceptance:
 
-- [ ] React Flow data never enters saved graph assets or runtime packages.
-- [ ] Every graph mutation is a Haku command and undoable.
-- [ ] Invalid connections are blocked before save and compiler diagnostics remain authoritative.
-- [ ] Checkpoint async choices and dynamic-physics rejection are visible in Inspector.
-- [ ] Diagnostic scene runs in editor Play and headless execution with the same plan.
-- [ ] React Flow is lazy and absent from game bundles.
-- [ ] Browser visual/interaction smoke and tests pass.
+- [x] React Flow data never enters saved graph assets or runtime packages.
+- [x] Every graph mutation is a Haku command and undoable.
+- [x] Invalid connections are blocked before save and compiler diagnostics remain authoritative.
+- [x] Checkpoint async choices and dynamic-physics rejection are visible in Inspector.
+- [x] Diagnostic scene runs in editor Play and headless execution with the same plan.
+- [x] React Flow is lazy and absent from game bundles.
+- [x] Browser visual/interaction smoke and tests pass.
 
 ## M08 — Browser project TypeScript/build/trust tooling
 

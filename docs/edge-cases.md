@@ -110,6 +110,9 @@ Manual viewport checks **supplement** automated tests — never replace them.
 | Input | Result |
 | ----- | ------ |
 | UI-library state in a graph, node, property, or metadata object | Strict graph parse failure; React Flow objects never enter the asset |
+| Palette, drag, property, connect, paste, duplicate, or delete mutation | `GraphAuthoringSession` emits a Haku command; Undo restores the prior strict asset |
+| Input is already connected, has the wrong direction/kind, or has an incompatible type | Canvas rejects it before mutation; compiler validation remains authoritative |
+| Create/open would replace dirty graph state | Editor requests discard confirmation; browser unload receives the unsaved-change guard |
 | Duplicate graph node/callsite/connection/public-port UUID | Structured diagnostic with exact graph and local identity |
 | Unknown node type or port | Structured registry/compiler diagnostic; no plan |
 | Flow/event/data kind mismatch | Compile error at the target node/port/callsite and connection |
@@ -121,6 +124,7 @@ Manual viewport checks **supplement** automated tests — never replace them.
 | `NodeRef` targets a node outside the same graph instance | Compile error; cross-instance node access is not representable |
 | Unknown/external effect or dynamic resource read | Plan remains compilable but checkpoint-ineligible with causal reasons |
 | Plan registry fingerprint differs at load | Plan is incompatible and must be recompiled |
+| Browser-native `crypto.randomUUID()` is used by a graph command | Invoke through the `crypto` receiver; detached browser methods throw `Illegal invocation` |
 
 ### Gameplay graph runtime
 

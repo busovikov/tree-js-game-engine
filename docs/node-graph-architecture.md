@@ -395,6 +395,12 @@ The node canvas is a replaceable `GraphCanvasProvider`; MVP uses React Flow behi
 adapter. Haku owns graph documents, commands, validation, serialization, and undo/redo.
 React Flow objects never become saved graph data.
 
+Implemented in M07: `@haku/editor` owns `GraphAuthoringSession`, strict project graph
+create/open/save, and every asset mutation through the existing command bus. The default
+canvas adapter is a lazy editor-only chunk behind `GraphCanvasProvider`; shared provider
+types do not import the adapter. `@haku/graph` and `@haku/graph-runtime` remain free of
+React Flow, and the playground production bundle contains no React Flow marker.
+
 ## Trust and editor extensions
 
 Projects have `built-in`, `local-trusted`, or `imported-untrusted` trust state.
@@ -429,6 +435,13 @@ Before Bounce Run begins, the graph editor supports:
 - protection from unsaved data loss.
 
 Hot-state-preserving graph reload is not required; a safe instance restart is acceptable.
+
+Implemented in M07: the Graph workspace provides the listed create/open/save, palette,
+typed-connect, pan/zoom, selection, edit, command-history, diagnostics-navigation,
+checkpoint Inspector, unsaved-change, trace-highlight, and port-value paths. The built-in
+M07 diagnostic graph is compiled once per consumer with the shared registries; editor Play,
+headless tests, and playground startup execute the same plan fingerprint through the same
+runtime adapter.
 
 ## Extension checklist
 

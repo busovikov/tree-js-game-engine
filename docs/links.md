@@ -370,6 +370,7 @@ Append-only project log: `logs/haku.log` via `projectService.appendProjectLog()`
 | Vite | ^6 | https://vite.dev/guide/ |
 | Vitest | ^2.1 | https://vitest.dev/guide/ |
 | pnpm workspaces | 9.15 | https://pnpm.io/workspaces |
+| React Flow (`@xyflow/react`) | ^12.11 | https://reactflow.dev/learn |
 
 ### Web platform (editor I/O)
 
@@ -386,7 +387,6 @@ These references inform target contracts; their packages/adapters are not implem
 
 | Topic | URL |
 | --- | --- |
-| React Flow | https://reactflow.dev/ |
 | Monaco Editor | https://github.com/microsoft/monaco-editor |
 | Yandex Games player data | https://yandex.com/dev/games/doc/en/sdk/sdk-player |
 | Poki HTML5 SDK / cloud gamesaves | https://sdk.poki.com/html5 |
