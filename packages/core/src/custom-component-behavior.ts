@@ -94,8 +94,7 @@ export interface ComponentBehaviorDefinition {
   readonly lifecycle?: ComponentBehaviorLifecycle
 }
 
-export interface ComponentBehaviorDefinitionInput
-  extends ComponentBehaviorDefinition {}
+export type ComponentBehaviorDefinitionInput = ComponentBehaviorDefinition
 
 function assertUnique(label: string, values: readonly string[]): void {
   const seen = new Set<string>()
