@@ -43,7 +43,7 @@ The program is done only when:
 | M07  | Minimal graph editor and diagnostic scene                       | M06        | Complete                                 |
 | M08  | Browser project TypeScript/build/trust tooling                  | M07        | Complete                                 |
 | M09  | Custom components and editor extensions                         | M08        | Complete                                 |
-| M10a | Pool and activation integrations                                | M09        | Pending                                  |
+| M10a | Pool and activation integrations                                | M09        | Complete                                 |
 | M10b | DOM UI runtime and visual UI editor                             | M09        | Pending                                  |
 | M10c | Audio contracts, Web Audio, and editor support                  | M09        | Pending                                  |
 | M10d | Save storage, replication, and platform contracts               | M09        | Pending                                  |
@@ -262,13 +262,20 @@ production playground bundle remains free of editor-extension, widget, and Inspe
 
 Scope and acceptance:
 
-- [ ] Add `@haku/pool`, `EntityPool`, private `PoolSystem`, handles, prewarm, capacity,
+- [x] Add `@haku/pool`, `EntityPool`, private `PoolSystem`, handles, prewarm, capacity,
       maximum, expansion/exhaustion policies, acquire/release/release-all/clear, and metrics.
-- [ ] Baseline snapshot resets serializable state; lifecycle resets graph, physics, audio,
+- [x] Baseline snapshot resets serializable state; lifecycle resets graph, physics, audio,
       tasks, subscriptions, and flags.
-- [ ] Inactive pool objects never render, collide, emit, update, or retain stale velocity.
-- [ ] Pool nodes/SDK are general and checkpoint effects are declared.
-- [ ] Playground diagnostic covers hierarchy, reset, exhaustion, cleanup, and long-run reuse.
+- [x] Inactive pool objects never render, collide, emit, update, or retain stale velocity.
+- [x] Pool nodes/SDK are general and checkpoint effects are declared.
+- [x] Playground diagnostic covers hierarchy, reset, exhaustion, cleanup, and long-run reuse.
+
+Implemented in M10a: `@haku/pool` owns deterministic lease handles, authored hierarchy
+baselines, bounded capacity policies, runtime scopes, general lifecycle participants, six
+pool graph contracts/adapters, and checkpoint-visible pool effect records. Engine composition
+registers the serializable prefab-backed configuration and synchronously reconciles render
+and physics participation; graph runtimes are destroyed/recreated per lease. The playground
+runs a 10,000-cycle headless reuse diagnostic without allocating beyond two instances.
 
 ## M10b — DOM UI runtime and visual UI editor
 

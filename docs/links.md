@@ -144,6 +144,17 @@
 | `CheckpointMigrationRegistry` | Registered plan-fingerprint migration before persistent scoped resume |
 | `registerCustomComponentRuntimeAdapters()` | Runtime adapters for project component Get/Set/Add/Remove nodes |
 
+### `@haku/pool` — `packages/pool/src/index.ts`
+
+| Export | Purpose |
+| ------ | ------- |
+| `EntityPool`, `PoolHandle`, `PoolRegistry` | Deterministic pooled leases, generational handles, and pool lookup |
+| `EntityPoolComponent`, `EntityPoolSchema`, `registerPoolComponents()` | Prefab-backed serializable pool configuration |
+| `PoolRuntimeScope`, `PoolLifecycleParticipant` | Task cancellation, reverse cleanup, flags, and external runtime-resource lifecycle |
+| `createGraphPoolParticipant()` | Destroy/recreate graph runtimes at lease boundaries |
+| `createPoolSdk()` | General prewarm/acquire/release/release-all/clear/metrics service API |
+| `registerPoolNodeContracts()`, `registerPoolRuntimeAdapters()` | Six general pool graph nodes with bounded checkpoint metadata and effect records |
+
 ### `@haku/serializer` — `packages/serializer/src/index.ts`
 
 | Export | Purpose |
@@ -166,6 +177,7 @@
 | `createMaterial`, `createMeshFromRenderer`, `updateMeshMaterial`, … | Mesh factory |
 | `setModelAssetResolver`, `setModelResourceResolver`, `clearModelCache` | glTF loading hooks |
 | `setHakuLogSink`, `sceneLog`, `modelLogError`, … | Structured logging |
+| `createEnginePoolParticipant()` | Immediate render/physics reconciliation on pool lifecycle |
 
 ### `@haku/engine/runtime` — games only — `packages/engine/src/runtime.ts`
 

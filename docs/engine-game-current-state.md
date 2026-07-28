@@ -77,7 +77,7 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
 | Collision and trigger events | **Ready as a foundation** | Collision/trigger events and contact manifolds are supported; editor Play mode exposes contact buffers. No graph event bindings or landing/bounce controller exists.                                                                     |
 | Physics queries              | **Ready as a foundation** | Raycast, shapecast, and overlap exist in the abstract API and Rapier backend. Node/Custom Node SDK bindings are absent.                                                                                                                  |
 | Input                        | **Partial**               | Keyboard/pointer `InputManager` produces action-like vehicle inputs and has attach/detach/enable lifecycle. It is vehicle-shaped rather than a general provider/action registry; no replay injection or future mobile provider boundary. |
-| Object pooling               | **Partial foundation**    | Entity activation and deterministic lifecycle hooks exist. The universal pool component/system, authored baseline reset, capacity policy, and integrations remain deferred.                                                             |
+| Object pooling               | **Ready as a foundation** | `@haku/pool` provides prefab-backed serializable configuration, deterministic generational handles, authored hierarchy baselines, bounded growth/exhaustion policies, runtime scopes, graph/engine lifecycle integration, metrics, general SDK/nodes, and a 10,000-cycle playground diagnostic. |
 | Runtime DOM UI               | **Absent**                | Editor UI is React. Production games have no serializable UI document, DOM renderer, UI service, or visual UI editor.                                                                                                                    |
 | Audio                        | **Absent**                | No audio asset, component, backend abstraction, mixer, Web Audio implementation, or graph API was found.                                                                                                                                 |
 | Save/storage                 | **Partial foundation**    | M06 defines storage-agnostic async `SaveService` checkpoint entries, checksummed/fingerprinted records, migrations, and per-graph fallback. Save-slot ownership, IndexedDB, replication, platform adapters, and graph service nodes remain M10d/M10f. |
@@ -97,8 +97,8 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
 | Scheduler-owned accumulator     | Graph runtime adds no loop or accumulator                                    |
 | Typed gameplay graph compiler   | Graph authoring, diagnostics, and shared editor/headless diagnostic execution are implemented |
 | Runtime adapter boundary        | Browser project-code compilation, sandboxed Play, and custom component/editor-extension adapters are implemented |
-| Hierarchy activation foundation | Build pooling and graph lifecycle integrations on the existing contract      |
-| No runtime pooling              | Package-level pool built on entity activation and baseline reset             |
+| Hierarchy activation foundation | Pooling and graph lifecycle integrations now reuse the existing contract      |
+| Runtime entity pooling          | Package-level pool uses authored baseline reset and external resource lifecycle |
 | Editor React UI only            | Separate production DOM UI subsystem and UI assets                           |
 | Checkpoint persistence hooks    | Add save-slot storage, replication, and platform capabilities in M10d        |
 | Browser-local code toolchain    | Separate gameplay/editor outputs and trust-gated component extensions are implemented; static ZIP export remains M10e |

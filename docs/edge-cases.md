@@ -158,6 +158,19 @@ Manual viewport checks **supplement** automated tests — never replace them.
 | Create child/parent without selection | `Selection required to create a child entity` | `entity-placement.ts` |
 | Place unknown prefab | `Prefab not found: {id}` | `world-commands.ts`, serializer |
 
+### Entity pools
+
+| Input / transition | Result |
+| ------------------ | ------ |
+| Prewarm exceeds maximum, capacity exceeds maximum, or a bound is not an integer | Reject before allocation with a clear pool validation error |
+| Fixed pool has no inactive lease | Apply declared `return-null`, `throw`, or deterministic `reuse-oldest` exhaustion policy |
+| Handle belongs to another pool, is already released, or predates a reacquire | Reject as cross-pool, unknown, or stale; generation prevents releasing the new lease |
+| Acquire lifecycle participant fails | Roll back root activity, scope, and baseline; the inactive instance remains reusable |
+| Release after runtime hierarchy/component mutation | Remove runtime-added descendants/components and restore authored names, parents, activity, component data, and missing authored entities |
+| Release has graph/tasks/subscriptions/flags | Destroy graph instances, abort lease tasks, dispose cleanups in reverse order, and clear flags before reuse |
+| Release has render/physics state | Remove render objects and physics bodies synchronously; reacquire creates a fresh zero-velocity body from baseline |
+| Long-running acquire/release loop | Reuse the bounded instance set; playground diagnostic checks 10,000 cycles and ends with zero active leases |
+
 ---
 
 ## Atypical user actions

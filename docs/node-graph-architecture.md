@@ -282,6 +282,17 @@ events, and UI honor hierarchy activity.
 - prewarm, capacity, maximum, expansion/exhaustion policy, release-all, clear, metrics, graph
   nodes, and SDK bindings are universal—not Bounce Run code.
 
+Implemented in M10a: the public `EntityPool` wraps a private `PoolSystem`; a
+`pool/entity/generation` handle rejects stale or cross-pool releases. Baselines retain
+schema-parsed component data, names, authored activity, and hierarchy, while release removes
+runtime-added descendants/components and restores removed authored members. Lease scopes
+abort tasks, dispose subscriptions/resources in reverse order, and clear flags. Graph
+participants destroy and recreate instances, and the engine participant reconciles render
+objects and physics bodies synchronously so reacquired bodies start with no retained velocity.
+Future audio implementations use the same lifecycle participant boundary rather than adding
+pool-specific ownership. Acquire/release/prewarm/release-all/clear nodes declare the bounded
+`pool` resource and `pool` effect; metrics is a read-only checkpoint-safe node.
+
 ## Checkpoint and rewind
 
 Each root graph instance has at most one active checkpoint. Creating a new one atomically
