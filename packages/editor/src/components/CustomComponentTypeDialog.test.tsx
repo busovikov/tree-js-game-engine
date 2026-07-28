@@ -10,13 +10,7 @@ afterEach(cleanup)
 describe('CustomComponentTypeDialog', () => {
   it('authors a visual component name and numeric field', () => {
     const onCreate = vi.fn()
-    render(
-      <CustomComponentTypeDialog
-        open
-        onClose={() => undefined}
-        onCreate={onCreate}
-      />,
-    )
+    render(<CustomComponentTypeDialog open onClose={() => undefined} onCreate={onCreate} />)
 
     fireEvent.change(screen.getByLabelText('Component name'), {
       target: { value: 'Mover' },
@@ -24,6 +18,7 @@ describe('CustomComponentTypeDialog', () => {
     fireEvent.change(screen.getByLabelText('Field name'), {
       target: { value: 'speed' },
     })
+    fireEvent.click(screen.getByLabelText('Include speed gizmo and sandbox widget'))
     const defaultInput = screen.getByLabelText('Default value')
     fireEvent.change(defaultInput, { target: { value: '4' } })
     fireEvent.blur(defaultInput)
@@ -32,6 +27,7 @@ describe('CustomComponentTypeDialog', () => {
     expect(onCreate).toHaveBeenCalledWith({
       name: 'Mover',
       fields: [{ name: 'speed', type: 'number', default: 4 }],
+      editorExtensionExample: 'speed-controls',
     })
   })
 })

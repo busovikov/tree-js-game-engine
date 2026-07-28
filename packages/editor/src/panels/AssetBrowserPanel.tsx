@@ -452,8 +452,7 @@ export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
   const [renamingPath, setRenamingPath] = useState<string | null>(null)
   const [renameDraft, setRenameDraft] = useState('')
   const [renameError, setRenameError] = useState<string | null>(null)
-  const [componentTypeDialogOpen, setComponentTypeDialogOpen] =
-    useState(false)
+  const [componentTypeDialogOpen, setComponentTypeDialogOpen] = useState(false)
 
   const shellActionsAvailable = projectService.supportsShellActions()
   const shellActionsEnabled = projectService.canUseShellActions()
@@ -725,6 +724,14 @@ export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
         name: draft.name,
         version: 1,
         fields: [...draft.fields],
+        ...(draft.editorExtensionExample === 'speed-controls'
+          ? {
+              editorExtension: {
+                gizmoProvider: 'speed-radius',
+                customWidget: 'speed-slider',
+              },
+            }
+          : {}),
       })
       setComponentTypeDialogOpen(false)
       setSelectedPath(path)
