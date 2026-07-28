@@ -296,6 +296,10 @@ queries taint the dependency chain. Rapier internal state is never snapshotted o
 Unknown effects, unsafe runtime handles, or an unbounded mutable scope also reject the
 checkpoint. Compiler and runtime both enforce eligibility.
 
+Implemented in M06: compiled checkpoint metadata contains the bounded node/resource scope,
+eligibility dependencies, and complete causal chains. Eligibility is checkpoint-local, so
+an unrelated dynamic body does not taint independent logic.
+
 ### Atomic rewind
 
 Rewind to an already created checkpoint completes within one engine tick:
@@ -311,6 +315,11 @@ BeforeRewind
 
 Presentation is reconciled in the same tick. Physics is not restored; eligibility rules
 prevent a promise of exact continuation where dynamic behavior mattered.
+
+Implemented in M06: `GraphInstance` keeps one active checkpoint, records the scheduler queue
+watermark, cancels its prior execution generation, removes only matching post-watermark
+commands, restores the proven scope, recomputes derived resources, and reconciles stable
+effect IDs between `BeforeRewind` and `AfterRewind`.
 
 ### Async checkpoint policies
 
@@ -331,6 +340,11 @@ Policies are stored against stable async callsite UUIDs and revalidated after gr
 Wait policies support timeout. Promise, callbacks, DOM objects, streams, and arbitrary
 handles are never serialized.
 
+Implemented in M06: checkpoint creation is an async barrier. Restart adapters declare
+pure/idempotent safety and persisted inputs; resume adapters declare a state-machine ID and
+serialized state; reconnect adapters persist a durable operation ID and status. Restored
+work remains owned by the graph instance execution scope.
+
 ### Persistence and resume
 
 Checkpoint creation in memory is immediate once its barrier is satisfied. Persistence is a
@@ -349,6 +363,11 @@ On load:
 
 Graph authors define checkpoint migration and a fallback entry. If migration cannot apply,
 only the incompatible graph checkpoint falls back; the entire save slot remains usable.
+
+Implemented in M06: the runtime defines only the async `SaveService` checkpoint-entry
+contract. It does not implement IndexedDB, save-slot storage, replication, or platform
+backends; those remain M10d. Persistent records carry plan, registry, scope, reference, and
+checksum evidence, and registered migrations operate before scoped resume.
 
 ## Browser-only authoring and custom code
 

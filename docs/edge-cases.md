@@ -134,6 +134,15 @@ Manual viewport checks **supplement** automated tests — never replace them.
 | Runtime adapter throws | Wrap as `runtime.node-error` and append a deterministic error trace entry |
 | Subgraph compiled plan is missing or has the wrong graph ID | Reject before executing the child |
 | Runtime `NodeRef` targets another/unknown instance node or undeclared state | Reject; return only cloned declared exported state |
+| Unrelated dynamic body exists outside a checkpoint scope | Independent bounded logic remains checkpoint-eligible |
+| Scoped node directly/transitively reads dynamic physics or an unprovable query | Reject checkpoint metadata with the complete causal chain; never snapshot Rapier |
+| Checkpoint is created while async work may be live | Require an exact compiler-emitted callsite UUID and one supported wait/restart/resume/reconnect/materialized/cancel-fallback/reject policy |
+| Wait policy timeout is non-positive/non-finite or expires | Reject with typed `CheckpointPolicyError`; do not replace the active checkpoint |
+| Restart/resume/reconnect adapter lacks persisted inputs, state-machine identity, or durable operation identity | Reject the checkpoint barrier; arbitrary promises/handles are never serialized |
+| Rewind has post-checkpoint queued work | Cancel the prior execution generation and remove only this instance's matching post-watermark scheduler commands |
+| Rewind encounters prior score/audio/event effects | Reconcile stable effect IDs without replaying delivered one-shot effects |
+| Persistent record checksum, plan/registry/scope/reference fingerprint, or migration is incompatible | Run only the graph's fallback entry; do not delete the checkpoint or invalidate unrelated save-slot data |
+| Persistent checkpoint restores successfully | Restore/recompute the bounded scope and dispatch `resume-from-checkpoint`, never repeat start flow |
 
 ### Hierarchy / world invariants
 

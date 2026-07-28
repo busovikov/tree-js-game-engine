@@ -131,6 +131,11 @@
 | `NodeExecutionRequest`, `NodeExecutionResult` | Stable snapshot data/resource reads, scoped child tasks, flow/events, and exported state |
 | `GraphRuntimeError`, `GraphRuntimeLimits` | Structured runtime failures and runaway budget |
 | `ResourceSnapshotProvider` | Headless declared-resource snapshot adapter |
+| `GraphCheckpoint`, `CreateCheckpointOptions` | One active bounded checkpoint plus callsite-keyed async policy barrier |
+| `checkpointableTask()`, `CheckpointableTaskAdapter` | Owned async policy capture for pure/idempotent restart, state-machine resume, durable reconnect, and typed fallback |
+| `CheckpointPolicyError` | Typed invalid-callsite, unsupported-policy, reject, materialization, and wait-timeout failures |
+| `SaveService`, `PersistentCheckpointRecord` | Storage-agnostic async checkpoint-entry persistence contract and checksummed envelope |
+| `CheckpointMigrationRegistry` | Registered plan-fingerprint migration before persistent scoped resume |
 
 ### `@haku/serializer` — `packages/serializer/src/index.ts`
 

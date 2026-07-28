@@ -39,7 +39,7 @@ The program is done only when:
 | M03  | World activation, lifecycle, and unified scheduler              | M02        | Complete                                 |
 | M04  | Graph schema, type/effect system, and compiler                  | M03        | Complete                                 |
 | M05  | Graph interpreter, domains, queues, and tracing                 | M04        | Complete                                 |
-| M06  | Checkpoint, rewind, async policies, and persistence hooks       | M05        | Pending                                  |
+| M06  | Checkpoint, rewind, async policies, and persistence hooks       | M05        | Complete                                 |
 | M07  | Minimal graph editor and diagnostic scene                       | M06        | Pending                                  |
 | M08  | Browser project TypeScript/build/trust tooling                  | M07        | Pending                                  |
 | M09  | Custom components and editor extensions                         | M08        | Pending                                  |
@@ -174,15 +174,15 @@ Scope:
 
 Acceptance:
 
-- [ ] Independent logic can checkpoint while unrelated dynamic bodies exist.
-- [ ] Direct/transitive dynamic-physics dependencies are rejected with a causal chain.
-- [ ] Unknown effects and unprovable queries are rejected.
-- [ ] Rewind restores only the proven scope and removes post-checkpoint work in one tick.
-- [ ] Effectful nodes do not duplicate score/audio/events on restore.
-- [ ] Wait, restart, resume, reconnect, materialized, cancel-fallback, and reject policies
+- [x] Independent logic can checkpoint while unrelated dynamic bodies exist.
+- [x] Direct/transitive dynamic-physics dependencies are rejected with a causal chain.
+- [x] Unknown effects and unprovable queries are rejected.
+- [x] Rewind restores only the proven scope and removes post-checkpoint work in one tick.
+- [x] Effectful nodes do not duplicate score/audio/events on restore.
+- [x] Wait, restart, resume, reconnect, materialized, cancel-fallback, and reject policies
       each have contract and runtime tests.
-- [ ] Checkpoint Inspector metadata can enumerate dependencies and supported policies.
-- [ ] Persistent restore calls `OnResumeFromCheckpoint`; migration/fallback failure does not
+- [x] Checkpoint Inspector metadata can enumerate dependencies and supported policies.
+- [x] Persistent restore calls `OnResumeFromCheckpoint`; migration/fallback failure does not
       invalidate the entire save slot.
 
 ## M07 — Minimal graph editor and diagnostic scene
