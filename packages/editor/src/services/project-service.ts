@@ -350,7 +350,13 @@ export class ProjectService {
         : {
             listFiles: async () => browserProjectStore.listWorkspaceFiles(),
             readFile: (path) => browserProjectStore.readWorkspaceFile(path),
-            writeFile: (path, text) => browserProjectStore.writeWorkspaceFile(path, text),
+            writeFile: async (path, text) => {
+              const written = await browserProjectStore.writeWorkspaceFile(path, text)
+              if (this.storage === 'dev-target') {
+                await this.writeDevTargetFileToDisk(path, text)
+              }
+              return written
+            },
           }
 
     this.codeWorkspace = await BrowserProjectWorkspace.open({

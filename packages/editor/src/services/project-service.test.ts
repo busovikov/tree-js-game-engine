@@ -304,4 +304,56 @@ describe('ProjectService browser code workspace', () => {
 
     expect(workspace.readText('src/empty.ts')).toBe('')
   })
+
+  it('writes dev-target code workspace creates and saves through to disk', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const service = new ProjectService()
+    service.openFromManifest(
+      'dev-target-project',
+      validateProjectManifest({
+        schemaVersion: 1,
+        name: 'Dev target project',
+        entryScene: {
+          $ref: '10000000-0000-4000-8000-000000000001',
+          type: SCENE_ASSET_TYPE,
+        },
+        assetsDir: 'public/assets',
+        scriptsDir: 'scripts',
+        assets: [
+          {
+            id: '10000000-0000-4000-8000-000000000001',
+            type: SCENE_ASSET_TYPE,
+            path: 'scenes/main.scene.json',
+          },
+        ],
+      }),
+    )
+    ;(service as unknown as { storage: 'dev-target' }).storage = 'dev-target'
+    const workspace = await service.openCodeWorkspace()
+
+    await workspace.createText('src/gameplay.ts', 'export const speed = 1\n')
+    workspace.editText('src/gameplay.ts', 'export const speed = 2\n')
+    await workspace.saveText('src/gameplay.ts')
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/__haku/dev/file',
+      expect.objectContaining({
+        method: 'PUT',
+        headers: { 'X-Haku-File-Path': 'src/gameplay.ts' },
+        body: 'export const speed = 1\n',
+      }),
+    )
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/__haku/dev/file',
+      expect.objectContaining({
+        method: 'PUT',
+        headers: { 'X-Haku-File-Path': 'src/gameplay.ts' },
+        body: 'export const speed = 2\n',
+      }),
+    )
+  })
 })
