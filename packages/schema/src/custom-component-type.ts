@@ -3,6 +3,19 @@ import { ComponentTypeIdSchema, type ComponentTypeId } from './component-envelop
 
 const FieldNameSchema = z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/)
 const InspectorLabelSchema = z.string().min(1).optional()
+const SchedulerPhaseSchema = z.enum([
+  'FrameInput',
+  'AccumulateTime',
+  'FixedInputSnapshot',
+  'FixedPrePhysics',
+  'PhysicsStep',
+  'PostPhysics',
+  'FixedGameplay',
+  'FrameGameplay',
+  'LateUpdate',
+  'Presentation',
+  'Render',
+])
 
 const NumberFieldSchema = z
   .object({
@@ -172,6 +185,12 @@ export const CustomComponentTypeAssetSchema = z
     typescriptBehavior: z
       .object({
         exportName: z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/),
+        domain: SchedulerPhaseSchema,
+        query: z.array(ComponentTypeIdSchema),
+        reads: z.array(z.string().min(1)),
+        writes: z.array(z.string().min(1)),
+        effects: z.array(z.string().min(1)),
+        commands: z.array(z.enum(['add', 'set', 'remove'])),
       })
       .strict()
       .optional(),

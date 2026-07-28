@@ -14,6 +14,7 @@ export type VisualComponentFieldDraft =
 export interface VisualComponentTypeDraft {
   readonly name: string
   readonly fields: readonly VisualComponentFieldDraft[]
+  readonly behaviorExample?: 'accelerate-speed'
   readonly editorExtensionExample?: 'speed-controls'
 }
 
@@ -90,7 +91,10 @@ export const CustomComponentTypeDialog = memo(function CustomComponentTypeDialog
           name: field.name.trim(),
         })),
         ...(hasNumericSpeedField && includeSpeedControls
-          ? { editorExtensionExample: 'speed-controls' as const }
+          ? {
+              behaviorExample: 'accelerate-speed' as const,
+              editorExtensionExample: 'speed-controls' as const,
+            }
           : {}),
       })
     } catch (reason) {
@@ -259,9 +263,11 @@ export const CustomComponentTypeDialog = memo(function CustomComponentTypeDialog
           Add Field
         </button>
         <label className="mesh-field" style={{ marginTop: 12 }}>
-          <span className="mesh-field__label">Include speed gizmo and sandbox widget</span>
+          <span className="mesh-field__label">
+            Include speed behavior, gizmo, and sandbox widget
+          </span>
           <input
-            aria-label="Include speed gizmo and sandbox widget"
+            aria-label="Include speed behavior, gizmo, and sandbox widget"
             type="checkbox"
             checked={includeSpeedControls && hasNumericSpeedField}
             disabled={saving || !hasNumericSpeedField}

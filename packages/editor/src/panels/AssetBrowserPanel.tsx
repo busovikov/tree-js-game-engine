@@ -718,12 +718,26 @@ export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
           .replace(/^-|-$/g, '')
           .toLowerCase() || 'component'
       const path = `${currentDir}/${baseName}.component.json`
+      const componentId = crypto.randomUUID()
       await projectService.createCustomComponentTypeAsset(path, {
         schemaVersion: 1,
-        id: crypto.randomUUID(),
+        id: componentId,
         name: draft.name,
         version: 1,
         fields: [...draft.fields],
+        ...(draft.behaviorExample === 'accelerate-speed'
+          ? {
+              typescriptBehavior: {
+                exportName: 'accelerateMovers',
+                domain: 'FixedGameplay',
+                query: [componentId],
+                reads: [`component:${componentId}`],
+                writes: [`component:${componentId}`],
+                effects: ['world.write'],
+                commands: ['set' as const],
+              },
+            }
+          : {}),
         ...(draft.editorExtensionExample === 'speed-controls'
           ? {
               editorExtension: {

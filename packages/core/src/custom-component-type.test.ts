@@ -48,7 +48,15 @@ describe('custom component type assets', () => {
         $ref: '10000000-0000-4000-8000-000000000082',
         type: '20000000-0000-4000-8000-000000000007',
       },
-      typescriptBehavior: { exportName: 'accelerateMovers' },
+      typescriptBehavior: {
+        exportName: 'accelerateMovers',
+        domain: 'FixedGameplay',
+        query: ['42000000-0000-4000-8000-000000000002'],
+        reads: ['component:42000000-0000-4000-8000-000000000002'],
+        writes: ['component:42000000-0000-4000-8000-000000000002'],
+        effects: ['world.write'],
+        commands: ['set'],
+      },
       editorExtension: {
         gizmoProvider: 'speed-radius',
         customWidget: 'speed-slider',
@@ -103,7 +111,15 @@ describe('custom component type assets', () => {
         $ref: '10000000-0000-4000-8000-000000000082',
         type: '20000000-0000-4000-8000-000000000007',
       },
-      typescriptExport: 'accelerateMovers',
+      typescript: {
+        exportName: 'accelerateMovers',
+        domain: 'FixedGameplay',
+        query: ['42000000-0000-4000-8000-000000000002'],
+        reads: ['component:42000000-0000-4000-8000-000000000002'],
+        writes: ['component:42000000-0000-4000-8000-000000000002'],
+        effects: ['world.write'],
+        commands: ['set'],
+      },
     })
     expect(definition.editorExtension).toEqual({
       gizmoProvider: 'speed-radius',

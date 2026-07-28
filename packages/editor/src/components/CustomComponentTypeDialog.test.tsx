@@ -18,7 +18,7 @@ describe('CustomComponentTypeDialog', () => {
     fireEvent.change(screen.getByLabelText('Field name'), {
       target: { value: 'speed' },
     })
-    fireEvent.click(screen.getByLabelText('Include speed gizmo and sandbox widget'))
+    fireEvent.click(screen.getByLabelText('Include speed behavior, gizmo, and sandbox widget'))
     const defaultInput = screen.getByLabelText('Default value')
     fireEvent.change(defaultInput, { target: { value: '4' } })
     fireEvent.blur(defaultInput)
@@ -27,6 +27,7 @@ describe('CustomComponentTypeDialog', () => {
     expect(onCreate).toHaveBeenCalledWith({
       name: 'Mover',
       fields: [{ name: 'speed', type: 'number', default: 4 }],
+      behaviorExample: 'accelerate-speed',
       editorExtensionExample: 'speed-controls',
     })
   })

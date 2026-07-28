@@ -84,6 +84,15 @@ describe('CustomComponentTypeAssetSchema', () => {
         $ref: '10000000-0000-4000-8000-000000000081',
         type: '20000000-0000-4000-8000-000000000007',
       },
+      typescriptBehavior: {
+        exportName: 'accelerateMovers',
+        domain: 'FixedGameplay',
+        query: [componentTypeId],
+        reads: [`component:${componentTypeId}`],
+        writes: [`component:${componentTypeId}`],
+        effects: ['world.write'],
+        commands: ['set'],
+      },
       editorExtension: {
         gizmoProvider: 'speed-radius',
         customWidget: 'speed-slider',
@@ -91,6 +100,11 @@ describe('CustomComponentTypeAssetSchema', () => {
     })
 
     expect(asset.behaviorGraph?.$ref).toBe('10000000-0000-4000-8000-000000000081')
+    expect(asset.typescriptBehavior).toMatchObject({
+      exportName: 'accelerateMovers',
+      domain: 'FixedGameplay',
+      commands: ['set'],
+    })
     expect(asset.editorExtension).toEqual({
       gizmoProvider: 'speed-radius',
       customWidget: 'speed-slider',

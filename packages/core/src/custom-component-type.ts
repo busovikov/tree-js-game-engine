@@ -142,7 +142,14 @@ export function createCustomComponentDefinition(
             ...(asset.behaviorGraph ? { graph: AssetRefSchema.parse(asset.behaviorGraph) } : {}),
             ...(asset.typescriptBehavior
               ? {
-                  typescriptExport: asset.typescriptBehavior.exportName,
+                  typescript: {
+                    ...asset.typescriptBehavior,
+                    query: [...asset.typescriptBehavior.query],
+                    reads: [...asset.typescriptBehavior.reads],
+                    writes: [...asset.typescriptBehavior.writes],
+                    effects: [...asset.typescriptBehavior.effects],
+                    commands: [...asset.typescriptBehavior.commands],
+                  },
                 }
               : {}),
           },

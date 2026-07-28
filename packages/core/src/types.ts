@@ -1,5 +1,6 @@
 import type { ZodType, ZodTypeDef } from 'zod'
 import type { AssetTypeId, AssetRef, ComponentTypeId, RenderSettings } from '@haku/schema'
+import type { SchedulerPhase } from './scheduler.js'
 
 export interface EntityId {
   readonly __brand: 'EntityId'
@@ -29,7 +30,15 @@ export interface ComponentDefinition<T = unknown> {
   readonly inspector?: ComponentInspectorDescriptor
   readonly behavior?: {
     readonly graph?: AssetRef
-    readonly typescriptExport?: string
+    readonly typescript?: {
+      readonly exportName: string
+      readonly domain: SchedulerPhase
+      readonly query: readonly string[]
+      readonly reads: readonly string[]
+      readonly writes: readonly string[]
+      readonly effects: readonly string[]
+      readonly commands: readonly ('add' | 'set' | 'remove')[]
+    }
   }
   readonly editorExtension?: {
     readonly gizmoProvider?: string

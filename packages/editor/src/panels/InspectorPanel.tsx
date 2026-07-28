@@ -42,7 +42,11 @@ import {
   type MeshMaterial,
   type MeshRenderer,
 } from '@haku/engine'
-import { type ComponentDefinition, type EntityId } from '@haku/core'
+import {
+  type ComponentBehaviorTraceEntry,
+  type ComponentDefinition,
+  type EntityId,
+} from '@haku/core'
 import type { Transform } from '@haku/schema'
 import { resolveActiveCameraId } from '@haku/engine'
 import { getEngineComponent } from '@haku/engine'
@@ -56,6 +60,7 @@ import {
   applyGizmoComponentEdit,
   createExampleSpeedGizmoProvider,
 } from '../extensions/editor-extension-host.js'
+import { previewComponentBehaviorTrace } from '../extensions/component-behavior-trace.js'
 import { CameraFields, normalizeCamera } from '../components/CameraFields.js'
 import { LightFields, normalizeLight } from '../components/LightFields.js'
 import { TransformFields } from '../components/TransformFields.js'
@@ -288,8 +293,13 @@ export const InspectorPanel = memo(function InspectorPanel() {
   )
 
   const [nameDraft, setNameDraft] = useState(headerLabel)
+  const [behaviorTrace, setBehaviorTrace] = useState<{
+    readonly componentId: string
+    readonly entries: readonly ComponentBehaviorTraceEntry[]
+  } | null>(null)
   useEffect(() => {
     setNameDraft(headerLabel)
+    setBehaviorTrace(null)
   }, [selectedIds.map((id) => id.value).join(','), headerLabel])
 
   const forEachSelected = useCallback(
@@ -1134,6 +1144,69 @@ export const InspectorPanel = memo(function InspectorPanel() {
                       })
                     }
                   />
+                  {!isBuiltin &&
+                    component.behavior?.typescript &&
+                    projectService.getTrustMode() !== 'imported-untrusted' && (
+                      <>
+                        <div className="haku-inspector__section-toolbar">
+                          <span>Batch behavior: {component.behavior.typescript.exportName}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const entries = previewComponentBehaviorTrace(
+                                component,
+                                world,
+                                (candidateTypeId) => {
+                                  const projectComponent = projectService
+                                    .getCustomComponentTypes()
+                                    .find((candidate) => candidate.id === candidateTypeId)
+                                  if (projectComponent) return projectComponent
+                                  for (const entityId of world.getAllEntities()) {
+                                    const candidate = world.getComponentDefinition(
+                                      entityId,
+                                      candidateTypeId,
+                                    )
+                                    if (candidate) return candidate
+                                  }
+                                  return getEngineComponent(candidateTypeId)
+                                },
+                              )
+                              setBehaviorTrace({
+                                componentId: component.id,
+                                entries,
+                              })
+                            }}
+                          >
+                            Trace component behavior
+                          </button>
+                        </div>
+                        {behaviorTrace?.componentId === component.id && (
+                          <div
+                            role="log"
+                            aria-label={`${component.name} behavior trace`}
+                            className="haku-inspector__extension-trace"
+                          >
+                            {behaviorTrace.entries.map((entry) => (
+                              <div key={entry.sequence}>
+                                {entry.kind} · {entry.domain} · {entry.entityCount}{' '}
+                                {entry.entityCount === 1 ? 'entity' : 'entities'} · reads{' '}
+                                {entry.reads.join(', ') || 'none'} · writes{' '}
+                                {entry.writes.join(', ') || 'none'} · effects{' '}
+                                {entry.effects.join(', ') || 'none'}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  {!isBuiltin &&
+                    component.behavior?.typescript &&
+                    projectService.getTrustMode() === 'imported-untrusted' && (
+                      <div role="status" className="haku-inspector__extension-unresolved">
+                        Behavior {component.behavior.typescript.exportName} is unresolved because
+                        this project is untrusted.
+                      </div>
+                    )}
                   {!isBuiltin &&
                     component.editorExtension?.gizmoProvider === 'speed-radius' &&
                     projectService.getTrustMode() !== 'imported-untrusted' &&

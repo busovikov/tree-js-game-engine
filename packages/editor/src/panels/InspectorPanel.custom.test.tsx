@@ -27,6 +27,15 @@ describe('InspectorPanel project components', () => {
         gizmoProvider: 'speed-radius',
         customWidget: 'speed-slider',
       },
+      typescriptBehavior: {
+        exportName: 'accelerateMovers',
+        domain: 'FixedGameplay',
+        query: ['42000000-0000-4000-8000-000000000072'],
+        reads: ['component:42000000-0000-4000-8000-000000000072'],
+        writes: ['component:42000000-0000-4000-8000-000000000072'],
+        effects: ['world.write'],
+        commands: ['set'],
+      },
       fields: [
         {
           name: 'speed',
@@ -59,6 +68,12 @@ describe('InspectorPanel project components', () => {
     expect(screen.getByText('Mover')).toBeTruthy()
     expect(screen.getByLabelText('Move Speed')).toBeTruthy()
     expect(screen.getByTitle('Mover custom widget sandbox')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Trace component behavior' }))
+    const trace = screen.getByRole('log', { name: 'Mover behavior trace' })
+    expect(trace.textContent).toContain('FixedGameplay')
+    expect(trace.textContent).toContain('1 entity')
+    expect(trace.textContent).toContain('world.write')
 
     fireEvent.click(screen.getByLabelText('Increase speed with gizmo'))
     expect(useEditorStore.getState().world!.getComponent(entity, mover)).toEqual({ speed: 5 })
