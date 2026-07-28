@@ -464,6 +464,56 @@ export class EntityPool {
   }
 }
 
+export interface PoolService {
+  register(pool: EntityPool): void
+  unregister(poolId: string): void
+  get(poolId: string): EntityPool | undefined
+  require(poolId: string): EntityPool
+}
+
+export class PoolRegistry implements PoolService {
+  private readonly pools = new Map<string, EntityPool>()
+
+  register(pool: EntityPool): void {
+    if (this.pools.has(pool.id)) throw new Error(`Duplicate pool ${pool.id}`)
+    this.pools.set(pool.id, pool)
+  }
+
+  unregister(poolId: string): void {
+    this.pools.delete(poolId)
+  }
+
+  get(poolId: string): EntityPool | undefined {
+    return this.pools.get(poolId)
+  }
+
+  require(poolId: string): EntityPool {
+    const pool = this.get(poolId)
+    if (!pool) throw new Error(`Unknown pool ${poolId}`)
+    return pool
+  }
+}
+
+export interface PoolSdk {
+  prewarm(poolId: string, count?: number): void
+  acquire(poolId: string): PoolHandle | null
+  release(handle: PoolHandle): void
+  releaseAll(poolId: string): void
+  clear(poolId: string): void
+  metrics(poolId: string): PoolMetrics
+}
+
+export function createPoolSdk(service: PoolService): PoolSdk {
+  return {
+    prewarm: (poolId, count) => service.require(poolId).prewarm(count),
+    acquire: (poolId) => service.require(poolId).acquire(),
+    release: (handle) => service.require(handle.pool).release(handle),
+    releaseAll: (poolId) => service.require(poolId).releaseAll(),
+    clear: (poolId) => service.require(poolId).clear(),
+    metrics: (poolId) => service.require(poolId).metrics(),
+  }
+}
+
 function captureBaseline(world: IWorld, root: EntityId): readonly EntityBaseline[] {
   return collectSubtree(world, root).map((id) => ({
     id,
@@ -541,3 +591,10 @@ export function createGraphPoolParticipant(
     },
   }
 }
+
+export {
+  POOL_GRAPH_CONTRACTS,
+  registerPoolNodeContracts,
+  registerPoolRuntimeAdapters,
+  type PoolGraphContracts,
+} from './graph-nodes.js'
