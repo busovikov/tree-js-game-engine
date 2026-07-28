@@ -23,6 +23,15 @@ export {
 } from './code/code-editor-provider.js'
 export { openProjectInExternalVsCode } from './code/external-vscode.js'
 export {
+  createPlaySandbox,
+  type PlayCapabilityValue,
+  type PlaySandboxFrame,
+  type PlaySandboxMessagePort,
+  type PlaySandboxOptions,
+  type PlaySandboxResult,
+  type PlaySandboxSession,
+} from './code/play-sandbox.js'
+export {
   DefaultGraphCanvasProvider,
   createLazyGraphCanvasProvider,
   type GraphCanvasProvider,
