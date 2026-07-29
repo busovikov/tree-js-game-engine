@@ -185,6 +185,25 @@
 | ------ | ------- |
 | `WebAudioBackend`, `createWebAudioBackend()` | Gesture-gated Web Audio decoding, buses, spatial/listener graph, pause, and disposal |
 
+### `@haku/storage` — `packages/storage/src/index.ts`
+
+| Export | Purpose |
+| ------ | ------- |
+| `ISaveStorage`, `SaveSlotRecord`, `ReplayArtifactRecord` | Async typed local save and separate replay namespaces |
+| `InMemorySaveStorage`, `IndexedDbSaveStorage` | Defensive expected-revision backends with estimates and typed failures |
+| `SaveStorageConflictError`, `SaveStorageQuotaError`, `SaveStorageSerializationError`, `SaveStorageUnavailableError` | Stable storage failure contract |
+| `SaveReplicationAdapter`, `NoReplicationAdapter`, `PlatformManagedReplicationAdapter` | Honest none/explicit/platform-managed capability union |
+| `MockExplicitReplicationAdapter` | Revision/conflict, rate/size limit, and optional finite numeric-stat contract proof |
+| `SaveSlotCheckpointService`, `createSaveSlotData()` | Graph `SaveService` adapter preserving game and sibling checkpoint data |
+
+### `@haku/platform` — `packages/platform/src/index.ts`
+
+| Export | Purpose |
+| ------ | ------- |
+| `PlatformAdapter`, `PlatformCapabilities`, `PlatformAuthProvider` | Provider-neutral capability/lifecycle/auth boundary |
+| `PlatformRuntimeControls` | Narrow simulation pause, input enable, and audio pause callbacks |
+| `BrowserPlatformAdapter` | Distinct visibility/focus lifecycle and deterministic composed pause reasons |
+
 ### `@haku/serializer` — `packages/serializer/src/index.ts`
 
 | Export | Purpose |
@@ -445,6 +464,10 @@ Append-only project log: `logs/haku.log` via `projectService.appendProjectLog()`
 | `webkitdirectory` fallback | https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/webkitdirectory |
 | Fetch API | https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API |
 | Web Workers | https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API |
+| IndexedDB API | https://www.w3.org/TR/IndexedDB/ |
+| `IDBTransaction` | https://developer.mozilla.org/en-US/docs/Web/API/IDBTransaction |
+| Storage quotas and eviction | https://developer.mozilla.org/en-US/docs/Web/API/Storage_API/Storage_quotas_and_eviction_criteria |
+| Page Visibility API | https://developer.mozilla.org/en-US/docs/Web/API/Page_Visibility_API |
 
 ### Web Audio
 
@@ -460,7 +483,8 @@ Append-only project log: `logs/haku.log` via `projectService.appendProjectLog()`
 
 ### Editor/platform references
 
-These references inform implemented editor tooling and later platform adapters.
+These references inform implemented editor tooling, generic platform contracts, and later
+provider-specific adapters.
 
 | Topic | URL |
 | --- | --- |

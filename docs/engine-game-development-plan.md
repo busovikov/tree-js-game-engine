@@ -46,7 +46,7 @@ The program is done only when:
 | M10a | Pool and activation integrations                                | M09        | Complete                                 |
 | M10b | DOM UI runtime and visual UI editor                             | M09        | Complete                                 |
 | M10c | Audio contracts, Web Audio, and editor support                  | M09        | Complete                                 |
-| M10d | Save storage, replication, and platform contracts               | M09        | Pending                                  |
+| M10d | Save storage, replication, and platform contracts               | M09        | Complete                                 |
 | M10e | Browser static export and ZIP                                   | M10b–M10d  | Pending                                  |
 | M10f | Cross-service graph nodes and contract integration              | M10a–M10e  | Pending                                  |
 | M11  | Bounce Run vertical slice                                       | M10f       | Pending                                  |
@@ -320,15 +320,26 @@ not that a human heard the tone.
 
 Scope and acceptance:
 
-- [ ] Add async `ISaveStorage`, IndexedDB, in-memory backend, typed slots/records, atomic
+- [x] Add async `ISaveStorage`, IndexedDB, in-memory backend, typed slots/records, atomic
       writes, quotas/errors, and separate replay artifacts.
-- [ ] Add replication modes `none`, `explicit`, and `platform-managed` plus honest
+- [x] Add replication modes `none`, `explicit`, and `platform-managed` plus honest
       capability queries.
-- [ ] Add `PlatformAdapter` lifecycle/auth/pause/input/audio capability boundary.
-- [ ] Mock explicit adapter supports revisions, conflicts, rate/size limits, and optional
+- [x] Add `PlatformAdapter` lifecycle/auth/pause/input/audio capability boundary.
+- [x] Mock explicit adapter supports revisions, conflicts, rate/size limits, and optional
       numeric stats.
-- [ ] Mock platform-managed adapter exposes no fake pull/push/flush/conflict API.
-- [ ] Persistent graph checkpoints roundtrip through save slots and migration/fallback.
+- [x] Mock platform-managed adapter exposes no fake pull/push/flush/conflict API.
+- [x] Persistent graph checkpoints roundtrip through save slots and migration/fallback.
+
+Implemented in M10d: `@haku/storage` provides defensive async in-memory and IndexedDB save
+slots, a separate replay store, atomic expected-revision writes, browser quota estimates,
+typed failures, honest replication-mode unions, and explicit mock limits/stats.
+`SaveSlotCheckpointService` preserves game and sibling data while graph-runtime owns
+migration and per-graph fallback. `@haku/platform` owns capability/auth/lifecycle contracts
+and composes visibility/platform pause with real simulation, input, and audio controls.
+The production playground proved persistent IndexedDB revisions, retained payload after a
+stale conflict, real estimate values, honest capabilities, and localhost-only resources in
+the user's Chrome. Chrome control could not reliably trigger a real hidden-tab transition;
+the visibility/focus distinction remains covered by deterministic adapter tests.
 
 ## M10e — Browser static export and ZIP
 

@@ -43,6 +43,11 @@ SceneDocument v1
   -> @haku/audio AudioRuntime
        -> headless or Web Audio backend
        -> Master plus Music/SFX/UI buses, listener pose, activation/pool cleanup
+  -> @haku/storage
+       -> in-memory or IndexedDB save slots + separate replay artifacts
+       -> expected-revision writes + optional explicit/platform-managed replication
+  -> @haku/platform BrowserPlatformAdapter
+       -> visibility/focus + simulation/input/audio controls
 
 Browser editor
   -> React + Zustand + command history
@@ -84,8 +89,8 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
 | Object pooling               | **Ready as a foundation** | `@haku/pool` provides prefab-backed serializable configuration, deterministic generational handles, authored hierarchy baselines, bounded growth/exhaustion policies, runtime scopes, graph/engine lifecycle integration, metrics, general SDK/nodes, and a 10,000-cycle playground diagnostic. |
 | Runtime DOM UI               | **Ready as a foundation** | `@haku/ui` provides strict UUID UI assets, native semantic DOM rendering without React, typed events, public service/SDK/graph mutations, asset closure, and visible playground proof. The React editor adds hierarchy, preview, Inspector, undo/redo, three desktop presets, and project persistence. |
 | Audio                        | **Ready as a foundation** | `@haku/audio` provides Audio Clip/AudioSource models, headless mixer/runtime, Master/Music/SFX/UI buses, one-shot/loop/spatial controls, listener pose, activation/pool cleanup, service/SDK/graph effects, and manifest closure. `@haku/audio-web` adds gesture-gated decoding/playback and deterministic disposal; the editor Inspector/preview and user-Chrome production diagnostic are verified. |
-| Save/storage                 | **Partial foundation**    | M06 defines storage-agnostic async `SaveService` checkpoint entries, checksummed/fingerprinted records, migrations, and per-graph fallback. Save-slot ownership, IndexedDB, replication, platform adapters, and graph service nodes remain M10d/M10f. |
-| Platform integration         | **Absent**                | No generic `PlatformAdapter` or capability model for Yandex/Poki-style lifecycle and save behavior.                                                                                                                                      |
+| Save/storage                 | **Ready as a foundation** | `@haku/storage` provides typed async in-memory/IndexedDB slots, separate replay artifacts, atomic expected-revision writes, estimates/errors, honest replication modes, explicit mock limits/stats, and a graph checkpoint adapter that preserves slot data. General graph save nodes remain M10f. |
+| Platform integration         | **Ready as a foundation** | `@haku/platform` provides honest lifecycle/auth/pause/input/audio capabilities, distinct visibility/focus state, composed pause reasons, and narrow browser runtime controls without provider SDK ownership. Provider-specific adapters remain deferred. |
 | Seeded random                | **Absent**                | A seeded demo description exists, but no general seeded RNG service or replay contract was found.                                                                                                                                        |
 | Replay/QA harness            | **Absent**                | There are tests and debug helpers, but no tick-action recorder, state hashes, replay artifact, or structured browser QA session report.                                                                                                  |
 | Tests                        | **Ready as a foundation** | Unit/integration coverage exists across core, schema, serializer, physics, engine, editor, and apps. Playwright/export gates and the new graph/generator suites are absent.                                                              |
@@ -105,7 +110,7 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
 | Runtime entity pooling          | Package-level pool uses authored baseline reset and external resource lifecycle |
 | Production/editor UI split      | React-free DOM UI runtime and separate React visual authoring are implemented |
 | Headless/browser audio split    | DOM-free contracts plus Web Audio adapter, service/graph, editor preview, and local asset closure are implemented |
-| Checkpoint persistence hooks    | Add save-slot storage, replication, and platform capabilities in M10d        |
+| Checkpoint persistence hooks    | Typed save slots, IndexedDB, replication modes, and platform lifecycle are implemented; graph service nodes remain M10f |
 | Browser-local code toolchain    | Separate gameplay/editor outputs and trust-gated component extensions are implemented; static ZIP export remains M10e |
 
 ## Confirmed risks
@@ -131,8 +136,11 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
   boundary; Inspector behavior tracing currently previews the declared batch contract and does
   not execute the named project TypeScript export.
 - **Persistent checkpoint risk:** checksums, fingerprints, registered migration, and
-  per-graph fallback are enforced. M10d storage implementations must preserve this contract
-  without broadening a graph failure into whole-slot invalidation.
+  per-graph fallback are enforced. The M10d save-slot adapter preserves sibling/game data
+  and keeps a graph failure from invalidating the whole slot.
+- **Browser persistence risk:** IndexedDB transaction completion and quota estimates are
+  observable, but neither proves a synchronous disk flush. Real quota exhaustion is not
+  forced during QA because filling the user's origin/disk is unsafe and nondeterministic.
 - **Physics/checkpoint risk:** dynamic-physics-dependent graph scopes cannot promise exact
   logical restore and must be rejected transitively.
 - **Performance risk:** graph interpretation, inactive pooled entities, editor modules, build
@@ -148,4 +156,6 @@ Haku is a viable foundation: its world, serializer, editor mutation path, Three.
 and abstract Rapier integration should be extended rather than replaced. The target work is
 nevertheless a platform expansion, not merely a game implementation. The graph runtime,
 registries, scheduler, browser project toolchain, UI/audio services, and pooling are proven
-engine facilities; storage/platform/export services and Bounce Run integration remain.
+engine facilities. Storage and generic browser-platform foundations are now engine
+facilities too; static export, cross-service graph nodes, provider SDK adapters, and Bounce
+Run integration remain.

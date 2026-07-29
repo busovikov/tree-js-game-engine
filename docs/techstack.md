@@ -228,6 +228,39 @@ diagnostic in `apps/playground`.
 
 ---
 
+## `@haku/storage`
+
+**Role:** Async typed local save slots, separate replay artifacts, optimistic revisions,
+IndexedDB/in-memory backends, replication contracts, and graph checkpoint adaptation.
+
+| Dependency | Purpose |
+| ---------- | ------- |
+| `@haku/graph-runtime` | Public `SaveService` and persistent checkpoint records |
+| Browser IndexedDB/Storage APIs | Atomic local persistence and optional usage/quota estimates |
+
+**Build:** `tsc` → `dist/`
+
+**Tests:** in-memory clone/quota/conflict cases, deterministic fake IndexedDB transactions,
+replication surface/limits, and graph migration/fallback integration.
+
+**Must NOT depend on:** engine, editor, React, provider SDKs, or remote services.
+
+---
+
+## `@haku/platform`
+
+**Role:** Provider-neutral capabilities, auth-provider boundary, visibility/focus lifecycle,
+composed pause reasons, and narrow simulation/input/audio callbacks.
+
+**Build:** `tsc` → `dist/`
+
+**Tests:** deterministic visibility/focus/platform-pause transitions and honest capability
+queries.
+
+**Must NOT own:** engine/input/audio instances, auth tokens, storage, or provider SDK handles.
+
+---
+
 ## `@haku/editor`
 
 **Role:** React UI library — panels, inspector, viewport orchestration, undo.
@@ -274,6 +307,7 @@ diagnostic in `apps/playground`.
 | `@haku/engine` | Runtime |
 | `@haku/ui` | Production DOM UI diagnostic; no editor/React dependency |
 | `@haku/audio`, `@haku/audio-web` | Production local-byte Web Audio diagnostic; no editor/React dependency |
+| `@haku/storage`, `@haku/platform` | Real IndexedDB and browser lifecycle/control diagnostic; no cloud SDK |
 | **Vite** ^6 | Dev server + production bundle |
 
 **Layout:** `haku.project.json`, `public/assets/scenes/`, `src/main.ts`

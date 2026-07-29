@@ -388,8 +388,30 @@ only the incompatible graph checkpoint falls back; the entire save slot remains 
 
 Implemented in M06: the runtime defines only the async `SaveService` checkpoint-entry
 contract. It does not implement IndexedDB, save-slot storage, replication, or platform
-backends; those remain M10d. Persistent records carry plan, registry, scope, reference, and
-checksum evidence, and registered migrations operate before scoped resume.
+backends. Persistent records carry plan, registry, scope, reference, and checksum evidence,
+and registered migrations operate before scoped resume.
+
+### Save storage and platform lifecycle
+
+Implemented in M10d: `@haku/storage` owns async typed save slots and replay artifacts.
+In-memory and IndexedDB backends share one expected-revision contract; IndexedDB compares,
+increments, and writes inside one `readwrite` transaction and resolves only after
+`complete`. Browser usage/quota values are estimates and may be absent. Clone, unavailable,
+operation, conflict, and quota failures are typed, and rejected writes preserve the current
+record.
+
+Replication is a discriminated union: `none` and `platform-managed` expose capability
+queries only, while `explicit` alone exposes pull/push/flush, conflicts, rate/size limits,
+and optional finite numeric stats. `SaveSlotCheckpointService` adapts graph `SaveService`
+without reversing the dependency; it preserves game data, sibling checkpoints, and corrupt
+checkpoint evidence while graph-runtime continues to own migration and fallback.
+
+`@haku/platform` owns capability, auth-provider, lifecycle, and narrow runtime-control
+contracts without retaining engine, input, audio, token, or provider SDK handles.
+Visibility pauses simulation/audio and disables input; blur disables input without
+pretending the document is hidden or pausing simulation. Platform pause reasons compose
+deterministically with visibility. Generic HTML5 composition uses local IndexedDB and no
+replication or remote platform SDK.
 
 ## Runtime DOM UI, services, and visual authoring
 

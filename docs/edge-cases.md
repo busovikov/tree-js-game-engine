@@ -261,6 +261,24 @@ Test these explicitly — users will do them.
 
 There is **no SQL/NoSQL database** in @haku v1. Do not add DB error handling unless a backend is introduced.
 
+### Save slots, replication, and platform lifecycle
+
+IndexedDB is local browser object storage, not a server database. Save and replay namespaces
+are separate, and all public reads/lists return defensive clones.
+
+| Scenario | Error / behavior | Enforcement |
+| -------- | ---------------- | ----------- |
+| Expected revision is stale | Reject with `SaveStorageConflictError`; keep revision and payload unchanged | In-memory + one IndexedDB `readwrite` transaction |
+| Data is not structured-cloneable | Reject with `SaveStorageSerializationError`; keep prior record | Both storage backends |
+| IndexedDB unavailable/blocked | Reject with `SaveStorageUnavailableError` | `IndexedDbSaveStorage.open()` |
+| Browser rejects an over-quota write | Map `QuotaExceededError` to `SaveStorageQuotaError`; estimates may be absent | `IndexedDbSaveStorage`; do not force disk exhaustion in QA |
+| Explicit replication payload/rate exceeds capability | Reject before mutation with typed size/rate error | `MockExplicitReplicationAdapter` |
+| Replication mode is `none` or `platform-managed` | No pull/push/flush/conflict properties exist | Discriminated adapter union and runtime contract tests |
+| One graph checkpoint is incompatible | Preserve the slot, game data, siblings, and corrupt evidence; only that graph migrates/falls back | `SaveSlotCheckpointService` + graph-runtime |
+| Page becomes hidden | Pause simulation/audio and disable input; reason is `visibility` | `BrowserPlatformAdapter` |
+| Window blurs while still visible | Disable input only; visibility remains visible and simulation keeps running | `BrowserPlatformAdapter` |
+| Platform pause overlaps visibility | Sort/compose reasons and resume only after every reason clears | `BrowserPlatformAdapter` |
+
 ---
 
 ## Permissions & authorization

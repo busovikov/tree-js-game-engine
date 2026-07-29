@@ -102,6 +102,16 @@ AudioSource cannot be added until the manifest contains an Audio Clip; creation 
 first real typed clip reference instead of persisting the schema sentinel. Preview unlocks
 from the button click before loading bytes, and component unmount stops the preview.
 
+### Storage and platform proof
+
+M10d adds no editor save-slot UI. The engine-only playground owns the visible
+`Local Save + Platform` diagnostic in
+`apps/playground/src/storage-platform-diagnostic.ts`. Its three buttons prove IndexedDB
+roundtrip, stale-revision retention, and refreshed quota estimates. The status region and
+stable `data-*` state expose revision/sequence plus lifecycle, capabilities, and the actual
+simulation/input/audio control values for browser QA. Unsupported auth/replication features
+remain visibly false rather than rendering controls that cannot work.
+
 ### Inspector fields (reuse first)
 
 | Component | File | Use for |
