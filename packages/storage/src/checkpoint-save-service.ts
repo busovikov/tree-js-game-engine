@@ -5,7 +5,7 @@ import type {
 import {
   SaveStorageConflictError,
   type ISaveStorage,
-} from './index.js'
+} from './contracts.js'
 
 export interface HakuSaveSlotData<TGameData = unknown> {
   schemaVersion: 1

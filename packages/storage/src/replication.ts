@@ -1,4 +1,4 @@
-import { SaveStorageSerializationError } from './index.js'
+import { SaveStorageSerializationError } from './contracts.js'
 
 export type SaveReplicationMode = 'none' | 'explicit' | 'platform-managed'
 
