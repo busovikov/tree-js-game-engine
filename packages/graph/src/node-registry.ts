@@ -53,6 +53,7 @@ export const NODE_CAPABILITIES = [
   'storage',
   'platform',
   'pool',
+  'physics',
   'debug',
 ] as const
 
@@ -71,6 +72,9 @@ export const NODE_EFFECTS = [
   'storage.write',
   'platform',
   'pool',
+  'physics.query',
+  'physics.event',
+  'physics.write',
   'debug',
   'external',
   'unknown',
@@ -383,6 +387,7 @@ export interface NodeCapabilityApiMap {
   readonly storage: unknown
   readonly platform: unknown
   readonly pool: unknown
+  readonly physics: unknown
   readonly debug: unknown
 }
 

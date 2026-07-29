@@ -160,3 +160,9 @@ export {
   DETERMINISTIC_NODE_DEFINITIONS,
   registerDeterministicNodeContracts,
 } from './deterministic-node-contracts.js'
+
+export {
+  WORLD_GRAPH_CONTRACTS,
+  WORLD_NODE_DEFINITIONS,
+  registerWorldNodeContracts,
+} from './world-node-contracts.js'

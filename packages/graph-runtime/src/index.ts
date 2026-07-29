@@ -30,6 +30,11 @@ export {
   type SeededRandomService,
 } from './deterministic-runtime.js'
 
+export {
+  registerWorldRuntimeAdapters,
+  type WorldGraphService,
+} from './world-runtime.js'
+
 export class GraphRuntimeError extends Error {
   readonly code: string
   readonly graphId: string
