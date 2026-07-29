@@ -132,7 +132,7 @@ export function createBrowserStaticExportZip(
     view.setUint16(32, 0, true)
     view.setUint16(34, 0, true)
     view.setUint16(36, 0, true)
-    view.setUint32(38, 0, true)
+    view.setUint32(38, (0o100644 << 16) >>> 0, true)
     view.setUint32(42, entry.localOffset, true)
     centralHeader.set(entry.pathBytes, 46)
     centralParts.push(centralHeader)

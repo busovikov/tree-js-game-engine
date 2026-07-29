@@ -18,6 +18,21 @@ function storedFileNames(zip: Uint8Array): string[] {
   return names;
 }
 
+function centralUnixModes(zip: Uint8Array): number[] {
+  const view = new DataView(zip.buffer, zip.byteOffset, zip.byteLength);
+  const endOffset = zip.byteLength - 22;
+  let offset = view.getUint32(endOffset + 16, true);
+  const modes: number[] = [];
+  while (view.getUint32(offset, true) === 0x02014b50) {
+    const nameLength = view.getUint16(offset + 28, true);
+    const extraLength = view.getUint16(offset + 30, true);
+    const commentLength = view.getUint16(offset + 32, true);
+    modes.push(view.getUint32(offset + 38, true) >>> 16);
+    offset += 46 + nameLength + extraLength + commentLength;
+  }
+  return modes;
+}
+
 describe("createBrowserStaticExportZip", () => {
   it("writes deterministic stored files with index.html at the ZIP root", () => {
     const first = createBrowserStaticExportZip(
@@ -39,6 +54,11 @@ describe("createBrowserStaticExportZip", () => {
       "index.html",
       "assets/data.bin",
       "assets/runtime.js",
+    ]);
+    expect(centralUnixModes(first)).toEqual([
+      0o100644,
+      0o100644,
+      0o100644,
     ]);
     expect(first).toEqual(second);
   });
