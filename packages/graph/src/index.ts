@@ -175,4 +175,9 @@ export {
   type PlatformGraphCapability,
 } from './service-node-contracts.js'
 
+export {
+  createFoundationNodeRegistry,
+  type NodeContractRegistrar,
+} from './foundation-catalog.js'
+
 export { FOUNDATION_NODE_SDK_DECLARATIONS } from './node-sdk-declarations.js'
