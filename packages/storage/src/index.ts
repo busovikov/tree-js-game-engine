@@ -49,10 +49,17 @@ export interface ISaveStorage {
     artifactId: string,
   ): Promise<ReplayArtifactRecord<TData> | undefined>
   listReplayArtifacts(): Promise<ReplayArtifactMetadata[]>
+  estimate(): Promise<SaveStorageEstimate>
 }
 
 export interface InMemorySaveStorageOptions {
   now?: () => string
+  quotaBytes?: number
+}
+
+export interface SaveStorageEstimate {
+  usage: number
+  quota?: number
 }
 
 export class SaveStorageConflictError extends Error {
@@ -71,13 +78,41 @@ export class SaveStorageConflictError extends Error {
   }
 }
 
+export class SaveStorageQuotaError extends Error {
+  readonly usage: number
+  readonly quota: number
+  readonly requested: number
+
+  constructor(usage: number, quota: number, requested: number) {
+    super(
+      `Save storage quota exceeded: ${usage} bytes used, ${requested} bytes requested, ${quota} bytes available`,
+    )
+    this.name = 'SaveStorageQuotaError'
+    this.usage = usage
+    this.quota = quota
+    this.requested = requested
+  }
+}
+
+export class SaveStorageSerializationError extends Error {
+  override readonly cause: unknown
+
+  constructor(cause: unknown) {
+    super('Save storage records must contain structured-cloneable data')
+    this.name = 'SaveStorageSerializationError'
+    this.cause = cause
+  }
+}
+
 export class InMemorySaveStorage implements ISaveStorage {
   private readonly slots = new Map<string, SaveSlotRecord>()
   private readonly replayArtifacts = new Map<string, ReplayArtifactRecord>()
   private readonly now: () => string
+  private readonly quotaBytes: number | undefined
 
   constructor(options: InMemorySaveStorageOptions = {}) {
     this.now = options.now ?? (() => new Date().toISOString())
+    this.quotaBytes = options.quotaBytes
   }
 
   async writeSlot<TData>(request: WriteSaveSlot<TData>): Promise<SaveSlotRecord<TData>> {
@@ -98,6 +133,7 @@ export class InMemorySaveStorage implements ISaveStorage {
       },
       data: clone(request.data),
     }
+    this.assertFits(record, current)
     this.slots.set(request.slotId, record)
     return clone(record)
   }
@@ -133,6 +169,7 @@ export class InMemorySaveStorage implements ISaveStorage {
       },
       data: clone(request.data),
     }
+    this.assertFits(record, current)
     this.replayArtifacts.set(request.artifactId, record)
     return clone(record)
   }
@@ -149,6 +186,31 @@ export class InMemorySaveStorage implements ISaveStorage {
   async listReplayArtifacts(): Promise<ReplayArtifactMetadata[]> {
     return [...this.replayArtifacts.values()].map((record) => clone(record.metadata))
   }
+
+  async estimate(): Promise<SaveStorageEstimate> {
+    return {
+      usage: this.usage(),
+      ...(this.quotaBytes === undefined ? {} : { quota: this.quotaBytes }),
+    }
+  }
+
+  private assertFits(
+    replacement: SaveSlotRecord | ReplayArtifactRecord,
+    current: SaveSlotRecord | ReplayArtifactRecord | undefined,
+  ): void {
+    if (this.quotaBytes === undefined) return
+    const usage = this.usage()
+    const currentBytes = current === undefined ? 0 : recordBytes(current)
+    const requested = recordBytes(replacement)
+    if (usage - currentBytes + requested > this.quotaBytes) {
+      throw new SaveStorageQuotaError(usage, this.quotaBytes, requested)
+    }
+  }
+
+  private usage(): number {
+    return [...this.slots.values(), ...this.replayArtifacts.values()]
+      .reduce((total, record) => total + recordBytes(record), 0)
+  }
 }
 
 function assertExpectedRevision(
@@ -162,5 +224,20 @@ function assertExpectedRevision(
 }
 
 function clone<T>(value: T): T {
-  return structuredClone(value)
+  try {
+    return structuredClone(value)
+  } catch (error) {
+    throw new SaveStorageSerializationError(error)
+  }
+}
+
+function recordBytes(record: SaveSlotRecord | ReplayArtifactRecord): number {
+  try {
+    const json = JSON.stringify(record)
+    if (json === undefined) throw new TypeError('Record has no JSON representation')
+    return new TextEncoder().encode(json).byteLength
+  } catch (error) {
+    if (error instanceof SaveStorageSerializationError) throw error
+    throw new SaveStorageSerializationError(error)
+  }
 }

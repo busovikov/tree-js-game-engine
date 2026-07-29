@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   InMemorySaveStorage,
   SaveStorageConflictError,
+  SaveStorageQuotaError,
+  SaveStorageSerializationError,
   type ISaveStorage,
   type ReplayArtifactRecord,
   type SaveSlotRecord,
@@ -120,6 +122,53 @@ describe('InMemorySaveStorage', () => {
     expect(await storage.readSlot('run-1')).toBeUndefined()
     expect(await storage.listReplayArtifacts()).toEqual([replay.metadata])
     expect(await storage.readReplayArtifact('run-1')).toEqual(replay)
+  })
+
+  it('reports quota usage and rejects an oversized replacement without mutation', async () => {
+    const storage = new InMemorySaveStorage({
+      quotaBytes: 500,
+      now: sequenceClock(firstWrittenAt, secondWrittenAt),
+    })
+    await storage.writeSlot({
+      slotId: 'campaign-1',
+      label: 'Campaign 1',
+      data: { score: 10 },
+    })
+    const before = await storage.estimate()
+
+    expect(before.quota).toBe(500)
+    expect(before.usage).toBeGreaterThan(0)
+    await expect(storage.writeSlot({
+      slotId: 'campaign-1',
+      label: 'Oversized',
+      data: { value: 'x'.repeat(1_000) },
+      expectedRevision: 1,
+    })).rejects.toBeInstanceOf(SaveStorageQuotaError)
+
+    expect(await storage.readSlot('campaign-1')).toEqual({
+      metadata: {
+        slotId: 'campaign-1',
+        label: 'Campaign 1',
+        revision: 1,
+        createdAt: firstWrittenAt,
+        updatedAt: firstWrittenAt,
+      },
+      data: { score: 10 },
+    })
+    expect(await storage.estimate()).toEqual(before)
+  })
+
+  it('rejects data that cannot be cloned without creating a partial slot', async () => {
+    const storage = new InMemorySaveStorage()
+
+    await expect(storage.writeSlot({
+      slotId: 'invalid',
+      label: 'Invalid',
+      data: { callback: () => undefined },
+    })).rejects.toBeInstanceOf(SaveStorageSerializationError)
+
+    expect(await storage.readSlot('invalid')).toBeUndefined()
+    expect(await storage.listSlots()).toEqual([])
   })
 })
 
