@@ -4,6 +4,7 @@ import {
   type AudioBus,
   type AudioBusState,
   type AudioClip,
+  type AudioListenerPose,
   type AudioPosition,
   type AudioVoiceId,
   type AudioVoiceRequest,
@@ -15,6 +16,8 @@ interface WebAudioVoice {
   readonly gain: GainNode
   readonly panner: PannerNode | null
   readonly onEnded: () => void
+  volume: number
+  muted: boolean
 }
 
 export class WebAudioBackend implements AudioBackend {
@@ -56,8 +59,8 @@ export class WebAudioBackend implements AudioBackend {
    */
   async unlock(): Promise<void> {
     this.assertUsable()
-    this.isUnlocked = true
     if (!this.paused && this.context.state !== 'running') await this.context.resume()
+    this.isUnlocked = true
   }
 
   startVoice(request: AudioVoiceRequest, onEnded: () => void): AudioVoiceId {
@@ -78,7 +81,14 @@ export class WebAudioBackend implements AudioBackend {
     gain.connect(this.requireBusNode(request.bus))
 
     const id = `web-audio-voice-${this.nextVoiceId++}`
-    const voice = { source, gain, panner, onEnded }
+    const voice = {
+      source,
+      gain,
+      panner,
+      onEnded,
+      volume: request.volume,
+      muted: request.muted ?? false,
+    }
     this.voices.set(id, voice)
     source.onended = () => this.finishVoice(id)
     source.start()
@@ -87,13 +97,6 @@ export class WebAudioBackend implements AudioBackend {
 
   updateVoice(voiceId: AudioVoiceId, update: AudioVoiceUpdate): void {
     const voice = this.requireVoice(voiceId)
-    if (update.volume !== undefined || update.muted !== undefined) {
-      const volume = update.muted ? 0 : (update.volume ?? voice.gain.gain.value)
-      voice.gain.gain.setValueAtTime(volume, this.context.currentTime)
-    }
-    if (update.playbackRate !== undefined) {
-      voice.source.playbackRate.setValueAtTime(update.playbackRate, this.context.currentTime)
-    }
     if (update.spatial !== undefined) {
       if (update.spatial === null && voice.panner !== null) {
         throw new Error('Cannot change an active spatial voice to non-spatial')
@@ -101,6 +104,19 @@ export class WebAudioBackend implements AudioBackend {
       if (update.spatial !== null && voice.panner === null) {
         throw new Error('Cannot change an active non-spatial voice to spatial')
       }
+    }
+    if (update.volume !== undefined || update.muted !== undefined) {
+      if (update.volume !== undefined) voice.volume = update.volume
+      if (update.muted !== undefined) voice.muted = update.muted
+      voice.gain.gain.setValueAtTime(
+        voice.muted ? 0 : voice.volume,
+        this.context.currentTime,
+      )
+    }
+    if (update.playbackRate !== undefined) {
+      voice.source.playbackRate.setValueAtTime(update.playbackRate, this.context.currentTime)
+    }
+    if (update.spatial !== undefined) {
       if (update.spatial && voice.panner) this.setPannerPosition(voice.panner, update.spatial)
     }
   }
@@ -119,14 +135,27 @@ export class WebAudioBackend implements AudioBackend {
     this.requireBusNode(bus).gain.setValueAtTime(value, this.context.currentTime)
   }
 
-  setPaused(paused: boolean): void {
+  setListenerPose(pose: AudioListenerPose): void {
     this.assertUsable()
-    this.paused = paused
+    const listener = this.context.listener
+    this.setPositionParams(listener, pose.position)
+    listener.forwardX.setValueAtTime(pose.forward.x, this.context.currentTime)
+    listener.forwardY.setValueAtTime(pose.forward.y, this.context.currentTime)
+    listener.forwardZ.setValueAtTime(pose.forward.z, this.context.currentTime)
+    listener.upX.setValueAtTime(pose.up.x, this.context.currentTime)
+    listener.upY.setValueAtTime(pose.up.y, this.context.currentTime)
+    listener.upZ.setValueAtTime(pose.up.z, this.context.currentTime)
+  }
+
+  async setPaused(paused: boolean): Promise<void> {
+    this.assertUsable()
+    if (paused === this.paused) return
     if (paused) {
-      void this.context.suspend()
+      await this.context.suspend()
     } else if (this.isUnlocked) {
-      void this.context.resume()
+      await this.context.resume()
     }
+    this.paused = paused
   }
 
   dispose(): void {
@@ -154,6 +183,15 @@ export class WebAudioBackend implements AudioBackend {
     panner.positionX.setValueAtTime(position.x, this.context.currentTime)
     panner.positionY.setValueAtTime(position.y, this.context.currentTime)
     panner.positionZ.setValueAtTime(position.z, this.context.currentTime)
+  }
+
+  private setPositionParams(
+    target: Pick<AudioListener, 'positionX' | 'positionY' | 'positionZ'>,
+    position: AudioPosition,
+  ): void {
+    target.positionX.setValueAtTime(position.x, this.context.currentTime)
+    target.positionY.setValueAtTime(position.y, this.context.currentTime)
+    target.positionZ.setValueAtTime(position.z, this.context.currentTime)
   }
 
   private finishVoice(voiceId: AudioVoiceId): void {

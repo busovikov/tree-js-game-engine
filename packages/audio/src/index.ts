@@ -55,6 +55,15 @@ export const AudioPositionSchema = z
   .strict()
 export type AudioPosition = z.infer<typeof AudioPositionSchema>
 
+export const AudioListenerPoseSchema = z
+  .object({
+    position: AudioPositionSchema,
+    forward: AudioPositionSchema,
+    up: AudioPositionSchema,
+  })
+  .strict()
+export type AudioListenerPose = z.infer<typeof AudioListenerPoseSchema>
+
 export interface AudioSource {
   readonly clip: AssetRef<typeof AUDIO_CLIP_ASSET_TYPE>
   readonly bus: AudioCategoryBus
@@ -87,7 +96,8 @@ export interface AudioBackend {
   updateVoice(voiceId: AudioVoiceId, update: AudioVoiceUpdate): void
   stopVoice(voiceId: AudioVoiceId): void
   setBusState(bus: AudioBus, state: AudioBusState): void
-  setPaused(paused: boolean): void
+  setListenerPose(pose: AudioListenerPose): void
+  setPaused(paused: boolean): void | Promise<void>
   dispose(): void
 }
 
@@ -114,6 +124,11 @@ export class HeadlessAudioBackend implements AudioBackend {
   private nextVoiceId = 1
   private releases = 0
   private paused = false
+  private listenerPose: AudioListenerPose = {
+    position: { x: 0, y: 0, z: 0 },
+    forward: { x: 0, y: 0, z: -1 },
+    up: { x: 0, y: 1, z: 0 },
+  }
 
   get activeVoiceCount(): number {
     return [...this.voices.values()].filter((voice) => voice.active).length
@@ -176,6 +191,14 @@ export class HeadlessAudioBackend implements AudioBackend {
     for (const [id, voice] of this.voices) {
       this.voices.set(id, { ...voice, paused })
     }
+  }
+
+  setListenerPose(pose: AudioListenerPose): void {
+    this.listenerPose = structuredClone(pose)
+  }
+
+  inspectListenerPose(): AudioListenerPose {
+    return structuredClone(this.listenerPose)
   }
 
   inspectVoice(voiceId: AudioVoiceId): HeadlessAudioVoice {
@@ -291,9 +314,14 @@ export class AudioRuntime {
     this.backend.setBusState(bus, state)
   }
 
-  setPaused(paused: boolean): void {
+  setListenerPose(input: AudioListenerPose): void {
     this.assertUsable()
-    this.backend.setPaused(paused)
+    this.backend.setListenerPose(AudioListenerPoseSchema.parse(input))
+  }
+
+  async setPaused(paused: boolean): Promise<void> {
+    this.assertUsable()
+    await this.backend.setPaused(paused)
   }
 
   dispose(): void {
@@ -473,8 +501,12 @@ export class AudioService {
     this.runtime.setBusMuted(bus, muted)
   }
 
-  setPaused(paused: boolean): void {
-    this.runtime.setPaused(paused)
+  setListenerPose(pose: AudioListenerPose): void {
+    this.runtime.setListenerPose(pose)
+  }
+
+  setPaused(paused: boolean): Promise<void> {
+    return this.runtime.setPaused(paused)
   }
 }
 
@@ -484,7 +516,8 @@ export interface AudioSdk {
   updateVoice(voiceId: AudioVoiceId, update: AudioVoiceUpdate): void
   setBusVolume(bus: AudioBus, volume: number): void
   setBusMuted(bus: AudioBus, muted: boolean): void
-  setPaused(paused: boolean): void
+  setListenerPose(pose: AudioListenerPose): void
+  setPaused(paused: boolean): Promise<void>
 }
 
 export function createAudioSdk(service: AudioService): AudioSdk {
@@ -494,6 +527,7 @@ export function createAudioSdk(service: AudioService): AudioSdk {
     updateVoice: (voiceId, update) => service.updateVoice(voiceId, update),
     setBusVolume: (bus, volume) => service.setBusVolume(bus, volume),
     setBusMuted: (bus, muted) => service.setBusMuted(bus, muted),
+    setListenerPose: (pose) => service.setListenerPose(pose),
     setPaused: (paused) => service.setPaused(paused),
   }
 }

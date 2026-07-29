@@ -61,8 +61,21 @@ class FakePannerNode extends FakeAudioNode {
   readonly positionZ = new FakeAudioParam()
 }
 
+class FakeAudioListener {
+  readonly positionX = new FakeAudioParam()
+  readonly positionY = new FakeAudioParam()
+  readonly positionZ = new FakeAudioParam()
+  readonly forwardX = new FakeAudioParam()
+  readonly forwardY = new FakeAudioParam()
+  readonly forwardZ = new FakeAudioParam()
+  readonly upX = new FakeAudioParam()
+  readonly upY = new FakeAudioParam()
+  readonly upZ = new FakeAudioParam()
+}
+
 class FakeAudioContext {
   readonly destination = new FakeAudioNode()
+  readonly listener = new FakeAudioListener()
   readonly gains: FakeGainNode[] = []
   readonly sources: FakeBufferSourceNode[] = []
   readonly panners: FakePannerNode[] = []
@@ -72,6 +85,8 @@ class FakeAudioContext {
   resumeCalls = 0
   suspendCalls = 0
   closeCalls = 0
+  suspendError: Error | null = null
+  resumeError: Error | null = null
 
   createGain(): GainNode {
     const node = new FakeGainNode()
@@ -98,11 +113,21 @@ class FakeAudioContext {
 
   async resume(): Promise<void> {
     this.resumeCalls += 1
+    if (this.resumeError) {
+      const error = this.resumeError
+      this.resumeError = null
+      throw error
+    }
     this.state = 'running'
   }
 
   async suspend(): Promise<void> {
     this.suspendCalls += 1
+    if (this.suspendError) {
+      const error = this.suspendError
+      this.suspendError = null
+      throw error
+    }
     this.state = 'suspended'
   }
 
@@ -179,19 +204,114 @@ describe('WebAudioBackend', () => {
       spatial: null,
     })
 
-    runtime.setPaused(true)
-    runtime.setPaused(false)
+    await runtime.setPaused(true)
+    await runtime.setPaused(false)
     expect(context.suspendCalls).toBe(1)
     expect(context.resumeCalls).toBe(0)
 
     await backend.unlock()
-    runtime.setPaused(true)
-    runtime.setPaused(false)
+    await runtime.setPaused(true)
+    await runtime.setPaused(false)
     expect(context.resumeCalls).toBe(2)
 
     runtime.dispose()
     expect(context.sources[0]?.stopped).toBe(true)
     expect(context.closeCalls).toBe(1)
+  })
+
+  it('releases naturally ended one-shots and restores local volume after unmute', async () => {
+    const context = new FakeAudioContext()
+    const backend = new WebAudioBackend(context as unknown as AudioContext)
+    await backend.loadClip(clip)
+    const runtime = new AudioRuntime(backend)
+    runtime.registerClip(clip)
+    const voice = runtime.play({
+      clip: clipReference,
+      bus: 'sfx',
+      loop: false,
+      volume: 0.6,
+      playbackRate: 1,
+      spatial: null,
+    })
+
+    runtime.updateVoice(voice, { muted: true })
+    expect(context.gains[4]?.gain.value).toBe(0)
+    runtime.updateVoice(voice, { volume: 0.35 })
+    expect(context.gains[4]?.gain.value).toBe(0)
+    runtime.updateVoice(voice, { muted: false })
+    expect(context.gains[4]?.gain.value).toBe(0.35)
+
+    context.sources[0]?.onended?.()
+    expect(runtime.activeVoiceCount).toBe(0)
+    expect(context.sources[0]?.disconnected).toBe(true)
+    expect(context.gains[4]?.disconnected).toBe(true)
+  })
+
+  it('updates listener pose through AudioParams and rejects spatial-mode transitions', async () => {
+    const context = new FakeAudioContext()
+    const backend = new WebAudioBackend(context as unknown as AudioContext)
+    await backend.loadClip(clip)
+    const runtime = new AudioRuntime(backend)
+    runtime.registerClip(clip)
+    runtime.setListenerPose({
+      position: { x: 3, y: 4, z: 5 },
+      forward: { x: 0, y: 0, z: -1 },
+      up: { x: 0, y: 1, z: 0 },
+    })
+
+    expect(context.listener).toMatchObject({
+      positionX: { value: 3 },
+      positionY: { value: 4 },
+      positionZ: { value: 5 },
+      forwardX: { value: 0 },
+      forwardY: { value: 0 },
+      forwardZ: { value: -1 },
+      upX: { value: 0 },
+      upY: { value: 1 },
+      upZ: { value: 0 },
+    })
+
+    const spatialVoice = runtime.play({
+      clip: clipReference,
+      bus: 'sfx',
+      loop: true,
+      volume: 1,
+      playbackRate: 1,
+      spatial: { x: 0, y: 0, z: 0 },
+    })
+    const flatVoice = runtime.play({
+      clip: clipReference,
+      bus: 'ui',
+      loop: true,
+      volume: 1,
+      playbackRate: 1,
+      spatial: null,
+    })
+
+    expect(() => runtime.updateVoice(spatialVoice, { spatial: null })).toThrow(
+      'Cannot change an active spatial voice to non-spatial',
+    )
+    expect(() =>
+      runtime.updateVoice(flatVoice, { spatial: { x: 1, y: 0, z: 0 } }),
+    ).toThrow('Cannot change an active non-spatial voice to spatial')
+  })
+
+  it('surfaces suspend and resume promise failures without accepting the transition', async () => {
+    const context = new FakeAudioContext()
+    const backend = new WebAudioBackend(context as unknown as AudioContext)
+    const runtime = new AudioRuntime(backend)
+
+    context.suspendError = new Error('suspend denied')
+    await expect(runtime.setPaused(true)).rejects.toThrow('suspend denied')
+    await runtime.setPaused(true)
+
+    await backend.unlock()
+    context.resumeError = new Error('resume denied')
+    await expect(runtime.setPaused(false)).rejects.toThrow('resume denied')
+    await runtime.setPaused(false)
+
+    expect(context.suspendCalls).toBe(2)
+    expect(context.resumeCalls).toBe(2)
   })
 
   it('fails explicitly when bytes are absent or playback was not decoded', async () => {
