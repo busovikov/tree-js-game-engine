@@ -35,6 +35,15 @@ export {
   type WorldGraphService,
 } from './world-runtime.js'
 
+export {
+  GraphAssertionError,
+  registerCrossServiceRuntimeAdapters,
+  type CrossServiceRuntimeServices,
+  type DebugGraphService,
+  type PlatformGraphService,
+  type SaveGraphService,
+} from './cross-service-runtime.js'
+
 export class GraphRuntimeError extends Error {
   readonly code: string
   readonly graphId: string

@@ -458,3 +458,4 @@ function recordBytesForData(data: unknown): number | undefined {
 export * from './replication.js'
 export * from './checkpoint-save-service.js'
 export * from './contracts.js'
+export * from './graph-save-service.js'

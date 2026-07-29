@@ -36,6 +36,28 @@ export interface PlatformAdapter {
   stop(): void
 }
 
+export type PlatformGraphCapability =
+  | 'lifecycle'
+  | 'auth'
+  | 'pause'
+  | 'input'
+  | 'audio'
+
+export interface PlatformGraphService {
+  hasCapability(capability: PlatformGraphCapability): Promise<boolean>
+}
+
+export function createPlatformGraphService(
+  adapter: PlatformAdapter,
+): PlatformGraphService {
+  return {
+    async hasCapability(capability) {
+      const capabilities = await adapter.queryCapabilities()
+      return capabilities[capability]
+    },
+  }
+}
+
 export interface PlatformRuntimeControls {
   setSimulationPaused?(paused: boolean): void | Promise<void>
   setInputEnabled?(enabled: boolean): void | Promise<void>

@@ -166,3 +166,11 @@ export {
   WORLD_NODE_DEFINITIONS,
   registerWorldNodeContracts,
 } from './world-node-contracts.js'
+
+export {
+  PLATFORM_GRAPH_CAPABILITIES,
+  SERVICE_GRAPH_CONTRACTS,
+  SERVICE_NODE_DEFINITIONS,
+  registerServiceNodeContracts,
+  type PlatformGraphCapability,
+} from './service-node-contracts.js'
