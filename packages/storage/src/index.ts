@@ -565,3 +565,4 @@ function recordBytesForData(data: unknown): number | undefined {
 }
 
 export * from './replication.js'
+export * from './checkpoint-save-service.js'

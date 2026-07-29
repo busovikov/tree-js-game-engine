@@ -507,7 +507,17 @@ importers:
         version: 2.1.9(@types/node@22.19.21)(happy-dom@15.11.7)
 
   packages/storage:
+    dependencies:
+      '@haku/graph-runtime':
+        specifier: workspace:*
+        version: link:../graph-runtime
     devDependencies:
+      '@haku/core':
+        specifier: workspace:*
+        version: link:../core
+      '@haku/graph':
+        specifier: workspace:*
+        version: link:../graph
       fake-indexeddb:
         specifier: 6.2.4
         version: 6.2.4
