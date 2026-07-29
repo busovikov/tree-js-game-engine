@@ -148,3 +148,9 @@ export {
   type CustomComponentGraphContract,
   type CustomComponentGraphNode,
 } from './custom-component-nodes.js'
+
+export {
+  FOUNDATION_GRAPH_CONTRACTS,
+  FOUNDATION_GRAPH_IDS,
+  registerFoundationNodeContracts,
+} from './foundation-node-contracts.js'

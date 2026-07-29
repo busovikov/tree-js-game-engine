@@ -18,6 +18,8 @@ export {
   type CustomComponentRuntimeOptions,
 } from './custom-component-runtime.js'
 
+export { registerFoundationRuntimeAdapters } from './foundation-runtime.js'
+
 export class GraphRuntimeError extends Error {
   readonly code: string
   readonly graphId: string
