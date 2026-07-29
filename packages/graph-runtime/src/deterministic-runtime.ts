@@ -4,7 +4,7 @@ import {
   type NodeExecutionRequest,
   type NodeExecutionResult,
   type NodeRuntimeRegistry,
-} from './index.js'
+} from './runtime-adapter.js'
 
 export interface GraphVariableStore {
   get(key: string): unknown

@@ -8,7 +8,7 @@ import {
   type NodeExecutionRequest,
   type NodeExecutionResult,
   type NodeRuntimeRegistry,
-} from './index.js'
+} from './runtime-adapter.js'
 
 export interface SaveGraphService {
   load(key: string): Promise<unknown>

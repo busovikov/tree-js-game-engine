@@ -4,7 +4,7 @@ import {
   type NodeExecutionRequest,
   type NodeExecutionResult,
   type NodeRuntimeRegistry,
-} from './index.js'
+} from './runtime-adapter.js'
 
 type Vec3 = readonly [number, number, number]
 

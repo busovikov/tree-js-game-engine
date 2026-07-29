@@ -1,7 +1,7 @@
 import {
   NodeRuntimeRegistry,
   type ResourceSnapshotProvider,
-} from './index.js'
+} from './runtime-adapter.js'
 import {
   registerCrossServiceRuntimeAdapters,
   type CrossServiceRuntimeServices,
