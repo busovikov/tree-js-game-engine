@@ -563,3 +563,5 @@ function recordBytesForData(data: unknown): number | undefined {
     return undefined
   }
 }
+
+export * from './replication.js'
