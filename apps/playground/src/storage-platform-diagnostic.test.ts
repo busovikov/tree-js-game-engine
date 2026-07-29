@@ -3,8 +3,11 @@
  */
 import { BrowserPlatformAdapter } from '@haku/platform'
 import { InMemorySaveStorage } from '@haku/storage'
-import { describe, expect, it } from 'vitest'
-import { createStoragePlatformDiagnostic } from './storage-platform-diagnostic.js'
+import { describe, expect, it, vi } from 'vitest'
+import {
+  createObservedPlatformControls,
+  createStoragePlatformDiagnostic,
+} from './storage-platform-diagnostic.js'
 
 describe('M10d storage and platform diagnostic', () => {
   it('shows roundtrip, conflict, quota estimate, and lifecycle capabilities', async () => {
@@ -26,12 +29,14 @@ describe('M10d storage and platform diagnostic', () => {
     await flushAsyncEvents()
     expect(host.dataset.storageRoundtrip).toBe('true')
     expect(host.dataset.storageRevision).toBe('1')
+    expect(host.dataset.storageSequence).toBe('1')
 
     ;(host.querySelector('[data-storage-action="conflict"]') as HTMLButtonElement)
       .click()
     await flushAsyncEvents()
     expect(host.dataset.storageConflict).toBe('true')
     expect(host.dataset.storageRevision).toBe('1')
+    expect(host.dataset.storageSequence).toBe('1')
 
     ;(host.querySelector('[data-storage-action="estimate"]') as HTMLButtonElement)
       .click()
@@ -45,6 +50,29 @@ describe('M10d storage and platform diagnostic', () => {
 
     diagnostic.destroy()
     expect(host.childElementCount).toBe(0)
+  })
+
+  it('shows the actual simulation, input, and audio control state', async () => {
+    const host = document.createElement('div')
+    const setSimulationPaused = vi.fn()
+    const setInputEnabled = vi.fn()
+    const setAudioPaused = vi.fn(async () => undefined)
+    const controls = createObservedPlatformControls(host, {
+      setSimulationPaused,
+      setInputEnabled,
+      setAudioPaused,
+    })
+
+    await controls.setSimulationPaused?.(true)
+    await controls.setInputEnabled?.(false)
+    await controls.setAudioPaused?.(true)
+
+    expect(setSimulationPaused).toHaveBeenCalledWith(true)
+    expect(setInputEnabled).toHaveBeenCalledWith(false)
+    expect(setAudioPaused).toHaveBeenCalledWith(true)
+    expect(host.dataset.platformSimulationPaused).toBe('true')
+    expect(host.dataset.platformInputEnabled).toBe('false')
+    expect(host.dataset.platformAudioPaused).toBe('true')
   })
 })
 

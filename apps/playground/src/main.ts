@@ -22,7 +22,10 @@ import { runPoolDiagnostic } from './pool-diagnostic.js'
 import { createUIDiagnostic } from './ui-diagnostic.js'
 import { createAudioDiagnostic } from './audio-diagnostic.js'
 import { BrowserPlatformAdapter } from '@haku/platform'
-import { createStoragePlatformDiagnostic } from './storage-platform-diagnostic.js'
+import {
+  createObservedPlatformControls,
+  createStoragePlatformDiagnostic,
+} from './storage-platform-diagnostic.js'
 
 async function main() {
   const manifest = validateProjectManifest(project)
@@ -106,14 +109,14 @@ async function main() {
   })
   document.getElementById('app')?.append(storageHost)
   const platform = new BrowserPlatformAdapter({
-    controls: {
+    controls: createObservedPlatformControls(storageHost, {
       setSimulationPaused: (paused) => engine.setPaused(paused),
       setInputEnabled: (enabled) => {
         if (enabled) vehicleSession.inputManager.enable()
         else vehicleSession.inputManager.disable()
       },
       setAudioPaused: (paused) => audioDiagnostic.setPaused(paused),
-    },
+    }),
   })
   const storagePlatformDiagnostic = createStoragePlatformDiagnostic(
     storageHost,

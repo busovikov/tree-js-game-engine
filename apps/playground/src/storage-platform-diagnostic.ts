@@ -3,6 +3,7 @@ import {
   type PlatformAdapter,
   type PlatformCapabilities,
   type PlatformLifecycleState,
+  type PlatformRuntimeControls,
 } from '@haku/platform'
 import {
   IndexedDbSaveStorage,
@@ -21,6 +22,32 @@ export interface StoragePlatformDiagnosticOptions {
 export interface StoragePlatformDiagnostic {
   readonly ready: Promise<void>
   destroy(): void
+}
+
+export function createObservedPlatformControls(
+  host: HTMLElement,
+  controls: PlatformRuntimeControls,
+): PlatformRuntimeControls {
+  const observed: PlatformRuntimeControls = {}
+  if (controls.setSimulationPaused !== undefined) {
+    observed.setSimulationPaused = async (paused) => {
+      await controls.setSimulationPaused!(paused)
+      host.dataset.platformSimulationPaused = String(paused)
+    }
+  }
+  if (controls.setInputEnabled !== undefined) {
+    observed.setInputEnabled = async (enabled) => {
+      await controls.setInputEnabled!(enabled)
+      host.dataset.platformInputEnabled = String(enabled)
+    }
+  }
+  if (controls.setAudioPaused !== undefined) {
+    observed.setAudioPaused = async (paused) => {
+      await controls.setAudioPaused!(paused)
+      host.dataset.platformAudioPaused = String(paused)
+    }
+  }
+  return observed
 }
 
 export function createStoragePlatformDiagnostic(
@@ -113,6 +140,7 @@ export function createStoragePlatformDiagnostic(
     }
     host.dataset.storageRoundtrip = 'true'
     host.dataset.storageRevision = String(loaded.metadata.revision)
+    host.dataset.storageSequence = String(loaded.data.sequence)
     status.textContent =
       `Local save roundtrip revision ${loaded.metadata.revision} succeeded`
   }
@@ -136,11 +164,18 @@ export function createStoragePlatformDiagnostic(
       if (!(error instanceof SaveStorageConflictError)) throw error
     }
     const retained = await storage.readSlot<{ sequence: number }>(DIAGNOSTIC_SLOT)
+    if (
+      retained?.metadata.revision !== current.metadata.revision
+      || retained.data.sequence !== current.data.sequence
+    ) {
+      throw new Error('Stale conflict changed the current local save')
+    }
     host.dataset.storageConflict = 'true'
-    host.dataset.storageRevision = String(retained?.metadata.revision ?? 0)
+    host.dataset.storageRevision = String(retained.metadata.revision)
+    host.dataset.storageSequence = String(retained.data.sequence)
     status.textContent =
       `Stale revision rejected; local save remains at revision `
-      + `${retained?.metadata.revision ?? 0}`
+      + `${retained.metadata.revision} with sequence ${retained.data.sequence}`
   }
 
   const run = (operation: () => Promise<void>): void => {
