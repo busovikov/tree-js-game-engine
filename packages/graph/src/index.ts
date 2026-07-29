@@ -174,3 +174,5 @@ export {
   registerServiceNodeContracts,
   type PlatformGraphCapability,
 } from './service-node-contracts.js'
+
+export { FOUNDATION_NODE_SDK_DECLARATIONS } from './node-sdk-declarations.js'

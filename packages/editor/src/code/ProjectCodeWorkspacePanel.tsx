@@ -2,7 +2,10 @@ import {
   generateBrowserProjectTooling,
   type BrowserProjectTooling,
 } from '@haku/build'
-import { GRAPH_ASSET_TYPE } from '@haku/graph'
+import {
+  FOUNDATION_NODE_SDK_DECLARATIONS,
+  GRAPH_ASSET_TYPE,
+} from '@haku/graph'
 import { memo, useEffect, useState } from 'react'
 import { projectService, type ProjectService } from '../services/project-service.js'
 import { useEditorStore } from '../store/editor-store.js'
@@ -16,20 +19,11 @@ const ENGINE_DECLARATIONS = `declare module '@haku/engine' {
 }
 `
 
-const NODE_SDK_DECLARATIONS = `declare module '@haku/node-sdk' {
-  export interface CustomNode {
-    readonly id: string
-    run?(): void
-  }
-  export function defineCustomNode<TNode extends CustomNode>(node: TNode): TNode
-}
-`
-
 export function createProjectBrowserTooling(service: ProjectService): BrowserProjectTooling {
   const manifest = service.getManifest()
   return generateBrowserProjectTooling({
     engineDeclarations: ENGINE_DECLARATIONS,
-    nodeSdkDeclarations: NODE_SDK_DECLARATIONS,
+    nodeSdkDeclarations: FOUNDATION_NODE_SDK_DECLARATIONS,
     assets:
       manifest?.assets.map((asset) => ({
         id: asset.id,

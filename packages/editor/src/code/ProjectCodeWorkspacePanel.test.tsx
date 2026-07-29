@@ -30,5 +30,14 @@ describe('createProjectBrowserTooling', () => {
     expect(tooling.files['.haku/generated/project.d.ts']).toContain(
       'readonly "speed": number',
     )
+    expect(tooling.files['.haku/generated/node-sdk.d.ts']).toContain(
+      'readonly physics: PhysicsCapability',
+    )
+    expect(tooling.files['.haku/generated/node-sdk.d.ts']).toContain(
+      'readonly storage: SaveCapability',
+    )
+    expect(tooling.files['.haku/generated/node-sdk.d.ts']).toContain(
+      'readonly random: SeededRandomCapability',
+    )
   })
 })
