@@ -1,0 +1,155 @@
+.haku-ui-editor {
+  display: flex;
+  min-height: 0;
+  height: 100%;
+  flex-direction: column;
+  background: #1a1a2e;
+  color: #ddd;
+  font-size: 12px;
+}
+
+.haku-ui-editor__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 4px 8px;
+  border-bottom: 1px solid #333;
+  background: #22222c;
+}
+
+.haku-ui-editor__toolbar label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.haku-ui-editor__toolbar span {
+  margin-left: auto;
+  color: #aaa;
+}
+
+.haku-ui-editor__workspace {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: 190px minmax(320px, 1fr) 230px;
+}
+
+.haku-ui-editor__hierarchy,
+.haku-ui-editor__inspector {
+  min-width: 0;
+  overflow: auto;
+  padding: 8px;
+  background: #1e1e28;
+}
+
+.haku-ui-editor__hierarchy {
+  border-right: 1px solid #333;
+}
+
+.haku-ui-editor__inspector {
+  border-left: 1px solid #333;
+}
+
+.haku-ui-editor h3 {
+  margin: 4px 0 8px;
+  font-size: 12px;
+}
+
+.haku-ui-editor__palette {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.haku-ui-editor__hierarchy ul {
+  margin: 0;
+  padding-left: 14px;
+  list-style: none;
+}
+
+.haku-ui-editor__hierarchy > ul {
+  padding-left: 0;
+}
+
+.haku-ui-editor__hierarchy li > button {
+  display: flex;
+  width: 100%;
+  gap: 6px;
+  border: 0;
+  padding: 4px;
+  background: transparent;
+  color: #ddd;
+  text-align: left;
+}
+
+.haku-ui-editor__tree-item--selected {
+  background: #3d5afe !important;
+}
+
+.haku-ui-editor__preview {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  padding: 8px;
+}
+
+.haku-ui-editor__viewport-label,
+.haku-ui-editor__preview output {
+  color: #aaa;
+  padding: 4px 0;
+}
+
+.haku-ui-editor__viewport-scroll {
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  border: 1px solid #333;
+  background:
+    linear-gradient(45deg, #20202a 25%, transparent 25%),
+    linear-gradient(-45deg, #20202a 25%, transparent 25%),
+    #181820;
+  background-size: 16px 16px;
+}
+
+.haku-ui-editor__viewport {
+  position: relative;
+  overflow: hidden;
+  transform: scale(0.5);
+  transform-origin: top left;
+  background: #101018;
+  box-shadow: 0 0 0 2px #555;
+}
+
+.haku-ui-editor__viewport [data-haku-ui-selected='true'] {
+  outline: 4px solid #45a3ff;
+  outline-offset: 2px;
+}
+
+.haku-ui-editor__inspector-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.haku-ui-editor__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.haku-ui-editor__inspector code {
+  overflow-wrap: anywhere;
+  color: #777;
+  font-size: 10px;
+}
+
+.haku-ui-editor--empty {
+  display: grid;
+  place-items: center;
+  color: #666;
+}

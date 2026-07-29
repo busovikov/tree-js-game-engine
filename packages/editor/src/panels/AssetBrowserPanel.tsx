@@ -9,6 +9,7 @@ import { primarySelection } from '../selection/selection-utils.js'
 import { useEditorStore } from '../store/editor-store.js'
 import { projectService } from '../services/project-service.js'
 import type { ProjectFileEntry } from '../services/project-service.js'
+import { requestOpenUIDocument } from '../ui/ui-editor-service.js'
 import {
   CustomComponentTypeDialog,
   type VisualComponentTypeDraft,
@@ -608,6 +609,11 @@ export const AssetBrowserPanel = memo(function AssetBrowserPanel() {
         return
       }
       setSelectedPath(entry.path)
+      if (entry.path.toLowerCase().endsWith('.ui.json')) {
+        void requestOpenUIDocument(entry.path).catch((error: unknown) => {
+          alert(error instanceof Error ? error.message : 'Failed to open UI document')
+        })
+      }
     },
     [navigateTo],
   )

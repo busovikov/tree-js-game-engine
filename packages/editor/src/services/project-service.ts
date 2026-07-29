@@ -60,6 +60,11 @@ import { PLAYGROUND_PROJECT } from './playground-demos.js'
 import { GRAPH_ASSET_TYPE, GraphAssetSchema, type GraphAsset } from '@haku/graph'
 import type { BrowserProjectTrustMode } from '@haku/build'
 import {
+  UIDocumentSchema,
+  UI_DOCUMENT_ASSET_TYPE,
+  type UIDocument,
+} from '@haku/ui'
+import {
   BrowserProjectWorkspace,
   type BrowserProjectDiskFile,
   type BrowserProjectFileSystem,
@@ -467,6 +472,51 @@ export class ProjectService {
     return asset
   }
 
+  async createUIDocumentAsset(
+    projectPath: string,
+    name: string,
+    id: string = crypto.randomUUID(),
+    root: string = crypto.randomUUID(),
+  ): Promise<UIDocument> {
+    if (!this.manifest) throw new Error('No project manifest loaded')
+    const path = this.manifestAssetPath(projectPath)
+    if (this.manifest.assets.some((entry) => entry.path === path)) {
+      throw new Error(`An asset already exists at ${path}`)
+    }
+    const asset = UIDocumentSchema.parse({
+      schemaVersion: 1,
+      id,
+      name,
+      root,
+      elements: [
+        {
+          id: root,
+          type: 'container',
+          name: 'Root',
+          children: [],
+          sizing: { width: '100%', height: '100%' },
+        },
+      ],
+    })
+    await this.writeProjectText(projectPath, `${JSON.stringify(asset, null, 2)}\n`)
+    this.manifest = validateProjectManifest({
+      ...this.manifest,
+      assets: [
+        ...this.manifest.assets,
+        {
+          id: asset.id,
+          type: UI_DOCUMENT_ASSET_TYPE,
+          path,
+          dependencies: collectAssetReferences(asset),
+          metadata: { name },
+        },
+      ],
+    })
+    validateProjectAssetComposition(this.manifest, this.assetRegistry)
+    await this.persistManifest()
+    return asset
+  }
+
   async createCustomComponentTypeAsset(
     projectPath: string,
     input: CustomComponentTypeAsset,
@@ -524,6 +574,31 @@ export class ProjectService {
       ...assets[index]!,
       dependencies: collectAssetReferences(asset),
       metadata: { ...assets[index]!.metadata, name: asset.graph.name },
+    }
+    this.manifest = validateProjectManifest({ ...this.manifest, assets })
+    validateProjectAssetComposition(this.manifest, this.assetRegistry)
+    await this.persistManifest()
+    return asset
+  }
+
+  async loadUIDocumentAsset(projectPath: string): Promise<UIDocument> {
+    return UIDocumentSchema.parse(JSON.parse(await this.readProjectText(projectPath)))
+  }
+
+  async saveUIDocumentAsset(projectPath: string, input: UIDocument): Promise<UIDocument> {
+    if (!this.manifest) throw new Error('No project manifest loaded')
+    const path = this.manifestAssetPath(projectPath)
+    const index = this.manifest.assets.findIndex(
+      (entry) => entry.path === path && entry.type === UI_DOCUMENT_ASSET_TYPE,
+    )
+    if (index < 0) throw new Error(`UI document asset is not registered: ${path}`)
+    const asset = UIDocumentSchema.parse(input)
+    await this.writeProjectText(projectPath, `${JSON.stringify(asset, null, 2)}\n`)
+    const assets = [...this.manifest.assets]
+    assets[index] = {
+      ...assets[index]!,
+      dependencies: collectAssetReferences(asset),
+      metadata: { ...assets[index]!.metadata, name: asset.name },
     }
     this.manifest = validateProjectManifest({ ...this.manifest, assets })
     validateProjectAssetComposition(this.manifest, this.assetRegistry)
@@ -1668,6 +1743,7 @@ export class ProjectService {
 
 function assetTypeForPath(path: string): AssetTypeId {
   const lower = path.toLowerCase()
+  if (lower.endsWith('.ui.json')) return UI_DOCUMENT_ASSET_TYPE
   if (lower.endsWith('.graph.json')) return GRAPH_ASSET_TYPE
   if (lower.endsWith('.scene.json')) return SCENE_ASSET_TYPE
   if (lower.endsWith('.gltf') || lower.endsWith('.glb')) return MODEL_ASSET_TYPE

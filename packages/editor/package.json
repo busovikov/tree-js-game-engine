@@ -29,6 +29,7 @@
     "@haku/physics-rapier": "file:../physics-rapier",
     "@haku/schema": "file:../schema",
     "@haku/serializer": "file:../serializer",
+    "@haku/ui": "workspace:*",
     "@xyflow/react": "^12.11.2",
     "monaco-editor": "^0.56.0",
     "react-resizable-panels": "^2.1.9",

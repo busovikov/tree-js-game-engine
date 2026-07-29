@@ -1,12 +1,13 @@
 import type { ProjectFileEntry } from '../services/project-service.js'
 
-export type AssetKind = 'directory' | 'model' | 'scene' | 'image' | 'prefab' | 'other'
+export type AssetKind = 'directory' | 'model' | 'scene' | 'ui' | 'image' | 'prefab' | 'other'
 
 export function fileIcon(name: string, isDirectory: boolean): string {
   if (isDirectory) return '📁'
   const ext = name.split('.').pop()?.toLowerCase()
   if (ext === 'glb' || ext === 'gltf') return '🎲'
   if (ext === 'png' || ext === 'jpg' || ext === 'jpeg' || ext === 'webp') return '🖼'
+  if (name.endsWith('.ui.json')) return '▤'
   if (name.endsWith('.scene.json') || ext === 'json') return '📋'
   return '📄'
 }
@@ -16,6 +17,7 @@ export function getAssetKind(entry: ProjectFileEntry | null | undefined): AssetK
   if (entry.isDirectory) return 'directory'
   const name = entry.name.toLowerCase()
   if (name.endsWith('.scene.json')) return 'scene'
+  if (name.endsWith('.ui.json')) return 'ui'
   if (name.endsWith('.prefab.json')) return 'prefab'
   const ext = name.split('.').pop()
   if (ext === 'glb' || ext === 'gltf') return 'model'
