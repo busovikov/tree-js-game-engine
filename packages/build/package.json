@@ -8,6 +8,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./browser-static-export": {
+      "types": "./dist/browser-static-export.d.ts",
+      "import": "./dist/browser-static-export.js"
     }
   },
   "files": ["dist"],

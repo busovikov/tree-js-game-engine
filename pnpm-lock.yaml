@@ -96,6 +96,9 @@ importers:
       '@haku/audio-web':
         specifier: workspace:*
         version: link:../../packages/audio-web
+      '@haku/build':
+        specifier: workspace:*
+        version: link:../../packages/build
       '@haku/core':
         specifier: workspace:*
         version: link:../../packages/core
