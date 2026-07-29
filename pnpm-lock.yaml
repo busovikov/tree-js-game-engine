@@ -90,6 +90,12 @@ importers:
       '@haku/assets':
         specifier: workspace:*
         version: link:../../packages/assets
+      '@haku/audio':
+        specifier: workspace:*
+        version: link:../../packages/audio
+      '@haku/audio-web':
+        specifier: workspace:*
+        version: link:../../packages/audio-web
       '@haku/core':
         specifier: workspace:*
         version: link:../../packages/core

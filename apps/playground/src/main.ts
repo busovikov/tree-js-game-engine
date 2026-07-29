@@ -20,6 +20,7 @@ import { compileDiagnosticGraph } from '@haku/graph'
 import { runDiagnosticGraphPlan } from '@haku/graph-runtime/diagnostic-graph'
 import { runPoolDiagnostic } from './pool-diagnostic.js'
 import { createUIDiagnostic } from './ui-diagnostic.js'
+import { createAudioDiagnostic } from './audio-diagnostic.js'
 
 async function main() {
   const manifest = validateProjectManifest(project)
@@ -67,6 +68,18 @@ async function main() {
   })
   document.getElementById('app')?.append(uiHost)
   createUIDiagnostic(uiHost)
+  const audioHost = document.createElement('div')
+  audioHost.id = 'haku-audio-diagnostic'
+  Object.assign(audioHost.style, {
+    position: 'absolute',
+    left: '20px',
+    top: '230px',
+    width: '420px',
+    zIndex: '2',
+  })
+  document.getElementById('app')?.append(audioHost)
+  const audioDiagnostic = createAudioDiagnostic(audioHost)
+  window.addEventListener('beforeunload', () => audioDiagnostic.destroy(), { once: true })
   engine.loadWorld(
     loaded.world,
     loaded.prototypes,
