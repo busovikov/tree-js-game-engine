@@ -108,6 +108,9 @@ importers:
       '@haku/pool':
         specifier: workspace:*
         version: link:../../packages/pool
+      '@haku/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
     devDependencies:
       typescript:
         specifier: ^5.7.2

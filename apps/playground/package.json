@@ -16,7 +16,8 @@
     "@haku/graph": "workspace:^",
     "@haku/graph-runtime": "workspace:^",
     "@haku/pool": "workspace:*",
-    "@haku/physics-rapier": "workspace:*"
+    "@haku/physics-rapier": "workspace:*",
+    "@haku/ui": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.2",

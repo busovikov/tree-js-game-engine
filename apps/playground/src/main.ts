@@ -19,6 +19,7 @@ import { configurePlaygroundViewport } from './playground-viewport.js'
 import { compileDiagnosticGraph } from '@haku/graph'
 import { runDiagnosticGraphPlan } from '@haku/graph-runtime/diagnostic-graph'
 import { runPoolDiagnostic } from './pool-diagnostic.js'
+import { createUIDiagnostic } from './ui-diagnostic.js'
 
 async function main() {
   const manifest = validateProjectManifest(project)
@@ -54,6 +55,18 @@ async function main() {
     `[haku] M07 graph plan ${diagnosticRun.planFingerprint} reached the playground world`,
   )
   console.info('[haku] M10a pool diagnostic', runPoolDiagnostic())
+  const uiHost = document.createElement('div')
+  uiHost.id = 'haku-ui-diagnostic'
+  Object.assign(uiHost.style, {
+    position: 'absolute',
+    left: '20px',
+    top: '20px',
+    width: '360px',
+    height: '190px',
+    zIndex: '2',
+  })
+  document.getElementById('app')?.append(uiHost)
+  createUIDiagnostic(uiHost)
   engine.loadWorld(
     loaded.world,
     loaded.prototypes,

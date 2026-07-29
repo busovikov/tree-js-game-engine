@@ -98,7 +98,20 @@ export class UIDocumentInstance {
 
   private updateState(id: UIElementId, patch: UIElementState): void {
     this.state.set(id, { ...this.state.get(id), ...patch })
-    if (this.host) this.render()
+    const element = this.requireElement(id)
+    const node = this.nodes.get(id)
+    if (!node) return
+    const state = this.state.get(id)
+    if (patch.text !== undefined) node.textContent = state?.text ?? ''
+    if (patch.visible !== undefined) {
+      node.hidden = state?.visible === false || element.visible === false
+    }
+    if (patch.enabled !== undefined) {
+      const enabled = state?.enabled ?? element.enabled
+      const ownerDocument = node.ownerDocument
+      if (node instanceof ownerDocument.defaultView!.HTMLButtonElement) node.disabled = !enabled
+      else node.inert = !enabled
+    }
   }
 
   private render(): void {
@@ -169,6 +182,9 @@ export class UIDocumentInstance {
       ...this.document.themes.find((theme) => theme.id === this.activeTheme)?.styles[element.id],
     })
     applyAccessibility(node, element)
+    if (element.id === this.document.root && node.style.position === '') {
+      node.style.position = 'relative'
+    }
     return node
   }
 
