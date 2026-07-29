@@ -93,4 +93,19 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    files: ['packages/ui/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            { name: '@haku/editor', message: '@haku/ui runtime must not import editor' },
+            { name: 'react', message: '@haku/ui production renderer must not import react' },
+            { name: 'react-dom', message: '@haku/ui production renderer must not import react-dom' },
+          ],
+        },
+      ],
+    },
+  },
 )
