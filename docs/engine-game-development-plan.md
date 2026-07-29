@@ -356,8 +356,9 @@ Implemented in M10e: `@haku/build` validates an in-memory project closure, rewri
 module-relative assets, resolves manifest dependencies, compiles a tree-shaken/minified
 runtime with esbuild-wasm in a dedicated Worker, and creates a deterministic stored ZIP
 with portable file modes. `@haku/editor` exposes trusted-project export from the File menu,
-reads only the required project files, downloads the Blob locally, and routes structured
-graph/type/code/UI diagnostics back to the matching workspace and source location.
+reads workspace sources plus only the reachable manifest asset closure, downloads the Blob
+locally, and routes structured graph/type/code/UI diagnostics back to the matching
+workspace and source location.
 User-Chrome proof extracted the archive under a nested deployment path, loaded only the
 root page, runtime, and reachable asset with 200 responses, and produced no warnings or
 errors.

@@ -323,7 +323,7 @@ are separate, and all public reads/lists return defensive clones.
 | Scenario | Error / behavior | Enforcement |
 | -------- | ---------------- | ----------- |
 | Imported-untrusted project requests export | Trust diagnostic is shown before a Worker is created or project source is compiled | `exportProjectAsStaticZip` |
-| Root HTML has no local module entry, or has more than one | Structured entry diagnostic; no ambiguous bundle is produced | `createBrowserStaticExport` |
+| Root HTML has no local module entry | Structured entry diagnostic; no bundle is produced | `createBrowserStaticExport` |
 | Local URL escapes the project, is missing, duplicated, or resolves remotely | Export fails with a path-scoped diagnostic; remote/network content is never fetched | `createBrowserStaticExport` |
 | Manifest references an unused asset | Asset is omitted unless reachable through the deterministic manifest dependency closure | `dependencyClosure` |
 | Worker compilation fails | Code path/line/column are preserved; graph/type/UI locations additionally retain node or element identity | `BrowserStaticExportClient`, `navigateToBuildDiagnostic` |
