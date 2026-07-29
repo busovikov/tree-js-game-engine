@@ -23,6 +23,7 @@ export default {
       '@haku/pool': join(fileURLToPath(new URL('.', import.meta.url)), 'packages/pool/src'),
       '@haku/ui': join(fileURLToPath(new URL('.', import.meta.url)), 'packages/ui/src'),
       '@haku/audio': join(fileURLToPath(new URL('.', import.meta.url)), 'packages/audio/src'),
+      '@haku/audio-web': join(fileURLToPath(new URL('.', import.meta.url)), 'packages/audio-web/src'),
       '@haku/core': join(fileURLToPath(new URL('.', import.meta.url)), 'packages/core/src'),
       '@haku/serializer': join(fileURLToPath(new URL('.', import.meta.url)), 'packages/serializer/src'),
       '@haku/engine': join(fileURLToPath(new URL('.', import.meta.url)), 'packages/engine/src'),
