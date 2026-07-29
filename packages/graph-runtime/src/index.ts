@@ -20,6 +20,16 @@ export {
 
 export { registerFoundationRuntimeAdapters } from './foundation-runtime.js'
 
+export {
+  createGraphVariableStore,
+  createSeededRandomService,
+  registerDeterministicRuntimeAdapters,
+  type DeterministicRuntimeServices,
+  type GraphVariableStore,
+  type SeededRandomCheckpoint,
+  type SeededRandomService,
+} from './deterministic-runtime.js'
+
 export class GraphRuntimeError extends Error {
   readonly code: string
   readonly graphId: string

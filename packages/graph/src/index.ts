@@ -154,3 +154,9 @@ export {
   FOUNDATION_GRAPH_IDS,
   registerFoundationNodeContracts,
 } from './foundation-node-contracts.js'
+
+export {
+  DETERMINISTIC_GRAPH_CONTRACTS,
+  DETERMINISTIC_NODE_DEFINITIONS,
+  registerDeterministicNodeContracts,
+} from './deterministic-node-contracts.js'
