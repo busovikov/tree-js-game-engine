@@ -179,6 +179,38 @@ describe('InputManager', () => {
       input.endFrame()
       expect(input.getActions().respawn).toBe(false)
     })
+
+    it('exposes configurable named actions without changing legacy vehicle actions', () => {
+      input.detach()
+      input = new InputManager({
+        keyboardTarget: keyboard as unknown as EventTarget,
+        pointerTarget: pointer as unknown as PointerCaptureTarget,
+        actionBindings: {
+          lateral: {
+            kind: 'axis',
+            negative: ['KeyA', 'ArrowLeft'],
+            positive: ['KeyD', 'ArrowRight'],
+          },
+          restart: { kind: 'pulse', codes: ['KeyR'] },
+          pause: { kind: 'pulse', codes: ['Escape'] },
+        },
+      })
+      input.attach()
+      input.enable()
+
+      keyboard.dispatch('keydown', keyEvent('KeyA', 'keydown'))
+      keyboard.dispatch('keydown', keyEvent('Escape', 'keydown'))
+
+      expect(input.getActionMap()).toEqual({
+        lateral: -1,
+        restart: false,
+        pause: true,
+      })
+      expect(input.getActions().steer).toBe(-1)
+
+      input.endFrame()
+      expect(input.getActionMap().pause).toBe(false)
+    })
   })
 
   describe('pointer delta', () => {

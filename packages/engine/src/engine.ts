@@ -312,7 +312,14 @@ export {
   type InputActions,
   type InputManagerOptions,
   type PointerCaptureTarget,
+  type InputActionBinding,
+  type InputActionBindings,
+  type InputActionMap,
+  type InputActionMapSnapshot,
+  type InputAxisActionBinding,
+  type InputButtonActionBinding,
 } from './input/index.js'
+export { createInputActionMap } from './input/index.js'
 export {
   InputBindingSystem,
   inputActionsToVehicleInput,

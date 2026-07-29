@@ -4,6 +4,12 @@ import {
   type DirectionalKeyAction,
   type InputActions,
 } from './input-actions.js'
+import {
+  createInputActionMap,
+  type InputActionBindings,
+  type InputActionMap,
+  type InputActionMapSnapshot,
+} from './action-map.js'
 
 export type { InputActions } from './input-actions.js'
 export { DEFAULT_INPUT_ACTIONS, KEY_BINDINGS } from './input-actions.js'
@@ -20,6 +26,8 @@ export interface InputManagerOptions {
   keyboardTarget?: EventTarget
   /** Pointer + wheel target (default: same as keyboard target). */
   pointerTarget?: PointerCaptureTarget
+  /** Optional game-authored named keyboard actions. */
+  actionBindings?: InputActionBindings
 }
 
 interface KeyLikeEvent {
@@ -99,6 +107,7 @@ export class InputManager {
   private pointerTarget: PointerCaptureTarget | null = null
   private readonly defaultKeyboardTarget: EventTarget | undefined
   private readonly defaultPointerTarget: PointerCaptureTarget | undefined
+  private readonly actionMap: InputActionMap | null
 
   private attached = false
   private enabled = false
@@ -124,6 +133,9 @@ export class InputManager {
   constructor(options: InputManagerOptions = {}) {
     this.defaultKeyboardTarget = options.keyboardTarget
     this.defaultPointerTarget = options.pointerTarget
+    this.actionMap = options.actionBindings
+      ? createInputActionMap(options.actionBindings)
+      : null
   }
 
   get isAttached(): boolean {
@@ -230,6 +242,11 @@ export class InputManager {
     }
   }
 
+  /** Snapshot of optional game-authored named actions. */
+  getActionMap(): InputActionMapSnapshot {
+    return this.enabled ? (this.actionMap?.snapshot() ?? {}) : {}
+  }
+
   /** Clear jump/respawn pulses only; orbit/zoom cleared by {@link endFrame}. */
   clearFramePulses(): void {
     this.jumpPulse = false
@@ -242,6 +259,7 @@ export class InputManager {
     this.orbitDx = 0
     this.orbitDy = 0
     this.zoomDelta = 0
+    this.actionMap?.endFrame()
   }
 
   private handleKeyDown(event: KeyLikeEvent): void {
@@ -250,6 +268,9 @@ export class InputManager {
     const action = CODE_TO_ACTION.get(event.code)
     if (action) {
       this.pressed.add(event.code)
+      event.preventDefault()
+    }
+    if (this.actionMap?.keyDown(event.code, event.repeat)) {
       event.preventDefault()
     }
 
@@ -271,6 +292,7 @@ export class InputManager {
     if (action) {
       this.pressed.delete(event.code)
     }
+    this.actionMap?.keyUp(event.code)
   }
 
   private handlePointerDown(event: PointerLikeEvent): void {
@@ -314,5 +336,6 @@ export class InputManager {
     this.orbitDy = 0
     this.zoomDelta = 0
     this.dragging = false
+    this.actionMap?.releaseAll()
   }
 }

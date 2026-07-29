@@ -80,7 +80,14 @@ export type {
   InputManagerOptions,
   PointerCaptureTarget,
   DirectionalKeyAction,
+  InputActionBinding,
+  InputActionBindings,
+  InputActionMap,
+  InputActionMapSnapshot,
+  InputAxisActionBinding,
+  InputButtonActionBinding,
 } from './input/index.js'
+export { createInputActionMap } from './input/index.js'
 export type { InputBindingSystemOptions } from './systems/input-binding-system.js'
 export type {
   ChaseCameraOrbitState,

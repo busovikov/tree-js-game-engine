@@ -9,3 +9,12 @@ export {
   type InputActions,
   type DirectionalKeyAction,
 } from './input-actions.js'
+export {
+  createInputActionMap,
+  type InputActionBinding,
+  type InputActionBindings,
+  type InputActionMap,
+  type InputActionMapSnapshot,
+  type InputAxisActionBinding,
+  type InputButtonActionBinding,
+} from './action-map.js'
