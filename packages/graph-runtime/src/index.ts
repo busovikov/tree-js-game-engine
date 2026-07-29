@@ -44,6 +44,13 @@ export {
   type SaveGraphService,
 } from './cross-service-runtime.js'
 
+export {
+  createDeterministicResourceSnapshotProvider,
+  createFoundationRuntimeRegistry,
+  type FoundationRuntimeServices,
+  type RuntimeAdapterRegistrar,
+} from './foundation-runtime-catalog.js'
+
 export class GraphRuntimeError extends Error {
   readonly code: string
   readonly graphId: string
