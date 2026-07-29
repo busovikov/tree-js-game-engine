@@ -126,6 +126,8 @@
 | `isExecutionPlanCompatible()` | Reject a plan when node/type registry contracts change |
 | `GraphDiagnosticError`, `GraphDiagnostic` | Exact graph/node/port diagnostics and causal chains |
 | `registerCustomComponentGraphContracts()` | Project component data type plus Get/Set/Add/Remove node contracts |
+| `createFoundationNodeRegistry()` | Deterministic composition of graph-owned and injected subsystem node registrars |
+| `FOUNDATION_GRAPH_IDS`, `DETERMINISTIC_GRAPH_CONTRACTS`, `WORLD_GRAPH_CONTRACTS`, `SERVICE_GRAPH_CONTRACTS` | Stable M10f lifecycle/control/math, variable/random, world/physics, and save/platform/debug/assertion contracts |
 
 ### `@haku/graph-runtime` — `packages/graph-runtime/src/index.ts`
 
@@ -143,6 +145,8 @@
 | `SaveService`, `PersistentCheckpointRecord` | Storage-agnostic async checkpoint-entry persistence contract and checksummed envelope |
 | `CheckpointMigrationRegistry` | Registered plan-fingerprint migration before persistent scoped resume |
 | `registerCustomComponentRuntimeAdapters()` | Runtime adapters for project component Get/Set/Add/Remove nodes |
+| `createFoundationRuntimeRegistry()` | Public-service runtime composition for graph-owned and injected subsystem adapters |
+| `createDeterministicResourceSnapshotProvider()` | Declared variable/seeded-random checkpoint snapshot boundary |
 
 ### `@haku/pool` — `packages/pool/src/index.ts`
 
@@ -572,6 +576,8 @@ provider-specific adapters.
 | Web Audio backend | `packages/audio-web/src/index.ts` |
 | AudioSource Inspector/preview | `packages/editor/src/components/AudioSourceFields.tsx`, `audio/audio-preview.ts` |
 | Playground audio diagnostic | `apps/playground/src/audio-diagnostic.ts` |
+| Cross-service graph diagnostic | `apps/playground/src/cross-service-diagnostic.ts` |
+| Isolated M10f browser entry | `apps/playground/m10f-diagnostic.html`, `apps/playground/vite.m10f.config.ts` |
 | Create templates | `packages/create/templates/` |
 | CI check | `scripts/check.sh` |
 

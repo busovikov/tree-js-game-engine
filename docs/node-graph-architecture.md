@@ -578,6 +578,16 @@ runtime adapter.
 
 ## Extension checklist
 
+Use these exact extension paths before composing a feature into an app:
+
+| Extension | Contract and verification path |
+| --------- | ------------------------------ |
+| Data type | Add the schema/identity in `packages/graph/src/type-registry.ts`, expose declarations from `packages/graph/src/node-sdk-declarations.ts`, and cover both in their adjacent tests. |
+| Node | Put graph-owned metadata in the matching `packages/graph/src/*-node-contracts.ts`; subsystem-owned metadata stays in that package's `graph-nodes.ts`. Register it through `packages/graph/src/foundation-catalog.ts` and extend `foundation-catalog-integration.test.ts`. |
+| Capability/effect | Add the declared capability/effect contract in `packages/graph/src/node-registry.ts`, surface it in `node-sdk-declarations.ts`, then provide the narrow public service and runtime adapter in the owning package. |
+| Editor widget | Add the constrained host contract in `packages/editor/src/extensions/editor-extension-host.ts` and render it through `packages/editor/src/extensions/SandboxedCustomWidget.tsx`; keep runtime packages free of React/DOM handles and add adjacent trust/validation tests. |
+| Subsystem binding | Keep service logic in the owning package, add its `register*NodeContracts` and `register*RuntimeAdapters`, inject both through `createFoundationNodeRegistry()` and `createFoundationRuntimeRegistry()`, and prove composition at `apps/playground/src/cross-service-diagnostic.ts`. |
+
 When adding a node, type, component, domain, or capability:
 
 1. own it in the correct package/project registry;
@@ -592,3 +602,9 @@ When adding a node, type, component, domain, or capability:
 
 If a new feature requires patching interpreter internals rather than an existing registry or
 backend interface, document the missing extension point before changing the stable runtime.
+
+Implemented in M10f: `foundation-catalog.ts` and `foundation-runtime-catalog.ts` are the
+composition seams. They keep graph packages metadata/runtime-only while injected subsystem
+registrars retain package ownership. The combined compiler test locks the registry
+fingerprint, queue-flow crossings, effects, and save/platform causal chains; the runtime
+test locks seeded-random checkpoint/rewind and rejects undeclared dynamic resources.

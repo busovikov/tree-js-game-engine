@@ -112,6 +112,16 @@ stable `data-*` state expose revision/sequence plus lifecycle, capabilities, and
 simulation/input/audio control values for browser QA. Unsupported auth/replication features
 remain visibly false rather than rendering controls that cannot work.
 
+### Cross-service foundation proof
+
+M10f adds no editor-only gameplay UI. The React-free diagnostic at
+`apps/playground/src/cross-service-diagnostic.ts` composes the production UI and audio
+diagnostics with graph, pool, save, platform, and static-export services. Use
+`apps/playground/m10f-diagnostic.html` with `vite.m10f.config.ts` for isolated browser QA:
+`Run graph services` exposes pass/fail, exact effects, trace, pool reuse, save persistence,
+and platform state; `Run static export` exposes the bounded output file list. The existing
+audio button remains the required direct-gesture unlock path.
+
 ### Inspector fields (reuse first)
 
 | Component | File | Use for |

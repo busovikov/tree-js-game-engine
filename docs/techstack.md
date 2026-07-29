@@ -169,6 +169,27 @@ registry, manifest index, and deterministic dependency closure.
 
 ---
 
+## `@haku/graph` and `@haku/graph-runtime`
+
+**Role:** Strict metadata-only graph contracts/compiler plus scheduler-owned execution,
+checkpoint/rewind, and injected public-service runtime adapters.
+
+M10f adds deterministic catalog composition at
+`packages/graph/src/foundation-catalog.ts` and
+`packages/graph-runtime/src/foundation-runtime-catalog.ts`. Graph-owned lifecycle,
+control/math/vector, variable/random, world/component/prefab/physics, save/platform/debug,
+and assertion foundations compose with pool, UI, and audio registrars without reversing
+package dependencies.
+
+**Tests:** combined registry fingerprint, domains/queue crossings, effects and async policy;
+seeded-random checkpoint/rewind and undeclared-resource rejection; real public-service
+composition in the playground.
+
+**Must NOT depend on:** React, React Flow, editor packages, browser storage, or subsystem
+implementations.
+
+---
+
 ## `@haku/ui`
 
 **Role:** Strict UUID UI assets, production native DOM renderer, public service/events,
@@ -331,9 +352,12 @@ browser-client RPC.
 | `@haku/ui` | Production DOM UI diagnostic; no editor/React dependency |
 | `@haku/audio`, `@haku/audio-web` | Production local-byte Web Audio diagnostic; no editor/React dependency |
 | `@haku/storage`, `@haku/platform` | Real IndexedDB and browser lifecycle/control diagnostic; no cloud SDK |
+| `@haku/graph`, `@haku/graph-runtime`, `@haku/pool` | Combined public-service graph composition and deterministic trace |
+| `@haku/build/browser-static-export` | Bounded in-memory export fixture without Worker/toolchain closure |
 | **Vite** ^6 | Dev server + production bundle |
 
-**Layout:** `haku.project.json`, `public/assets/scenes/`, `src/main.ts`
+**Layout:** `haku.project.json`, `public/assets/scenes/`, `src/main.ts`; isolated M10f browser
+QA uses `m10f-diagnostic.html` and `vite.m10f.config.ts` with `publicDir: false`.
 
 ---
 

@@ -127,6 +127,7 @@ Manual viewport checks **supplement** automated tests — never replace them.
 | `NodeRef` targets a node outside the same graph instance | Compile error; cross-instance node access is not representable |
 | Unknown/external effect or dynamic resource read | Plan remains compilable but checkpoint-ineligible with causal reasons |
 | Plan registry fingerprint differs at load | Plan is incompatible and must be recompiled |
+| Two catalog contributors register the same node type/version | Registry composition rejects the duplicate; package ownership is not silently overwritten |
 | Browser-native `crypto.randomUUID()` is used by a graph command | Invoke through the `crypto` receiver; detached browser methods throw `Illegal invocation` |
 
 ### Gameplay graph runtime
@@ -150,6 +151,9 @@ Manual viewport checks **supplement** automated tests — never replace them.
 | Rewind encounters prior score/audio/event effects | Reconcile stable effect IDs without replaying delivered one-shot effects |
 | Persistent record checksum, plan/registry/scope/reference fingerprint, or migration is incompatible | Run only the graph's fallback entry; do not delete the checkpoint or invalidate unrelated save-slot data |
 | Persistent checkpoint restores successfully | Restore/recompute the bounded scope and dispatch `resume-from-checkpoint`, never repeat start flow |
+| Deterministic snapshot provider receives an undeclared/dynamic resource | Reject it; M10f snapshots only `graph.variable` and `random.seeded` resources |
+| Save/Load Value crosses a checkpoint barrier | Preserve compiler-emitted policies: Save waits or rejects; Load materializes or rejects |
+| Cross-service node changes scheduler domain | Use the compiler-emitted queue crossing; pool, UI, and audio adapters never call one another synchronously |
 
 ### Hierarchy / world invariants
 

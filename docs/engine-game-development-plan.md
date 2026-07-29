@@ -48,7 +48,7 @@ The program is done only when:
 | M10c | Audio contracts, Web Audio, and editor support                  | M09        | Complete                                 |
 | M10d | Save storage, replication, and platform contracts               | M09        | Complete                                 |
 | M10e | Browser static export and ZIP                                   | M10b–M10d  | Complete                                 |
-| M10f | Cross-service graph nodes and contract integration              | M10a–M10e  | Pending                                  |
+| M10f | Cross-service graph nodes and contract integration              | M10a–M10e  | Complete                                 |
 | M11  | Bounce Run vertical slice                                       | M10f       | Pending                                  |
 | M12  | Generator, seed/replay, QA harness, and automated browser tests | M11        | Pending                                  |
 | M13  | Full gameplay, polish, saves, audio, and stabilization          | M12        | Pending                                  |
@@ -367,14 +367,22 @@ errors.
 
 Scope and acceptance:
 
-- [ ] Add lifecycle, variables, control, math/vector, transform, component, prefab, pool,
+- [x] Add lifecycle, variables, control, math/vector, transform, component, prefab, pool,
       physics query/event/body, seeded random, UI, audio, save, platform capability, debug, and
       assertion node foundations as real use cases require.
-- [ ] Nodes use public services, declare domains/effects/checkpoint behavior, and have tests.
-- [ ] Complex algorithms remain typed modules behind registered nodes.
-- [ ] A playground integration scene proves UI/audio/save/pool/graph/export together.
-- [ ] Documentation shows exactly where a new agent adds a type, node, capability, editor
+- [x] Nodes use public services, declare domains/effects/checkpoint behavior, and have tests.
+- [x] Complex algorithms remain typed modules behind registered nodes.
+- [x] A playground integration scene proves UI/audio/save/pool/graph/export together.
+- [x] Documentation shows exactly where a new agent adds a type, node, capability, editor
       widget, or subsystem binding.
+
+Implemented in M10f: graph-owned foundation, deterministic, world, and service registrars
+compose with pool, UI, and audio registrars through one deterministic catalog. Matching
+runtime composition injects only public services, preserves scheduler queue crossings and
+async checkpoint policies, and snapshots only declared variable/seeded-random resources.
+The isolated playground diagnostic proves real pool reuse, DOM UI mutation, audio effect and
+gesture unlock, save roundtrip, platform capability, graph trace/effects, and a bounded
+browser static export without loading the editor or project manifest.
 
 ## M11 — Bounce Run vertical slice
 
