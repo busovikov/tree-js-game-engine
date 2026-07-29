@@ -20,6 +20,38 @@ export interface BrowserStaticExportResult {
   readonly files: ReadonlyMap<string, BrowserStaticExportContents>
 }
 
+export type BrowserStaticExportSourceKind = 'graph' | 'type' | 'code' | 'ui'
+
+export interface BrowserStaticExportSourceLocation {
+  readonly kind: BrowserStaticExportSourceKind
+  readonly path: string
+  readonly line?: number
+  readonly column?: number
+  readonly graphId?: string
+  readonly nodeId?: string
+  readonly typeId?: string
+  readonly uiDocumentId?: string
+  readonly uiElementId?: string
+}
+
+export interface BrowserStaticExportDiagnostic {
+  readonly code: 'build.failed' | 'export.invalid'
+  readonly severity: 'error'
+  readonly message: string
+  readonly source?: BrowserStaticExportSourceLocation
+}
+
+export type BrowserStaticExportWorkerResult =
+  | {
+      readonly ok: true
+      readonly files: ReadonlyMap<string, BrowserStaticExportContents>
+      readonly diagnostics: readonly []
+    }
+  | {
+      readonly ok: false
+      readonly diagnostics: readonly BrowserStaticExportDiagnostic[]
+    }
+
 const ENTRY_OUTPUT_PATH = 'assets/runtime.js'
 const TEXT_DECODER = new TextDecoder()
 
@@ -83,6 +115,17 @@ function moduleEntryPath(html: string, htmlPath: string): string {
   const resolved = resolveLocalReference(match[1], htmlPath)
   if (!resolved) throw new Error(`Static export module entry must be a local file: ${match[1]}`)
   return resolved
+}
+
+export function browserStaticExportEntryPath(
+  request: BrowserStaticExportRequest,
+): string {
+  const htmlPath = normalizeProjectPath(request.entryHtmlPath)
+  const htmlFile = request.files.find(
+    (file) => normalizeProjectPath(file.path) === htmlPath,
+  )
+  if (!htmlFile) throw new Error(`Static export file not found: ${htmlPath}`)
+  return moduleEntryPath(text(htmlFile.contents), htmlPath)
 }
 
 function replaceModuleEntry(html: string): string {

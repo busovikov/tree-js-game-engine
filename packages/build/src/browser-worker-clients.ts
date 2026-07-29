@@ -1,4 +1,8 @@
 import type { BrowserProjectBundles } from './browser-project-tooling.js'
+import type {
+  BrowserStaticExportRequest,
+  BrowserStaticExportWorkerResult,
+} from './browser-static-export.js'
 
 export interface BrowserWorkerLike {
   onmessage: ((event: MessageEvent) => void) | null
@@ -108,6 +112,12 @@ function createBundlerWorker(): BrowserWorkerLike {
   })
 }
 
+function createStaticExportWorker(): BrowserWorkerLike {
+  return new Worker(new URL('./browser-static-export.worker.js', import.meta.url), {
+    type: 'module',
+  })
+}
+
 export class TypeScriptLanguageClient {
   private readonly rpc: LazyWorkerRpc
 
@@ -133,6 +143,22 @@ export class BrowserBundlerClient {
 
   build(request: BrowserBundleRequest): Promise<BrowserProjectBundles> {
     return this.rpc.request('build', request)
+  }
+
+  dispose(): void {
+    this.rpc.dispose()
+  }
+}
+
+export class BrowserStaticExportClient {
+  private readonly rpc: LazyWorkerRpc
+
+  constructor(workerFactory: () => BrowserWorkerLike = createStaticExportWorker) {
+    this.rpc = new LazyWorkerRpc(workerFactory)
+  }
+
+  export(request: BrowserStaticExportRequest): Promise<BrowserStaticExportWorkerResult> {
+    return this.rpc.request('export', request)
   }
 
   dispose(): void {

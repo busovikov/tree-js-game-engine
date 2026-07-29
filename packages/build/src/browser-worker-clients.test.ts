@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   BrowserBundlerClient,
+  BrowserStaticExportClient,
   TypeScriptLanguageClient,
   type BrowserWorkerLike,
 } from './browser-worker-clients.js'
@@ -49,6 +50,66 @@ describe('lazy browser tooling workers', () => {
     await expect(pending).resolves.toEqual({
       gameplay: 'game bundle',
       editorExtension: 'editor bundle',
+    })
+    client.dispose()
+    expect(worker.terminate).toHaveBeenCalledOnce()
+  })
+
+  it('routes a static export through its own lazy worker and preserves source diagnostics', async () => {
+    const worker = new FakeWorker()
+    const client = new BrowserStaticExportClient(() => worker)
+    const pending = client.export({
+      entryHtmlPath: 'index.html',
+      files: [
+        {
+          path: 'index.html',
+          contents: '<script type="module" src="./src/main.ts"></script>',
+        },
+        { path: 'src/main.ts', contents: 'const broken: string = 1' },
+      ],
+    })
+    const request = worker.postMessage.mock.calls[0]?.[0] as {
+      id: number
+      method: string
+    }
+    expect(request.method).toBe('export')
+    worker.onmessage?.(
+      new MessageEvent('message', {
+        data: {
+          id: request.id,
+          ok: true,
+          value: {
+            ok: false,
+            diagnostics: [
+              {
+                code: 'build.failed',
+                severity: 'error',
+                message: 'Expected string',
+                source: {
+                  kind: 'code',
+                  path: 'src/main.ts',
+                  line: 1,
+                  column: 24,
+                },
+              },
+            ],
+          },
+        },
+      }),
+    )
+
+    await expect(pending).resolves.toEqual({
+      ok: false,
+      diagnostics: [
+        expect.objectContaining({
+          source: expect.objectContaining({
+            kind: 'code',
+            path: 'src/main.ts',
+            line: 1,
+            column: 24,
+          }),
+        }),
+      ],
     })
     client.dispose()
     expect(worker.terminate).toHaveBeenCalledOnce()
