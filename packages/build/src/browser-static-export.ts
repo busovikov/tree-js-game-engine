@@ -8,6 +8,7 @@ export interface BrowserStaticExportInputFile {
 export interface BrowserStaticExportRequest {
   readonly entryHtmlPath: string
   readonly files: readonly BrowserStaticExportInputFile[]
+  readonly manifest?: ProjectManifest
   /**
    * Worker-produced ESM. When omitted, the entry source is already-valid JavaScript and is
    * used directly; browser callers compile TypeScript in BrowserStaticExportClient first.
@@ -68,6 +69,10 @@ function text(contents: BrowserStaticExportContents): string {
   return typeof contents === 'string' ? contents : TEXT_DECODER.decode(contents)
 }
 
+function outputPath(path: string): string {
+  return path.startsWith('public/') ? path.slice('public/'.length) : path
+}
+
 function moduleEntryPath(html: string, htmlPath: string): string {
   const scriptPattern =
     /<script\b(?=[^>]*\btype\s*=\s*["']module["'])(?=[^>]*\bsrc\s*=\s*["']([^"']+)["'])[^>]*><\/script>/i
@@ -126,12 +131,17 @@ function rewriteCodeAssets(
   let output = ''
   let cursor = 0
   for (const reference of references) {
-    const path = resolveLocalReference(reference.value, entryPath)
-    if (!path) continue
-    if (!files.has(path)) throw new Error(`Static export file not found: ${path}`)
+    const resolved = resolveLocalReference(reference.value, entryPath)
+    if (!resolved) continue
+    const path = files.has(resolved)
+      ? resolved
+      : files.has(`public/${resolved}`)
+        ? `public/${resolved}`
+        : resolved
+    if (!files.has(path)) throw new Error(`Static export file not found: ${resolved}`)
     assets.push(path)
     output += code.slice(cursor, reference.start)
-    output += relativePath(ENTRY_OUTPUT_PATH, path)
+    output += relativePath(ENTRY_OUTPUT_PATH, outputPath(path))
     cursor = reference.end
   }
   output += code.slice(cursor)
@@ -165,7 +175,19 @@ export async function createBrowserStaticExport(
   output.set('index.html', replaceModuleEntry(html))
   output.set(ENTRY_OUTPUT_PATH, rewritten.code)
   for (const path of [...new Set(rewritten.assets)].sort()) {
-    output.set(path, files.get(path)!)
+    output.set(outputPath(path), files.get(path)!)
+  }
+  if (request.manifest) {
+    for (const asset of dependencyClosure(request.manifest, [request.manifest.entryScene])) {
+      const path = normalizeProjectPath(`${request.manifest.assetsDir}/${asset.path}`)
+      const contents = files.get(path)
+      if (contents === undefined) throw new Error(`Static export file not found: ${path}`)
+      output.set(outputPath(path), contents)
+    }
   }
   return { files: output }
 }
+import {
+  dependencyClosure,
+  type ProjectManifest,
+} from '@haku/assets'

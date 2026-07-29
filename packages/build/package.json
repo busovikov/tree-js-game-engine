@@ -17,6 +17,7 @@
     "test": "pnpm --dir ../.. exec vitest run packages/build"
   },
   "dependencies": {
+    "@haku/assets": "workspace:*",
     "esbuild-wasm": "^0.28.1",
     "typescript": "^5.7.2"
   },
