@@ -267,6 +267,9 @@ importers:
       '@haku/serializer':
         specifier: file:../serializer
         version: file:packages/serializer
+      '@haku/ui':
+        specifier: workspace:*
+        version: link:../ui
       three:
         specifier: ^0.171.0
         version: 0.171.0
@@ -3008,6 +3011,7 @@ snapshots:
       '@haku/pool': link:packages/pool
       '@haku/schema': file:packages/schema
       '@haku/serializer': file:packages/serializer
+      '@haku/ui': link:packages/ui
       three: 0.171.0
       zod: 3.25.76
 

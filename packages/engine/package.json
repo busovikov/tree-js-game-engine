@@ -30,6 +30,7 @@
     "@haku/pool": "workspace:*",
     "@haku/schema": "file:../schema",
     "@haku/serializer": "file:../serializer",
+    "@haku/ui": "workspace:*",
     "three": "^0.171.0",
     "zod": "^3.25.76"
   },

@@ -6,6 +6,7 @@ import {
 } from '@haku/assets'
 import { registerSerializedAssetTypes } from '@haku/serializer'
 import { registerGraphAssetTypes } from '@haku/graph'
+import { registerUIAssetTypes } from '@haku/ui'
 import {
   projectPathToUrl,
   type AssetId,
@@ -17,6 +18,7 @@ export function createEngineAssetRegistry(): AssetRegistry {
   registerBuiltinAssetTypes(registry)
   registerSerializedAssetTypes(registry)
   registerGraphAssetTypes(registry)
+  registerUIAssetTypes(registry)
   return registry
 }
 
