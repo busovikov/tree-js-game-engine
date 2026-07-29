@@ -44,7 +44,7 @@ The program is done only when:
 | M08  | Browser project TypeScript/build/trust tooling                  | M07        | Complete                                 |
 | M09  | Custom components and editor extensions                         | M08        | Complete                                 |
 | M10a | Pool and activation integrations                                | M09        | Complete                                 |
-| M10b | DOM UI runtime and visual UI editor                             | M09        | Pending                                  |
+| M10b | DOM UI runtime and visual UI editor                             | M09        | Complete                                 |
 | M10c | Audio contracts, Web Audio, and editor support                  | M09        | Pending                                  |
 | M10d | Save storage, replication, and platform contracts               | M09        | Pending                                  |
 | M10e | Browser static export and ZIP                                   | M10b–M10d  | Pending                                  |
@@ -281,13 +281,19 @@ runs a 10,000-cycle headless reuse diagnostic without allocating beyond two inst
 
 Scope and acceptance:
 
-- [ ] Add UUID-addressed UI assets and `UIDocumentInstance`.
-- [ ] Production DOM renderer has no React dependency.
-- [ ] Implement container/text/button/image, flex layout, sizing/anchors, styles/themes,
+- [x] Add UUID-addressed UI assets and `UIDocumentInstance`.
+- [x] Production DOM renderer has no React dependency.
+- [x] Implement container/text/button/image, flex layout, sizing/anchors, styles/themes,
       visibility/interaction states, accessibility, typed references/events, and asset closure.
-- [ ] Visual hierarchy/preview/Inspector supports multiple desktop viewport sizes.
-- [ ] Graph/SDK changes UI through public service/events.
-- [ ] UI editor code is absent from production export.
+- [x] Visual hierarchy/preview/Inspector supports multiple desktop viewport sizes.
+- [x] Graph/SDK changes UI through public service/events.
+- [x] UI editor code is absent from production export.
+
+Implemented in M10b: `@haku/ui` owns strict UUID-addressed UI assets, the React-free native
+DOM renderer, asset closure, `UIService`, SDK bindings, and four bounded UI graph mutations.
+`@haku/editor` adds command-based hierarchy/preview/Inspector authoring, undo/redo, three
+desktop presets, and project manifest persistence. The playground visibly proves native
+activation plus service/graph mutation, while production scans exclude React and editor UI.
 
 ## M10c — Audio contracts, Web Audio, and editor support
 

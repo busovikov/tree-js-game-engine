@@ -346,6 +346,26 @@ These are final unless the user explicitly asks to change them. Full rationale i
 CI / manual: build playground and confirm bundle has no `react-dom`, `TransformControls`,
 `InspectorPanel`, `SandboxedCustomWidget`, `haku-inspector`, or editor-extension markers.
 
+`@haku/ui` and `apps/playground` must not import React or `@haku/editor`. Generic shared
+schema messages may contain the word `Inspector`; production exclusion scans use concrete
+editor sentinels such as `InspectorPanel`, `UIDocumentEditorPanel`, `UI Inspector`, and
+`haku-inspector`.
+
+## Runtime UI documents
+
+| Edge case | Accepted behavior |
+| --------- | ----------------- |
+| Duplicate, missing, multiply-parented, cyclic, or unreachable element | `UIDocumentSchema` rejects the whole asset |
+| Root is not a container | Parse failure; no partial DOM is mounted |
+| Image has no runtime asset resolver | Mount throws instead of persisting or guessing a path |
+| Anchored child in an arbitrary host | Runtime root supplies the positioned containing block |
+| Hidden or disabled element | Native `hidden`; button `disabled`; non-button `inert` |
+| Service targets an unknown/unmounted document or element | Explicit error; no silent no-op |
+| Inspector/hierarchy edit | Strict asset replacement through `CommandBus`; Undo restores it |
+| Viewport/selection state | Editor-only and excluded from serialized UI JSON |
+| Built-in UI asset save | Disabled; writable File System Access/dev-target project required |
+| UI save changes image references | `ProjectService` refreshes manifest dependencies and metadata |
+
 ---
 
 ## World + SceneDocument dual state

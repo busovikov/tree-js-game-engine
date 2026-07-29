@@ -155,6 +155,18 @@
 | `createPoolSdk()` | General prewarm/acquire/release/release-all/clear/metrics service API |
 | `registerPoolNodeContracts()`, `registerPoolRuntimeAdapters()` | Six general pool graph nodes with bounded checkpoint metadata and effect records |
 
+### `@haku/ui` — `packages/ui/src/index.ts`
+
+| Export | Purpose |
+| ------ | ------- |
+| `UIDocumentSchema`, `UIElementSchema`, `UIElementRefSchema` | Strict UUID-addressed UI asset and typed element reference read gates |
+| `UI_DOCUMENT_ASSET_DESCRIPTOR`, `registerUIAssetTypes()` | UI asset registration and image-reference dependency closure |
+| `UIDocumentInstance` | React-free native DOM mount, mutation, events, themes, and lifecycle |
+| `UIService` | Registered/mounted document ownership and public text/visibility/enabled/theme/event boundary |
+| `createUISdk()` | Custom Node SDK surface over `UIService` |
+| `UI_GRAPH_CONTRACTS`, `registerUINodeContracts()` | Set Text/Visibility/Enabled/Theme contracts with bounded UI effects |
+| `registerUIRuntimeAdapters()` | Runtime adapter dispatch through the injected public service |
+
 ### `@haku/serializer` — `packages/serializer/src/index.ts`
 
 | Export | Purpose |
@@ -481,6 +493,8 @@ These references inform implemented editor tooling and later platform adapters.
 | Component extension host | `packages/editor/src/extensions/editor-extension-host.ts` |
 | Sandboxed custom widget | `packages/editor/src/extensions/SandboxedCustomWidget.tsx` |
 | Project I/O | `packages/editor/src/services/project-service.ts` |
+| Runtime DOM UI | `packages/ui/src/ui-document-instance.ts`, `ui-service.ts` |
+| Visual UI authoring | `packages/editor/src/ui/UIDocumentEditorPanel.tsx`, `ui-authoring-session.ts` |
 | Create templates | `packages/create/templates/` |
 | CI check | `scripts/check.sh` |
 

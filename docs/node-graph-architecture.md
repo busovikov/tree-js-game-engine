@@ -391,6 +391,38 @@ contract. It does not implement IndexedDB, save-slot storage, replication, or pl
 backends; those remain M10d. Persistent records carry plan, registry, scope, reference, and
 checksum evidence, and registered migrations operate before scoped resume.
 
+## Runtime DOM UI, services, and visual authoring
+
+Implemented in M10b: `@haku/ui` owns a strict UI asset whose document, root container,
+elements, events, and themes use stable UUIDs. A flat element table plus container child
+references is validated for duplicates, missing children, multiple parents, cycles, and
+unreachable elements. Image elements keep typed asset references; the registered asset
+descriptor contributes those references to dependency closure and an injected resolver
+produces runtime URLs.
+
+`UIDocumentInstance` renders native `div`, `span`, `button`, and `img` elements without
+React. Serializable flex layout, sizing, anchors, styles/themes, visibility, enabled/inert
+state, labels, live regions, and image alt text become DOM state. The root is always a
+positioned containing block, and text/visibility/enabled changes update existing nodes so
+native focus and identity survive runtime mutation.
+
+`UIService` owns registered and mounted documents. Typed activation events, the Custom Node
+SDK, and Set Text/Visibility/Enabled/Theme graph adapters use only that public boundary.
+Each graph mutation declares the bounded `ui` resource/capability/effect and emits a
+checkpoint-visible effect record.
+
+`@haku/editor` owns `UIAuthoringSession` and the React-only `UIDocumentEditorPanel`: visual
+hierarchy, preview, Inspector, palette, three desktop viewport presets, selection, and
+command undo/redo. Only the strict UI asset persists; selection and viewport choice remain
+editor state. `ProjectService` creates, loads, and saves UI assets while refreshing manifest
+metadata and dependencies. Built-in assets remain read-only, while writable projects use
+the existing File System Access/dev-target stores.
+
+M10b proves the current Vite production boundary, not M10e static ZIP export: playground
+builds contain `@haku/ui` runtime code but exclude React, `@haku/editor`, visual authoring,
+and editor Inspector implementations. M10e remains responsible for browser-built
+self-contained ZIP output.
+
 ## Browser-only authoring and custom code
 
 Haku Editor remains a web application. A project resides in a local folder selected through

@@ -18,10 +18,11 @@
 | Collider wireframe preview | `viewport/scene-collider-gizmos.ts` — green wireframe on selected entity with `Collider` |
 | Dev shell (mount point) | `apps/editor/src/main.tsx` |
 
-**Current state:** there is no separate `@haku/ui` package; editor UI lives inside
-`@haku/editor`. The approved target adds a production DOM UI package and visual UI authoring
-in M10b. It does not replace the React editor UI kit and must not make production games
-depend on React. Graph canvas and code editor providers remain replaceable; see
+**Current state:** `@haku/ui` is the React-free production DOM UI package, while visual UI
+authoring stays inside `@haku/editor`. The M10b editor workspace uses the production renderer
+for preview but keeps React hierarchy/Inspector controls, command history, selection, and
+viewport choice outside serialized assets. Production games do not depend on React. Graph
+canvas and code editor providers remain replaceable; see
 [`node-graph-architecture.md`](./node-graph-architecture.md).
 
 ---
@@ -55,7 +56,7 @@ Open the editor in browser — all components render in context (Hierarchy, Insp
 | --------- | ---- | ---- |
 | `EditorApp` | `EditorApp.tsx` | Root: menus, shortcuts, dialogs |
 | `EditorLayout` | `EditorLayout.tsx` | `react-resizable-panels` dock layout |
-| `ViewportTabsShell` | `ViewportTabsShell.tsx` | Scene / Game tab switcher |
+| `ViewportTabsShell` | `ViewportTabsShell.tsx` | Scene / View / Graph / UI / Code workspace switcher |
 | `MenuBar` | `components/MenuBar.tsx` | File / Edit / View dropdowns |
 
 ### Panels
@@ -72,6 +73,20 @@ Open the editor in browser — all components render in context (Hierarchy, Insp
 | `ProjectCodeWorkspacePanel` | `code/ProjectCodeWorkspacePanel.tsx` | Project source/declaration wiring and browser Worker clients |
 | `CodeWorkspacePanel` | `code/CodeWorkspacePanel.tsx` | Source list, diagnostics, save/build/Play, conflict and recovery actions |
 | `CodeEditorProvider` | `code/code-editor-provider.tsx` | Replaceable lazy editor boundary; default adapter is Monaco |
+| `UIDocumentEditorPanel` | `ui/UIDocumentEditorPanel.tsx` | UI hierarchy, production preview, Inspector, presets, and command history |
+
+### Runtime UI authoring
+
+| Module | Role |
+| ------ | ---- |
+| `ui/ui-authoring-session.ts` | Strict document state, hierarchy commands, selection, desktop presets, save/open |
+| `ui/UIDocumentEditorPanel.tsx` | React-only authoring controls around `UIDocumentInstance` preview |
+| `services/project-service.ts` | UI create/load/save plus manifest metadata and dependency refresh |
+
+UI hierarchy and Inspector edits replace the strict asset through `CommandBus`; use the
+workspace-local Undo/Redo controls. `desktop-1280x720`, `desktop-1440x900`, and
+`desktop-1920x1080` are preview state only. Built-in assets are read-only; a writable
+File System Access/dev-target project is required for Save.
 
 ### Inspector fields (reuse first)
 

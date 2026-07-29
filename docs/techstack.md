@@ -169,6 +169,26 @@ registry, manifest index, and deterministic dependency closure.
 
 ---
 
+## `@haku/ui`
+
+**Role:** Strict UUID UI assets, production native DOM renderer, public service/events,
+Custom Node SDK, and graph runtime adapters. No React or editor dependency.
+
+| Dependency | Purpose |
+| ---------- | ------- |
+| `@haku/assets`, `@haku/schema` | Asset descriptor, typed image references, UUID schemas |
+| `@haku/graph`, `@haku/graph-runtime` | UI node contracts and runtime adapters |
+| **Zod** ^3.25 | Strict UI document validation |
+
+**Build:** `tsc` → `dist/`
+
+**Tests:** schema/DOM behavior, asset closure, service, SDK, graph contracts/adapters, and
+playground native/service/graph diagnostic.
+
+**Must NOT depend on:** React, `react-dom`, `@haku/editor`.
+
+---
+
 ## `@haku/editor`
 
 **Role:** React UI library — panels, inspector, viewport orchestration, undo.
@@ -179,7 +199,7 @@ registry, manifest index, and deterministic dependency closure.
 | **Zustand** ^5 | Editor state store |
 | **react-resizable-panels** ^2 | Dockable panel layout |
 | **Three.js** ^0.171 | Viewport gizmos, `TransformControls`, `OrbitControls` (editor-only) |
-| `@haku/engine`, `@haku/core`, `@haku/schema`, `@haku/serializer` | Same render path as runtime |
+| `@haku/engine`, `@haku/core`, `@haku/schema`, `@haku/serializer`, `@haku/ui` | Same render/UI asset paths as runtime |
 
 **Build:** `tsc` (no Vite — consumed by `apps/editor`)
 
@@ -213,6 +233,7 @@ registry, manifest index, and deterministic dependency closure.
 | ---------- | ------- |
 | `@haku/assets` | Project manifest validation and UUID asset lookup |
 | `@haku/engine` | Runtime |
+| `@haku/ui` | Production DOM UI diagnostic; no editor/React dependency |
 | **Vite** ^6 | Dev server + production bundle |
 
 **Layout:** `haku.project.json`, `public/assets/scenes/`, `src/main.ts`

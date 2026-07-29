@@ -78,7 +78,7 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
 | Physics queries              | **Ready as a foundation** | Raycast, shapecast, and overlap exist in the abstract API and Rapier backend. Node/Custom Node SDK bindings are absent.                                                                                                                  |
 | Input                        | **Partial**               | Keyboard/pointer `InputManager` produces action-like vehicle inputs and has attach/detach/enable lifecycle. It is vehicle-shaped rather than a general provider/action registry; no replay injection or future mobile provider boundary. |
 | Object pooling               | **Ready as a foundation** | `@haku/pool` provides prefab-backed serializable configuration, deterministic generational handles, authored hierarchy baselines, bounded growth/exhaustion policies, runtime scopes, graph/engine lifecycle integration, metrics, general SDK/nodes, and a 10,000-cycle playground diagnostic. |
-| Runtime DOM UI               | **Absent**                | Editor UI is React. Production games have no serializable UI document, DOM renderer, UI service, or visual UI editor.                                                                                                                    |
+| Runtime DOM UI               | **Ready as a foundation** | `@haku/ui` provides strict UUID UI assets, native semantic DOM rendering without React, typed events, public service/SDK/graph mutations, asset closure, and visible playground proof. The React editor adds hierarchy, preview, Inspector, undo/redo, three desktop presets, and project persistence. |
 | Audio                        | **Absent**                | No audio asset, component, backend abstraction, mixer, Web Audio implementation, or graph API was found.                                                                                                                                 |
 | Save/storage                 | **Partial foundation**    | M06 defines storage-agnostic async `SaveService` checkpoint entries, checksummed/fingerprinted records, migrations, and per-graph fallback. Save-slot ownership, IndexedDB, replication, platform adapters, and graph service nodes remain M10d/M10f. |
 | Platform integration         | **Absent**                | No generic `PlatformAdapter` or capability model for Yandex/Poki-style lifecycle and save behavior.                                                                                                                                      |
@@ -99,7 +99,7 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
 | Runtime adapter boundary        | Browser project-code compilation, sandboxed Play, and custom component/editor-extension adapters are implemented |
 | Hierarchy activation foundation | Pooling and graph lifecycle integrations now reuse the existing contract      |
 | Runtime entity pooling          | Package-level pool uses authored baseline reset and external resource lifecycle |
-| Editor React UI only            | Separate production DOM UI subsystem and UI assets                           |
+| Production/editor UI split      | React-free DOM UI runtime and separate React visual authoring are implemented |
 | Checkpoint persistence hooks    | Add save-slot storage, replication, and platform capabilities in M10d        |
 | Browser-local code toolchain    | Separate gameplay/editor outputs and trust-gated component extensions are implemented; static ZIP export remains M10e |
 
@@ -115,6 +115,9 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
 - **Browser toolchain risk:** TypeScript, bundling, custom code, and sandbox messaging are
   local and daemon-free; later extensions must preserve that boundary and the production
   bundle exclusion gate.
+- **Runtime UI boundary risk:** UI documents now persist strict UUID references and the
+  production renderer is React-free. Later export, audio, and platform work must mutate UI
+  through `UIService` and must not move editor state or DOM handles into saved assets.
 - **Isolation risk:** declarative gizmos and opaque sandbox widgets now keep project extensions
   away from editor DOM/file handles. Future extension features must preserve that constrained
   boundary; Inspector behavior tracing currently previews the declared batch contract and does
