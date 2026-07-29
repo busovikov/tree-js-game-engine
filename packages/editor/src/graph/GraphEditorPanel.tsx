@@ -14,6 +14,7 @@ import {
   syncProjectComponentGraphContracts,
 } from './graph-editor-service.js'
 import './graph-editor-panel.css'
+import { subscribeBuildDiagnosticNavigation } from '../build/build-diagnostic-navigation.js'
 
 function confirmDiscard(): boolean {
   return !graphAuthoringSession.isDirty || window.confirm('Discard unsaved graph changes?')
@@ -29,6 +30,27 @@ export const GraphEditorPanel = memo(function GraphEditorPanel() {
 
   useEffect(() => graphAuthoringSession.subscribe(refresh), [])
   useEffect(() => graphCommandBus.subscribe(refresh), [])
+  useEffect(
+    () =>
+      subscribeBuildDiagnosticNavigation((target) => {
+        if (target.workspace !== 'graph') return
+        void (async () => {
+          try {
+            if (graphAuthoringSession.path !== target.path) {
+              if (!confirmDiscard()) return
+              await graphAuthoringSession.open(target.path)
+            }
+            if (target.selectionId) {
+              graphAuthoringSession.selectNodes([target.selectionId])
+            }
+            setStatus(`Build diagnostic: ${target.path}`)
+          } catch (error) {
+            setStatus(error instanceof Error ? error.message : String(error))
+          }
+        })()
+      }),
+    [],
+  )
   useEffect(() => {
     const sync = () => {
       if (syncProjectComponentGraphContracts().length > 0) refresh()

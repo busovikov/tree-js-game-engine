@@ -8,6 +8,7 @@ import { GraphEditorPanel } from './graph/GraphEditorPanel.js'
 import { ProjectCodeWorkspacePanel } from './code/ProjectCodeWorkspacePanel.js'
 import { UIDocumentEditorPanel } from './ui/UIDocumentEditorPanel.js'
 import { UI_WORKSPACE_OPEN_EVENT } from './ui/ui-editor-service.js'
+import { subscribeBuildDiagnosticNavigation } from './build/build-diagnostic-navigation.js'
 import './viewport-tabs.css'
 
 export const ViewportTabsShell = memo(function ViewportTabsShell() {
@@ -23,6 +24,13 @@ export const ViewportTabsShell = memo(function ViewportTabsShell() {
     window.addEventListener(UI_WORKSPACE_OPEN_EVENT, openUIWorkspace)
     return () => window.removeEventListener(UI_WORKSPACE_OPEN_EVENT, openUIWorkspace)
   }, [])
+  useEffect(
+    () =>
+      subscribeBuildDiagnosticNavigation((target) => {
+        setWorkspace(target.workspace)
+      }),
+    [],
+  )
 
   const onSelectTab = (tab: 'scene' | 'view') => {
     setActiveViewportTab(tab)

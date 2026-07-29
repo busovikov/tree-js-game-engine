@@ -13,6 +13,10 @@ export interface CodeEditorProviderProps {
   readonly readOnly?: boolean
   readonly diagnostics?: readonly CodeEditorDiagnostic[]
   readonly projectFiles?: Readonly<Record<string, string>>
+  readonly reveal?: {
+    readonly line: number
+    readonly column: number
+  }
   onChange(value: string): void
   onReloadRequested?(): void
 }

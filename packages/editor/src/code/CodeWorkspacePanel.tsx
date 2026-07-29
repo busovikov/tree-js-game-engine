@@ -24,6 +24,7 @@ import {
 } from './play-sandbox.js'
 import { openProjectInExternalVsCode } from './external-vscode.js'
 import './code-workspace-panel.css'
+import { subscribeBuildDiagnosticNavigation } from '../build/build-diagnostic-navigation.js'
 
 const GAMEPLAY_PATH = 'src/gameplay.ts'
 const DEFAULT_GAMEPLAY_SOURCE = `import { defineCustomNode } from '@haku/node-sdk'
@@ -148,6 +149,7 @@ export const CodeWorkspacePanel = memo(function CodeWorkspacePanel({
   const [status, setStatus] = useState('Ready')
   const [playSession, setPlaySession] = useState<CodePlaySession | null>(null)
   const [absoluteProjectPath, setAbsoluteProjectPath] = useState('')
+  const [reveal, setReveal] = useState<{ line: number; column: number }>()
   const denied = currentWorkspace.trustMode === 'imported-untrusted'
   const readOnly = denied || currentWorkspace.trustMode === 'built-in'
   const deniedCapability = capabilities.requested.find(
@@ -165,6 +167,25 @@ export const CodeWorkspacePanel = memo(function CodeWorkspacePanel({
     setActivePath(initialSourcePath(workspace))
     setRevision((value) => value + 1)
   }, [workspace])
+  useEffect(
+    () =>
+      subscribeBuildDiagnosticNavigation((target) => {
+        if (
+          target.workspace !== 'code' ||
+          !currentWorkspace.listFiles().includes(target.path)
+        ) {
+          return
+        }
+        setActivePath(target.path)
+        setReveal(
+          target.line === undefined
+            ? undefined
+            : { line: target.line, column: target.column ?? 1 },
+        )
+        setStatus(`Build diagnostic: ${target.path}`)
+      }),
+    [currentWorkspace],
+  )
   useEffect(() => {
     const watcher = currentWorkspace.watchExternalChanges((changes) => {
       const changed = changes.find((change) => change.path === activePath) ?? changes[0]
@@ -421,6 +442,7 @@ export const CodeWorkspacePanel = memo(function CodeWorkspacePanel({
                 readOnly={readOnly}
                 diagnostics={diagnostics}
                 projectFiles={monacoFiles}
+                reveal={reveal}
                 onChange={(value) => {
                   currentWorkspace.editText(activePath, value)
                   setRevision((current) => current + 1)

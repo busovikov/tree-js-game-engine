@@ -11,6 +11,7 @@ import {
 } from './ui-authoring-session.js'
 import { uiAuthoringSession, uiCommandBus } from './ui-editor-service.js'
 import './ui-document-editor-panel.css'
+import { subscribeBuildDiagnosticNavigation } from '../build/build-diagnostic-navigation.js'
 
 function confirmDiscard(): boolean {
   return !uiAuthoringSession.isDirty || window.confirm('Discard unsaved UI changes?')
@@ -169,6 +170,25 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
 
   useEffect(() => uiAuthoringSession.subscribe(refresh), [])
   useEffect(() => uiCommandBus.subscribe(refresh), [])
+  useEffect(
+    () =>
+      subscribeBuildDiagnosticNavigation((target) => {
+        if (target.workspace !== 'ui') return
+        void (async () => {
+          try {
+            if (uiAuthoringSession.path !== target.path) {
+              if (!confirmDiscard()) return
+              await uiAuthoringSession.open(target.path)
+            }
+            if (target.selectionId) uiAuthoringSession.select(target.selectionId)
+            setStatus(`Build diagnostic: ${target.path}`)
+          } catch (error) {
+            setStatus(error instanceof Error ? error.message : String(error))
+          }
+        })()
+      }),
+    [],
+  )
 
   const asset = uiAuthoringSession.asset
   const selected = useMemo(

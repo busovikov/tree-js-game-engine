@@ -40,6 +40,7 @@ export default function MonacoCodeEditor({
   readOnly = false,
   diagnostics = [],
   projectFiles = {},
+  reveal,
   onChange,
 }: CodeEditorProviderProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -120,6 +121,19 @@ export default function MonacoCodeEditor({
       })),
     )
   }, [diagnostics])
+
+  useEffect(() => {
+    if (!reveal) return
+    editorRef.current?.setPosition({
+      lineNumber: reveal.line,
+      column: reveal.column,
+    })
+    editorRef.current?.revealPositionInCenter({
+      lineNumber: reveal.line,
+      column: reveal.column,
+    })
+    editorRef.current?.focus()
+  }, [reveal])
 
   return <div className="haku-monaco-editor" ref={containerRef} />
 }
