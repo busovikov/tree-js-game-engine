@@ -45,6 +45,10 @@ describe('target project writes', () => {
     await mkdir(join(root, 'public/assets'), { recursive: true })
     await writeFile(join(root, 'src/gameplay.ts'), 'export const gameplay = true\n')
     await writeFile(join(root, 'src/readme.md'), 'not source')
+    await writeFile(
+      join(root, 'index.html'),
+      '<script type="module" src="./src/gameplay.ts"></script>\n',
+    )
     await writeFile(join(root, 'tsconfig.json'), '{}\n')
     await writeFile(join(root, '.haku/generated/project.d.ts'), 'declare const project: true\n')
     await writeFile(join(root, 'node_modules/package/index.ts'), 'ignored')
@@ -52,6 +56,7 @@ describe('target project writes', () => {
 
     await expect(scanTargetWorkspaceFiles(root)).resolves.toEqual({
       '.haku/generated/project.d.ts': 'declare const project: true\n',
+      'index.html': '<script type="module" src="./src/gameplay.ts"></script>\n',
       'src/gameplay.ts': 'export const gameplay = true\n',
       'tsconfig.json': '{}\n',
     })

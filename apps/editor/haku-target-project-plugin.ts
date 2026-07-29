@@ -76,6 +76,14 @@ export async function scanTargetWorkspaceFiles(
   const files: Record<string, string> = {}
   await collectTargetWorkspaceFiles(targetRoot, '.haku/generated', files)
   await collectTargetWorkspaceFiles(targetRoot, 'src', files)
+  const indexPath = resolveTargetFile(targetRoot, 'index.html')
+  if (indexPath) {
+    try {
+      files['index.html'] = await readFile(indexPath, 'utf8')
+    } catch {
+      // Projects without a static-export shell can still use the Code workspace.
+    }
+  }
   const tsconfigPath = resolveTargetFile(targetRoot, 'tsconfig.json')
   if (tsconfigPath) {
     try {
