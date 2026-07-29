@@ -288,7 +288,20 @@ function normalizePath(path: string): string {
 
 function isBinaryPath(path: string): boolean {
   const ext = path.split('.').pop()?.toLowerCase()
-  return ext === 'glb' || ext === 'bin' || ext === 'png' || ext === 'jpg' || ext === 'jpeg' || ext === 'webp'
+  return (
+    ext === 'glb' ||
+    ext === 'bin' ||
+    ext === 'png' ||
+    ext === 'jpg' ||
+    ext === 'jpeg' ||
+    ext === 'webp' ||
+    ext === 'wav' ||
+    ext === 'mp3' ||
+    ext === 'ogg' ||
+    ext === 'm4a' ||
+    ext === 'aac' ||
+    ext === 'flac'
+  )
 }
 
 function isWorkspaceTextPath(path: string): boolean {
@@ -315,6 +328,18 @@ function blobTypeForPath(path: string): string {
       return 'image/jpeg'
     case 'webp':
       return 'image/webp'
+    case 'wav':
+      return 'audio/wav'
+    case 'mp3':
+      return 'audio/mpeg'
+    case 'ogg':
+      return 'audio/ogg'
+    case 'm4a':
+      return 'audio/mp4'
+    case 'aac':
+      return 'audio/aac'
+    case 'flac':
+      return 'audio/flac'
     default:
       return 'application/octet-stream'
   }

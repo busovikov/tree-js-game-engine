@@ -19,6 +19,8 @@
     "test": "pnpm --dir ../.. exec vitest run packages/editor"
   },
   "dependencies": {
+    "@haku/audio": "workspace:*",
+    "@haku/audio-web": "workspace:*",
     "@haku/assets": "workspace:*",
     "@haku/build": "workspace:*",
     "@haku/core": "file:../core",

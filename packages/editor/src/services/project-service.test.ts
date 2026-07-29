@@ -14,6 +14,7 @@ import {
   validateProjectManifest,
 } from '@haku/assets'
 import { UI_DOCUMENT_ASSET_TYPE, UIDocumentSchema } from '@haku/ui'
+import { AUDIO_CLIP_ASSET_TYPE } from '@haku/audio'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { globalCommandBus } from '../commands/command-bus.js'
 import { useEditorStore } from '../store/editor-store.js'
@@ -450,6 +451,52 @@ describe('ProjectService disk saving', () => {
           path: 'models/renamed.glb',
         }),
       ]),
+    )
+  })
+
+  it('registers imported audio and loads its local bytes through the manifest', async () => {
+    const service = new ProjectService()
+    service.openFromManifest(
+      'audio-project',
+      validateProjectManifest({
+        schemaVersion: 1,
+        name: 'Audio project',
+        entryScene: {
+          $ref: '10000000-0000-4000-8000-000000000001',
+          type: SCENE_ASSET_TYPE,
+        },
+        assetsDir: 'public/assets',
+        scriptsDir: 'scripts',
+        assets: [
+          {
+            id: '10000000-0000-4000-8000-000000000001',
+            type: SCENE_ASSET_TYPE,
+            path: 'scenes/main.scene.json',
+          },
+        ],
+      }),
+    )
+
+    await service.importAsset(
+      'public/assets/audio/tone.wav',
+      new File([new Uint8Array([82, 73, 70, 70])], 'tone.wav', {
+        type: 'audio/wav',
+      }),
+    )
+    const reference = service.getAssetRefByPath(
+      'public/assets/audio/tone.wav',
+      AUDIO_CLIP_ASSET_TYPE,
+    )
+    const clip = await service.loadAudioClipAsset(reference)
+
+    expect([...clip.bytes ?? []]).toEqual([82, 73, 70, 70])
+    expect(service.getManifest()?.assets).toContainEqual(
+      expect.objectContaining({
+        id: reference.$ref,
+        type: AUDIO_CLIP_ASSET_TYPE,
+        path: 'audio/tone.wav',
+        dependencies: [],
+      }),
     )
   })
 

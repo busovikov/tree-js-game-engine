@@ -65,6 +65,11 @@ import {
   type UIDocument,
 } from '@haku/ui'
 import {
+  AUDIO_CLIP_ASSET_TYPE,
+  audioClip,
+  type AudioClip,
+} from '@haku/audio'
+import {
   BrowserProjectWorkspace,
   type BrowserProjectDiskFile,
   type BrowserProjectFileSystem,
@@ -1025,6 +1030,17 @@ export class ProjectService {
     return new ProjectAssetIndex(this.manifest).path(reference)
   }
 
+  async loadAudioClipAsset(reference: AssetRef): Promise<AudioClip> {
+    if (!this.manifest) throw new Error('No project manifest is open')
+    const entry = new ProjectAssetIndex(this.manifest).require(
+      reference,
+      AUDIO_CLIP_ASSET_TYPE,
+    )
+    const projectPath = `${this.manifest.assetsDir}/${entry.path}`.replace(/\/+/g, '/')
+    const bytes = await this.readProjectBytes(projectPath)
+    return audioClip(entry.id, bytes)
+  }
+
   clearModelAssetCache(): void {
     modelLog('cache.clear', { entries: this.modelBlobUrlCache.size })
     for (const url of this.modelBlobUrlCache.values()) {
@@ -1550,6 +1566,14 @@ export class ProjectService {
     return response.text()
   }
 
+  private async readProjectBytes(path: string): Promise<Uint8Array> {
+    const file =
+      this.storage === 'native'
+        ? await nativeProjectStore.getFile(path)
+        : await browserProjectStore.getBlob(path)
+    return new Uint8Array(await file.arrayBuffer())
+  }
+
   private async persistGeneratedCodeFiles(files: Readonly<Record<string, string>>): Promise<void> {
     for (const [path, text] of Object.entries(files).sort(([left], [right]) =>
       left.localeCompare(right),
@@ -1743,6 +1767,7 @@ export class ProjectService {
 
 function assetTypeForPath(path: string): AssetTypeId {
   const lower = path.toLowerCase()
+  if (/\.(wav|mp3|ogg|m4a|aac|flac)$/.test(lower)) return AUDIO_CLIP_ASSET_TYPE
   if (lower.endsWith('.ui.json')) return UI_DOCUMENT_ASSET_TYPE
   if (lower.endsWith('.graph.json')) return GRAPH_ASSET_TYPE
   if (lower.endsWith('.scene.json')) return SCENE_ASSET_TYPE
@@ -1760,7 +1785,13 @@ function isBinaryFile(name: string): boolean {
     ext === 'png' ||
     ext === 'jpg' ||
     ext === 'jpeg' ||
-    ext === 'webp'
+    ext === 'webp' ||
+    ext === 'wav' ||
+    ext === 'mp3' ||
+    ext === 'ogg' ||
+    ext === 'm4a' ||
+    ext === 'aac' ||
+    ext === 'flac'
   )
 }
 

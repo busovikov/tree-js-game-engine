@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { browserProjectStore } from './browser-project-store.js'
 
 describe('browserProjectStore.listDirectory', () => {
@@ -69,5 +69,29 @@ describe('browserProjectStore.listDirectory', () => {
     expect(browserProjectStore.has('public/assets/models/crate.glb')).toBe(true)
     expect(browserProjectStore.has('public/assets/backup/old.glb')).toBe(true)
     expect(browserProjectStore.has('public/assets/archive')).toBe(false)
+  })
+
+  it('keeps fetched audio fixtures binary', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(new Uint8Array([82, 73, 70, 70]), {
+          headers: { 'content-type': 'audio/wav' },
+        }),
+      ),
+    )
+
+    await browserProjectStore.registerFromUrl(
+      'public/assets/audio/tone.wav',
+      '/assets/audio/tone.wav',
+    )
+
+    expect(browserProjectStore.getFile('public/assets/audio/tone.wav')?.isBinary).toBe(true)
+    expect([
+      ...new Uint8Array(
+        await (await browserProjectStore.getBlob('public/assets/audio/tone.wav')).arrayBuffer(),
+      ),
+    ]).toEqual([82, 73, 70, 70])
+    vi.unstubAllGlobals()
   })
 })

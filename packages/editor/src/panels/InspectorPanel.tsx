@@ -107,6 +107,16 @@ import {
   mergeVec3,
   type MixedBool,
 } from '../inspector/multi-edit.js'
+import {
+  AUDIO_CLIP_ASSET_TYPE,
+  AudioSourceComponent,
+  AudioSourceSchema,
+  type AudioSourceData,
+} from '@haku/audio'
+import {
+  AudioSourceFields,
+  normalizeAudioSource,
+} from '../components/AudioSourceFields.js'
 import './inspector-panel.css'
 
 const DEFAULT_TRANSFORM: Transform = {
@@ -134,6 +144,7 @@ const COMPONENT_MAP = {
   KinematicCharacterController: KinematicCharacterControllerComponent,
   CharacterBodyController: CharacterBodyControllerComponent,
   PointerControlsController: PointerControlsControllerComponent,
+  AudioSource: AudioSourceComponent,
 } as const
 
 const HIDDEN_COMPONENTS = new Set<string>([
@@ -159,6 +170,7 @@ const ADDABLE_COMPONENTS = [
   { id: 'AnimatableBody' as const, component: AnimatableBodyComponent, label: 'Animatable Body' },
   { id: 'PhysicsJoint' as const, component: PhysicsJointComponent, label: 'Physics Joint' },
   { id: 'Colliders' as const, component: CollidersComponent, label: 'Colliders' },
+  { id: 'AudioSource' as const, component: AudioSourceComponent, label: 'Audio Source' },
 ]
 
 const ADDABLE_CONTROLLER_COMPONENTS = [
@@ -436,6 +448,17 @@ export const InspectorPanel = memo(function InspectorPanel() {
     [forEachSelected],
   )
 
+  const updateAudioSource = useCallback(
+    (after: AudioSourceData) => {
+      forEachSelected((id, draftWorld) => {
+        if (draftWorld.hasComponent(id, AudioSourceComponent)) {
+          draftWorld.addComponent(id, AudioSourceComponent, after)
+        }
+      })
+    },
+    [forEachSelected],
+  )
+
   const updateCollider = useCallback(
     (after: Collider) => {
       forEachSelected((id, draftWorld) => {
@@ -675,11 +698,13 @@ export const InspectorPanel = memo(function InspectorPanel() {
   )
 
   const addComponent = useCallback(
-    (component: ComponentDefinition) => {
+    (component: ComponentDefinition, initial?: unknown) => {
       forEachSelected((id, draftWorld) => {
         if (draftWorld.hasComponent(id, component)) return
         const defaults =
-          'defaults' in component && typeof component.defaults === 'function'
+          initial !== undefined
+            ? component.schema.parse(initial)
+            : 'defaults' in component && typeof component.defaults === 'function'
             ? component.defaults()
             : component.schema.parse({})
         draftWorld.addComponent(id, component, defaults)
@@ -753,10 +778,16 @@ export const InspectorPanel = memo(function InspectorPanel() {
 
   const addableItems = useMemo(() => {
     if (!world || selectedIds.length === 0) return []
+    const hasAudioClip =
+      projectService
+        .getManifest()
+        ?.assets.some((entry) => entry.type === AUDIO_CLIP_ASSET_TYPE) ?? false
     return ADDABLE_COMPONENTS.map(({ id, component, label }) => ({
       id,
       label,
-      disabled: selectedIds.every((entityId) => world.hasComponent(entityId, component)),
+      disabled:
+        selectedIds.every((entityId) => world.hasComponent(entityId, component)) ||
+        (id === 'AudioSource' && !hasAudioClip),
     }))
   }, [world, selectedIds, worldRevision])
 
@@ -782,6 +813,19 @@ export const InspectorPanel = memo(function InspectorPanel() {
     (id: string) => {
       const entry = ALL_ADDABLE.find((item) => item.id === id)
       if (entry) {
+        if (entry.component === AudioSourceComponent) {
+          const clip = projectService
+            .getManifest()
+            ?.assets.find((asset) => asset.type === AUDIO_CLIP_ASSET_TYPE)
+          if (!clip) return
+          addComponent(
+            entry.component,
+            AudioSourceSchema.parse({
+              clip: { $ref: clip.id, type: AUDIO_CLIP_ASSET_TYPE },
+            }),
+          )
+          return
+        }
         addComponent(entry.component)
         return
       }
@@ -937,7 +981,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
               collapsed={collapsedSections[typeId] === true}
               enabled={enabledMixed !== false}
               disabled={!canEdit}
-              canToggleEnabled={isBuiltin}
+              canToggleEnabled={isBuiltin && key !== 'AudioSource'}
               canPaste={componentClipboard?.typeId === typeId}
               onToggleCollapsed={() => toggleSectionCollapsed(typeId)}
               onToggleEnabled={() => toggleComponentEnabled(component, enabledMixed !== true)}
@@ -1043,6 +1087,12 @@ export const InspectorPanel = memo(function InspectorPanel() {
                         }
                       : undefined
                   }
+                />
+              ) : key === 'AudioSource' ? (
+                <AudioSourceFields
+                  value={normalizeAudioSource(data)}
+                  disabled={mode === 'play'}
+                  onChange={updateAudioSource}
                 />
               ) : key === 'Collider' ? (
                 <ColliderFields

@@ -226,6 +226,12 @@ importers:
       '@haku/assets':
         specifier: workspace:*
         version: link:../assets
+      '@haku/audio':
+        specifier: workspace:*
+        version: link:../audio
+      '@haku/audio-web':
+        specifier: workspace:*
+        version: link:../audio-web
       '@haku/build':
         specifier: workspace:*
         version: link:../build
@@ -3032,6 +3038,8 @@ snapshots:
   '@haku/editor@file:packages/editor(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(use-sync-external-store@1.6.0(react@18.3.1))':
     dependencies:
       '@haku/assets': link:packages/assets
+      '@haku/audio': link:packages/audio
+      '@haku/audio-web': link:packages/audio-web
       '@haku/build': link:packages/build
       '@haku/core': file:packages/core
       '@haku/engine': file:packages/engine
