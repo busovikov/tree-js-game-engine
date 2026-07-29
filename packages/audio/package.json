@@ -19,6 +19,8 @@
   "dependencies": {
     "@haku/assets": "workspace:*",
     "@haku/core": "workspace:*",
+    "@haku/graph": "workspace:*",
+    "@haku/graph-runtime": "workspace:*",
     "@haku/pool": "workspace:*",
     "@haku/schema": "workspace:*",
     "zod": "^3.25.76"

@@ -3,6 +3,21 @@ import {
   type AssetTypeDescriptor,
 } from '@haku/assets'
 import type { ComponentDefinition, ComponentRegistry } from '@haku/core'
+import {
+  BOOL_TYPE,
+  NUMBER_TYPE,
+  STRING_TYPE,
+  defineNode,
+  namedType,
+  type NodePortInput,
+  type NodeRegistry,
+} from '@haku/graph'
+import {
+  type CheckpointEffectRecord,
+  type NodeExecutionRequest,
+  type NodeExecutionResult,
+  type NodeRuntimeRegistry,
+} from '@haku/graph-runtime'
 import type { PoolLifecycleParticipant } from '@haku/pool'
 import {
   AssetIdSchema,
@@ -212,6 +227,10 @@ export class AudioRuntime {
     return this.activeVoices.size
   }
 
+  hasVoice(voiceId: AudioVoiceId): boolean {
+    return this.activeVoices.has(voiceId)
+  }
+
   registerClip(clip: AudioClip): void {
     this.assertUsable()
     this.clips.set(clip.id, clip)
@@ -239,7 +258,7 @@ export class AudioRuntime {
   }
 
   stop(voiceId: AudioVoiceId): void {
-    if (!this.activeVoices.has(voiceId)) return
+    this.assertActiveVoice(voiceId)
     this.backend.stopVoice(voiceId)
     this.removeVoiceOwnership(voiceId)
   }
@@ -257,6 +276,7 @@ export class AudioRuntime {
 
   setBusVolume(bus: AudioBus, volume: number): void {
     this.assertUsable()
+    validateAudioBus(bus)
     validateVolume(volume)
     const state = { ...this.buses.get(bus)!, volume }
     this.buses.set(bus, state)
@@ -265,6 +285,7 @@ export class AudioRuntime {
 
   setBusMuted(bus: AudioBus, muted: boolean): void {
     this.assertUsable()
+    validateAudioBus(bus)
     const state = { ...this.buses.get(bus)!, muted }
     this.buses.set(bus, state)
     this.backend.setBusState(bus, state)
@@ -379,6 +400,10 @@ function validatePlaybackRate(value: number): void {
   }
 }
 
+function validateAudioBus(bus: AudioBus): void {
+  if (!AUDIO_BUSES.includes(bus)) throw new Error(`Unknown audio bus: ${bus}`)
+}
+
 export class AudioSourceInstance {
   private active = false
   private destroyed = false
@@ -422,5 +447,281 @@ export function createAudioPoolParticipant(
       if (event.action === 'acquire') return
       for (const entity of event.entities) runtime.stopOwner(entity.value)
     },
+  }
+}
+
+export class AudioService {
+  constructor(private readonly runtime: AudioRuntime) {}
+
+  play(source: AudioSource, owner?: string): AudioVoiceId {
+    return this.runtime.play(source, owner)
+  }
+
+  stop(voiceId: AudioVoiceId): void {
+    this.runtime.stop(voiceId)
+  }
+
+  updateVoice(voiceId: AudioVoiceId, update: AudioVoiceUpdate): void {
+    this.runtime.updateVoice(voiceId, update)
+  }
+
+  setBusVolume(bus: AudioBus, volume: number): void {
+    this.runtime.setBusVolume(bus, volume)
+  }
+
+  setBusMuted(bus: AudioBus, muted: boolean): void {
+    this.runtime.setBusMuted(bus, muted)
+  }
+
+  setPaused(paused: boolean): void {
+    this.runtime.setPaused(paused)
+  }
+}
+
+export interface AudioSdk {
+  play(source: AudioSource, owner?: string): AudioVoiceId
+  stop(voiceId: AudioVoiceId): void
+  updateVoice(voiceId: AudioVoiceId, update: AudioVoiceUpdate): void
+  setBusVolume(bus: AudioBus, volume: number): void
+  setBusMuted(bus: AudioBus, muted: boolean): void
+  setPaused(paused: boolean): void
+}
+
+export function createAudioSdk(service: AudioService): AudioSdk {
+  return {
+    play: (source, owner) => service.play(source, owner),
+    stop: (voiceId) => service.stop(voiceId),
+    updateVoice: (voiceId, update) => service.updateVoice(voiceId, update),
+    setBusVolume: (bus, volume) => service.setBusVolume(bus, volume),
+    setBusMuted: (bus, muted) => service.setBusMuted(bus, muted),
+    setPaused: (paused) => service.setPaused(paused),
+  }
+}
+
+const graphId = (value: number): string =>
+  `a5000000-0000-4000-8000-${value.toString().padStart(12, '0')}`
+
+export const AUDIO_GRAPH_CONTRACTS = {
+  play: {
+    nodeType: graphId(1),
+    ports: { flowIn: graphId(101), flowOut: graphId(102), voice: graphId(103) },
+  },
+  stop: {
+    nodeType: graphId(2),
+    ports: { flowIn: graphId(201), flowOut: graphId(202), voice: graphId(203) },
+  },
+  setBusVolume: {
+    nodeType: graphId(3),
+    ports: { flowIn: graphId(301), flowOut: graphId(302), value: graphId(303) },
+  },
+  setBusMuted: {
+    nodeType: graphId(4),
+    ports: { flowIn: graphId(401), flowOut: graphId(402), value: graphId(403) },
+  },
+} as const
+
+const EmptyProperties = z.object({}).strict()
+const AudioBusProperties = z.object({ bus: z.enum(AUDIO_BUSES) }).strict()
+
+function audioFlowPorts(ports: { readonly flowIn: string; readonly flowOut: string }) {
+  return [
+    { id: ports.flowIn, name: 'In', kind: 'flow' as const, direction: 'input' as const },
+    { id: ports.flowOut, name: 'Out', kind: 'flow' as const, direction: 'output' as const },
+  ]
+}
+
+function audioMutationContract(input: {
+  readonly id: string
+  readonly name: string
+  readonly description: string
+  readonly ports: readonly NodePortInput[]
+  readonly propertySchema: z.ZodType<Record<string, unknown>, z.ZodTypeDef, unknown>
+  readonly propertyContract: Record<string, unknown>
+}) {
+  return defineNode({
+    id: input.id,
+    version: '1',
+    name: input.name,
+    category: 'Audio',
+    description: input.description,
+    kind: 'builtin',
+    typeParameters: [],
+    ports: input.ports,
+    propertySchema: input.propertySchema,
+    propertyContract: input.propertyContract,
+    domains: ['FrameGameplay', 'LateUpdate', 'Presentation'],
+    capabilities: ['audio'],
+    reads: [],
+    writes: [{ resource: 'audio', scope: 'static' }],
+    effects: ['audio'],
+    execution: 'sync',
+    checkpoint: 'safe',
+    checkpointScope: 'bounded',
+    asyncCheckpointPolicies: [],
+    resultPersistence: 'none',
+    liveness: 'on-flow',
+    exportedState: [],
+  })
+}
+
+export function registerAudioNodeContracts(registry: NodeRegistry): void {
+  const play = AUDIO_GRAPH_CONTRACTS.play
+  registry.register(
+    audioMutationContract({
+      id: play.nodeType,
+      name: 'Play Audio',
+      description: 'Play one registered Audio Clip through the public audio service.',
+      ports: [
+        ...audioFlowPorts(play.ports),
+        {
+          id: play.ports.voice,
+          name: 'Voice',
+          kind: 'data',
+          direction: 'output',
+          type: namedType(STRING_TYPE),
+        },
+      ],
+      propertySchema: AudioSourceSchema,
+      propertyContract: {
+        clip: 'typed Audio Clip asset reference',
+        bus: AUDIO_BUSES.filter((bus) => bus !== 'master'),
+        loop: 'boolean',
+        autoplay: 'boolean',
+        volume: 'number from 0 to 1',
+        playbackRate: 'positive number',
+        spatial: 'position or null',
+        muted: 'boolean',
+      },
+    }),
+  )
+
+  const stop = AUDIO_GRAPH_CONTRACTS.stop
+  registry.register(
+    audioMutationContract({
+      id: stop.nodeType,
+      name: 'Stop Audio',
+      description: 'Stop one active audio voice.',
+      ports: [
+        ...audioFlowPorts(stop.ports),
+        {
+          id: stop.ports.voice,
+          name: 'Voice',
+          kind: 'data',
+          direction: 'input',
+          type: namedType(STRING_TYPE),
+        },
+      ],
+      propertySchema: EmptyProperties,
+      propertyContract: {},
+    }),
+  )
+
+  for (const input of [
+    {
+      contract: AUDIO_GRAPH_CONTRACTS.setBusVolume,
+      name: 'Set Audio Bus Volume',
+      description: 'Set volume for the Master, Music, SFX, or UI bus.',
+      type: NUMBER_TYPE,
+    },
+    {
+      contract: AUDIO_GRAPH_CONTRACTS.setBusMuted,
+      name: 'Set Audio Bus Muted',
+      description: 'Mute or unmute the Master, Music, SFX, or UI bus.',
+      type: BOOL_TYPE,
+    },
+  ] as const) {
+    registry.register(
+      audioMutationContract({
+        id: input.contract.nodeType,
+        name: input.name,
+        description: input.description,
+        ports: [
+          ...audioFlowPorts(input.contract.ports),
+          {
+            id: input.contract.ports.value,
+            name: 'Value',
+            kind: 'data',
+            direction: 'input',
+            type: namedType(input.type),
+          },
+        ],
+        propertySchema: AudioBusProperties,
+        propertyContract: { bus: AUDIO_BUSES },
+      }),
+    )
+  }
+}
+
+export function registerAudioRuntimeAdapters(
+  registry: NodeRuntimeRegistry,
+  service: AudioService,
+): void {
+  const register = (
+    nodeType: string,
+    execute: (request: NodeExecutionRequest) => NodeExecutionResult,
+  ): void => registry.register({ nodeType, version: '1', execute })
+
+  register(AUDIO_GRAPH_CONTRACTS.play.nodeType, (request) => {
+    const source = AudioSourceSchema.parse(request.node.properties)
+    const voice = service.play(source)
+    return {
+      flow: [AUDIO_GRAPH_CONTRACTS.play.ports.flowOut],
+      data: { [AUDIO_GRAPH_CONTRACTS.play.ports.voice]: voice },
+      effects: [audioEffect(request, 'audio.play', source)],
+    }
+  })
+
+  register(AUDIO_GRAPH_CONTRACTS.stop.nodeType, (request) => {
+    const voice = z.string().min(1).parse(
+      request.readData(AUDIO_GRAPH_CONTRACTS.stop.ports.voice),
+    )
+    service.stop(voice)
+    return {
+      flow: [AUDIO_GRAPH_CONTRACTS.stop.ports.flowOut],
+      effects: [audioEffect(request, 'audio.stop', { voice })],
+    }
+  })
+
+  register(AUDIO_GRAPH_CONTRACTS.setBusVolume.nodeType, (request) => {
+    const { bus } = AudioBusProperties.parse(request.node.properties)
+    const volume = z.number().finite().min(0).max(1).parse(
+      request.readData(AUDIO_GRAPH_CONTRACTS.setBusVolume.ports.value),
+    )
+    service.setBusVolume(bus, volume)
+    return {
+      flow: [AUDIO_GRAPH_CONTRACTS.setBusVolume.ports.flowOut],
+      effects: [audioEffect(request, 'audio.set-bus-volume', { bus, volume })],
+    }
+  })
+
+  register(AUDIO_GRAPH_CONTRACTS.setBusMuted.nodeType, (request) => {
+    const { bus } = AudioBusProperties.parse(request.node.properties)
+    const muted = z.boolean().parse(
+      request.readData(AUDIO_GRAPH_CONTRACTS.setBusMuted.ports.value),
+    )
+    service.setBusMuted(bus, muted)
+    return {
+      flow: [AUDIO_GRAPH_CONTRACTS.setBusMuted.ports.flowOut],
+      effects: [audioEffect(request, 'audio.set-bus-muted', { bus, muted })],
+    }
+  })
+}
+
+function audioEffect(
+  request: NodeExecutionRequest,
+  kind: string,
+  payload: unknown,
+): CheckpointEffectRecord {
+  return {
+    id: [
+      request.instanceId,
+      request.node.id,
+      kind,
+      request.tickNumber,
+      request.frameNumber,
+      JSON.stringify(payload),
+    ].join(':'),
+    kind,
+    payload,
   }
 }

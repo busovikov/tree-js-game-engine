@@ -143,6 +143,12 @@ importers:
       '@haku/core':
         specifier: workspace:*
         version: link:../core
+      '@haku/graph':
+        specifier: workspace:*
+        version: link:../graph
+      '@haku/graph-runtime':
+        specifier: workspace:*
+        version: link:../graph-runtime
       '@haku/pool':
         specifier: workspace:*
         version: link:../pool
