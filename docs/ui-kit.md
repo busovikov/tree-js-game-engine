@@ -142,6 +142,7 @@ remain visibly false rather than rendering controls that cannot work.
 | `EntityCreateMenu` | `components/EntityCreateMenu.tsx` | Create entity / primitive / light |
 | `HierarchyFilterBar` | `components/HierarchyFilterBar.tsx` | Hierarchy search/filter |
 | `CustomComponentTypeDialog` | `components/CustomComponentTypeDialog.tsx` | Visual number/string/boolean Component Type authoring |
+| Static export status | `EditorApp.tsx` | Visible progress/success/failure for trusted local ZIP export |
 
 ### Editor extensions
 
@@ -518,6 +519,7 @@ Dropdown pattern: `menu-bar__menu` → trigger + `menu-bar__dropdown`.
 
 Actions wired in `EditorApp.tsx`:
 - Open / Create / Save project
+- Export Static ZIP… (trusted projects only; visible status and navigable diagnostics)
 - Undo / Redo (`globalCommandBus`)
 - Play / Stop
 - Render Settings dialog

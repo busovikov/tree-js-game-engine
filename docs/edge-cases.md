@@ -318,6 +318,19 @@ are separate, and all public reads/lists return defensive clones.
 | Trusted custom widget emits malformed/non-finite patch | Message is ignored; only a finite numeric `speed` patch crosses the iframe boundary | `SandboxedCustomWidget` |
 | Gizmo provider emits DOM/Three.js/runtime objects | Strict primitive validation rejects the output; provider contract accepts plain component data only | `editor-extension-host` |
 
+### Browser static export
+
+| Scenario | Error / behavior | Enforcement |
+| -------- | ---------------- | ----------- |
+| Imported-untrusted project requests export | Trust diagnostic is shown before a Worker is created or project source is compiled | `exportProjectAsStaticZip` |
+| Root HTML has no local module entry, or has more than one | Structured entry diagnostic; no ambiguous bundle is produced | `createBrowserStaticExport` |
+| Local URL escapes the project, is missing, duplicated, or resolves remotely | Export fails with a path-scoped diagnostic; remote/network content is never fetched | `createBrowserStaticExport` |
+| Manifest references an unused asset | Asset is omitted unless reachable through the deterministic manifest dependency closure | `dependencyClosure` |
+| Worker compilation fails | Code path/line/column are preserved; graph/type/UI locations additionally retain node or element identity | `BrowserStaticExportClient`, `navigateToBuildDiagnostic` |
+| ZIP path is absolute, contains traversal, or exceeds ZIP32 bounds | Packaging rejects the archive before download | `createBrowserStaticExportZip` |
+| Export is hosted below a nested base path | Root HTML points to `./assets/runtime.js`; rewritten assets remain relative to the extracted root | static export integration tests |
+| Object URL download completes | Anchor is removed and the Blob URL is revoked on a deferred turn, after the browser accepts the download | `downloadStaticExportZip` |
+
 ---
 
 ## Security constraints

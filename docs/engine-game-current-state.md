@@ -1,7 +1,7 @@
 # Engine improvement through Bounce Run: current-state audit
 
 > Baseline verified on 2026-07-26 at commit `d8e74a1`; current claims are updated through
-> M10c. Target contracts live in
+> M10e. Target contracts live in
 > [node-graph-architecture.md](./node-graph-architecture.md) and execution order lives in
 > [engine-game-development-plan.md](./engine-game-development-plan.md).
 
@@ -60,6 +60,9 @@ Browser editor
   -> visual project Component Types + generated Inspector/graph/type contracts
   -> constrained gizmo primitives + opaque sandbox widgets + unresolved untrusted state
   -> local binary audio import + AudioSource Inspector/gesture preview
+  -> trust-gated static ZIP export in a dedicated browser Worker
+       -> manifest/module dependency closure + relative nested-base URLs
+       -> navigable graph/type/code/UI diagnostics
   -> same Engine for viewport and Play mode
   -> snapshot world on Play, restore on Stop
 ```
@@ -78,7 +81,7 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
 | Scene documents              | **Ready for current v1**  | Zod validation, load/save, hierarchy, render/physics settings, and roundtrip tests exist. Target deliberately replaces the format; no compatibility layer is required.                                                                   |
 | Entity and component model   | **Ready as a foundation** | `World`, stable entity UUIDs, hierarchy, active-state propagation, inactive-aware queries, deterministic component lifecycle hooks, plain component data, package/project registries, and visual Component Type assets exist. Project types survive scene/prefab save/load and export dependency closure. |
 | Prefabs                      | **Ready for current v1**  | Prefabs are standalone manifest assets referenced by typed UUID, with component-ID overrides and load-time expansion. Deep override paths and nested variants remain intentionally deferred.                                               |
-| Asset system                 | **Ready as a foundation** | Universal UUID manifests, typed references, package-contributed descriptors, structured diagnostics, path-independent identity, and deterministic dependency closure exist. Static export remains a later milestone.                     |
+| Asset system                 | **Ready as a foundation** | Universal UUID manifests, typed references, package-contributed descriptors, structured diagnostics, path-independent identity, and deterministic dependency closure feed browser static export.                                        |
 | Runtime scheduler            | **Ready as a foundation** | `EngineScheduler` owns named frame/fixed phases, deterministic local ordering and typed queued commands, bounded fixed-step catch-up, tick/frame numbering, interpolation alpha, pause, and single-step. `@haku/graph-runtime` enters every domain through this scheduler and owns no second loop. |
 | Gameplay node system         | **Ready as a foundation**  | `@haku/graph` provides strict graph assets, registered types/nodes/effects, generics, diagnostics, checkpoint scope/taint and async-liveness metadata, and deterministic plans. `@haku/graph-runtime` adds instances, lazy snapshots, flow/event queues, scoped async work, tracing, bounded checkpoint/rewind, all seven async policies, effect reconciliation, and persistent checkpoint hooks. The M07 editor adds Haku-owned graph authoring, lazy replaceable canvas integration, compiler/checkpoint diagnostics, and Play trace/port values. |
 | Script/custom-node runtime   | **Ready as a foundation**  | Metadata-only Custom Node declarations are paired with type/version-bound runtime adapters behind a replaceable `ExecutionBackend`. Browser-local TypeScript diagnostics and separate gameplay/editor-extension bundles are trust-gated. M09 adds scheduler batch behavior contracts, typed component commands, graph adapters, constrained gizmos, sandbox widgets, and visible inert untrusted state. Named project TypeScript exports are bundled but the Inspector trace is explicitly a non-mutating core-runner contract preview rather than export execution. |
@@ -94,8 +97,8 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
 | Seeded random                | **Absent**                | A seeded demo description exists, but no general seeded RNG service or replay contract was found.                                                                                                                                        |
 | Replay/QA harness            | **Absent**                | There are tests and debug helpers, but no tick-action recorder, state hashes, replay artifact, or structured browser QA session report.                                                                                                  |
 | Tests                        | **Ready as a foundation** | Unit/integration coverage exists across core, schema, serializer, physics, engine, editor, and apps. Playwright/export gates and the new graph/generator suites are absent.                                                              |
-| Browser-only project editing | **Partial foundation**    | Chrome File System Access and dev-target persistence feed a conflict-safe source workspace. Generated declarations are shared by lazy Monaco and external VS Code; TypeScript/esbuild run locally in Workers; built-in/imported/local trust modes gate compilation; Play is disposable and DOM/file-handle isolated. Static ZIP export remains M10e. |
-| Production export            | **Absent**                | Vite applications can be built conventionally, but there is no editor function that resolves reachable assets and downloads a self-contained static HTML5 ZIP.                                                                           |
+| Browser-only project editing | **Ready as a foundation** | Chrome File System Access and dev-target persistence feed a conflict-safe source workspace. Generated declarations are shared by lazy Monaco and external VS Code; TypeScript/esbuild and static export run locally in dedicated Workers; trust gates compilation/export; Play is disposable and DOM/file-handle isolated. |
+| Production export            | **Ready as a foundation** | The editor resolves the manifest/module closure, compiles only the runtime locally, downloads a deterministic static ZIP, preserves navigable source diagnostics, and produces nested-base-safe relative URLs.                            |
 | Rendering                    | **Ready and evolving**    | Three.js backend, RenderSync, shadows/settings, render targets, post pipeline, and render-only RenderGraph exist. Bounce Run should use the backend offered by Haku and preserve the render roadmap boundaries.                          |
 
 ## Current versus remaining target
@@ -111,7 +114,7 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
 | Production/editor UI split      | React-free DOM UI runtime and separate React visual authoring are implemented |
 | Headless/browser audio split    | DOM-free contracts plus Web Audio adapter, service/graph, editor preview, and local asset closure are implemented |
 | Checkpoint persistence hooks    | Typed save slots, IndexedDB, replication modes, and platform lifecycle are implemented; graph service nodes remain M10f |
-| Browser-local code toolchain    | Separate gameplay/editor outputs and trust-gated component extensions are implemented; static ZIP export remains M10e |
+| Browser-local code toolchain    | Separate gameplay/editor outputs, trust-gated component extensions, and deterministic static ZIP export are implemented |
 
 ## Confirmed risks
 
@@ -157,5 +160,5 @@ and abstract Rapier integration should be extended rather than replaced. The tar
 nevertheless a platform expansion, not merely a game implementation. The graph runtime,
 registries, scheduler, browser project toolchain, UI/audio services, and pooling are proven
 engine facilities. Storage and generic browser-platform foundations are now engine
-facilities too; static export, cross-service graph nodes, provider SDK adapters, and Bounce
-Run integration remain.
+facilities too. Static export is now an engine facility; cross-service graph nodes,
+provider SDK adapters, and Bounce Run integration remain.

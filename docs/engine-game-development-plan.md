@@ -47,7 +47,7 @@ The program is done only when:
 | M10b | DOM UI runtime and visual UI editor                             | M09        | Complete                                 |
 | M10c | Audio contracts, Web Audio, and editor support                  | M09        | Complete                                 |
 | M10d | Save storage, replication, and platform contracts               | M09        | Complete                                 |
-| M10e | Browser static export and ZIP                                   | M10b–M10d  | Pending                                  |
+| M10e | Browser static export and ZIP                                   | M10b–M10d  | Complete                                 |
 | M10f | Cross-service graph nodes and contract integration              | M10a–M10e  | Pending                                  |
 | M11  | Bounce Run vertical slice                                       | M10f       | Pending                                  |
 | M12  | Generator, seed/replay, QA harness, and automated browser tests | M11        | Pending                                  |
@@ -345,12 +345,22 @@ the visibility/focus distinction remains covered by deterministic adapter tests.
 
 Scope and acceptance:
 
-- [ ] Browser Worker compiles the entry project and transitive reachable assets locally.
-- [ ] Editor downloads a ZIP containing root `index.html` and all local relative assets.
-- [ ] Export has no CDN, server API, editor, React Flow, Monaco, QA harness, unused graph
+- [x] Browser Worker compiles the entry project and transitive reachable assets locally.
+- [x] Editor downloads a ZIP containing root `index.html` and all local relative assets.
+- [x] Export has no CDN, server API, editor, React Flow, Monaco, QA harness, unused graph
       source/compiler, or editor-extension bundle.
-- [ ] Extracted output runs from a clean basic static HTTP server under nested base paths.
-- [ ] Build errors navigate back to graph/type/code/UI source locations.
+- [x] Extracted output runs from a clean basic static HTTP server under nested base paths.
+- [x] Build errors navigate back to graph/type/code/UI source locations.
+
+Implemented in M10e: `@haku/build` validates an in-memory project closure, rewrites local
+module-relative assets, resolves manifest dependencies, compiles a tree-shaken/minified
+runtime with esbuild-wasm in a dedicated Worker, and creates a deterministic stored ZIP
+with portable file modes. `@haku/editor` exposes trusted-project export from the File menu,
+reads only the required project files, downloads the Blob locally, and routes structured
+graph/type/code/UI diagnostics back to the matching workspace and source location.
+User-Chrome proof extracted the archive under a nested deployment path, loaded only the
+root page, runtime, and reachable asset with 200 responses, and produced no warnings or
+errors.
 
 ## M10f — Cross-service graph nodes and contract integration
 

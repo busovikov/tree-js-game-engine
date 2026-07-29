@@ -503,6 +503,18 @@ workspaces fail before compilation; local trusted Play receives a message port r
 the editor DOM or file handles. The playground production bundle contains none of Monaco,
 the TypeScript Worker, or the browser bundler.
 
+Implemented in M10e: static export starts from root `index.html`, validates a deterministic
+in-memory file map, closes over the project manifest and local module-relative URL
+dependencies, and rejects remote URLs, root escapes, missing files, and duplicate paths.
+A dedicated browser Worker compiles only the runtime module with esbuild-wasm; the editor
+never sends file handles into it. The result is a root-HTML ZIP with relative runtime/asset
+URLs and portable `0644` file modes, suitable for extraction below an arbitrary static
+server base path. Structured diagnostics preserve graph/type/code/UI source kind, path,
+line, column, and optional node/element identity for authoring navigation. Imported
+untrusted projects are rejected before Worker creation, and editor-extension, Monaco,
+React Flow, editor, QA, unused source/compiler, server, and CDN code stay outside the
+archive.
+
 The node canvas is a replaceable `GraphCanvasProvider`; MVP uses React Flow behind an
 adapter. Haku owns graph documents, commands, validation, serialization, and undo/redo.
 React Flow objects never become saved graph data.

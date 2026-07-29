@@ -246,6 +246,9 @@
 | `TypeScriptLanguageClient`, `BrowserBundlerClient` | Lazy typed local Worker RPC clients |
 | `analyzeTypeScriptProject` | TypeScript diagnostics scoped to requested source paths |
 | `BrowserProjectBundles` | Separate browser-safe gameplay and editor-extension outputs |
+| `createBrowserStaticExport()` | Validate/close an in-memory project and rewrite root HTML/local runtime assets |
+| `createBrowserStaticExportZip()` | Deterministic stored ZIP with safe paths and portable regular-file modes |
+| `BrowserStaticExportClient` | Lazy dedicated Worker RPC client for local static runtime compilation |
 
 ### `@haku/editor` — `packages/editor/src/index.ts`
 
@@ -464,10 +467,26 @@ Append-only project log: `logs/haku.log` via `projectService.appendProjectLog()`
 | `webkitdirectory` fallback | https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/webkitdirectory |
 | Fetch API | https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API |
 | Web Workers | https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API |
+| Worker `postMessage()` | https://developer.mozilla.org/en-US/docs/Web/API/Worker/postMessage |
+| `import.meta` URL resolution | https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/import.meta |
+| URL constructor | https://developer.mozilla.org/en-US/docs/Web/API/URL/URL |
+| Blob | https://developer.mozilla.org/en-US/docs/Web/API/Blob |
+| `URL.createObjectURL()` | https://developer.mozilla.org/en-US/docs/Web/API/URL/createObjectURL_static |
+| `URL.revokeObjectURL()` | https://developer.mozilla.org/en-US/docs/Web/API/URL/revokeObjectURL_static |
+| Anchor `download` | https://developer.mozilla.org/en-US/docs/Web/API/HTMLAnchorElement/download |
 | IndexedDB API | https://www.w3.org/TR/IndexedDB/ |
 | `IDBTransaction` | https://developer.mozilla.org/en-US/docs/Web/API/IDBTransaction |
 | Storage quotas and eviction | https://developer.mozilla.org/en-US/docs/Web/API/Storage_API/Storage_quotas_and_eviction_criteria |
 | Page Visibility API | https://developer.mozilla.org/en-US/docs/Web/API/Page_Visibility_API |
+
+### Browser build and archive formats
+
+| Topic | URL |
+| ----- | --- |
+| esbuild browser/WASM API | https://esbuild.github.io/api/#running-in-the-browser |
+| esbuild in-memory output (`write: false`) | https://esbuild.github.io/api/#write |
+| esbuild public path | https://esbuild.github.io/api/#public-path |
+| PKWARE ZIP APPNOTE | https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT |
 
 ### Web Audio
 

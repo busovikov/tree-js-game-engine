@@ -261,6 +261,29 @@ queries.
 
 ---
 
+## `@haku/build`
+
+**Role:** Browser-local TypeScript analysis, trust-gated gameplay/editor bundles, and
+deterministic static HTML5 ZIP export.
+
+| Dependency | Purpose |
+| ---------- | ------- |
+| `@haku/assets` | Manifest validation and deterministic asset dependency closure |
+| **TypeScript** ^5.7 | Browser language-service diagnostics |
+| **esbuild-wasm** ^0.28 | Worker-local tree-shaken/minified ESM runtime compilation |
+
+Static export uses in-memory inputs and outputs only. The editor creates one lazy dedicated
+Worker, packages root `index.html` plus reachable relative assets into a stored ZIP, and
+downloads it through a short-lived Blob URL. The archive contains no editor or
+editor-extension bundle.
+
+**Build:** `tsc` → `dist/`
+
+**Tests:** closure/URL rewriting, Worker diagnostics, ZIP records/path safety/modes, and
+browser-client RPC.
+
+---
+
 ## `@haku/editor`
 
 **Role:** React UI library — panels, inspector, viewport orchestration, undo.
