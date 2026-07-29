@@ -1,7 +1,7 @@
 # Engine improvement through Bounce Run: current-state audit
 
 > Baseline verified on 2026-07-26 at commit `d8e74a1`; current claims are updated through
-> M09. Target contracts live in
+> M10c. Target contracts live in
 > [node-graph-architecture.md](./node-graph-architecture.md) and execution order lives in
 > [engine-game-development-plan.md](./engine-game-development-plan.md).
 
@@ -40,6 +40,9 @@ SceneDocument v1
        -> PhysicsWorldSystem performs exactly one step in PhysicsStep
   -> RenderSyncSystem in Presentation
   -> ThreeRenderBackend / render-only RenderGraph in Render
+  -> @haku/audio AudioRuntime
+       -> headless or Web Audio backend
+       -> Master plus Music/SFX/UI buses, listener pose, activation/pool cleanup
 
 Browser editor
   -> React + Zustand + command history
@@ -51,6 +54,7 @@ Browser editor
   -> lazy replaceable Monaco + disposable opaque-origin Play sandbox
   -> visual project Component Types + generated Inspector/graph/type contracts
   -> constrained gizmo primitives + opaque sandbox widgets + unresolved untrusted state
+  -> local binary audio import + AudioSource Inspector/gesture preview
   -> same Engine for viewport and Play mode
   -> snapshot world on Play, restore on Stop
 ```
@@ -79,7 +83,7 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
 | Input                        | **Partial**               | Keyboard/pointer `InputManager` produces action-like vehicle inputs and has attach/detach/enable lifecycle. It is vehicle-shaped rather than a general provider/action registry; no replay injection or future mobile provider boundary. |
 | Object pooling               | **Ready as a foundation** | `@haku/pool` provides prefab-backed serializable configuration, deterministic generational handles, authored hierarchy baselines, bounded growth/exhaustion policies, runtime scopes, graph/engine lifecycle integration, metrics, general SDK/nodes, and a 10,000-cycle playground diagnostic. |
 | Runtime DOM UI               | **Ready as a foundation** | `@haku/ui` provides strict UUID UI assets, native semantic DOM rendering without React, typed events, public service/SDK/graph mutations, asset closure, and visible playground proof. The React editor adds hierarchy, preview, Inspector, undo/redo, three desktop presets, and project persistence. |
-| Audio                        | **Absent**                | No audio asset, component, backend abstraction, mixer, Web Audio implementation, or graph API was found.                                                                                                                                 |
+| Audio                        | **Ready as a foundation** | `@haku/audio` provides Audio Clip/AudioSource models, headless mixer/runtime, Master/Music/SFX/UI buses, one-shot/loop/spatial controls, listener pose, activation/pool cleanup, service/SDK/graph effects, and manifest closure. `@haku/audio-web` adds gesture-gated decoding/playback and deterministic disposal; the editor Inspector/preview and user-Chrome production diagnostic are verified. |
 | Save/storage                 | **Partial foundation**    | M06 defines storage-agnostic async `SaveService` checkpoint entries, checksummed/fingerprinted records, migrations, and per-graph fallback. Save-slot ownership, IndexedDB, replication, platform adapters, and graph service nodes remain M10d/M10f. |
 | Platform integration         | **Absent**                | No generic `PlatformAdapter` or capability model for Yandex/Poki-style lifecycle and save behavior.                                                                                                                                      |
 | Seeded random                | **Absent**                | A seeded demo description exists, but no general seeded RNG service or replay contract was found.                                                                                                                                        |
@@ -100,6 +104,7 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
 | Hierarchy activation foundation | Pooling and graph lifecycle integrations now reuse the existing contract      |
 | Runtime entity pooling          | Package-level pool uses authored baseline reset and external resource lifecycle |
 | Production/editor UI split      | React-free DOM UI runtime and separate React visual authoring are implemented |
+| Headless/browser audio split    | DOM-free contracts plus Web Audio adapter, service/graph, editor preview, and local asset closure are implemented |
 | Checkpoint persistence hooks    | Add save-slot storage, replication, and platform capabilities in M10d        |
 | Browser-local code toolchain    | Separate gameplay/editor outputs and trust-gated component extensions are implemented; static ZIP export remains M10e |
 
@@ -116,8 +121,11 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
   local and daemon-free; later extensions must preserve that boundary and the production
   bundle exclusion gate.
 - **Runtime UI boundary risk:** UI documents now persist strict UUID references and the
-  production renderer is React-free. Later export, audio, and platform work must mutate UI
+  production renderer is React-free. Later export and platform work must mutate UI
   through `UIService` and must not move editor state or DOM handles into saved assets.
+- **Audio boundary risk:** Web Audio state remains isolated in `@haku/audio-web`, while
+  serialized audio data stays in `@haku/audio`. Later platform pause/export integration
+  must preserve real-gesture unlock, local asset closure, and deterministic voice cleanup.
 - **Isolation risk:** declarative gizmos and opaque sandbox widgets now keep project extensions
   away from editor DOM/file handles. Future extension features must preserve that constrained
   boundary; Inspector behavior tracing currently previews the declared batch contract and does
@@ -139,6 +147,5 @@ Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverifie
 Haku is a viable foundation: its world, serializer, editor mutation path, Three.js boundary,
 and abstract Rapier integration should be extended rather than replaced. The target work is
 nevertheless a platform expansion, not merely a game implementation. The graph runtime,
-registries, scheduler, browser project toolchain, UI/audio/storage/export services, and
-pooling must be proven as engine facilities before Bounce Run becomes the integration
-driver.
+registries, scheduler, browser project toolchain, UI/audio services, and pooling are proven
+engine facilities; storage/platform/export services and Bounce Run integration remain.

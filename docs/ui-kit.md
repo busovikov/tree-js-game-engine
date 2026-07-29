@@ -22,7 +22,9 @@
 authoring stays inside `@haku/editor`. The M10b editor workspace uses the production renderer
 for preview but keeps React hierarchy/Inspector controls, command history, selection, and
 viewport choice outside serialized assets. Production games do not depend on React. Graph
-canvas and code editor providers remain replaceable; see
+canvas and code editor providers remain replaceable. M10c adds AudioSource fields and a
+gesture-gated local-byte preview; Web Audio objects remain outside React and serialized
+data. See
 [`node-graph-architecture.md`](./node-graph-architecture.md).
 
 ---
@@ -88,6 +90,18 @@ workspace-local Undo/Redo controls. `desktop-1280x720`, `desktop-1440x900`, and
 `desktop-1920x1080` are preview state only. Built-in assets are read-only; a writable
 File System Access/dev-target project is required for Save.
 
+### Audio authoring
+
+| Module | Role |
+| ------ | ---- |
+| `components/AudioSourceFields.tsx` | Typed clip/bus/loop/autoplay/mute/volume/rate/spatial fields and preview controls |
+| `audio/audio-preview.ts` | Direct-gesture unlock, local byte decode/play, and stop/dispose lifecycle |
+| `services/project-service.ts` | Binary audio import detection, manifest registration, and local clip bytes |
+
+AudioSource cannot be added until the manifest contains an Audio Clip; creation injects the
+first real typed clip reference instead of persisting the schema sentinel. Preview unlocks
+from the button click before loading bytes, and component unmount stops the preview.
+
 ### Inspector fields (reuse first)
 
 | Component | File | Use for |
@@ -103,6 +117,7 @@ File System Access/dev-target project is required for Save.
 | `MaterialPropertiesPanel` | `components/MaterialPropertiesPanel.tsx` | Material registry fields |
 | `TagFields` | `components/TagFields.tsx` | Tag component |
 | `ColliderFields` | `components/ColliderFields.tsx` | Collider shape, size, static toggle |
+| `AudioSourceFields` | `components/AudioSourceFields.tsx` | Audio clip, mixer/playback/spatial fields, and gesture preview |
 | `InspectorComponentSection` | `components/InspectorComponentSection.tsx` | Collapsible component block wrapper |
 | `AngleRangeSlider` | `components/AngleRangeSlider.tsx` | Spot light angles |
 | Generated project fields | `panels/InspectorPanel.tsx` | Registry-driven custom component fields, trace, gizmo preview, and widget host |
@@ -328,6 +343,7 @@ Alternative for atomic ops: implement `Command` class, call `globalCommandBus.ex
 | MeshRenderer | `MeshRendererFields.tsx` → `MaterialPropertiesPanel.tsx` |
 | Tag | `TagFields.tsx` |
 | ScriptRef | `SchemaFields.tsx` (generic) |
+| AudioSource | `AudioSourceFields.tsx` |
 | Project Component Type | Registry Inspector metadata in `InspectorPanel.tsx`; `NumberField` and standard inputs |
 
 Hidden from add menu but present: `Tag`, `Static`. Transform always shown.

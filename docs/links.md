@@ -167,6 +167,24 @@
 | `UI_GRAPH_CONTRACTS`, `registerUINodeContracts()` | Set Text/Visibility/Enabled/Theme contracts with bounded UI effects |
 | `registerUIRuntimeAdapters()` | Runtime adapter dispatch through the injected public service |
 
+### `@haku/audio` — `packages/audio/src/index.ts`
+
+| Export | Purpose |
+| ------ | ------- |
+| `AudioClip`, `AudioSourceSchema`, `AudioSourceComponent` | Local binary clip metadata and strict serializable source component |
+| `AUDIO_CLIP_ASSET_DESCRIPTOR`, `registerAudioAssetTypes()`, `registerAudioComponents()` | Audio asset/component composition and dependency closure |
+| `AudioBackend`, `HeadlessAudioBackend`, `AudioRuntime` | Replaceable backend contract, deterministic headless mixer, and voice ownership |
+| `AudioService`, `createAudioSdk()` | Public playback, bus, pause, listener, and owner cleanup boundary |
+| `AUDIO_GRAPH_CONTRACTS`, `registerAudioNodeContracts()` | Play/Stop/Set Bus Volume/Set Bus Muted metadata with bounded audio effects |
+| `registerAudioRuntimeAdapters()` | Runtime adapter dispatch through the injected public service |
+| `AudioSourceInstance`, `createAudioPoolParticipant()` | Activation and pool-owned voice lifecycle |
+
+### `@haku/audio-web` — `packages/audio-web/src/index.ts`
+
+| Export | Purpose |
+| ------ | ------- |
+| `WebAudioBackend`, `createWebAudioBackend()` | Gesture-gated Web Audio decoding, buses, spatial/listener graph, pause, and disposal |
+
 ### `@haku/serializer` — `packages/serializer/src/index.ts`
 
 | Export | Purpose |
@@ -428,6 +446,18 @@ Append-only project log: `logs/haku.log` via `projectService.appendProjectLog()`
 | Fetch API | https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API |
 | Web Workers | https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API |
 
+### Web Audio
+
+| Topic | URL |
+| ----- | --- |
+| Autoplay and user activation | https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Autoplay |
+| `AudioContext.resume()` | https://developer.mozilla.org/en-US/docs/Web/API/AudioContext/resume |
+| `AudioContext.suspend()` | https://developer.mozilla.org/en-US/docs/Web/API/AudioContext/suspend |
+| `AudioBufferSourceNode` | https://developer.mozilla.org/en-US/docs/Web/API/AudioBufferSourceNode |
+| `AudioScheduledSourceNode.ended` | https://developer.mozilla.org/en-US/docs/Web/API/AudioScheduledSourceNode/ended_event |
+| `AudioListener` | https://developer.mozilla.org/en-US/docs/Web/API/AudioListener |
+| Web Audio specification | https://webaudio.github.io/web-audio-api/ |
+
 ### Editor/platform references
 
 These references inform implemented editor tooling and later platform adapters.
@@ -495,6 +525,10 @@ These references inform implemented editor tooling and later platform adapters.
 | Project I/O | `packages/editor/src/services/project-service.ts` |
 | Runtime DOM UI | `packages/ui/src/ui-document-instance.ts`, `ui-service.ts` |
 | Visual UI authoring | `packages/editor/src/ui/UIDocumentEditorPanel.tsx`, `ui-authoring-session.ts` |
+| Headless audio runtime | `packages/audio/src/index.ts` |
+| Web Audio backend | `packages/audio-web/src/index.ts` |
+| AudioSource Inspector/preview | `packages/editor/src/components/AudioSourceFields.tsx`, `audio/audio-preview.ts` |
+| Playground audio diagnostic | `apps/playground/src/audio-diagnostic.ts` |
 | Create templates | `packages/create/templates/` |
 | CI check | `scripts/check.sh` |
 

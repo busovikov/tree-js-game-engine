@@ -53,6 +53,7 @@ Manual viewport checks **supplement** automated tests — never replace them.
 | **No model assets** | Asset dir empty | Model picker: `No model assets in project` | `ModelPickerDialog` |
 | **No camera in scene** | Zero `Camera` components | `resolveActiveCameraId()` → `null`; editor falls back to orbit camera | `scene-camera.ts` |
 | **No prefabs** | Manifest has no prefab assets | Place prefab menu → alert `No prefab assets in project` | `EditorApp.tsx` |
+| **No Audio Clips** | Manifest has no audio assets | Disable Add Audio Source; clip picker shows `No audio clips in project` | `InspectorPanel`, `AudioSourceFields` |
 | **No model reference** | `MeshRenderer.modelAsset` omitted | Primitive renderers work; `ModelGeometry` has no model to load | `render-sync-system.ts` |
 | **Empty folder picker** | `fileList.length === 0` | `No files selected` | `browser-project-store.ts` |
 | **Selection outline** | No targets | Outline pass skipped (no GPU alloc) | `editor-selection-outline.ts` |
@@ -170,6 +171,20 @@ Manual viewport checks **supplement** automated tests — never replace them.
 | Release has graph/tasks/subscriptions/flags | Destroy graph instances, abort lease tasks, dispose cleanups in reverse order, and clear flags before reuse |
 | Release has render/physics state | Remove render objects and physics bodies synchronously; reacquire creates a fresh zero-velocity body from baseline |
 | Long-running acquire/release loop | Reuse the bounded instance set; playground diagnostic checks 10,000 cycles and ends with zero active leases |
+
+### Audio runtime and preview
+
+| Input / transition | Result |
+| ------------------ | ------ |
+| Playback before clip registration/decoding | Reject with an explicit unknown/not-decoded clip error; never fetch a fallback URL |
+| Browser preview before unlock | Preview button directly awaits `AudioContext.resume()` from the real click call stack before loading local bytes |
+| `AudioContext.suspend()` or `resume()` rejects | Propagate the rejection and retain the prior pause state |
+| One-shot ends naturally | Release backend graph nodes and remove the runtime voice without an explicit stop |
+| Muted voice or bus is unmuted | Restore its remembered volume rather than a default gain |
+| Active voice changes between spatial/non-spatial modes | Reject; callers must stop and recreate the voice with the desired graph |
+| Entity deactivates or pooled lease releases | Stop owner voices and recreate no runtime handles until activation/acquire |
+| Preview component unmounts or user presses Stop | Stop active voice and dispose/disconnect the preview backend |
+| Audio Clip has no local bytes | Reject loading; manifests and production diagnostics never use a remote audio URL |
 
 ---
 

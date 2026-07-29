@@ -423,6 +423,33 @@ builds contain `@haku/ui` runtime code but exclude React, `@haku/editor`, visual
 and editor Inspector implementations. M10e remains responsible for browser-built
 self-contained ZIP output.
 
+## Audio runtime, services, and authoring
+
+Implemented in M10c: `@haku/audio` owns `AudioClip` assets, strict `AudioSource` components,
+the replaceable `AudioBackend`, deterministic `HeadlessAudioBackend`, and `AudioRuntime`.
+Every Music/SFX/UI voice routes through its category bus and Master; playback state includes
+one-shot/loop, local mute/volume, playback rate, optional spatial position, listener pose,
+global pause, natural completion, and deterministic owner/pool cleanup. Runtime handles and
+decoded buffers never enter serialized component data.
+
+`AudioService`, the Custom Node SDK, and Play/Stop/Set Bus Volume/Set Bus Muted graph
+adapters use only the public runtime boundary. Contracts declare only the bounded `audio`
+capability/resource/effect, and adapters emit stable `audio.*` checkpoint effect records.
+Audio Clip descriptors contribute no path or network dependency; project manifests retain
+the local binary asset through normal dependency closure.
+
+`@haku/audio-web` alone owns `AudioContext`, decoded `AudioBuffer` values, category/Master
+GainNodes, one-shot `AudioBufferSourceNode` instances, and optional HRTF PannerNodes.
+Unlock must be awaited directly from a real user gesture. Pause/resume failures remain
+observable, modern listener/panner AudioParams avoid deprecated position methods, and
+dispose stops voices, disconnects the graph, and closes the context.
+
+`@haku/editor` reads WAV/MP3/OGG/M4A/AAC/FLAC bytes locally. The AudioSource Inspector
+selects a typed clip reference and edits bus, loop/autoplay/mute, volume, rate, and spatial
+position. Its Preview button unlocks before loading/decoding bytes; Stop and component
+unmount release preview resources. The production playground generates its diagnostic WAV
+in memory, and its bundle excludes React/editor/Inspector code and remote audio URLs.
+
 ## Browser-only authoring and custom code
 
 Haku Editor remains a web application. A project resides in a local folder selected through

@@ -189,6 +189,45 @@ playground native/service/graph diagnostic.
 
 ---
 
+## `@haku/audio`
+
+**Role:** DOM-free Audio Clip/AudioSource contracts, headless mixer/runtime, services,
+Custom Node SDK, graph adapters, and activation/pool lifecycle.
+
+| Dependency | Purpose |
+| ---------- | ------- |
+| `@haku/assets`, `@haku/schema`, `@haku/core` | Asset/component schemas, registries, and typed IDs |
+| `@haku/graph`, `@haku/graph-runtime` | Audio node contracts, checkpoint effects, and adapters |
+| `@haku/pool` | External voice lifecycle participation |
+| **Zod** ^3.25 | Strict AudioSource and pose validation |
+
+**Build:** `tsc` → `dist/`
+
+**Tests:** model/schema, headless routing/controls, activation/pool cleanup, service/SDK,
+graph contracts/adapters, and failure paths.
+
+**Must NOT depend on:** DOM, Web Audio, React, `react-dom`, `@haku/editor`.
+
+---
+
+## `@haku/audio-web`
+
+**Role:** Browser `AudioContext` adapter for local byte decoding, buses, spatial/listener
+graphs, gesture unlock, pause/resume, natural completion, and disposal.
+
+| Dependency | Purpose |
+| ---------- | ------- |
+| `@haku/audio` | Backend, clip, voice, bus, and listener contracts |
+
+**Build:** `tsc` → `dist/`
+
+**Tests:** fake-context decode/graph/lifecycle behavior plus production user-Chrome
+diagnostic in `apps/playground`.
+
+**Must NOT own:** serialized asset/component data or editor UI.
+
+---
+
 ## `@haku/editor`
 
 **Role:** React UI library — panels, inspector, viewport orchestration, undo.
@@ -199,7 +238,7 @@ playground native/service/graph diagnostic.
 | **Zustand** ^5 | Editor state store |
 | **react-resizable-panels** ^2 | Dockable panel layout |
 | **Three.js** ^0.171 | Viewport gizmos, `TransformControls`, `OrbitControls` (editor-only) |
-| `@haku/engine`, `@haku/core`, `@haku/schema`, `@haku/serializer`, `@haku/ui` | Same render/UI asset paths as runtime |
+| `@haku/engine`, `@haku/core`, `@haku/schema`, `@haku/serializer`, `@haku/ui`, `@haku/audio`, `@haku/audio-web` | Same render/UI/audio asset paths plus local preview adapter |
 
 **Build:** `tsc` (no Vite — consumed by `apps/editor`)
 
@@ -234,6 +273,7 @@ playground native/service/graph diagnostic.
 | `@haku/assets` | Project manifest validation and UUID asset lookup |
 | `@haku/engine` | Runtime |
 | `@haku/ui` | Production DOM UI diagnostic; no editor/React dependency |
+| `@haku/audio`, `@haku/audio-web` | Production local-byte Web Audio diagnostic; no editor/React dependency |
 | **Vite** ^6 | Dev server + production bundle |
 
 **Layout:** `haku.project.json`, `public/assets/scenes/`, `src/main.ts`

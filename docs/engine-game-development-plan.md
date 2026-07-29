@@ -45,7 +45,7 @@ The program is done only when:
 | M09  | Custom components and editor extensions                         | M08        | Complete                                 |
 | M10a | Pool and activation integrations                                | M09        | Complete                                 |
 | M10b | DOM UI runtime and visual UI editor                             | M09        | Complete                                 |
-| M10c | Audio contracts, Web Audio, and editor support                  | M09        | Pending                                  |
+| M10c | Audio contracts, Web Audio, and editor support                  | M09        | Complete                                 |
 | M10d | Save storage, replication, and platform contracts               | M09        | Pending                                  |
 | M10e | Browser static export and ZIP                                   | M10b–M10d  | Pending                                  |
 | M10f | Cross-service graph nodes and contract integration              | M10a–M10e  | Pending                                  |
@@ -299,13 +299,22 @@ activation plus service/graph mutation, while production scans exclude React and
 
 Scope and acceptance:
 
-- [ ] Add audio and Web Audio packages, `AudioClip`, `AudioSource`, backend/headless
+- [x] Add audio and Web Audio packages, `AudioClip`, `AudioSource`, backend/headless
       contracts, Master/Music/SFX/UI buses, spatial/non-spatial playback, one-shot, loop,
       volume, playback rate, and cleanup.
-- [ ] Autoplay unlock, global pause, local mute/volume, activation, pool, graph, and SDK
+- [x] Autoplay unlock, global pause, local mute/volume, activation, pool, graph, and SDK
       lifecycle work.
-- [ ] Inspector and basic preview exist; headless and browser tests pass.
-- [ ] Audio assets resolve through manifest and export without network dependencies.
+- [x] Inspector and basic preview exist; headless and browser tests pass.
+- [x] Audio assets resolve through manifest and export without network dependencies.
+
+Implemented in M10c: `@haku/audio` owns strict Audio Clip/AudioSource data, the headless
+mixer/runtime, Master/Music/SFX/UI routing, activation/pool cleanup, `AudioService`, SDK, and
+bounded graph effects. `@haku/audio-web` owns decoding, modern listener/panner graphs,
+gesture-gated unlock, pause/resume, natural completion, and disposal. Engine/editor
+composition registers local binary audio assets and the AudioSource Inspector provides a
+direct-click preview. The production playground proves the unlock and control lifecycle in
+user Chrome with zero remote resources; automation proves browser state and voice cleanup,
+not that a human heard the tone.
 
 ## M10d — Save storage, replication, and platform contracts
 
