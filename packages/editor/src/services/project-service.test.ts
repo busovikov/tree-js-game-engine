@@ -8,10 +8,12 @@ import {
   CUSTOM_COMPONENT_TYPE_ASSET_TYPE,
   MODEL_ASSET_TYPE,
   SCENE_ASSET_TYPE,
+  TEXTURE_ASSET_TYPE,
   assetRef,
   dependencyClosure,
   validateProjectManifest,
 } from '@haku/assets'
+import { UI_DOCUMENT_ASSET_TYPE, UIDocumentSchema } from '@haku/ui'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { globalCommandBus } from '../commands/command-bus.js'
 import { useEditorStore } from '../store/editor-store.js'
@@ -202,6 +204,77 @@ describe('ProjectService disk saving', () => {
         asset,
       ),
     ).rejects.toThrow(/already exists/)
+  })
+
+  it('creates, saves, and reloads UI assets with refreshed manifest dependencies', async () => {
+    const service = new ProjectService()
+    const sceneAssetId = '10000000-0000-4000-8000-000000000041'
+    const textureAssetId = '10000000-0000-4000-8000-000000000042'
+    const documentId = '13000000-0000-4000-8000-000000000041'
+    const rootId = '13000000-0000-4000-8000-000000000042'
+    const imageId = '13000000-0000-4000-8000-000000000043'
+    service.openFromManifest(
+      'ui-persistence',
+      validateProjectManifest({
+        schemaVersion: 1,
+        name: 'UI persistence',
+        entryScene: assetRef(sceneAssetId, SCENE_ASSET_TYPE),
+        assetsDir: 'public/assets',
+        scriptsDir: 'src',
+        assets: [
+          {
+            id: sceneAssetId,
+            type: SCENE_ASSET_TYPE,
+            path: 'scenes/main.scene.json',
+          },
+          {
+            id: textureAssetId,
+            type: TEXTURE_ASSET_TYPE,
+            path: 'textures/logo.png',
+          },
+        ],
+      }),
+    )
+
+    const created = await service.createUIDocumentAsset(
+      'public/assets/ui/hud.ui.json',
+      'HUD',
+      documentId,
+      rootId,
+    )
+    const saved = UIDocumentSchema.parse({
+      ...created,
+      name: 'Saved HUD',
+      elements: [
+        { ...created.elements[0], children: [imageId] },
+        {
+          id: imageId,
+          type: 'image',
+          source: assetRef(textureAssetId, TEXTURE_ASSET_TYPE),
+          alt: 'Project logo',
+        },
+      ],
+    })
+
+    await service.saveUIDocumentAsset('public/assets/ui/hud.ui.json', saved)
+
+    expect(await service.loadUIDocumentAsset('public/assets/ui/hud.ui.json')).toEqual(saved)
+    expect(service.getManifest()?.assets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: documentId,
+          type: UI_DOCUMENT_ASSET_TYPE,
+          path: 'ui/hud.ui.json',
+          dependencies: [assetRef(textureAssetId, TEXTURE_ASSET_TYPE)],
+          metadata: { name: 'Saved HUD' },
+        }),
+      ]),
+    )
+    expect(
+      validateProjectManifest(
+        JSON.parse(await browserProjectStore.readText('haku.project.json')),
+      ),
+    ).toEqual(service.getManifest())
   })
 
   it('retains visual component type definitions in scene and prefab dependency closures', async () => {
