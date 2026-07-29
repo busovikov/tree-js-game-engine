@@ -4,6 +4,7 @@ import {
   registerBuiltinAssetTypes,
   type ProjectManifest,
 } from '@haku/assets'
+import { registerAudioAssetTypes } from '@haku/audio'
 import { registerSerializedAssetTypes } from '@haku/serializer'
 import { registerGraphAssetTypes } from '@haku/graph'
 import { registerUIAssetTypes } from '@haku/ui'
@@ -19,6 +20,7 @@ export function createEngineAssetRegistry(): AssetRegistry {
   registerSerializedAssetTypes(registry)
   registerGraphAssetTypes(registry)
   registerUIAssetTypes(registry)
+  registerAudioAssetTypes(registry)
   return registry
 }
 

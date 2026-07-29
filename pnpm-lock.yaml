@@ -299,6 +299,9 @@ importers:
       '@haku/assets':
         specifier: workspace:*
         version: link:../assets
+      '@haku/audio':
+        specifier: workspace:*
+        version: link:../audio
       '@haku/core':
         specifier: file:../core
         version: file:packages/core
@@ -3056,6 +3059,7 @@ snapshots:
   '@haku/engine@file:packages/engine':
     dependencies:
       '@haku/assets': link:packages/assets
+      '@haku/audio': link:packages/audio
       '@haku/core': file:packages/core
       '@haku/graph': link:packages/graph
       '@haku/physics': file:packages/physics

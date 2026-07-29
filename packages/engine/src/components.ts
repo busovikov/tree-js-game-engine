@@ -9,6 +9,7 @@ import {
 } from '@haku/core'
 import { registerPhysicsComponents } from '@haku/physics'
 import { registerPoolComponents } from '@haku/pool'
+import { registerAudioComponents } from '@haku/audio'
 import { CameraSchema, type Camera } from './camera.js'
 import { LightSchema, type Light } from './light.js'
 import { MeshRendererSchema, type MeshRenderer } from './mesh.js'
@@ -56,6 +57,7 @@ export function createEngineComponentRegistry(): DefaultComponentRegistry {
   registerCoreComponents(registry)
   registerPhysicsComponents(registry)
   registerPoolComponents(registry)
+  registerAudioComponents(registry)
   registerRenderComponents(registry)
   return registry
 }

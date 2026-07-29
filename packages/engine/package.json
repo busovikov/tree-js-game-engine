@@ -23,6 +23,7 @@
     "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
+    "@haku/audio": "workspace:*",
     "@haku/assets": "workspace:*",
     "@haku/core": "file:../core",
     "@haku/graph": "workspace:*",
