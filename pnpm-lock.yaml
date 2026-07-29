@@ -111,9 +111,15 @@ importers:
       '@haku/physics-rapier':
         specifier: workspace:*
         version: link:../../packages/physics-rapier
+      '@haku/platform':
+        specifier: workspace:*
+        version: link:../../packages/platform
       '@haku/pool':
         specifier: workspace:*
         version: link:../../packages/pool
+      '@haku/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
       '@haku/ui':
         specifier: workspace:*
         version: link:../../packages/ui

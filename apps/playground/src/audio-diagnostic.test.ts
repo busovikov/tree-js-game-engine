@@ -37,6 +37,21 @@ class DiagnosticBackend extends HeadlessAudioBackend implements PlaygroundAudioB
 }
 
 describe('M10c playground audio diagnostic', () => {
+  it('accepts platform pause state without unlocking audio', async () => {
+    const host = document.createElement('div')
+    const backend = new DiagnosticBackend()
+    const diagnostic = createAudioDiagnostic(host, () => backend)
+
+    await diagnostic.setPaused(true)
+    expect(host.dataset.audioPaused).toBe('true')
+    expect(host.dataset.audioUnlocked).toBe('false')
+    expect(backend.events).toEqual([])
+
+    await diagnostic.setPaused(false)
+    expect(host.dataset.audioPaused).toBe('false')
+    diagnostic.destroy()
+  })
+
   it('proves gesture unlock, playback controls, spatial state, and cleanup visibly', async () => {
     const host = document.createElement('div')
     document.body.append(host)

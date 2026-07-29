@@ -18,6 +18,7 @@ export interface PlaygroundAudioBackend extends AudioBackend {
 }
 
 export interface AudioDiagnostic {
+  setPaused(paused: boolean): Promise<void>
   destroy(): void
 }
 
@@ -113,6 +114,7 @@ export function createAudioDiagnostic(
       runtime = nextRuntime
       service = new AudioService(nextRuntime)
       service.setBusVolume('sfx', volume)
+      if (paused) await service.setPaused(true)
       renderState('Audio unlocked')
     } catch (error) {
       nextBackend.dispose()
@@ -126,6 +128,16 @@ export function createAudioDiagnostic(
     void action().catch((error) => {
       console.error('[haku] M10c audio diagnostic failed', error)
     })
+  }
+
+  const setPausedState = async (nextPaused: boolean): Promise<void> => {
+    if (paused === nextPaused) {
+      renderState(paused ? 'Globally paused' : 'Playback resumed')
+      return
+    }
+    if (service) await service.setPaused(nextPaused)
+    paused = nextPaused
+    renderState(paused ? 'Globally paused' : 'Playback resumed')
   }
 
   host
@@ -159,9 +171,7 @@ export function createAudioDiagnostic(
   pauseButton.addEventListener('click', () =>
     run(async () => {
       await ensureReady()
-      await service!.setPaused(!paused)
-      paused = !paused
-      renderState(paused ? 'Globally paused' : 'Playback resumed')
+      await setPausedState(!paused)
     }),
   )
   muteButton.addEventListener('click', () => {
@@ -189,6 +199,7 @@ export function createAudioDiagnostic(
   renderState('Click a play control to unlock audio')
 
   return {
+    setPaused: setPausedState,
     destroy() {
       window.clearInterval(refreshTimer)
       runtime?.dispose()

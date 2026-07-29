@@ -21,6 +21,8 @@ import { runDiagnosticGraphPlan } from '@haku/graph-runtime/diagnostic-graph'
 import { runPoolDiagnostic } from './pool-diagnostic.js'
 import { createUIDiagnostic } from './ui-diagnostic.js'
 import { createAudioDiagnostic } from './audio-diagnostic.js'
+import { BrowserPlatformAdapter } from '@haku/platform'
+import { createStoragePlatformDiagnostic } from './storage-platform-diagnostic.js'
 
 async function main() {
   const manifest = validateProjectManifest(project)
@@ -79,7 +81,6 @@ async function main() {
   })
   document.getElementById('app')?.append(audioHost)
   const audioDiagnostic = createAudioDiagnostic(audioHost)
-  window.addEventListener('beforeunload', () => audioDiagnostic.destroy(), { once: true })
   engine.loadWorld(
     loaded.world,
     loaded.prototypes,
@@ -91,9 +92,40 @@ async function main() {
   const backend = await createRapierPhysicsBackend()
   const physicsSystem = engine.setPhysicsBackend(backend)
   engine.addSystem(new PhysicsColliderSystem(physicsSystem))
-  startVehiclePlayMode(engine, physicsSystem, {
+  const vehicleSession = startVehiclePlayMode(engine, physicsSystem, {
     input: { pointerTarget: canvas },
   })
+  const storageHost = document.createElement('div')
+  storageHost.id = 'haku-storage-platform-diagnostic'
+  Object.assign(storageHost.style, {
+    position: 'absolute',
+    left: '20px',
+    top: '460px',
+    width: '420px',
+    zIndex: '2',
+  })
+  document.getElementById('app')?.append(storageHost)
+  const platform = new BrowserPlatformAdapter({
+    controls: {
+      setSimulationPaused: (paused) => engine.setPaused(paused),
+      setInputEnabled: (enabled) => {
+        if (enabled) vehicleSession.inputManager.enable()
+        else vehicleSession.inputManager.disable()
+      },
+      setAudioPaused: (paused) => audioDiagnostic.setPaused(paused),
+    },
+  })
+  const storagePlatformDiagnostic = createStoragePlatformDiagnostic(
+    storageHost,
+    { platform },
+  )
+  void storagePlatformDiagnostic.ready.catch((error) => {
+    console.error('[haku] M10d storage/platform diagnostic failed', error)
+  })
+  window.addEventListener('beforeunload', () => {
+    storagePlatformDiagnostic.destroy()
+    audioDiagnostic.destroy()
+  }, { once: true })
 
   engine.start()
 }
