@@ -35,7 +35,7 @@ export interface BrowserStaticExportSourceLocation {
 }
 
 export interface BrowserStaticExportDiagnostic {
-  readonly code: 'build.failed' | 'export.invalid'
+  readonly code: 'build.failed' | 'export.invalid' | 'trust.untrusted-code'
   readonly severity: 'error'
   readonly message: string
   readonly source?: BrowserStaticExportSourceLocation

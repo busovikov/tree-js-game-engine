@@ -786,6 +786,14 @@ export class ProjectService {
     return browserProjectStore.listAllFilesUnder(assetsRoot)
   }
 
+  async readProjectFile(path: string): Promise<Uint8Array> {
+    const blob =
+      this.storage === 'native'
+        ? await nativeProjectStore.getFile(path)
+        : await browserProjectStore.getBlob(path)
+    return new Uint8Array(await blob.arrayBuffer())
+  }
+
   async seedVirtualAssets(entries: Array<{ path: string; url: string }>): Promise<void> {
     this.storage = 'playground'
     for (const entry of entries) {

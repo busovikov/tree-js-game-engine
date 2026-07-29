@@ -23,6 +23,11 @@ import {
   handleTransformToolShortcut,
 } from './viewport/transform-tool-shortcuts.js'
 import { handleSaveShortcut } from './commands/editor-shortcuts.js'
+import {
+  exportProjectAsStaticZip,
+} from './build/project-static-export.js'
+import { navigateToBuildDiagnostic } from './build/build-diagnostic-navigation.js'
+import type { BrowserStaticExportDiagnostic } from '@haku/build'
 
 function pickProjectFolder(): Promise<FileList | null> {
   return new Promise((resolve) => {
@@ -51,6 +56,10 @@ export const EditorApp = memo(function EditorApp() {
   const [renderSettingsOpen, setRenderSettingsOpen] = useState(false)
   const [physicsSettingsOpen, setPhysicsSettingsOpen] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [exportStatus, setExportStatus] = useState<'idle' | 'exporting' | 'saved' | 'error'>('idle')
+  const [exportDiagnostics, setExportDiagnostics] = useState<
+    readonly BrowserStaticExportDiagnostic[]
+  >([])
 
   useEffect(() => {
     setHakuLogSink(projectLogSink)
@@ -129,6 +138,18 @@ export const EditorApp = memo(function EditorApp() {
       setSaveStatus('error')
       alert(err instanceof Error ? err.message : 'Failed to save scene')
     }
+  }, [])
+
+  const onExportStaticZip = useCallback(async () => {
+    setExportStatus('exporting')
+    setExportDiagnostics([])
+    const result = await exportProjectAsStaticZip(projectService)
+    if (result.ok) {
+      setExportStatus('saved')
+      return
+    }
+    setExportStatus('error')
+    setExportDiagnostics(result.diagnostics)
   }, [])
 
   useEffect(() => {
@@ -255,6 +276,12 @@ export const EditorApp = memo(function EditorApp() {
             disabled: !scenePath || mode === 'play' || saveStatus === 'saving',
             onClick: onSave,
           },
+          {
+            id: 'export-static-zip',
+            label: exportStatus === 'exporting' ? 'Exporting Static ZIP…' : 'Export Static ZIP…',
+            disabled: !scenePath || mode === 'play' || exportStatus === 'exporting',
+            onClick: onExportStaticZip,
+          },
         ],
       },
       {
@@ -290,12 +317,14 @@ export const EditorApp = memo(function EditorApp() {
       onCreateProject,
       onLoadPlaygroundDemo,
       onOpenProject,
+      onExportStaticZip,
       onPhysicsSettings,
       onRenderSettings,
       onSave,
       sceneDocument,
       scenePath,
       saveStatus,
+      exportStatus,
     ],
   )
 
@@ -332,6 +361,36 @@ export const EditorApp = memo(function EditorApp() {
           <span role="status" style={{ color: saveStatus === 'error' ? '#ff8a80' : '#8f9', fontSize: 12 }}>
             {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? 'Saved' : 'Save failed'}
           </span>
+        )}
+        {exportStatus !== 'idle' && (
+          <span
+            role="status"
+            style={{
+              color: exportStatus === 'error' ? '#ff8a80' : '#8f9',
+              fontSize: 12,
+            }}
+          >
+            {exportStatus === 'exporting'
+              ? 'Exporting ZIP…'
+              : exportStatus === 'saved'
+                ? 'Static ZIP downloaded'
+                : 'Static export failed'}
+          </span>
+        )}
+        {exportDiagnostics.map((diagnostic, index) =>
+          diagnostic.source ? (
+            <button
+              key={`${diagnostic.code}:${index}`}
+              type="button"
+              onClick={() => navigateToBuildDiagnostic(diagnostic.source!)}
+            >
+              {diagnostic.code}: {diagnostic.message}
+            </button>
+          ) : (
+            <span key={`${diagnostic.code}:${index}`} role="alert" style={{ color: '#ff8a80' }}>
+              {diagnostic.code}: {diagnostic.message}
+            </span>
+          ),
         )}
       </header>
       <div style={{ flex: 1, minHeight: 0 }}>
