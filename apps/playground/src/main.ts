@@ -26,6 +26,7 @@ import {
   createObservedPlatformControls,
   createStoragePlatformDiagnostic,
 } from './storage-platform-diagnostic.js'
+import { createCrossServiceDiagnostic } from './cross-service-diagnostic.js'
 
 async function main() {
   const manifest = validateProjectManifest(project)
@@ -122,10 +123,24 @@ async function main() {
     storageHost,
     { platform },
   )
+  const crossServiceHost = document.createElement('div')
+  crossServiceHost.id = 'haku-cross-service-diagnostic'
+  Object.assign(crossServiceHost.style, {
+    position: 'absolute',
+    right: '20px',
+    top: '20px',
+    width: '440px',
+    maxHeight: 'calc(100vh - 40px)',
+    overflow: 'auto',
+    zIndex: '3',
+  })
+  document.getElementById('app')?.append(crossServiceHost)
+  const crossServiceDiagnostic = createCrossServiceDiagnostic(crossServiceHost)
   void storagePlatformDiagnostic.ready.catch((error) => {
     console.error('[haku] M10d storage/platform diagnostic failed', error)
   })
   window.addEventListener('beforeunload', () => {
+    crossServiceDiagnostic.destroy()
     storagePlatformDiagnostic.destroy()
     audioDiagnostic.destroy()
   }, { once: true })
