@@ -148,9 +148,9 @@
               "$ref": "b1500000-0000-4000-8000-000000000002",
               "type": "20000000-0000-4000-8000-000000000002"
             },
-            "capacity": 6,
-            "maximum": 6,
-            "prewarm": 6,
+            "capacity": 8,
+            "maximum": 8,
+            "prewarm": 8,
             "expansionPolicy": "fixed",
             "exhaustionPolicy": "return-null"
           }

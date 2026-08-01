@@ -17,6 +17,7 @@ import type { UIService } from '@haku/ui'
 import { applyBallControlStep } from './ball-controller.js'
 import { BOUNCE_RUN_PHYSICS } from './bounce-run-physics.js'
 import { stepFollowCamera, type FollowCameraPose } from './follow-camera.js'
+import type { PoolBackedBounceRunRoute } from './infinite-route.js'
 import { LandingTracker } from './landing-tracker.js'
 import { BOUNCE_RUN_UI_IDS } from './ui-document.js'
 
@@ -139,6 +140,26 @@ export class BounceRunFailureSystem implements ISystem {
 
   reset(): void {
     this.failed = false
+  }
+}
+
+export class BounceRunRouteSystem implements ISystem {
+  readonly phase = 'FixedGameplay' as const
+  readonly localOrder = -10
+
+  constructor(
+    private readonly ball: EntityId,
+    private readonly physics: PhysicsWorldSystem,
+    private readonly route: PoolBackedBounceRunRoute,
+  ) {}
+
+  update(): void {
+    const position = this.physics.getBodyTransform(this.ball)?.position
+    if (position) this.route.advanceForPosition(position[2])
+  }
+
+  reset(): void {
+    this.route.reset()
   }
 }
 

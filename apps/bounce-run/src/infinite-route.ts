@@ -24,6 +24,7 @@ export interface ActiveBounceRunRoutePlatform {
 
 export interface PoolBackedBounceRunRoute {
   advanceTo(platformIndex: number): void
+  advanceForPosition(forwardPosition: number): void
   reset(): void
   dispose(): void
   activePlatforms(): readonly ActiveBounceRunRoutePlatform[]
@@ -105,6 +106,24 @@ export function createPoolBackedBounceRunRoute(
       if (platformIndex === currentPlatformIndex) return
       activateWindow(platformIndex)
     },
+    advanceForPosition(forwardPosition) {
+      requireLive(disposed)
+      if (!Number.isFinite(forwardPosition)) {
+        throw new Error('forwardPosition must be finite')
+      }
+      let crossedIndex = currentPlatformIndex
+      for (const [platformIndex, lease] of active) {
+        const transform = options.world.getComponent(lease.entity, TransformComponent)
+        if (
+          transform &&
+          platformIndex > crossedIndex &&
+          transform.position[2] <= forwardPosition
+        ) {
+          crossedIndex = platformIndex
+        }
+      }
+      if (crossedIndex > currentPlatformIndex) activateWindow(crossedIndex)
+    },
     reset() {
       requireLive(disposed)
       releaseOwnedLeases()
@@ -147,7 +166,15 @@ function materializePlatform(
   world.addComponent(entity, TransformComponent, {
     ...transform,
     position: [...descriptor.position] as Vec3,
-    scale: [...descriptor.size] as Vec3,
+  })
+  world.addComponent(entity, MeshRendererComponent, {
+    ...mesh,
+    geometryParams: {
+      ...mesh.geometryParams,
+      width: descriptor.size[0],
+      height: descriptor.size[1],
+      depth: descriptor.size[2],
+    },
   })
   world.addComponent(entity, ColliderComponent, {
     ...collider,

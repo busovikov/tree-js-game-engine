@@ -64,8 +64,13 @@ describe('pool-backed Bounce Run route', () => {
         const collider = world.getComponent(active.entity, ColliderComponent)
 
         expect(transform?.position).toEqual(descriptor.position)
-        expect(transform?.scale).toEqual(descriptor.size)
+        expect(transform?.scale).toEqual([1, 1, 1])
         expect(mesh?.geometryType).toBe('BoxGeometry')
+        expect(mesh?.geometryParams).toMatchObject({
+          width: descriptor.size[0],
+          height: descriptor.size[1],
+          depth: descriptor.size[2],
+        })
         expect(collider).toMatchObject({
           shape: 'box',
           halfExtents: descriptor.size.map((dimension) => dimension / 2),
@@ -111,6 +116,30 @@ describe('pool-backed Bounce Run route', () => {
     route.dispose()
     route.dispose()
     expect(pool.metrics()).toMatchObject({ total: 8, active: 0, inactive: 8 })
+  })
+
+  it('advances through the highest active platform center crossed by the ball', () => {
+    const world = new World()
+    const pool = createPlatformPool(world)
+    const route = createPoolBackedBounceRunRoute({
+      world,
+      pool,
+      seed: 0x5eed,
+      activeAhead: 6,
+      retainBehind: 2,
+    })
+    const pure = generateBounceRunRoute({ seed: 0x5eed, platformCount: 9 })
+
+    route.advanceForPosition(pure.platforms[3]!.position[2])
+
+    expect(route.activePlatforms().map((platform) => platform.platformIndex)).toEqual([
+      1, 2, 3, 4, 5, 6, 7, 8,
+    ])
+    expect(route.decisionLog()).toEqual(pure.decisionLog)
+    expect(() => route.advanceForPosition(Number.NaN)).toThrow(
+      'forwardPosition must be finite',
+    )
+    route.dispose()
   })
 
   it('rejects impossible windows before leasing and contains pool exhaustion failures', () => {
@@ -165,7 +194,10 @@ function createPlatformPool(world: World): EntityPool {
       world.addComponent(
         entity,
         MeshRendererComponent,
-        MeshRendererSchema.parse({ geometryType: 'BoxGeometry' }),
+        MeshRendererSchema.parse({
+          geometryType: 'BoxGeometry',
+          geometryParams: { width: 4, height: 0.6, depth: 7.5 },
+        }),
       )
       world.addComponent(
         entity,

@@ -3,7 +3,7 @@ import {
   validateProjectAssetComposition,
   validateProjectManifest,
 } from '@haku/assets'
-import { entityId, TransformComponent, type ISystem } from '@haku/core'
+import { entityId, type ISystem } from '@haku/core'
 import {
   Engine,
   InputManager,
@@ -15,7 +15,7 @@ import {
   createEnginePoolParticipant,
   loadProjectPrefabAssets,
 } from '@haku/engine'
-import { createEntityPoolFromComponent, poolHandleRoot } from '@haku/pool'
+import { createEntityPoolFromComponent } from '@haku/pool'
 import { createRapierPhysicsBackend } from '@haku/physics-rapier'
 import { projectPathToUrl } from '@haku/schema'
 import { UIService } from '@haku/ui'
@@ -27,7 +27,9 @@ import {
   BounceRunInputSystem,
   BounceRunLandingSystem,
   BounceRunPerformanceSystem,
+  BounceRunRouteSystem,
 } from './game-systems.js'
+import { createPoolBackedBounceRunRoute } from './infinite-route.js'
 import { instantiatePrefabDefinition } from './prefab-instance.js'
 import { createBounceRunSessionRuntime } from './session-runtime.js'
 import { BOUNCE_RUN_UI_IDS, loadBounceRunUIDocument } from './ui-document.js'
@@ -39,14 +41,7 @@ const BALL_SPAWN = {
   position: [0, 3, 0] as const,
   rotation: [0, 0, 0, 1] as const,
 }
-const PLATFORM_POSITIONS = [
-  [0, 0, 2],
-  [-0.8, 0.35, 8.5],
-  [0.9, 0.7, 15],
-  [-1, 1.05, 21.5],
-  [0.75, 1.4, 28],
-  [0, 1.75, 34.5],
-] as const
+const ROUTE_SEED = 0x5eed
 
 async function main(): Promise<void> {
   const manifest = validateProjectManifest(projectAsset)
@@ -101,23 +96,13 @@ async function main(): Promise<void> {
       }),
     ],
   })
-  const platformHandles = PLATFORM_POSITIONS.map((position) => {
-    const handle = platformPool.acquire()
-    if (!handle) throw new Error('Bounce Run platform pool exhausted during setup')
-    const root = poolHandleRoot(handle)
-    const transform = loaded.world.getComponent(root, TransformComponent)
-    if (!transform) throw new Error(`Pooled platform ${root.value} has no Transform`)
-    loaded.world.addComponent(root, TransformComponent, {
-      ...transform,
-      position: [...position],
-    })
-    return handle
+  const route = createPoolBackedBounceRunRoute({
+    world: loaded.world,
+    pool: platformPool,
+    seed: ROUTE_SEED,
+    activeAhead: 6,
+    retainBehind: 2,
   })
-  // Static bodies were created by synchronous acquire hooks at their prefab baseline.
-  // Reconcile once after all authored transforms are placed.
-  colliders.dispose()
-  colliders.update(loaded.world)
-  engine.backend.sync.update(loaded.world)
 
   const ui = new UIService()
   const uiDocument = await loadBounceRunUIDocument()
@@ -153,12 +138,14 @@ async function main(): Promise<void> {
     session.fail()
     engine.setPaused(true)
   })
+  const routeSystem = new BounceRunRouteSystem(BALL_ID, physics, route)
   const cameraSystem = new BounceRunCameraSystem(BALL_ID, CAMERA_ID, physics)
   const performanceSystem = new BounceRunPerformanceSystem(ui, platformPool, engine.scheduler)
   const systems: ISystem[] = [
     inputSystem,
     controlSystem,
     landingSystem,
+    routeSystem,
     failureSystem,
     cameraSystem,
     performanceSystem,
@@ -166,6 +153,7 @@ async function main(): Promise<void> {
   systems.forEach((system) => engine.addSystem(system))
 
   function resetRun(): void {
+    routeSystem.reset()
     physics.resetBodyState(BALL_ID, BALL_SPAWN, loaded.world)
     input.disable()
     input.enable()
@@ -214,7 +202,7 @@ async function main(): Promise<void> {
       session.destroy()
       ui.destroyAll()
       systems.forEach((system) => engine.removeSystem(system))
-      platformHandles.forEach((handle) => platformPool.release(handle))
+      route.dispose()
       platformPool.clear()
       engine.removeSystem(contacts)
       engine.removeSystem(colliders)
