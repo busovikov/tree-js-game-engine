@@ -222,9 +222,9 @@ describe('cross-service foundation catalog integration', () => {
     })
 
     expect(result.diagnostics).toEqual([])
-    expect(registry.all()).toHaveLength(35)
+    expect(registry.all()).toHaveLength(37)
     expect(registry.fingerprint()).toBe(
-      'haku-registry-v1-0d438213',
+      'haku-registry-v1-7bd76e6d',
     )
     expect(
       result.plan?.connections
