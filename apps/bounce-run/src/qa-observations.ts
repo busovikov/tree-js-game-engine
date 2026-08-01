@@ -9,6 +9,7 @@ import type { PoolMetrics } from '@haku/pool'
 import type { BounceRunSessionState } from './session-runtime.js'
 
 export const BOUNCE_RUN_OBSERVATION_VERSION = 1 as const
+export const BOUNCE_RUN_QA_OBSERVATIONS_SENTINEL = 'haku:bounce-run:qa-observations:v1' as const
 
 export interface BounceRunBallObservationReader {
   position(): readonly [number, number, number]

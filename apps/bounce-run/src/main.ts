@@ -152,7 +152,43 @@ async function main(): Promise<void> {
   ]
   systems.forEach((system) => engine.addSystem(system))
 
+  let disposeDevQa = (): void => {}
+  if (import.meta.env.DEV) {
+    const { installBounceRunDevQa } = await import('./dev-qa-bootstrap.js')
+    const installation = installBounceRunDevQa({
+      seed: ROUTE_SEED,
+      systemHost: {
+        add: (system) => engine.addSystem(system),
+        remove: (system) => engine.removeSystem(system),
+      },
+      actions: {
+        read: () => ({ lateral: inputSystem.lateralInput }),
+        setLateral: (value) => inputSystem.setLateralAction(value),
+        start: startRun,
+        pause: () => {
+          if (session.state() === 'active') togglePause()
+        },
+        resume: () => {
+          if (session.state() === 'paused') togglePause()
+        },
+        restart: restartRun,
+      },
+      observations: {
+        scheduler: engine.scheduler,
+        session,
+        ball: {
+          position: () => physics.getBodyTransform(BALL_ID)?.position ?? BALL_SPAWN.position,
+          velocity: () => physics.getBodyLinearVelocity(BALL_ID) ?? [0, 0, 0],
+        },
+        route,
+        pool: platformPool,
+      },
+    })
+    disposeDevQa = () => installation.dispose()
+  }
+
   function resetRun(): void {
+    inputSystem.setLateralAction(null)
     routeSystem.reset()
     physics.resetBodyState(BALL_ID, BALL_SPAWN, loaded.world)
     input.disable()
@@ -196,6 +232,7 @@ async function main(): Promise<void> {
   window.addEventListener(
     'beforeunload',
     () => {
+      disposeDevQa()
       engine.stop()
       unsubscribeUI()
       input.detach()

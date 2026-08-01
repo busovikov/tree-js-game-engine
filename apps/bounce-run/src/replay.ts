@@ -10,6 +10,7 @@ import { applyBallControlStep, type Velocity3 } from './ball-controller.js'
 import { BOUNCE_RUN_PHYSICS } from './bounce-run-physics.js'
 
 export const BOUNCE_RUN_RECORDING_VERSION = 1 as const
+export const BOUNCE_RUN_QA_REPLAY_SENTINEL = 'haku:bounce-run:qa-replay:v1' as const
 
 export interface BounceRunReplayState {
   readonly velocity: Velocity3

@@ -20,6 +20,25 @@ const BALL = entityId('b1800000-0000-4000-8000-000000000001')
 describe('Bounce Run fixed-step runtime', () => {
   afterEach(() => resetRapierPhysicsIds())
 
+  it('accepts only bounded finite lateral values through the public action port', () => {
+    const input = new BounceRunInputSystem(
+      new InputManager(),
+      () => {},
+      () => {},
+    )
+    input.setLateralAction(1)
+    input.update()
+    expect(input.lateralInput).toBe(1)
+    input.setLateralAction(-1)
+    input.update()
+    expect(input.lateralInput).toBe(-1)
+    input.setLateralAction(null)
+    input.update()
+    expect(input.lateralInput).toBe(0)
+    expect(() => input.setLateralAction(Number.NaN)).toThrow(/lateral action/i)
+    expect(() => input.setLateralAction(2)).toThrow(/lateral action/i)
+  })
+
   it('turns a monitored downward contact into a deterministic analytic bounce', async () => {
     const loaded = SceneLoader.fromDocument(
       SceneDocumentSchema.parse({

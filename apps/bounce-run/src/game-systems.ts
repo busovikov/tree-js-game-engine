@@ -26,6 +26,7 @@ export class BounceRunInputSystem implements ISystem {
   readonly localOrder = 0
 
   lateralInput = 0
+  private lateralAction: number | null = null
 
   constructor(
     private readonly input: InputManager,
@@ -35,10 +36,19 @@ export class BounceRunInputSystem implements ISystem {
 
   update(): void {
     const actions = this.input.getActionMap()
-    this.lateralInput = typeof actions.lateral === 'number' ? actions.lateral : 0
+    this.lateralInput =
+      this.lateralAction ?? (typeof actions.lateral === 'number' ? actions.lateral : 0)
     if (actions.pause === true) this.onPause()
     if (actions.restart === true) this.onRestart()
     this.input.endFrame()
+  }
+
+  /** Public action port used by deterministic replay and dev-only browser QA. */
+  setLateralAction(value: number | null): void {
+    if (value !== null && (!Number.isFinite(value) || value < -1 || value > 1)) {
+      throw new Error('Bounce Run lateral action must be null or a finite value from -1 to 1')
+    }
+    this.lateralAction = value
   }
 }
 

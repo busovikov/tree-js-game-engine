@@ -14,6 +14,7 @@ import { BOUNCE_RUN_RECORDING_VERSION, type BounceRunRecording } from './replay.
 
 export const BOUNCE_RUN_SESSION_REPORT_VERSION = 1 as const
 export const BOUNCE_RUN_BUG_REPORT_VERSION = 1 as const
+export const BOUNCE_RUN_QA_REPORT_SENTINEL = 'haku:bounce-run:qa-report:v1' as const
 export const MAX_BOUNCE_RUN_REPORT_TICKS = 36_000
 export const MAX_BOUNCE_RUN_REPORT_OBSERVATIONS = 1_024
 export const MAX_BOUNCE_RUN_REPORT_ASSERTIONS = 64
