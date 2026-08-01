@@ -156,5 +156,18 @@ describe('Bounce Run session runtime', () => {
       mounted.session.destroy()
       mounted.ui.destroyAll()
     }
+
+    const malformedStorage = new InMemorySaveStorage()
+    await malformedStorage.writeSlot({
+      slotId: HIGH_SCORE_SLOT_ID,
+      label: 'Malformed Bounce Run high score',
+      data: { schemaVersion: 1, highScore: 'not-a-number' },
+      expectedRevision: 0,
+    })
+    const malformed = await mountSession(malformedStorage)
+    expect(malformed.session.highScore()).toBe(0)
+    expect(malformed.documentInstance.getElement(HIGH_SCORE_TEXT_ID)?.textContent).toBe('Best 0')
+    malformed.session.destroy()
+    malformed.ui.destroyAll()
   })
 })
