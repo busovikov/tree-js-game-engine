@@ -50,7 +50,7 @@ The program is done only when:
 | M10e | Browser static export and ZIP                                   | M10b–M10d  | Complete                                     |
 | M10f | Cross-service graph nodes and contract integration              | M10a–M10e  | Complete                                     |
 | M11  | Bounce Run vertical slice                                       | M10f       | Complete                                     |
-| M12  | Generator, seed/replay, QA harness, and automated browser tests | M11        | Pending                                      |
+| M12  | Generator, seed/replay, QA harness, and automated browser tests | M11        | In progress — pure route slice complete      |
 | M13  | Full gameplay, polish, saves, audio, and stabilization          | M12        | Pending                                      |
 | M14  | Final export, quality audit, and documentation                  | M13        | Pending                                      |
 
@@ -443,15 +443,25 @@ Scope:
 
 Acceptance:
 
-- [ ] Same seed/config produces identical route decisions.
-- [ ] Every generated sequence has at least one reachable path and deterministic fallback.
-- [ ] Safe start and difficulty margins are tested.
-- [ ] Many headless sequences finish without intersections, invalid gaps, missing routes, or
+- [x] Same seed/config produces identical route decisions.
+- [x] Every generated sequence has at least one reachable path and deterministic fallback.
+- [x] Safe start and difficulty margins are tested.
+- [x] Many headless sequences finish without intersections, invalid gaps, missing routes, or
       unbounded attempts.
 - [ ] Replay either matches state hashes or reports exact divergence.
 - [ ] QA uses public action/observation APIs and cannot mutate game state directly.
 - [ ] Browser E2E covers start, input, pause, game over, restart, resize, and console errors.
 - [ ] QA harness is absent from production export.
+
+M12 pure route slice evidence: `9bc30a6`, `fc35d55`, `38d9d6e`, and `a4d02ab` add the
+side-effect-free seeded generator, fixed-step analytic reachability envelope, decreasing but
+non-zero safety margins, full candidate/selection logs, bounded candidate attempts, and a
+deterministic zero-attempt fallback. Focused Vitest coverage validates invalid configuration,
+vertical/forward/lateral boundaries, route continuity, platform intersection rejection, and
+256 seeds × 128 platforms without route validation issues or attempt overflow. A headless
+Rapier comparison locks the analytic same-height landing to the collision-event tick and
+forward position used by the current 60 Hz controller. Infinite pool integration, replay,
+observations, reports, browser automation, and production QA exclusion remain incomplete.
 
 ## M13 — Full gameplay, polish, saves, audio, and stabilization
 
