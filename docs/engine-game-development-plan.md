@@ -685,7 +685,8 @@ and the full visual-coherence acceptance remain open):
   paused updates, queued/active owner cleanup, and idempotent Three disposal.
 - All 20 Bounce Run test files pass 76/76 tests. Focused engine/pool/graph/runtime verification passes
   33 files / 119 tests; engine build, Bounce Run typecheck, and the 202-module production build pass
-  with only the established chunk-size advisory. User Chrome on agent-owned `127.0.0.1:5194` visibly
+  at 3,230.66 kB minified / 1,093.76 kB gzip with only the established chunk-size advisory. User
+  Chrome on agent-owned `127.0.0.1:5194` visibly
   showed the four platform colors/shapes, contrasting ball/trail, zero QA diagnostics, and the same
   `pool 6/8` read-only counter after restart. The natural run reached game over, but neither its brief
   fail burst nor a bonus pickup was captured visually, so those visual claims rely on focused tests.
