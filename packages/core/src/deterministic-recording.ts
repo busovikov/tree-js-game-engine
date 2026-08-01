@@ -4,13 +4,15 @@ const UINT32_MAX = 0xffff_ffff
 const STABLE_HASH_PATTERN = /^fnv1a64:[0-9a-f]{16}$/
 
 export type ImmutableJsonValue<T> =
-  T extends null | string | number | boolean
-    ? T
-    : T extends readonly (infer TItem)[]
-      ? readonly ImmutableJsonValue<TItem>[]
-      : T extends object
-        ? { readonly [TKey in keyof T]: ImmutableJsonValue<T[TKey]> }
-        : never
+  unknown extends T
+    ? unknown
+    : T extends null | string | number | boolean
+      ? T
+      : T extends readonly (infer TItem)[]
+        ? readonly ImmutableJsonValue<TItem>[]
+        : T extends object
+          ? { readonly [TKey in keyof T]: ImmutableJsonValue<T[TKey]> }
+          : never
 
 export interface FixedTickRecordingFrame<TActions = unknown> {
   readonly tick: number
