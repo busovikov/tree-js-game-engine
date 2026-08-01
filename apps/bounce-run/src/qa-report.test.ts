@@ -44,9 +44,9 @@ function createRecording() {
 
 function createObservation(tick: number) {
   return {
-    version: 1,
+    version: 2,
     scheduler: { tick, fixedDelta: FIXED_DELTA },
-    session: { state: 'active' },
+    session: { state: 'active', score: tick },
     ball: { position: [0, 2 + tick, tick], velocity: [0, 8 - tick, 9] },
     route: {
       activeCount: 2,

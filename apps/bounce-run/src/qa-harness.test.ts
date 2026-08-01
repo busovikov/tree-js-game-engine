@@ -28,9 +28,9 @@ function createPort<T>() {
 
 function createObservation(tick: number) {
   return {
-    version: 1 as const,
+    version: 2 as const,
     scheduler: { tick, fixedDelta: 1 / 60 },
-    session: { state: tick === 0 ? ('active' as const) : ('paused' as const) },
+    session: { state: tick === 0 ? ('active' as const) : ('paused' as const), score: tick },
     ball: { position: [tick, 2, tick + 4], velocity: [1, 7, 9] },
     route: {
       activeCount: 2,

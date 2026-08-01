@@ -8,7 +8,7 @@ import {
 import type { PoolMetrics } from '@haku/pool'
 import type { BounceRunSessionState } from './session-runtime.js'
 
-export const BOUNCE_RUN_OBSERVATION_VERSION = 1 as const
+export const BOUNCE_RUN_OBSERVATION_VERSION = 2 as const
 export const BOUNCE_RUN_QA_OBSERVATIONS_SENTINEL = 'haku:bounce-run:qa-observations:v1' as const
 
 export interface BounceRunBallObservationReader {
@@ -23,7 +23,7 @@ export interface BounceRunRouteObservationReader {
 
 export interface BounceRunObservationSources {
   readonly scheduler: Pick<EngineScheduler, 'tickNumber' | 'fixedTimestep'>
-  readonly session: Readonly<{ state(): BounceRunSessionState }>
+  readonly session: Readonly<{ state(): BounceRunSessionState; score(): number }>
   readonly ball: BounceRunBallObservationReader
   readonly route: BounceRunRouteObservationReader
   readonly pool: Readonly<{ metrics(): PoolMetrics }>
@@ -32,7 +32,7 @@ export interface BounceRunObservationSources {
 export interface BounceRunObservation {
   readonly version: typeof BOUNCE_RUN_OBSERVATION_VERSION
   readonly scheduler: Readonly<{ tick: number; fixedDelta: number }>
-  readonly session: Readonly<{ state: BounceRunSessionState }>
+  readonly session: Readonly<{ state: BounceRunSessionState; score: number }>
   readonly ball: Readonly<{
     position: readonly [number, number, number]
     velocity: readonly [number, number, number]
@@ -53,6 +53,7 @@ export function createBounceRunObservationSnapshot(
   const tick = requireNonNegativeInteger('scheduler tick', sources.scheduler.tickNumber)
   const fixedDelta = requirePositiveFinite('scheduler fixedDelta', sources.scheduler.fixedTimestep)
   const state = requireSessionState(sources.session.state())
+  const score = requireNonNegativeInteger('session score', sources.session.score())
   const position = requireVector('ball position', sources.ball.position())
   const velocity = requireVector('ball velocity', sources.ball.velocity())
   const activePlatforms = createImmutableJsonSnapshot(sources.route.activePlatforms())
@@ -81,7 +82,7 @@ export function createBounceRunObservationSnapshot(
       tick,
       fixedDelta,
     },
-    session: { state },
+    session: { state, score },
     ball: {
       position,
       velocity,

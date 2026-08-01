@@ -41,7 +41,7 @@ const FRAME_KEYS = new Set(['tick', 'actions', 'expectedHash'])
 const OBSERVATION_EVIDENCE_KEYS = new Set(['observation', 'assertionResults'])
 const OBSERVATION_KEYS = new Set(['version', 'scheduler', 'session', 'ball', 'route', 'pool'])
 const SCHEDULER_KEYS = new Set(['tick', 'fixedDelta'])
-const SESSION_KEYS = new Set(['state'])
+const SESSION_KEYS = new Set(['state', 'score'])
 const BALL_KEYS = new Set(['position', 'velocity'])
 const ROUTE_KEYS = new Set([
   'activeCount',
@@ -295,6 +295,7 @@ function validateObservation(value: unknown, index: number): BounceRunObservatio
     'paused',
     'game-over',
   ] as const)
+  requireNonNegativeInteger(`${label} session score`, session.score)
 
   const ball = requireExactRecord(`${label} ball`, observation.ball, BALL_KEYS)
   requireFiniteVector(`${label} ball position`, ball.position)

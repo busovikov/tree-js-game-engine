@@ -15,6 +15,7 @@ describe('Bounce Run QA observations', () => {
     scheduler.runFrame(new World(), 1 / 60)
     const source = {
       sessionState: 'active' as const,
+      score: 3,
       position: [1, 2, 3] as [number, number, number],
       velocity: [0.5, -1, 8] as [number, number, number],
       activePlatformIndices: [3, 4, 5],
@@ -36,7 +37,7 @@ describe('Bounce Run QA observations', () => {
 
     const observation = createBounceRunObservationSnapshot({
       scheduler,
-      session: { state: () => source.sessionState },
+      session: { state: () => source.sessionState, score: () => source.score },
       ball: {
         position: () => source.position,
         velocity: () => source.velocity,
@@ -50,9 +51,9 @@ describe('Bounce Run QA observations', () => {
     })
 
     expect(observation).toEqual({
-      version: 1,
+      version: 2,
       scheduler: { tick: 1, fixedDelta: 1 / 60 },
-      session: { state: 'active' },
+      session: { state: 'active', score: 3 },
       ball: { position: [1, 2, 3], velocity: [0.5, -1, 8] },
       route: { activeCount: 3, firstPlatformIndex: 3, lastPlatformIndex: 5, decisionCount: 6 },
       pool: source.pool,
@@ -132,7 +133,7 @@ describe('Bounce Run QA observations', () => {
     const before = structuredClone(source)
     const sources = {
       scheduler: source,
-      session: { state: () => 'active' as const },
+      session: { state: () => 'active' as const, score: () => 0 },
       ball: { position: () => source.position, velocity: () => source.velocity },
       route: {
         activePlatforms: () => [0, 1, 2].map((platformIndex) => ({ platformIndex })),
@@ -158,7 +159,7 @@ describe('Bounce Run QA observations', () => {
         { code: 'escape', path: '__proto__.polluted', operator: 'eq', expected: true },
       ]),
     ).toThrow('Forbidden observation path')
-    expect(() => evaluateBounceRunAssertions({ ...valid, version: 2 }, [])).toThrow(
+    expect(() => evaluateBounceRunAssertions({ ...valid, version: 3 }, [])).toThrow(
       'Unsupported Bounce Run observation version',
     )
     expect(valid).toEqual(validBefore)
