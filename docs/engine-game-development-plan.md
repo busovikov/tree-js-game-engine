@@ -542,7 +542,7 @@ Acceptance:
 - [ ] Full agreed gameplay loop is understandable within seconds and visually coherent.
 - [ ] Difficulty reduces safety margins but never removes all reachable routes.
 - [x] Bonus is reachable, sensor-safe, pooled, and cannot score twice.
-- [ ] High score persists locally through the universal save API.
+- [x] High score persists locally through the universal save API.
 - [ ] Audio unlock/pause/settings/pool cleanup work.
 - [ ] No sustained active-object or memory growth in long runs.
 - [ ] Every found reproducible bug has seed/replay and regression coverage.
@@ -568,8 +568,7 @@ M13 generator evidence (in progress; runtime and presentation acceptance remain 
 - This slice does not materialize variant behavior or the bonus in the runtime, pool a bonus sensor,
   award score, or claim the unchecked bonus/full-gameplay acceptance rows above.
 
-M13 runtime variant/bonus evidence (in progress; HUD, saves, audio, effects, and stabilization
-remain open):
+M13 runtime variant/bonus evidence (in progress; audio, effects, and stabilization remain open):
 
 - One fixed-seed integration RED used four explicit one-hot difficulty bands and an enabled bonus.
   It failed first because active platform leases exposed no descriptor, confirming that the prior
@@ -596,6 +595,36 @@ remain open):
   bounded pool metrics and readable score, and the console contained only the established Rapier
   initialization deprecation warning. The browser run did not collect the bonus, so once-only score
   and boost-height claims rely on the focused integration evidence above rather than visual evidence.
+
+M13 score HUD and local-save evidence (complete; audio, effects, polish, and stabilization remain
+open):
+
+- The mandatory happy-dom integration RED mounted the real authored Bounce Run HUD and public
+  in-memory save storage before any production change. It passed the existing transition case and
+  failed the new case at the first `Score 0` lookup because the authored HUD had no score element.
+- The production HUD now exposes accessible live current/best score text. Explicit pure `Format
+  Number` nodes feed public UI Set Text nodes; no app code mutates score DOM. Interpreter executions
+  now advance declared resource revisions after successful writes, so a later same-tick execution
+  cannot reuse stale graph-variable data while the current execution retains its frozen snapshot.
+- Ordinary progress uses the existing top/downward/once-per-tick landing event and the current
+  mandatory platform lease index. Graph variables plus Greater Than, Branch, Add, Get, and Set own
+  the forward-only rule and reset state. Repeated landings, side contacts, backwards indices, and a
+  reused pooled entity ID cannot score twice; the pooled bonus remains a separate graph entry.
+- The versioned `bounce-run.high-score.v1` slot loads asynchronously through `ISaveStorage`;
+  missing or malformed data defaults to zero. Fail writes only a strictly higher safe integer with
+  expected revision. One safe conflict retry is bounded; conflict, quota, and operation rejections
+  preserve the prior readable value and reject with their public typed error after the session has
+  entered game-over. A fresh runtime reads the same committed value, restart clears only current
+  score, and destroy does not cancel an already-started storage write.
+- Generic browser composition probes public IndexedDB before session initialization and uses no
+  replication or `localStorage`. Only typed IndexedDB unavailability selects an in-memory fallback,
+  and the start UI states honestly that the best score then lasts only for the current tab.
+- Affected graph/UI/storage plus all Bounce Run verification passed 53 files / 200 tests. Bounce Run
+  typecheck and production build passed (198 Vite modules; only the established chunk-size
+  advisory). User Chrome on the agent-owned `127.0.0.1:5192` showed `Score 0` and `Best 0` on start
+  and restart, zero QA diagnostics, and only the established Rapier warning. The centered normal run
+  did not reach a scored landing, so route increment and non-zero reload persistence rely on the
+  focused integration evidence; no QA score/storage backdoor was added or used.
 
 ## M14 — Final export, quality audit, and documentation
 

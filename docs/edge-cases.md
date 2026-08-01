@@ -154,6 +154,7 @@ Manual viewport checks **supplement** automated tests — never replace them.
 | Deterministic snapshot provider receives an undeclared/dynamic resource | Reject it; M10f snapshots only `graph.variable` and `random.seeded` resources |
 | Save/Load Value crosses a checkpoint barrier | Preserve compiler-emitted policies: Save waits or rejects; Load materializes or rejects |
 | Cross-service node changes scheduler domain | Use the compiler-emitted queue crossing; pool, UI, and audio adapters never call one another synchronously |
+| A successful graph node declares a resource write | Increment that resource revision for later execution snapshots; the current execution keeps its frozen input snapshot |
 
 ### Hierarchy / world invariants
 
@@ -282,6 +283,10 @@ are separate, and all public reads/lists return defensive clones.
 | Page becomes hidden | Pause simulation/audio and disable input; reason is `visibility` | `BrowserPlatformAdapter` |
 | Window blurs while still visible | Disable input only; visibility remains visible and simulation keeps running | `BrowserPlatformAdapter` |
 | Platform pause overlaps visibility | Sort/compose reasons and resume only after every reason clears | `BrowserPlatformAdapter` |
+| Bounce Run high-score slot is missing or malformed | Render zero; do not invent or coerce a score from invalid data | Bounce Run session runtime |
+| Bounce Run candidate is not strictly higher | Do not write or advance the slot revision | Bounce Run session runtime |
+| Bounce Run high-score write conflicts | Re-read and retry at most once only when the candidate still exceeds the readable score; otherwise keep the newer value | Bounce Run session runtime |
+| Bounce Run high-score write hits quota or operation failure | Preserve readable storage and loaded HUD value, enter game-over, and reject with the public typed storage error | Bounce Run session runtime |
 
 ---
 
