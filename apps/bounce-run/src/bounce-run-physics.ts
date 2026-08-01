@@ -8,5 +8,6 @@ export const BOUNCE_RUN_PHYSICS = Object.freeze({
   gravity: 18,
   ballRadius: 0.55,
   edgeSafety: 0.15,
+  contactEventLatencyTicks: 1,
   maxSolverTicks: 240,
 })

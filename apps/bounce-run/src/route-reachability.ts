@@ -81,19 +81,14 @@ export function analyzeBounceRunTransition(
 }
 
 function findDescendingLandingTick(verticalDelta: number, launchVelocity: number): number | null {
-  let previousHeight = 0
-  for (let tick = 1; tick <= BOUNCE_RUN_PHYSICS.maxSolverTicks; tick += 1) {
-    const time = tick * BOUNCE_RUN_PHYSICS.fixedDt
-    const height =
-      launchVelocity * time -
-      (BOUNCE_RUN_PHYSICS.gravity * BOUNCE_RUN_PHYSICS.fixedDt ** 2 * tick * (tick + 1)) / 2
-    const descendingVelocity = launchVelocity - BOUNCE_RUN_PHYSICS.gravity * time
-    if (descendingVelocity < 0 && previousHeight >= verticalDelta && height <= verticalDelta) {
-      return tick
-    }
-    previousHeight = height
-  }
-  return null
+  const discriminant =
+    launchVelocity ** 2 - 2 * BOUNCE_RUN_PHYSICS.gravity * verticalDelta
+  if (discriminant < 0) return null
+  const descendingTime =
+    (launchVelocity + Math.sqrt(discriminant)) / BOUNCE_RUN_PHYSICS.gravity
+  const geometricTick = Math.ceil(descendingTime / BOUNCE_RUN_PHYSICS.fixedDt)
+  const contactTick = geometricTick + BOUNCE_RUN_PHYSICS.contactEventLatencyTicks
+  return contactTick <= BOUNCE_RUN_PHYSICS.maxSolverTicks ? contactTick : null
 }
 
 function simulateMaximumLateralTravel(ticks: number): number {
