@@ -42,8 +42,9 @@ describe('Bounce Run QA observations', () => {
         velocity: () => source.velocity,
       },
       route: {
-        activePlatformIndices: () => source.activePlatformIndices,
-        decisionCount: () => source.decisionCount,
+        activePlatforms: () =>
+          source.activePlatformIndices.map((platformIndex) => ({ platformIndex })),
+        decisionLog: () => Array.from({ length: source.decisionCount }, () => ({})),
       },
       pool: { metrics: () => source.pool },
     })
@@ -59,17 +60,113 @@ describe('Bounce Run QA observations', () => {
     expect(Object.isFrozen(observation)).toBe(true)
     expect(Object.isFrozen(observation.ball.position)).toBe(true)
     expect(source).toEqual(before)
+    source.position[1] = 99
+    source.pool.active = 4
+    expect(observation.ball.position[1]).toBe(2)
+    expect(observation.pool.active).toBe(3)
+    expect(Reflect.set(observation.ball.position, '1', 42)).toBe(false)
+    expect(containsFunction(observation)).toBe(false)
 
-    expect(evaluateBounceRunAssertions(observation, [
-      { code: 'tick', path: 'scheduler.tick', operator: 'eq', expected: 1 },
-      { code: 'height', path: 'ball.position[1]', operator: 'gte', expected: 2 },
-      { code: 'session', path: 'session.state', operator: 'ne', expected: 'paused' },
-      { code: 'pool-bound', path: 'pool.active', operator: 'lt', expected: 8 },
-    ])).toEqual([
-      { code: 'tick', path: 'scheduler.tick', operator: 'eq', passed: true, expected: 1, actual: 1 },
-      { code: 'height', path: 'ball.position[1]', operator: 'gte', passed: true, expected: 2, actual: 2 },
-      { code: 'session', path: 'session.state', operator: 'ne', passed: true, expected: 'paused', actual: 'active' },
-      { code: 'pool-bound', path: 'pool.active', operator: 'lt', passed: true, expected: 8, actual: 3 },
+    expect(
+      evaluateBounceRunAssertions(observation, [
+        { code: 'tick', path: 'scheduler.tick', operator: 'eq', expected: 1 },
+        { code: 'height', path: 'ball.position[1]', operator: 'gte', expected: 2 },
+        { code: 'session', path: 'session.state', operator: 'ne', expected: 'paused' },
+        { code: 'pool-bound', path: 'pool.active', operator: 'lt', expected: 8 },
+      ]),
+    ).toEqual([
+      {
+        code: 'tick',
+        path: 'scheduler.tick',
+        operator: 'eq',
+        passed: true,
+        expected: 1,
+        actual: 1,
+      },
+      {
+        code: 'height',
+        path: 'ball.position[1]',
+        operator: 'gte',
+        passed: true,
+        expected: 2,
+        actual: 2,
+      },
+      {
+        code: 'session',
+        path: 'session.state',
+        operator: 'ne',
+        passed: true,
+        expected: 'paused',
+        actual: 'active',
+      },
+      {
+        code: 'pool-bound',
+        path: 'pool.active',
+        operator: 'lt',
+        passed: true,
+        expected: 8,
+        actual: 3,
+      },
     ])
   })
+
+  it('rejects malformed public values and declarative input without changing them', () => {
+    const source = {
+      tickNumber: -1,
+      fixedTimestep: 1 / 60,
+      position: [0, 1, 2] as [number, number, number],
+      velocity: [0, 0, 8] as [number, number, number],
+      metrics: {
+        capacity: 8,
+        maximum: 8,
+        total: 8,
+        active: 3,
+        inactive: 5,
+        acquisitions: 3,
+        releases: 0,
+        expansions: 0,
+        exhaustions: 0,
+        forcedReleases: 0,
+      },
+    }
+    const before = structuredClone(source)
+    const sources = {
+      scheduler: source,
+      session: { state: () => 'active' as const },
+      ball: { position: () => source.position, velocity: () => source.velocity },
+      route: {
+        activePlatforms: () => [0, 1, 2].map((platformIndex) => ({ platformIndex })),
+        decisionLog: () => [],
+      },
+      pool: { metrics: () => source.metrics },
+    }
+
+    expect(() => createBounceRunObservationSnapshot(sources)).toThrow('tick')
+    expect(source).toEqual(before)
+    source.tickNumber = 1
+    source.velocity[0] = Number.NaN
+    expect(() => createBounceRunObservationSnapshot(sources)).toThrow('finite')
+    expect(Number.isNaN(source.velocity[0])).toBe(true)
+
+    const valid = createBounceRunObservationSnapshot({
+      ...sources,
+      ball: { position: () => source.position, velocity: () => [0, 0, 8] },
+    })
+    const validBefore = structuredClone(valid)
+    expect(() =>
+      evaluateBounceRunAssertions(valid, [
+        { code: 'escape', path: '__proto__.polluted', operator: 'eq', expected: true },
+      ]),
+    ).toThrow('Forbidden observation path')
+    expect(() => evaluateBounceRunAssertions({ ...valid, version: 2 }, [])).toThrow(
+      'Unsupported Bounce Run observation version',
+    )
+    expect(valid).toEqual(validBefore)
+  })
 })
+
+function containsFunction(value: unknown): boolean {
+  if (typeof value === 'function') return true
+  if (typeof value !== 'object' || value === null) return false
+  return Object.values(value).some(containsFunction)
+}
