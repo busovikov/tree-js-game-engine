@@ -15,6 +15,7 @@ import type { EntityPool } from '@haku/pool'
 import type { Vec3 } from '@haku/schema'
 import type { UIService } from '@haku/ui'
 import { applyBallControlStep } from './ball-controller.js'
+import { BOUNCE_RUN_PHYSICS } from './bounce-run-physics.js'
 import { stepFollowCamera, type FollowCameraPose } from './follow-camera.js'
 import { LandingTracker } from './landing-tracker.js'
 import { BOUNCE_RUN_UI_IDS } from './ui-document.js'
@@ -64,11 +65,11 @@ export class BounceRunControlSystem implements ISystem {
         lateralInput: this.input.lateralInput,
         landed: this.pendingLanding,
         dt,
-        forwardSpeed: 6.5,
-        lateralSpeed: 4.25,
-        lateralResponsiveness: 10,
-        bounceHeight: 2.6,
-        gravity: 18,
+        forwardSpeed: BOUNCE_RUN_PHYSICS.forwardSpeed,
+        lateralSpeed: BOUNCE_RUN_PHYSICS.lateralSpeed,
+        lateralResponsiveness: BOUNCE_RUN_PHYSICS.lateralResponsiveness,
+        bounceHeight: BOUNCE_RUN_PHYSICS.bounceHeight,
+        gravity: BOUNCE_RUN_PHYSICS.gravity,
       }),
     )
     this.pendingLanding = false
