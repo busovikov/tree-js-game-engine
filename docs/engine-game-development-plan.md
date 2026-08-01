@@ -32,27 +32,27 @@ The program is done only when:
 
 ## Milestone map
 
-| ID   | Milestone                                                       | Depends on | Status                                       |
-| ---- | --------------------------------------------------------------- | ---------- | -------------------------------------------- |
-| M01  | Audit and target documentation                                  | —          | Complete with the documentation baseline     |
-| M02  | Asset IDs, manifests, and decentralized registries              | M01        | Complete                                     |
-| M03  | World activation, lifecycle, and unified scheduler              | M02        | Complete                                     |
-| M04  | Graph schema, type/effect system, and compiler                  | M03        | Complete                                     |
-| M05  | Graph interpreter, domains, queues, and tracing                 | M04        | Complete                                     |
-| M06  | Checkpoint, rewind, async policies, and persistence hooks       | M05        | Complete                                     |
-| M07  | Minimal graph editor and diagnostic scene                       | M06        | Complete                                     |
-| M08  | Browser project TypeScript/build/trust tooling                  | M07        | Complete                                     |
-| M09  | Custom components and editor extensions                         | M08        | Complete                                     |
-| M10a | Pool and activation integrations                                | M09        | Complete                                     |
-| M10b | DOM UI runtime and visual UI editor                             | M09        | Complete                                     |
-| M10c | Audio contracts, Web Audio, and editor support                  | M09        | Complete                                     |
-| M10d | Save storage, replication, and platform contracts               | M09        | Complete                                     |
-| M10e | Browser static export and ZIP                                   | M10b–M10d  | Complete                                     |
-| M10f | Cross-service graph nodes and contract integration              | M10a–M10e  | Complete                                     |
-| M11  | Bounce Run vertical slice                                       | M10f       | Complete                                     |
-| M12  | Generator, seed/replay, QA harness, and automated browser tests | M11        | Complete                                     |
-| M13  | Full gameplay, polish, saves, audio, and stabilization          | M12        | Pending                                      |
-| M14  | Final export, quality audit, and documentation                  | M13        | Pending                                      |
+| ID   | Milestone                                                       | Depends on | Status                                          |
+| ---- | --------------------------------------------------------------- | ---------- | ----------------------------------------------- |
+| M01  | Audit and target documentation                                  | —          | Complete with the documentation baseline        |
+| M02  | Asset IDs, manifests, and decentralized registries              | M01        | Complete                                        |
+| M03  | World activation, lifecycle, and unified scheduler              | M02        | Complete                                        |
+| M04  | Graph schema, type/effect system, and compiler                  | M03        | Complete                                        |
+| M05  | Graph interpreter, domains, queues, and tracing                 | M04        | Complete                                        |
+| M06  | Checkpoint, rewind, async policies, and persistence hooks       | M05        | Complete                                        |
+| M07  | Minimal graph editor and diagnostic scene                       | M06        | Complete                                        |
+| M08  | Browser project TypeScript/build/trust tooling                  | M07        | Complete                                        |
+| M09  | Custom components and editor extensions                         | M08        | Complete                                        |
+| M10a | Pool and activation integrations                                | M09        | Complete                                        |
+| M10b | DOM UI runtime and visual UI editor                             | M09        | Complete                                        |
+| M10c | Audio contracts, Web Audio, and editor support                  | M09        | Complete                                        |
+| M10d | Save storage, replication, and platform contracts               | M09        | Complete                                        |
+| M10e | Browser static export and ZIP                                   | M10b–M10d  | Complete                                        |
+| M10f | Cross-service graph nodes and contract integration              | M10a–M10e  | Complete                                        |
+| M11  | Bounce Run vertical slice                                       | M10f       | Complete                                        |
+| M12  | Generator, seed/replay, QA harness, and automated browser tests | M11        | Complete                                        |
+| M13  | Full gameplay, polish, saves, audio, and stabilization          | M12        | In progress — generator variants/bonus complete |
+| M14  | Final export, quality audit, and documentation                  | M13        | Pending                                         |
 
 ## M01 — Audit and target documentation
 
@@ -547,6 +547,26 @@ Acceptance:
 - [ ] No sustained active-object or memory growth in long runs.
 - [ ] Every found reproducible bug has seed/replay and regression coverage.
 - [ ] Chrome resize and 30 FPS simulation behavior remain correct.
+
+M13 generator evidence (in progress; runtime and presentation acceptance remain open):
+
+- The pure seeded route contract now emits typed `normal`, `wide`, `narrow`, and `bounce`
+  descriptors with explicit dimensions and standard/boost launch behavior. Fixed validated
+  difficulty bands own deterministic weights and non-increasing non-zero safety margins; the
+  mandatory route retains bounded candidate attempts and deterministic fallback.
+- Optional bonus generation uses an RNG stream separate from platform decisions and selects only
+  among transitions available at the configured minimum route length. Therefore increasing the
+  horizon cannot rewrite an existing platform, decision, or bonus prefix for the same seed/config.
+- A configured long-enough route emits exactly one sensor descriptor on a solver-sampled flight
+  trajectory. Analytic validation proves lateral reachability, clearance from the mandatory
+  center-line ball collider path, and no intersection with any platform; disabled and too-short
+  routes emit none.
+- Focused generator/reachability/Rapier comparison tests pass 15/15. The mass generator case covers
+  256 seeds × 128 platforms with exact variant dimensions, mandatory reachability, one configured
+  bonus, no platform/bonus intersections, and bounded platform/bonus attempts. All 18 Bounce Run
+  test files pass 69/69 tests, including the real production QA-boundary build.
+- This slice does not materialize variant behavior or the bonus in the runtime, pool a bonus sensor,
+  award score, or claim the unchecked bonus/full-gameplay acceptance rows above.
 
 ## M14 — Final export, quality audit, and documentation
 
