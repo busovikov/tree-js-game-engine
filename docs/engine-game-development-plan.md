@@ -449,13 +449,14 @@ Acceptance:
 - [x] Many headless sequences finish without intersections, invalid gaps, missing routes, or
       unbounded attempts.
 - [x] Replay either matches state hashes or reports exact divergence.
-- [ ] QA uses public action/observation APIs and cannot mutate game state directly.
+- [x] QA uses public action/observation APIs and cannot mutate game state directly.
 - [ ] Browser E2E covers start, input, pause, game over, restart, resize, and console errors.
 - [ ] QA harness is absent from production export.
 
 M12 route, infinite-pool, and replay slice evidence: `9bc30a6`, `fc35d55`, `38d9d6e`,
 `a4d02ab`, `c516491`, `7143dd9`, `cbb1202`, `296679c`, `482586c`, `519b5fa`,
-`ee60b05`, `264882c`, and `87dbf28` add the
+`ee60b05`, `264882c`, `87dbf28`, `8bc0d10`, `da1f1ef`, `c471dc3`, `d20a34d`,
+`b3115b1`, and `abc9c89` add the
 side-effect-free seeded generator, fixed-step analytic reachability envelope, decreasing but
 non-zero safety margins, center-to-center chained landing continuity, full candidate/selection
 logs, bounded candidate attempts, horizon-stable prefixes for infinite extension, and a
@@ -472,8 +473,14 @@ versioned fixed-tick recordings and canonical key-sorted UTF-8 FNV-1a hashes wit
 of non-finite, cyclic, sparse, and unsupported values. A headless Bounce Run integration records
 180 public action snapshots from `EngineScheduler` fixed ticks while applying the current ball
 controller, reproduces all 180 hashes, and reports a tick-73 action tamper with the exact expected
-and actual hashes without mutating the artifact. Structured observations/assertions, reports, full
-browser automation, and production QA exclusion remain incomplete.
+and actual hashes without mutating the artifact. Public core observation primitives now clone and
+deep-freeze finite plain JSON-shaped values, reject executable/accessor/symbol/BigInt/cyclic/sparse
+or non-plain data without invoking it, and evaluate immutable `eq`/`ne`/`lt`/`lte`/`gt`/`gte`
+results by guarded dot/array paths. The Bounce Run adapter exposes one versioned fixed-tick snapshot
+containing only session, ball, bounded route, and pool data from public read methods; focused tests
+prove source changes and direct snapshot writes cannot mutate one another. The existing graph
+`Assert` node remains the public boolean flow assertion rather than being duplicated. Session and
+bug reports, full browser automation, and production QA exclusion remain incomplete.
 
 ## M13 — Full gameplay, polish, saves, audio, and stabilization
 
