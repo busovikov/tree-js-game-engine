@@ -49,7 +49,7 @@ The program is done only when:
 | M10d | Save storage, replication, and platform contracts               | M09        | Complete                                     |
 | M10e | Browser static export and ZIP                                   | M10b–M10d  | Complete                                     |
 | M10f | Cross-service graph nodes and contract integration              | M10a–M10e  | Complete                                     |
-| M11  | Bounce Run vertical slice                                       | M10f       | Implementation complete; final gates pending |
+| M11  | Bounce Run vertical slice                                       | M10f       | Complete                                     |
 | M12  | Generator, seed/replay, QA harness, and automated browser tests | M11        | Pending                                      |
 | M13  | Full gameplay, polish, saves, audio, and stabilization          | M12        | Pending                                      |
 | M14  | Final export, quality audit, and documentation                  | M13        | Pending                                      |
@@ -413,6 +413,17 @@ Evidence and provisional budgets from the first working slice:
 - The production Vite build is `3,168.09 kB` minified and `1,075.24 kB` gzip in one JavaScript
   chunk. The engine remains the dominant dependency; splitting and final export audit remain
   M14 work.
+- Final M11 repository gates passed from a detached clean worktree at `479d764`: `pnpm test`
+  passed 189 test files and 739 tests with 8 skipped; `pnpm build` passed all 21 runnable
+  workspace projects after the documented clean-worktree `file:` dependency repacks;
+  `pnpm depcruise` found no new violations across 572 modules and 1,109 dependencies; and
+  `./scripts/check.sh` passed its build, test, and playground bundle audit. The ignored
+  playground asset manifest was generated only in that worktree and the generator's six
+  tracked scene rewrites were restored there before and after the gates.
+- The Chrome session proved the named start/play/pause/resume/fail/restart flow and visible
+  sustained bouncing, but did not directly measure lateral displacement. A/D, arrow bindings,
+  and deterministic lateral response are covered by focused tests; M12's public observation
+  API and replay-backed browser automation will provide measured browser displacement evidence.
 - Until longer M13/M14 runs establish hard device tiers, the M11 budgets are: rolling average
   frame time at or below `16.7 ms` (provisional alert ceiling `25 ms`), exactly six platform
   pool records with no expansion, at most `16` entities for this finite slice, no application
