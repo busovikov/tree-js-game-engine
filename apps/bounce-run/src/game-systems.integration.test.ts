@@ -185,6 +185,89 @@ describe('Bounce Run fixed-step runtime', () => {
     expect(velocity[1]).toBe(-4)
   })
 
+  it('awards route progress only for valid landings on a newly advanced mandatory platform', async () => {
+    let velocity: readonly [number, number, number] = [0, -5, 0]
+    let events = [
+      {
+        kind: 'collision',
+        phase: 'enter',
+        entityA: BALL.value,
+        entityB: 'route-lease',
+        contacts: [{ point: [0, 0, 0], normal: [0, -1, 0], depth: -0.01 }],
+      } as const,
+    ]
+    let platformIndex = 1
+    const physics = {
+      getBodyLinearVelocity: () => velocity,
+      setBodyLinearVelocity: (_entity: unknown, next: readonly [number, number, number]) => {
+        velocity = next
+      },
+    } as unknown as PhysicsWorldSystem
+    const contacts = {
+      peekCollisionEvents: () => events,
+    } as unknown as PhysicsContactSystem
+    const route = {
+      platformDescriptor: () => ({ behavior: { kind: 'standard', bounceHeight: 2.6 } }),
+      activePlatforms: () => [
+        { entity: entityId('route-lease'), platformIndex },
+      ],
+    } as never
+    const host = document.createElement('div')
+    const ui = new UIService()
+    const uiDocument = await loadBounceRunUIDocument(async () => ({
+      ok: true,
+      json: async () => documentAsset,
+    }))
+    ui.register(uiDocument)
+    ui.mount(uiDocument.id, host)
+    const session = createBounceRunSessionRuntime({
+      scheduler: new EngineScheduler(),
+      ui,
+      storage: new InMemorySaveStorage(),
+    })
+    await session.initialize()
+    session.start()
+    const input = new BounceRunInputSystem(new InputManager(), () => {}, () => {})
+    const control = new BounceRunControlSystem(BALL, physics, input)
+    const scheduler = new EngineScheduler()
+    const landing = new BounceRunLandingSystem(
+      BALL,
+      contacts,
+      control,
+      scheduler,
+      route,
+      session,
+    )
+    const land = (): void => {
+      velocity = [0, -5, 0]
+      control.update(new World(), 1 / 60)
+      landing.update()
+      scheduler.runFrame(new World(), 1 / 60)
+    }
+
+    land()
+    expect(session.score()).toBe(1)
+    land()
+    expect(session.score()).toBe(1)
+
+    platformIndex = 2
+    events = [{ ...events[0]!, contacts: [{ ...events[0]!.contacts[0]!, normal: [1, 0, 0] }] }]
+    land()
+    expect(session.score()).toBe(1)
+
+    platformIndex = 0
+    events = [{ ...events[0]!, contacts: [{ ...events[0]!.contacts[0]!, normal: [0, -1, 0] }] }]
+    land()
+    expect(session.score()).toBe(1)
+
+    platformIndex = 3
+    land()
+    land()
+    expect(session.score()).toBe(2)
+    session.destroy()
+    ui.destroyAll()
+  })
+
   it('materializes scheduled platform leases and awards one graph-owned score for a pooled bonus overlap', async () => {
     const schedule = [
       {
