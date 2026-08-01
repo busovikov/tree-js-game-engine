@@ -37,11 +37,7 @@ function createRecording() {
     tickCount: 3,
   })
   for (let tick = 0; tick < 3; tick += 1) {
-    recorder.record(
-      tick,
-      { lateral: tick - 1 },
-      { velocity: [tick - 1, 8 - tick, 9] },
-    )
+    recorder.record(tick, { lateral: tick - 1 }, { velocity: [tick - 1, 8 - tick, 9] })
   }
   return recorder.finish()
 }
@@ -211,7 +207,10 @@ describe('Bounce Run QA reports', () => {
 
   it.each([
     ['session report version', (input: any) => ({ ...input, version: 99 })],
-    ['recording version', (input: any) => ({ ...input, recording: { ...input.recording, version: 99 } })],
+    [
+      'recording version',
+      (input: any) => ({ ...input, recording: { ...input.recording, version: 99 } }),
+    ],
     ['seed mismatch', (input: any) => ({ ...input, seed: input.seed + 1 })],
     ['fixedDelta mismatch', (input: any) => ({ ...input, fixedDelta: 1 / 30 })],
     [
@@ -303,12 +302,28 @@ describe('Bounce Run QA reports', () => {
     expect(() =>
       createBounceRunSessionReport({
         ...source,
-        errors: Array.from(
-          { length: MAX_BOUNCE_RUN_REPORT_ERRORS + 1 },
-          () => source.errors[0],
-        ),
+        errors: Array.from({ length: MAX_BOUNCE_RUN_REPORT_ERRORS + 1 }, () => source.errors[0]),
       }),
     ).toThrow(/error/i)
+  })
+
+  it('rejects undeclared observation payload and unreferenced assertion specifications', () => {
+    const source = createSessionInput()
+    const observation = source.observations[0]!.observation
+    expect(() =>
+      createBounceRunSessionReport({
+        ...source,
+        observations: [
+          {
+            ...source.observations[0],
+            observation: { ...observation, mutationHandle: { entityId: 'runtime-entity' } },
+          },
+        ],
+      }),
+    ).toThrow(/observation/i)
+    expect(() => createBounceRunSessionReport({ ...source, observations: [], assertions })).toThrow(
+      /assertion/i,
+    )
   })
 
   it.each([

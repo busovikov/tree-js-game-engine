@@ -10,10 +10,7 @@ import {
   evaluateBounceRunAssertions,
   type BounceRunObservation,
 } from './qa-observations.js'
-import {
-  BOUNCE_RUN_RECORDING_VERSION,
-  type BounceRunRecording,
-} from './replay.js'
+import { BOUNCE_RUN_RECORDING_VERSION, type BounceRunRecording } from './replay.js'
 
 export const BOUNCE_RUN_SESSION_REPORT_VERSION = 1 as const
 export const BOUNCE_RUN_BUG_REPORT_VERSION = 1 as const
@@ -22,6 +19,7 @@ export const MAX_BOUNCE_RUN_REPORT_OBSERVATIONS = 1_024
 export const MAX_BOUNCE_RUN_REPORT_ASSERTIONS = 64
 export const MAX_BOUNCE_RUN_REPORT_ERRORS = 128
 export const MAX_BOUNCE_RUN_ERROR_CONTEXT_BYTES = 8_192
+export const MAX_BOUNCE_RUN_REPORT_VALUE_BYTES = 32_768
 
 const HASH_PATTERN = /^fnv1a64:[0-9a-f]{16}$/
 const CODE_PATTERN = /^[A-Za-z][A-Za-z0-9._:-]{0,127}$/
@@ -40,6 +38,28 @@ const SESSION_INPUT_KEYS = new Set([
 const RECORDING_KEYS = new Set(['version', 'seed', 'fixedDelta', 'tickCount', 'frames'])
 const FRAME_KEYS = new Set(['tick', 'actions', 'expectedHash'])
 const OBSERVATION_EVIDENCE_KEYS = new Set(['observation', 'assertionResults'])
+const OBSERVATION_KEYS = new Set(['version', 'scheduler', 'session', 'ball', 'route', 'pool'])
+const SCHEDULER_KEYS = new Set(['tick', 'fixedDelta'])
+const SESSION_KEYS = new Set(['state'])
+const BALL_KEYS = new Set(['position', 'velocity'])
+const ROUTE_KEYS = new Set([
+  'activeCount',
+  'firstPlatformIndex',
+  'lastPlatformIndex',
+  'decisionCount',
+])
+const POOL_KEYS = new Set([
+  'capacity',
+  'maximum',
+  'total',
+  'active',
+  'inactive',
+  'acquisitions',
+  'releases',
+  'expansions',
+  'exhaustions',
+  'forcedReleases',
+])
 const ERROR_KEYS = new Set(['source', 'category', 'message', 'tick', 'context'])
 const BUG_INPUT_KEYS = new Set(['version', 'kind', 'session', 'defect', 'rootCause'])
 const DEFECT_KEYS = new Set(['code', 'title', 'summary'])
@@ -103,9 +123,7 @@ export function createBounceRunSessionReport(
 }
 
 /** Adds immutable defect and root-cause evidence to one validated session artifact. */
-export function createBounceRunBugReport(
-  input: unknown,
-): ImmutableJsonValue<BounceRunBugReport> {
+export function createBounceRunBugReport(input: unknown): ImmutableJsonValue<BounceRunBugReport> {
   const value = createImmutableJsonSnapshot(input)
   return createImmutableJsonSnapshot(validateBugReport(value))
 }
@@ -140,11 +158,11 @@ function validateSessionReport(value: unknown, requireKind: boolean): BounceRunS
 
   const seed = requireUint32('Bounce Run session seed', report.seed)
   const fixedDelta = requirePositiveFinite('Bounce Run session fixedDelta', report.fixedDelta)
-  const outcome = requireOneOf(
-    'Bounce Run session outcome',
-    report.outcome,
-    ['completed', 'failed', 'aborted'] as const,
-  )
+  const outcome = requireOneOf('Bounce Run session outcome', report.outcome, [
+    'completed',
+    'failed',
+    'aborted',
+  ] as const)
   const recording = validateRecording(report.recording)
   if (recording.seed !== seed) throw new Error('Bounce Run session seed must match recording seed')
   if (recording.fixedDelta !== fixedDelta) {
@@ -161,6 +179,9 @@ function validateSessionReport(value: unknown, requireKind: boolean): BounceRunS
     recording.tickCount,
     fixedDelta,
   )
+  if (observations.length === 0 && assertions.length > 0) {
+    throw new Error('Bounce Run report assertions require at least one observed snapshot')
+  }
   const errors = validateErrors(report.errors, recording.tickCount)
 
   return {
@@ -203,6 +224,7 @@ function validateRecording(value: unknown): BounceRunRecording {
     if (typeof frame.expectedHash !== 'string' || !HASH_PATTERN.test(frame.expectedHash)) {
       throw new Error(`Bounce Run recording frame ${index} expectedHash is invalid`)
     }
+    requireBoundedCanonicalValue(`Bounce Run recording frame ${index} actions`, frame.actions)
   }
   return recording as unknown as BounceRunRecording
 }
@@ -226,13 +248,11 @@ function validateObservationHistory(
       'observation',
       'assertionResults',
     ])
-    const observation = requireRecord(`Bounce Run observation ${index}`, entry.observation)
-    if (observation.version !== BOUNCE_RUN_OBSERVATION_VERSION) {
-      throw new Error(`Unsupported Bounce Run observation version at index ${index}`)
-    }
-    const scheduler = requireRecord(`Bounce Run observation ${index} scheduler`, observation.scheduler)
+    const observation = validateObservation(entry.observation, index)
+    const scheduler = observation.scheduler
     const tick = requireNonNegativeInteger(`Bounce Run observation ${index} tick`, scheduler.tick)
-    if (tick >= tickCount) throw new Error(`Bounce Run observation tick ${tick} is outside recording range`)
+    if (tick >= tickCount)
+      throw new Error(`Bounce Run observation tick ${tick} is outside recording range`)
     if (tick <= previousTick) {
       throw new Error('Bounce Run observation ticks must be strictly increasing')
     }
@@ -241,16 +261,91 @@ function validateObservationHistory(
     }
 
     const expectedResults = evaluateBounceRunAssertions(observation, assertions)
-    if (stableCanonicalStringify(entry.assertionResults) !== stableCanonicalStringify(expectedResults)) {
+    if (
+      stableCanonicalStringify(entry.assertionResults) !== stableCanonicalStringify(expectedResults)
+    ) {
       throw new Error(`Bounce Run assertion results do not match observation tick ${tick}`)
     }
     previousTick = tick
     evidence.push({
-      observation: observation as unknown as BounceRunObservation,
+      observation,
       assertionResults: expectedResults,
     })
   }
   return evidence
+}
+
+function validateObservation(value: unknown, index: number): BounceRunObservation {
+  const label = `Bounce Run observation ${index}`
+  const observation = requireRecord(label, value)
+  requireOnlyKeys(label, observation, OBSERVATION_KEYS)
+  requireOwnFields(label, observation, [...OBSERVATION_KEYS])
+  if (observation.version !== BOUNCE_RUN_OBSERVATION_VERSION) {
+    throw new Error(`Unsupported Bounce Run observation version at index ${index}`)
+  }
+  const scheduler = requireExactRecord(`${label} scheduler`, observation.scheduler, SCHEDULER_KEYS)
+  requireNonNegativeInteger(`${label} scheduler tick`, scheduler.tick)
+  requirePositiveFinite(`${label} scheduler fixedDelta`, scheduler.fixedDelta)
+
+  const session = requireExactRecord(`${label} session`, observation.session, SESSION_KEYS)
+  requireOneOf(`${label} session state`, session.state, [
+    'start',
+    'active',
+    'paused',
+    'game-over',
+  ] as const)
+
+  const ball = requireExactRecord(`${label} ball`, observation.ball, BALL_KEYS)
+  requireFiniteVector(`${label} ball position`, ball.position)
+  requireFiniteVector(`${label} ball velocity`, ball.velocity)
+
+  const route = requireExactRecord(`${label} route`, observation.route, ROUTE_KEYS)
+  const activeCount = requireNonNegativeInteger(`${label} route activeCount`, route.activeCount)
+  const firstPlatformIndex = requireNullableNonNegativeInteger(
+    `${label} route firstPlatformIndex`,
+    route.firstPlatformIndex,
+  )
+  const lastPlatformIndex = requireNullableNonNegativeInteger(
+    `${label} route lastPlatformIndex`,
+    route.lastPlatformIndex,
+  )
+  requireNonNegativeInteger(`${label} route decisionCount`, route.decisionCount)
+  if ((activeCount === 0) !== (firstPlatformIndex === null && lastPlatformIndex === null)) {
+    throw new Error(`${label} route bounds must match activeCount`)
+  }
+  if (
+    firstPlatformIndex !== null &&
+    lastPlatformIndex !== null &&
+    firstPlatformIndex > lastPlatformIndex
+  ) {
+    throw new Error(`${label} route bounds must be ordered`)
+  }
+
+  const pool = requireExactRecord(`${label} pool`, observation.pool, POOL_KEYS)
+  const capacity = requireNonNegativeInteger(`${label} pool capacity`, pool.capacity)
+  const maximum = requireNonNegativeInteger(`${label} pool maximum`, pool.maximum)
+  const total = requireNonNegativeInteger(`${label} pool total`, pool.total)
+  const active = requireNonNegativeInteger(`${label} pool active`, pool.active)
+  const inactive = requireNonNegativeInteger(`${label} pool inactive`, pool.inactive)
+  for (const field of [
+    'acquisitions',
+    'releases',
+    'expansions',
+    'exhaustions',
+    'forcedReleases',
+  ] as const) {
+    requireNonNegativeInteger(`${label} pool ${field}`, pool[field])
+  }
+  if (
+    capacity > maximum ||
+    total > maximum ||
+    active + inactive !== total ||
+    active !== activeCount
+  ) {
+    throw new Error(`${label} pool metrics are inconsistent`)
+  }
+  requireBoundedCanonicalValue(label, observation)
+  return observation as unknown as BounceRunObservation
 }
 
 function validateErrors(value: unknown, tickCount: number): readonly BounceRunReportError[] {
@@ -262,25 +357,31 @@ function validateErrors(value: unknown, tickCount: number): readonly BounceRunRe
     const error = requireRecord(`Bounce Run report error ${index}`, item)
     requireOnlyKeys(`Bounce Run report error ${index}`, error, ERROR_KEYS)
     requireOwnFields(`Bounce Run report error ${index}`, error, ['source', 'category', 'message'])
-    const source = requireOneOf(
-      `Bounce Run report error ${index} source`,
-      error.source,
-      ['runtime', 'console'] as const,
-    )
+    const source = requireOneOf(`Bounce Run report error ${index} source`, error.source, [
+      'runtime',
+      'console',
+    ] as const)
     const category = requirePattern(
       `Bounce Run report error ${index} category`,
       error.category,
       CATEGORY_PATTERN,
     )
-    const message = requireBoundedString(`Bounce Run report error ${index} message`, error.message, 2_048)
+    const message = requireBoundedString(
+      `Bounce Run report error ${index} message`,
+      error.message,
+      2_048,
+    )
     const result: BounceRunReportError = { source, category, message }
     if (Object.hasOwn(error, 'tick')) {
       const tick = requireNonNegativeInteger(`Bounce Run report error ${index} tick`, error.tick)
-      if (tick >= tickCount) throw new Error(`Bounce Run report error ${index} tick is outside recording range`)
+      if (tick >= tickCount)
+        throw new Error(`Bounce Run report error ${index} tick is outside recording range`)
       Object.assign(result, { tick })
     }
     if (Object.hasOwn(error, 'context')) {
-      const contextSize = new TextEncoder().encode(stableCanonicalStringify(error.context)).byteLength
+      const contextSize = new TextEncoder().encode(
+        stableCanonicalStringify(error.context),
+      ).byteLength
       if (contextSize > MAX_BOUNCE_RUN_ERROR_CONTEXT_BYTES) {
         throw new Error(`Bounce Run report error ${index} context exceeds byte limit`)
       }
@@ -318,18 +419,29 @@ function validateBugReport(value: unknown): BounceRunBugReport {
     'summary',
     'assertionCodes',
   ])
-  const status = requireOneOf(
-    'Bounce Run bug rootCause status',
-    rootCause.status,
-    ['unknown', 'suspected', 'confirmed'] as const,
+  const status = requireOneOf('Bounce Run bug rootCause status', rootCause.status, [
+    'unknown',
+    'suspected',
+    'confirmed',
+  ] as const)
+  const category = requirePattern(
+    'Bounce Run bug rootCause category',
+    rootCause.category,
+    CATEGORY_PATTERN,
   )
-  const category = requirePattern('Bounce Run bug rootCause category', rootCause.category, CATEGORY_PATTERN)
   const summary = requireBoundedString('Bounce Run bug rootCause summary', rootCause.summary, 4_096)
   const knownAssertionCodes = new Set(session.assertions.map((assertion) => assertion.code))
-  const assertionCodes = requireArray('Bounce Run bug rootCause assertionCodes', rootCause.assertionCodes)
+  const assertionCodes = requireArray(
+    'Bounce Run bug rootCause assertionCodes',
+    rootCause.assertionCodes,
+  )
   const uniqueCodes = new Set<string>()
   for (const code of assertionCodes) {
-    const validatedCode = requirePattern('Bounce Run bug rootCause assertion code', code, CODE_PATTERN)
+    const validatedCode = requirePattern(
+      'Bounce Run bug rootCause assertion code',
+      code,
+      CODE_PATTERN,
+    )
     if (!knownAssertionCodes.has(validatedCode)) {
       throw new Error(`Unknown Bounce Run bug rootCause assertion code: ${validatedCode}`)
     }
@@ -345,7 +457,10 @@ function validateBugReport(value: unknown): BounceRunBugReport {
     assertionCodes: [...uniqueCodes],
   }
   if (Object.hasOwn(rootCause, 'firstFailingTick')) {
-    const tick = requireNonNegativeInteger('Bounce Run bug rootCause firstFailingTick', rootCause.firstFailingTick)
+    const tick = requireNonNegativeInteger(
+      'Bounce Run bug rootCause firstFailingTick',
+      rootCause.firstFailingTick,
+    )
     if (tick >= session.recording.tickCount) {
       throw new Error('Bounce Run bug rootCause firstFailingTick is outside recording range')
     }
@@ -373,13 +488,32 @@ function requireArray(label: string, value: unknown): readonly unknown[] {
   return value
 }
 
-function requireOnlyKeys(label: string, value: Record<string, unknown>, keys: ReadonlySet<string>): void {
+function requireExactRecord(
+  label: string,
+  value: unknown,
+  keys: ReadonlySet<string>,
+): Record<string, unknown> {
+  const record = requireRecord(label, value)
+  requireOnlyKeys(label, record, keys)
+  requireOwnFields(label, record, [...keys])
+  return record
+}
+
+function requireOnlyKeys(
+  label: string,
+  value: Record<string, unknown>,
+  keys: ReadonlySet<string>,
+): void {
   for (const key of Object.keys(value)) {
     if (!keys.has(key)) throw new Error(`${label} contains unknown field: ${key}`)
   }
 }
 
-function requireOwnFields(label: string, value: Record<string, unknown>, fields: readonly string[]): void {
+function requireOwnFields(
+  label: string,
+  value: Record<string, unknown>,
+  fields: readonly string[],
+): void {
   for (const field of fields) {
     if (!Object.hasOwn(value, field)) throw new Error(`${label} must include ${field}`)
   }
@@ -396,6 +530,23 @@ function requireUint32(label: string, value: unknown): number {
   const number = requireNonNegativeInteger(label, value)
   if (number > 0xffff_ffff) throw new TypeError(`${label} must be an unsigned 32-bit integer`)
   return number
+}
+
+function requireNullableNonNegativeInteger(label: string, value: unknown): number | null {
+  return value === null ? null : requireNonNegativeInteger(label, value)
+}
+
+function requireFiniteVector(label: string, value: unknown): void {
+  const vector = requireArray(label, value)
+  if (vector.length !== 3) throw new TypeError(`${label} must contain exactly three numbers`)
+  for (const coordinate of vector) requireFiniteNumber(label, coordinate)
+}
+
+function requireFiniteNumber(label: string, value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new TypeError(`${label} must contain only finite numbers`)
+  }
+  return value
 }
 
 function requirePositiveFinite(label: string, value: unknown): number {
@@ -415,6 +566,13 @@ function requireBoundedString(label: string, value: unknown, maximumLength: numb
     throw new TypeError(`${label} must contain between 1 and ${maximumLength} characters`)
   }
   return value
+}
+
+function requireBoundedCanonicalValue(label: string, value: unknown): void {
+  const byteLength = new TextEncoder().encode(stableCanonicalStringify(value)).byteLength
+  if (byteLength > MAX_BOUNCE_RUN_REPORT_VALUE_BYTES) {
+    throw new Error(`${label} exceeds the canonical byte limit`)
+  }
 }
 
 function requireOneOf<const TValue extends string>(
