@@ -22,6 +22,10 @@ import {
   resolveOutputColorSpace,
 } from './render/apply-render-settings.js'
 import { resolveCameraLayerMask } from './render/layers/layer-resolver.js'
+import {
+  ThreePresentationEffectsBackend,
+  type ThreePresentationEffectsOptions,
+} from './presentation-effects.js'
 
 export type ViewportMode = 'scene' | 'view'
 
@@ -66,6 +70,12 @@ export class ThreeRenderBackend implements IRenderBackend {
 
   get rendererInstance(): THREE.WebGLRenderer {
     return this.renderer
+  }
+
+  createPresentationEffectsBackend(
+    options: ThreePresentationEffectsOptions,
+  ): ThreePresentationEffectsBackend {
+    return new ThreePresentationEffectsBackend(this.scene, options)
   }
 
   getActiveCamera(): THREE.Camera {

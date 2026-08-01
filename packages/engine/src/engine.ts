@@ -23,6 +23,10 @@ import {
   PhysicsWorldSystem,
   type PhysicsWorldSystemOptions,
 } from './systems/physics-world-system.js'
+import {
+  PresentationEffectsService,
+  type ThreePresentationEffectsOptions,
+} from './presentation-effects.js'
 
 export type { ViewportMode } from './render-backend.js'
 
@@ -109,6 +113,16 @@ export class Engine {
 
   addSystem(system: ISystem): void {
     this.scheduler.addSystem(system)
+  }
+
+  createPresentationEffects(
+    options: ThreePresentationEffectsOptions,
+  ): PresentationEffectsService {
+    const effects = new PresentationEffectsService(
+      this.backend.createPresentationEffectsBackend(options),
+    )
+    this.addSystem(effects)
+    return effects
   }
 
   /**
