@@ -97,6 +97,8 @@ function createSessionInput() {
   }
 }
 
+type SessionInput = ReturnType<typeof createSessionInput>
+
 function createBugInput(session = createBounceRunSessionReport(createSessionInput())) {
   return {
     version: BOUNCE_RUN_BUG_REPORT_VERSION,
@@ -205,23 +207,23 @@ describe('Bounce Run QA reports', () => {
     expect([...reordered]).toEqual([...canonical])
   })
 
-  it.each([
-    ['session report version', (input: any) => ({ ...input, version: 99 })],
+  const corruptSessionCases: readonly [string, (input: SessionInput) => unknown][] = [
+    ['session report version', (input) => ({ ...input, version: 99 })],
     [
       'recording version',
-      (input: any) => ({ ...input, recording: { ...input.recording, version: 99 } }),
+      (input) => ({ ...input, recording: { ...input.recording, version: 99 } }),
     ],
-    ['seed mismatch', (input: any) => ({ ...input, seed: input.seed + 1 })],
-    ['fixedDelta mismatch', (input: any) => ({ ...input, fixedDelta: 1 / 30 })],
+    ['seed mismatch', (input) => ({ ...input, seed: input.seed + 1 })],
+    ['fixedDelta mismatch', (input) => ({ ...input, fixedDelta: 1 / 30 })],
     [
       'observation fixedDelta mismatch',
-      (input: any) => ({
+      (input) => ({
         ...input,
         observations: [
           {
-            ...input.observations[0],
+            ...input.observations[0]!,
             observation: {
-              ...input.observations[0].observation,
+              ...input.observations[0]!.observation,
               scheduler: { tick: 0, fixedDelta: 1 / 30 },
             },
           },
@@ -230,13 +232,13 @@ describe('Bounce Run QA reports', () => {
     ],
     [
       'observation outside recording range',
-      (input: any) => ({
+      (input) => ({
         ...input,
         observations: [
           {
-            ...input.observations[0],
+            ...input.observations[0]!,
             observation: {
-              ...input.observations[0].observation,
+              ...input.observations[0]!.observation,
               scheduler: { tick: 3, fixedDelta: FIXED_DELTA },
             },
           },
@@ -245,25 +247,25 @@ describe('Bounce Run QA reports', () => {
     ],
     [
       'duplicate observation ticks',
-      (input: any) => ({
+      (input) => ({
         ...input,
         observations: [input.observations[0], input.observations[0]],
       }),
     ],
     [
       'decreasing observation ticks',
-      (input: any) => ({ ...input, observations: [...input.observations].reverse() }),
+      (input) => ({ ...input, observations: [...input.observations].reverse() }),
     ],
     [
       'unknown assertion result code',
-      (input: any) => ({
+      (input) => ({
         ...input,
         observations: [
           {
-            ...input.observations[0],
+            ...input.observations[0]!,
             assertionResults: [
-              { ...input.observations[0].assertionResults[0], code: 'unknown.code' },
-              input.observations[0].assertionResults[1],
+              { ...input.observations[0]!.assertionResults[0], code: 'unknown.code' },
+              input.observations[0]!.assertionResults[1],
             ],
           },
         ],
@@ -271,20 +273,22 @@ describe('Bounce Run QA reports', () => {
     ],
     [
       'result not matching its observed snapshot',
-      (input: any) => ({
+      (input) => ({
         ...input,
         observations: [
           {
-            ...input.observations[0],
+            ...input.observations[0]!,
             assertionResults: [
-              { ...input.observations[0].assertionResults[0], passed: false },
-              input.observations[0].assertionResults[1],
+              { ...input.observations[0]!.assertionResults[0], passed: false },
+              input.observations[0]!.assertionResults[1],
             ],
           },
         ],
       }),
     ],
-  ])('rejects %s', (_label, corrupt) => {
+  ]
+
+  it.each(corruptSessionCases)('rejects %s', (_label, corrupt) => {
     expect(() => createBounceRunSessionReport(corrupt(createSessionInput()))).toThrow()
   })
 
