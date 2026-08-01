@@ -17,10 +17,7 @@ import { InMemorySaveStorage } from '@haku/storage'
 import { UIService } from '@haku/ui'
 import { describe, expect, it } from 'vitest'
 import documentAsset from '../public/assets/ui/hud.ui.json'
-import {
-  BOUNCE_RUN_AUDIO_CLIPS,
-  createBounceRunAudioComposition,
-} from './audio-composition.js'
+import { BOUNCE_RUN_AUDIO_CLIPS, createBounceRunAudioComposition } from './audio-composition.js'
 import { BOUNCE_RUN_UI_IDS, loadBounceRunUIDocument } from './ui-document.js'
 
 class ControllableAudioBackend implements AudioBackend {
@@ -120,7 +117,10 @@ async function mountComposition(backend = new ControllableAudioBackend()) {
   return { backend, composition, documentInstance, pool, ui }
 }
 
-function click(instance: Awaited<ReturnType<typeof mountComposition>>['documentInstance'], id: string) {
+function click(
+  instance: Awaited<ReturnType<typeof mountComposition>>['documentInstance'],
+  id: string,
+) {
   instance.getElement(id)?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
 }
 
@@ -141,11 +141,13 @@ describe('Bounce Run production audio composition', () => {
     expect(mounted.composition.session.collectBonus()).toBe(true)
     await mounted.composition.fail()
     const emitted = mounted.backend.sequence.filter((entry) => entry.startsWith('play:'))
-    expect(emitted.filter((entry) => entry.includes(BOUNCE_RUN_AUDIO_CLIPS.landing))).toHaveLength(1)
+    expect(emitted.filter((entry) => entry.includes(BOUNCE_RUN_AUDIO_CLIPS.landing))).toHaveLength(
+      1,
+    )
     expect(emitted.filter((entry) => entry.includes(BOUNCE_RUN_AUDIO_CLIPS.bonus))).toHaveLength(1)
     expect(emitted.filter((entry) => entry.includes(BOUNCE_RUN_AUDIO_CLIPS.fail))).toHaveLength(1)
 
-    mounted.composition.restart()
+    await mounted.composition.restart()
     expect([...mounted.backend.voices.values()].filter((voice) => voice.loop)).toHaveLength(1)
     await mounted.composition.pause()
     await mounted.composition.pause()
@@ -160,12 +162,19 @@ describe('Bounce Run production audio composition', () => {
     mounted.composition.setBusVolume('ui', 0.75)
     mounted.composition.setBusMuted('music', true)
     mounted.composition.setBusMuted('music', false)
-    expect(mounted.backend.busStates).toEqual(new Map([
-      ['master', { volume: 0.8, muted: false }],
-      ['music', { volume: 0.55, muted: false }],
-      ['sfx', { volume: 0.65, muted: false }],
-      ['ui', { volume: 0.75, muted: false }],
-    ]))
+    click(mounted.documentInstance, BOUNCE_RUN_UI_IDS.masterAudioButton)
+    click(mounted.documentInstance, BOUNCE_RUN_UI_IDS.masterAudioButton)
+    expect(
+      mounted.documentInstance.getElement(BOUNCE_RUN_UI_IDS.masterAudioButton)?.textContent,
+    ).toBe('Master on')
+    expect(mounted.backend.busStates).toEqual(
+      new Map([
+        ['master', { volume: 0.8, muted: false }],
+        ['music', { volume: 0.55, muted: false }],
+        ['sfx', { volume: 0.65, muted: false }],
+        ['ui', { volume: 0.75, muted: false }],
+      ]),
+    )
     expect(() => mounted.composition.setBusVolume('sfx', Number.NaN)).toThrow(
       'Audio volume must be a finite number from 0 to 1',
     )

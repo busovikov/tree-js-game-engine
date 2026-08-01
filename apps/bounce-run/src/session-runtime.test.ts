@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 
 import { EngineScheduler } from '@haku/core'
+import { AudioRuntime, AudioService, HeadlessAudioBackend } from '@haku/audio'
 import {
   InMemorySaveStorage,
   SaveStorageConflictError,
@@ -13,10 +14,17 @@ import { describe, expect, it } from 'vitest'
 import { createBounceRunSessionRuntime } from './session-runtime.js'
 import documentAsset from '../public/assets/ui/hud.ui.json'
 import { BOUNCE_RUN_UI_IDS, loadBounceRunUIDocument } from './ui-document.js'
+import { BOUNCE_RUN_AUDIO_CLIP_DATA } from './audio-composition.js'
 
 const SCORE_TEXT_ID = 'b1200000-0000-4000-8000-000000000016'
 const HIGH_SCORE_TEXT_ID = 'b1200000-0000-4000-8000-000000000017'
 const HIGH_SCORE_SLOT_ID = 'bounce-run.high-score.v1'
+
+function createTestAudio(): AudioService {
+  const runtime = new AudioRuntime(new HeadlessAudioBackend())
+  for (const clip of BOUNCE_RUN_AUDIO_CLIP_DATA) runtime.registerClip(clip)
+  return new AudioService(runtime)
+}
 
 function withRejectedWrites(storage: ISaveStorage, error: Error, attempts: number[]): ISaveStorage {
   return {
@@ -46,6 +54,7 @@ async function mountSession(storage: ISaveStorage) {
     scheduler: new EngineScheduler(),
     ui,
     storage,
+    audio: createTestAudio(),
   })
   await session.initialize()
   return { documentInstance, session, ui }
@@ -65,6 +74,7 @@ describe('Bounce Run session runtime', () => {
       scheduler: new EngineScheduler(),
       ui,
       storage: new InMemorySaveStorage(),
+      audio: createTestAudio(),
     })
 
     await session.initialize()

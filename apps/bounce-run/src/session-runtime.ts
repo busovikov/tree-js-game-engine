@@ -9,12 +9,14 @@ import {
   registerDeterministicRuntimeAdapters,
   registerFoundationRuntimeAdapters,
 } from '@haku/graph-runtime'
-import {
-  SaveStorageConflictError,
-  type ISaveStorage,
-  type SaveSlotRecord,
-} from '@haku/storage'
+import { SaveStorageConflictError, type ISaveStorage, type SaveSlotRecord } from '@haku/storage'
 import { registerUINodeContracts, registerUIRuntimeAdapters, type UIService } from '@haku/ui'
+import {
+  registerAudioNodeContracts,
+  registerAudioRuntimeAdapters,
+  type AudioService,
+} from '@haku/audio'
+import type { AudioBus } from '@haku/audio'
 import { BOUNCE_RUN_SESSION_IDS, createBounceRunSessionGraph } from './session-graph.js'
 
 export type BounceRunSessionState = 'start' | 'active' | 'paused' | 'game-over'
@@ -28,6 +30,8 @@ export interface BounceRunSessionRuntime {
   restart(): void
   collectBonus(): boolean
   awardRouteProgress(platformIndex: number): boolean
+  setAudioBusVolume(bus: AudioBus, volume: number): void
+  setAudioBusMuted(bus: AudioBus, muted: boolean): void
   state(): BounceRunSessionState
   score(): number
   highScore(): number
@@ -46,8 +50,12 @@ export function createBounceRunSessionRuntime(options: {
   readonly scheduler: EngineScheduler
   readonly ui: UIService
   readonly storage: ISaveStorage
+  readonly audio: AudioService
 }): BounceRunSessionRuntime {
-  const nodeRegistry = createFoundationNodeRegistry([registerUINodeContracts])
+  const nodeRegistry = createFoundationNodeRegistry([
+    registerUINodeContracts,
+    registerAudioNodeContracts,
+  ])
   const compiled = compileGraph(createBounceRunSessionGraph(nodeRegistry), {
     types: createBuiltinTypeRegistry(),
     nodes: nodeRegistry,
@@ -76,6 +84,14 @@ export function createBounceRunSessionRuntime(options: {
     [BOUNCE_RUN_SESSION_IDS.variables.scoreZero]: 0,
     [BOUNCE_RUN_SESSION_IDS.variables.bonusValue]: 1,
     [BOUNCE_RUN_SESSION_IDS.variables.routeProgressValue]: 1,
+    [BOUNCE_RUN_SESSION_IDS.variables.audioBusVolume.master]: 0.8,
+    [BOUNCE_RUN_SESSION_IDS.variables.audioBusVolume.music]: 0.55,
+    [BOUNCE_RUN_SESSION_IDS.variables.audioBusVolume.sfx]: 0.65,
+    [BOUNCE_RUN_SESSION_IDS.variables.audioBusVolume.ui]: 0.75,
+    [BOUNCE_RUN_SESSION_IDS.variables.audioBusMuted.master]: false,
+    [BOUNCE_RUN_SESSION_IDS.variables.audioBusMuted.music]: false,
+    [BOUNCE_RUN_SESSION_IDS.variables.audioBusMuted.sfx]: false,
+    [BOUNCE_RUN_SESSION_IDS.variables.audioBusMuted.ui]: false,
   })
   const runtimes = new NodeRuntimeRegistry()
   registerFoundationRuntimeAdapters(runtimes)
@@ -84,6 +100,7 @@ export function createBounceRunSessionRuntime(options: {
     random: createSeededRandomService(0xb00ce),
   })
   registerUIRuntimeAdapters(runtimes, options.ui)
+  registerAudioRuntimeAdapters(runtimes, options.audio)
   const instance = new GraphInstance({
     id: 'b1100000-0000-4000-8000-000000000900',
     plan: compiled.plan,
@@ -150,6 +167,10 @@ export function createBounceRunSessionRuntime(options: {
       variables.set(BOUNCE_RUN_SESSION_IDS.variables.highScore, highScore)
       run(BOUNCE_RUN_SESSION_IDS.nodes.start)
       initialized = true
+      for (const bus of ['master', 'music', 'sfx', 'ui'] as const) {
+        run(BOUNCE_RUN_SESSION_IDS.entries.audioBusVolume[bus])
+        run(BOUNCE_RUN_SESSION_IDS.entries.audioBusMuted[bus])
+      }
     })()
     return initializePromise
   }
@@ -203,6 +224,21 @@ export function createBounceRunSessionRuntime(options: {
       if (awarded) renderScore()
       return awarded
     },
+    setAudioBusVolume: (bus, volume) => {
+      requireInitialized()
+      if (!Number.isFinite(volume) || volume < 0 || volume > 1) {
+        throw new Error('Audio volume must be a finite number from 0 to 1')
+      }
+      variables.set(BOUNCE_RUN_SESSION_IDS.variables.audioBusVolume[bus], volume)
+      instance.invalidateResource('graph.variable')
+      run(BOUNCE_RUN_SESSION_IDS.entries.audioBusVolume[bus])
+    },
+    setAudioBusMuted: (bus, muted) => {
+      requireInitialized()
+      variables.set(BOUNCE_RUN_SESSION_IDS.variables.audioBusMuted[bus], muted)
+      instance.invalidateResource('graph.variable')
+      run(BOUNCE_RUN_SESSION_IDS.entries.audioBusMuted[bus])
+    },
     state: () => variables.get(BOUNCE_RUN_SESSION_IDS.variables.state) as BounceRunSessionState,
     score: () => variables.get(BOUNCE_RUN_SESSION_IDS.variables.score) as number,
     highScore: () => highScore,
@@ -217,14 +253,14 @@ export function createBounceRunSessionRuntime(options: {
 function parseHighScore(record: SaveSlotRecord<unknown> | undefined): number {
   const value = record?.data
   if (
-    typeof value !== 'object'
-    || value === null
-    || !('schemaVersion' in value)
-    || value.schemaVersion !== 1
-    || !('highScore' in value)
-    || typeof value.highScore !== 'number'
-    || !Number.isSafeInteger(value.highScore)
-    || value.highScore < 0
+    typeof value !== 'object' ||
+    value === null ||
+    !('schemaVersion' in value) ||
+    value.schemaVersion !== 1 ||
+    !('highScore' in value) ||
+    typeof value.highScore !== 'number' ||
+    !Number.isSafeInteger(value.highScore) ||
+    value.highScore < 0
   ) {
     return 0
   }

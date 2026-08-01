@@ -28,6 +28,7 @@ import {
   type ISaveStorage,
 } from '@haku/storage'
 import { UIService } from '@haku/ui'
+import { createWebAudioBackend } from '@haku/audio-web'
 import projectAsset from '../haku.project.json'
 import {
   BounceRunCameraSystem,
@@ -42,7 +43,7 @@ import {
 import { createPoolBackedBounceRunRoute } from './infinite-route.js'
 import type { BounceRunDifficultySchedule } from './route-generator.js'
 import { instantiatePrefabDefinition } from './prefab-instance.js'
-import { createBounceRunSessionRuntime } from './session-runtime.js'
+import { BOUNCE_RUN_AUDIO_CLIP_DATA, createBounceRunAudioComposition } from './audio-composition.js'
 import { BOUNCE_RUN_UI_IDS, loadBounceRunUIDocument } from './ui-document.js'
 
 const BALL_ID = entityId('b1700000-0000-4000-8000-000000000002')
@@ -201,12 +202,31 @@ async function main(): Promise<void> {
   ui.register(uiDocument)
   ui.mount(uiDocument.id, hudHost)
   const saveStorage = await createBounceRunSaveStorage()
-  const session = createBounceRunSessionRuntime({
+  const audioBackend = createWebAudioBackend()
+  for (const clip of BOUNCE_RUN_AUDIO_CLIP_DATA) await audioBackend.loadClip(clip)
+  const audioComposition = createBounceRunAudioComposition({
     scheduler: engine.scheduler,
     ui,
     storage: saveStorage.storage,
+    backend: audioBackend,
+    pooledOwners: [platformPool, bonusPool],
+    hooks: {
+      start: () => {
+        resetRun()
+        engine.setPaused(false)
+      },
+      pause: () => engine.setPaused(true),
+      resume: () => engine.setPaused(false),
+      restart: () => {
+        resetRun()
+        engine.setPaused(false)
+      },
+      fail: () => engine.setPaused(true),
+      error: (error) => console.error('[bounce-run] audio lifecycle failed', error),
+    },
   })
-  await session.initialize()
+  const session = audioComposition.session
+  await audioComposition.initialize()
   if (!saveStorage.persistent) {
     ui.setText(
       { document: BOUNCE_RUN_UI_IDS.document, element: BOUNCE_RUN_UI_IDS.startHelp },
@@ -242,10 +262,9 @@ async function main(): Promise<void> {
     session,
   )
   const failureSystem = new BounceRunFailureSystem(BALL_ID, physics, () => {
-    void session.fail().catch((error: unknown) => {
-      console.error('[bounce-run] high-score save failed', error)
+    void audioComposition.fail().catch((error: unknown) => {
+      console.error('[bounce-run] fail transition failed', error)
     })
-    engine.setPaused(true)
   })
   const routeSystem = new BounceRunRouteSystem(BALL_ID, physics, route)
   const bonusCollectionSystem = new BounceRunBonusCollectionSystem(
@@ -280,7 +299,7 @@ async function main(): Promise<void> {
       actions: {
         read: () => ({ lateral: inputSystem.lateralInput }),
         setLateral: (value) => inputSystem.setLateralAction(value),
-        start: startRun,
+        start: () => void startRun(),
         pause: () => {
           if (session.state() === 'active') togglePause()
         },
@@ -314,32 +333,25 @@ async function main(): Promise<void> {
     failureSystem.reset()
     cameraSystem.reset()
   }
-  function startRun(): void {
-    resetRun()
-    session.start()
-    engine.setPaused(false)
+  function startRun(): Promise<void> {
+    return audioComposition.start()
   }
   function restartRun(): void {
-    if (session.state() === 'start') return
-    resetRun()
-    session.restart()
-    engine.setPaused(false)
+    void audioComposition.restart().catch((error: unknown) => {
+      console.error('[bounce-run] restart failed', error)
+    })
   }
   function togglePause(): void {
     if (session.state() === 'active') {
-      session.pause()
-      engine.setPaused(true)
+      void audioComposition.pause().catch((error: unknown) => {
+        console.error('[bounce-run] pause failed', error)
+      })
     } else if (session.state() === 'paused') {
-      session.resume()
-      engine.setPaused(false)
+      void audioComposition.resume().catch((error: unknown) => {
+        console.error('[bounce-run] resume failed', error)
+      })
     }
   }
-
-  const unsubscribeUI = ui.subscribe((event) => {
-    if (event.eventId === BOUNCE_RUN_UI_IDS.events.start) startRun()
-    else if (event.eventId === BOUNCE_RUN_UI_IDS.events.resume) togglePause()
-    else if (event.eventId === BOUNCE_RUN_UI_IDS.events.restart) restartRun()
-  })
 
   engine.setPaused(true)
   engine.start()
@@ -349,9 +361,8 @@ async function main(): Promise<void> {
     () => {
       disposeDevQa()
       engine.stop()
-      unsubscribeUI()
       input.detach()
-      session.destroy()
+      audioComposition.dispose()
       ui.destroyAll()
       systems.forEach((system) => engine.removeSystem(system))
       route.dispose()

@@ -69,6 +69,7 @@
       "children": [
         "b1200000-0000-4000-8000-000000000016",
         "b1200000-0000-4000-8000-000000000017",
+        "b1200000-0000-4000-8000-000000000018",
         "b1200000-0000-4000-8000-000000000009",
         "b1200000-0000-4000-8000-000000000008"
       ],
@@ -110,6 +111,77 @@
       "text": "Best 0",
       "accessibility": { "live": "polite" },
       "style": { "color": "#ffffff", "fontSize": 16, "fontWeight": "bold" }
+    },
+    {
+      "id": "b1200000-0000-4000-8000-000000000018",
+      "type": "container",
+      "children": [
+        "b1200000-0000-4000-8000-000000000019",
+        "b1200000-0000-4000-8000-000000000020",
+        "b1200000-0000-4000-8000-000000000021",
+        "b1200000-0000-4000-8000-000000000022"
+      ],
+      "layout": { "direction": "row", "wrap": true, "gap": 4 }
+    },
+    {
+      "id": "b1200000-0000-4000-8000-000000000019",
+      "type": "button",
+      "text": "Master on",
+      "activateEvent": "b1200000-0000-4000-8000-000000000033",
+      "accessibility": { "label": "Toggle master audio" },
+      "style": {
+        "color": "#102038",
+        "backgroundColor": "#d9f0ff",
+        "fontSize": 11,
+        "padding": 5,
+        "borderRadius": 5,
+        "cursor": "pointer"
+      }
+    },
+    {
+      "id": "b1200000-0000-4000-8000-000000000020",
+      "type": "button",
+      "text": "Music on",
+      "activateEvent": "b1200000-0000-4000-8000-000000000034",
+      "accessibility": { "label": "Toggle music audio" },
+      "style": {
+        "color": "#102038",
+        "backgroundColor": "#d9f0ff",
+        "fontSize": 11,
+        "padding": 5,
+        "borderRadius": 5,
+        "cursor": "pointer"
+      }
+    },
+    {
+      "id": "b1200000-0000-4000-8000-000000000021",
+      "type": "button",
+      "text": "SFX on",
+      "activateEvent": "b1200000-0000-4000-8000-000000000035",
+      "accessibility": { "label": "Toggle sound effects" },
+      "style": {
+        "color": "#102038",
+        "backgroundColor": "#d9f0ff",
+        "fontSize": 11,
+        "padding": 5,
+        "borderRadius": 5,
+        "cursor": "pointer"
+      }
+    },
+    {
+      "id": "b1200000-0000-4000-8000-000000000022",
+      "type": "button",
+      "text": "UI on",
+      "activateEvent": "b1200000-0000-4000-8000-000000000036",
+      "accessibility": { "label": "Toggle interface audio" },
+      "style": {
+        "color": "#102038",
+        "backgroundColor": "#d9f0ff",
+        "fontSize": 11,
+        "padding": 5,
+        "borderRadius": 5,
+        "cursor": "pointer"
+      }
     },
     {
       "id": "b1200000-0000-4000-8000-000000000010",
@@ -181,6 +253,18 @@
   "events": [
     { "id": "b1200000-0000-4000-8000-000000000030", "name": "start-session", "payload": "none" },
     { "id": "b1200000-0000-4000-8000-000000000031", "name": "resume-session", "payload": "none" },
-    { "id": "b1200000-0000-4000-8000-000000000032", "name": "restart-session", "payload": "none" }
+    { "id": "b1200000-0000-4000-8000-000000000032", "name": "restart-session", "payload": "none" },
+    {
+      "id": "b1200000-0000-4000-8000-000000000033",
+      "name": "toggle-master-audio",
+      "payload": "none"
+    },
+    {
+      "id": "b1200000-0000-4000-8000-000000000034",
+      "name": "toggle-music-audio",
+      "payload": "none"
+    },
+    { "id": "b1200000-0000-4000-8000-000000000035", "name": "toggle-sfx-audio", "payload": "none" },
+    { "id": "b1200000-0000-4000-8000-000000000036", "name": "toggle-ui-audio", "payload": "none" }
   ]
 }

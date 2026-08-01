@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@haku/assets": "workspace:*",
+    "@haku/audio": "workspace:*",
+    "@haku/audio-web": "workspace:*",
     "@haku/core": "workspace:*",
     "@haku/engine": "workspace:*",
     "@haku/graph": "workspace:*",

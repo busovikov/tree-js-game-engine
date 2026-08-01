@@ -22,10 +22,19 @@ export const BOUNCE_RUN_UI_IDS = {
   restartButton: id(15),
   scoreText: id(16),
   highScoreText: id(17),
+  audioSettings: id(18),
+  masterAudioButton: id(19),
+  musicAudioButton: id(20),
+  sfxAudioButton: id(21),
+  uiAudioButton: id(22),
   events: {
     start: id(30),
     resume: id(31),
     restart: id(32),
+    toggleMasterAudio: id(33),
+    toggleMusicAudio: id(34),
+    toggleSfxAudio: id(35),
+    toggleUIAudio: id(36),
   },
 } as const
 

@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 
 import { EngineScheduler, TransformComponent, World, entityId } from '@haku/core'
+import { AudioRuntime, AudioService, HeadlessAudioBackend } from '@haku/audio'
 import {
   InputManager,
   MeshRendererComponent,
@@ -28,8 +29,15 @@ import { createPoolBackedBounceRunRoute } from './infinite-route.js'
 import { generateBounceRunRoute, type BounceRunDifficultySchedule } from './route-generator.js'
 import { createBounceRunSessionRuntime } from './session-runtime.js'
 import { loadBounceRunUIDocument } from './ui-document.js'
+import { BOUNCE_RUN_AUDIO_CLIP_DATA } from './audio-composition.js'
 
 const BALL = entityId('b1800000-0000-4000-8000-000000000001')
+
+function createTestAudio(): AudioService {
+  const runtime = new AudioRuntime(new HeadlessAudioBackend())
+  for (const clip of BOUNCE_RUN_AUDIO_CLIP_DATA) runtime.registerClip(clip)
+  return new AudioService(runtime)
+}
 
 describe('Bounce Run fixed-step runtime', () => {
   afterEach(() => resetRapierPhysicsIds())
@@ -210,9 +218,7 @@ describe('Bounce Run fixed-step runtime', () => {
     } as unknown as PhysicsContactSystem
     const route = {
       platformDescriptor: () => ({ behavior: { kind: 'standard', bounceHeight: 2.6 } }),
-      activePlatforms: () => [
-        { entity: entityId('route-lease'), platformIndex },
-      ],
+      activePlatforms: () => [{ entity: entityId('route-lease'), platformIndex }],
     } as never
     const host = document.createElement('div')
     const ui = new UIService()
@@ -226,20 +232,18 @@ describe('Bounce Run fixed-step runtime', () => {
       scheduler: new EngineScheduler(),
       ui,
       storage: new InMemorySaveStorage(),
+      audio: createTestAudio(),
     })
     await session.initialize()
     session.start()
-    const input = new BounceRunInputSystem(new InputManager(), () => {}, () => {})
+    const input = new BounceRunInputSystem(
+      new InputManager(),
+      () => {},
+      () => {},
+    )
     const control = new BounceRunControlSystem(BALL, physics, input)
     const scheduler = new EngineScheduler()
-    const landing = new BounceRunLandingSystem(
-      BALL,
-      contacts,
-      control,
-      scheduler,
-      route,
-      session,
-    )
+    const landing = new BounceRunLandingSystem(BALL, contacts, control, scheduler, route, session)
     const land = (): void => {
       velocity = [0, -5, 0]
       control.update(new World(), 1 / 60)
@@ -406,6 +410,7 @@ describe('Bounce Run fixed-step runtime', () => {
       scheduler: new EngineScheduler(),
       ui,
       storage: new InMemorySaveStorage(),
+      audio: createTestAudio(),
     })
     await session.initialize()
     session.start()

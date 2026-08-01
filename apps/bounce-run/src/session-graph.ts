@@ -8,8 +8,10 @@ import {
   type GraphAsset,
   type GraphCallsite,
   type GraphNode,
+  type JsonValue,
   type NodeRegistry,
 } from '@haku/graph'
+import { AUDIO_CLIP_ASSET_TYPE, AUDIO_GRAPH_CONTRACTS } from '@haku/audio'
 import { UI_GRAPH_CONTRACTS } from '@haku/ui'
 import { BOUNCE_RUN_UI_IDS } from './ui-document.js'
 
@@ -29,6 +31,18 @@ export const BOUNCE_RUN_SESSION_IDS = {
     renderHighScore: id(17),
     renderScore: id(18),
     awardRouteProgress: id(19),
+    audioBusVolume: {
+      master: id(20),
+      music: id(21),
+      sfx: id(22),
+      ui: id(23),
+    },
+    audioBusMuted: {
+      master: id(24),
+      music: id(25),
+      sfx: id(26),
+      ui: id(27),
+    },
   },
   variables: {
     state: 'session.state',
@@ -45,7 +59,26 @@ export const BOUNCE_RUN_SESSION_IDS = {
     scoreZero: 'constant.score.zero',
     bonusValue: 'constant.score.bonus',
     routeProgressValue: 'constant.score.route-progress',
+    audioBusVolume: {
+      master: 'audio.master.volume',
+      music: 'audio.music.volume',
+      sfx: 'audio.sfx.volume',
+      ui: 'audio.ui.volume',
+    },
+    audioBusMuted: {
+      master: 'audio.master.muted',
+      music: 'audio.music.muted',
+      sfx: 'audio.sfx.muted',
+      ui: 'audio.ui.muted',
+    },
   },
+} as const
+
+const AUDIO_CLIPS = {
+  landing: 'b1400000-0000-4000-8000-000000000002',
+  bonus: 'b1400000-0000-4000-8000-000000000003',
+  fail: 'b1400000-0000-4000-8000-000000000004',
+  ui: 'b1400000-0000-4000-8000-000000000005',
 } as const
 
 function callsites(
@@ -77,7 +110,7 @@ export function createBounceRunSessionGraph(registry: NodeRegistry): GraphAsset 
 
   const addNode = (
     type: string,
-    properties: Record<string, string> = {},
+    properties: Record<string, JsonValue> = {},
     domain: GraphNode['domain'] = 'FrameGameplay',
     fixedId?: string,
     concreteGeneric?: string,
@@ -145,6 +178,25 @@ export function createBounceRunSessionGraph(registry: NodeRegistry): GraphAsset 
     )
     return setText
   }
+  const addSound = (
+    previous: GraphNode,
+    previousFlowPort: string,
+    clip: string,
+    bus: 'sfx' | 'ui',
+  ): GraphNode => {
+    const play = addNode(AUDIO_GRAPH_CONTRACTS.play.nodeType, {
+      clip: { $ref: clip, type: AUDIO_CLIP_ASSET_TYPE },
+      bus,
+      loop: false,
+      autoplay: false,
+      volume: bus === 'ui' ? 0.65 : 0.8,
+      playbackRate: 1,
+      spatial: null,
+      muted: false,
+    })
+    connect(previous, previousFlowPort, play, AUDIO_GRAPH_CONTRACTS.play.ports.flowIn)
+    return play
+  }
 
   const constantTrue = variable(BOUNCE_RUN_SESSION_IDS.variables.true, BOOL_TYPE)
   const constantFalse = variable(BOUNCE_RUN_SESSION_IDS.variables.false, BOOL_TYPE)
@@ -163,6 +215,7 @@ export function createBounceRunSessionGraph(registry: NodeRegistry): GraphAsset 
     visibility: readonly [boolean, boolean, boolean, boolean],
     entryId: string,
     resetScore = false,
+    sound?: keyof typeof AUDIO_CLIPS,
   ): GraphNode => {
     const source = stateSources[state]
     const setState = addNode(
@@ -240,6 +293,17 @@ export function createBounceRunSessionGraph(registry: NodeRegistry): GraphAsset 
       'Best ',
     )
     const entry = addNode(FOUNDATION_GRAPH_IDS.onStart.nodeType, {}, 'FrameGameplay', entryId)
+    const entryFlow = sound
+      ? addSound(
+          entry,
+          FOUNDATION_GRAPH_IDS.onStart.ports.next,
+          AUDIO_CLIPS[sound],
+          sound === 'ui' ? 'ui' : 'sfx',
+        )
+      : entry
+    const entryPort = sound
+      ? AUDIO_GRAPH_CONTRACTS.play.ports.flowOut
+      : FOUNDATION_GRAPH_IDS.onStart.ports.next
     if (resetScore) {
       const clearScore = addNode(
         DETERMINISTIC_GRAPH_CONTRACTS.setVariable.nodeType,
@@ -255,8 +319,8 @@ export function createBounceRunSessionGraph(registry: NodeRegistry): GraphAsset 
         DETERMINISTIC_GRAPH_CONTRACTS.setVariable.ports.value,
       )
       connect(
-        entry,
-        FOUNDATION_GRAPH_IDS.onStart.ports.next,
+        entryFlow,
+        entryPort,
         clearScore,
         DETERMINISTIC_GRAPH_CONTRACTS.setVariable.ports.flowIn,
       )
@@ -287,8 +351,8 @@ export function createBounceRunSessionGraph(registry: NodeRegistry): GraphAsset 
       )
     } else {
       connect(
-        entry,
-        FOUNDATION_GRAPH_IDS.onStart.ports.next,
+        entryFlow,
+        entryPort,
         setState,
         DETERMINISTIC_GRAPH_CONTRACTS.setVariable.ports.flowIn,
       )
@@ -302,15 +366,35 @@ export function createBounceRunSessionGraph(registry: NodeRegistry): GraphAsset 
     [false, true, false, false],
     BOUNCE_RUN_SESSION_IDS.entries.startSession,
     true,
+    'ui',
   )
-  transition('paused', [false, false, true, false], BOUNCE_RUN_SESSION_IDS.entries.pauseSession)
-  transition('active', [false, true, false, false], BOUNCE_RUN_SESSION_IDS.entries.resumeSession)
-  transition('game-over', [false, false, false, true], BOUNCE_RUN_SESSION_IDS.entries.failSession)
+  transition(
+    'paused',
+    [false, false, true, false],
+    BOUNCE_RUN_SESSION_IDS.entries.pauseSession,
+    false,
+    'ui',
+  )
+  transition(
+    'active',
+    [false, true, false, false],
+    BOUNCE_RUN_SESSION_IDS.entries.resumeSession,
+    false,
+    'ui',
+  )
+  transition(
+    'game-over',
+    [false, false, false, true],
+    BOUNCE_RUN_SESSION_IDS.entries.failSession,
+    false,
+    'fail',
+  )
   transition(
     'active',
     [false, true, false, false],
     BOUNCE_RUN_SESSION_IDS.entries.restartSession,
     true,
+    'ui',
   )
 
   const score = variable(BOUNCE_RUN_SESSION_IDS.variables.score, NUMBER_TYPE)
@@ -348,8 +432,8 @@ export function createBounceRunSessionGraph(registry: NodeRegistry): GraphAsset 
     BOUNCE_RUN_SESSION_IDS.entries.collectBonus,
   )
   connect(
-    collectBonus,
-    FOUNDATION_GRAPH_IDS.onStart.ports.next,
+    addSound(collectBonus, FOUNDATION_GRAPH_IDS.onStart.ports.next, AUDIO_CLIPS.bonus, 'sfx'),
+    AUDIO_GRAPH_CONTRACTS.play.ports.flowOut,
     setScore,
     DETERMINISTIC_GRAPH_CONTRACTS.setVariable.ports.flowIn,
   )
@@ -413,8 +497,8 @@ export function createBounceRunSessionGraph(registry: NodeRegistry): GraphAsset 
     DETERMINISTIC_GRAPH_CONTRACTS.setVariable.ports.value,
   )
   connect(
-    routeBranch,
-    FOUNDATION_GRAPH_IDS.branch.ports.whenTrue,
+    addSound(routeBranch, FOUNDATION_GRAPH_IDS.branch.ports.whenTrue, AUDIO_CLIPS.landing, 'sfx'),
+    AUDIO_GRAPH_CONTRACTS.play.ports.flowOut,
     setRouteScore,
     DETERMINISTIC_GRAPH_CONTRACTS.setVariable.ports.flowIn,
   )
@@ -476,6 +560,50 @@ export function createBounceRunSessionGraph(registry: NodeRegistry): GraphAsset 
     BOUNCE_RUN_UI_IDS.highScoreText,
     'Best ',
   )
+
+  for (const bus of ['master', 'music', 'sfx', 'ui'] as const) {
+    const volumeSource = variable(BOUNCE_RUN_SESSION_IDS.variables.audioBusVolume[bus], NUMBER_TYPE)
+    const setVolume = addNode(AUDIO_GRAPH_CONTRACTS.setBusVolume.nodeType, { bus })
+    connect(
+      volumeSource,
+      DETERMINISTIC_GRAPH_CONTRACTS.getVariable.ports.value,
+      setVolume,
+      AUDIO_GRAPH_CONTRACTS.setBusVolume.ports.value,
+    )
+    const volumeEntry = addNode(
+      FOUNDATION_GRAPH_IDS.onStart.nodeType,
+      {},
+      'FrameGameplay',
+      BOUNCE_RUN_SESSION_IDS.entries.audioBusVolume[bus],
+    )
+    connect(
+      volumeEntry,
+      FOUNDATION_GRAPH_IDS.onStart.ports.next,
+      setVolume,
+      AUDIO_GRAPH_CONTRACTS.setBusVolume.ports.flowIn,
+    )
+
+    const mutedSource = variable(BOUNCE_RUN_SESSION_IDS.variables.audioBusMuted[bus], BOOL_TYPE)
+    const setMuted = addNode(AUDIO_GRAPH_CONTRACTS.setBusMuted.nodeType, { bus })
+    connect(
+      mutedSource,
+      DETERMINISTIC_GRAPH_CONTRACTS.getVariable.ports.value,
+      setMuted,
+      AUDIO_GRAPH_CONTRACTS.setBusMuted.ports.value,
+    )
+    const mutedEntry = addNode(
+      FOUNDATION_GRAPH_IDS.onStart.nodeType,
+      {},
+      'FrameGameplay',
+      BOUNCE_RUN_SESSION_IDS.entries.audioBusMuted[bus],
+    )
+    connect(
+      mutedEntry,
+      FOUNDATION_GRAPH_IDS.onStart.ports.next,
+      setMuted,
+      AUDIO_GRAPH_CONTRACTS.setBusMuted.ports.flowIn,
+    )
+  }
 
   return {
     schemaVersion: 1,
