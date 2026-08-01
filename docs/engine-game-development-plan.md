@@ -543,7 +543,7 @@ Acceptance:
 - [ ] Difficulty reduces safety margins but never removes all reachable routes.
 - [x] Bonus is reachable, sensor-safe, pooled, and cannot score twice.
 - [x] High score persists locally through the universal save API.
-- [ ] Audio unlock/pause/settings/pool cleanup work.
+- [x] Audio unlock/pause/settings/pool cleanup work.
 - [ ] No sustained active-object or memory growth in long runs.
 - [ ] Every found reproducible bug has seed/replay and regression coverage.
 - [ ] Chrome resize and 30 FPS simulation behavior remain correct.
@@ -603,7 +603,7 @@ open):
   in-memory save storage before any production change. It passed the existing transition case and
   failed the new case at the first `Score 0` lookup because the authored HUD had no score element.
 - The production HUD now exposes accessible live current/best score text. Explicit pure `Format
-  Number` nodes feed public UI Set Text nodes; no app code mutates score DOM. Interpreter executions
+Number` nodes feed public UI Set Text nodes; no app code mutates score DOM. Interpreter executions
   now advance declared resource revisions after successful writes, so a later same-tick execution
   cannot reuse stale graph-variable data while the current execution retains its frozen snapshot.
 - Ordinary progress uses the existing top/downward/once-per-tick landing event and the current
@@ -625,6 +625,34 @@ open):
   and restart, zero QA diagnostics, and only the established Rapier warning. The centered normal run
   did not reach a scored landing, so route increment and non-zero reload persistence rely on the
   focused integration evidence; no QA score/storage backdoor was added or used.
+
+M13 production audio evidence (complete; effects, polish, and stabilization remain open):
+
+- The mandatory real-HUD integration RED was committed before production composition and failed
+  first because `audio-composition.js` did not exist. Its GREEN path uses the public audio graph,
+  service, backend, and pool lifecycle APIs with a controllable backend and a real `EntityPool`
+  lease; rejected unlock/pause/resume transitions surface `AudioLifecycleError` and preserve the
+  prior retryable state.
+- The Start activation calls and awaits the public unlock chain immediately from the DOM activation
+  callback before reset, session transition, UI click SFX, or music. The runtime owns idempotent
+  unlock/pause state, so repeated pause/resume requests do not duplicate backend transitions.
+- Landing, bonus, fail, and transition UI SFX are authored Play Audio nodes on the session graph.
+  Forward-only route scoring remains the landing dedupe boundary. One procedural local WAV loop is
+  owned as music and retained as a singleton across restart; no clip uses a CDN or runtime request.
+- Authored Master/Music/SFX/UI volumes and mute state execute through public graph bus nodes. Four
+  accessible HUD controls use public UI activation/text contracts, remain available while paused,
+  remember volume when unmuted, and reject non-finite/out-of-range volume inputs.
+- `createAudioPoolParticipant()` is registered through the universal pool lifecycle boundary.
+  Release, reacquire, clear, and composition disposal stop all voices for every pooled entity and
+  unregister the late participant, leaving no owner handles or subscriptions behind.
+- Affected Bounce Run, audio, audio-web, pool, graph, graph-runtime, and UI verification passed 58
+  files / 224 tests. Audio/audio-web/pool builds, Bounce Run typecheck, and the 200-module production
+  build passed; only the established Vite chunk advisory appeared.
+- User Chrome on agent-owned `127.0.0.1:5193` proved Start without an autoplay error, Escape pause,
+  Resume, Master/Music mute controls, restart with retained settings, and zero QA diagnostics. The
+  console contained only the established Rapier initialization warning. Browser evidence is UI and
+  read-only state observation; no claim of subjectively hearing sound is made. The agent server was
+  stopped after the run.
 
 ## M14 — Final export, quality audit, and documentation
 
