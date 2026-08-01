@@ -3,6 +3,15 @@ const FNV1A_64_PRIME = 0x100000001b3n
 const UINT32_MAX = 0xffff_ffff
 const STABLE_HASH_PATTERN = /^fnv1a64:[0-9a-f]{16}$/
 
+export type ImmutableJsonValue<T> =
+  T extends null | string | number | boolean
+    ? T
+    : T extends readonly (infer TItem)[]
+      ? readonly ImmutableJsonValue<TItem>[]
+      : T extends object
+        ? { readonly [TKey in keyof T]: ImmutableJsonValue<T[TKey]> }
+        : never
+
 export interface FixedTickRecordingFrame<TActions = unknown> {
   readonly tick: number
   readonly actions: TActions
@@ -70,6 +79,11 @@ export function stableCanonicalHash(value: unknown): string {
     hash = BigInt.asUintN(64, hash * FNV1A_64_PRIME)
   }
   return `fnv1a64:${hash.toString(16).padStart(16, '0')}`
+}
+
+/** Clones JSON-shaped deterministic data and deeply freezes the clone. */
+export function createImmutableJsonSnapshot<T>(value: T): ImmutableJsonValue<T> {
+  return deepFreeze(JSON.parse(stableCanonicalStringify(value)) as ImmutableJsonValue<T>)
 }
 
 /** Creates an in-memory recorder that commits one immutable frame per contiguous fixed tick. */
@@ -236,7 +250,7 @@ function validatePositiveFinite(value: unknown, label: string): asserts value is
 }
 
 function cloneDeterministicValue<T>(value: T): T {
-  return deepFreeze(JSON.parse(stableCanonicalStringify(value)) as T)
+  return createImmutableJsonSnapshot(value) as T
 }
 
 function deepFreeze<T>(value: T): T {
@@ -260,6 +274,9 @@ function canonicalStringify(value: unknown, ancestors: Set<object>, path: string
   ancestors.add(value)
   try {
     if (Array.isArray(value)) {
+      if (Object.getPrototypeOf(value) !== Array.prototype) {
+        throw new Error(`${path} contains an unsupported array type`)
+      }
       const ownKeys = Reflect.ownKeys(value)
       for (const key of ownKeys) {
         if (typeof key === 'symbol') throw new Error(`${path} contains a symbol property`)

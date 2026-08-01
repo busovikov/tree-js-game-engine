@@ -36,6 +36,7 @@ describe('immutable structured observations', () => {
     sparse[1] = 1
     const symbolKey = Symbol('hidden')
     const withSymbol = { value: 1, [symbolKey]: 2 }
+    const nonPlainArray = Object.setPrototypeOf([1], {})
     let getterCalls = 0
     const accessor = Object.defineProperty({}, 'value', {
       enumerable: true,
@@ -50,6 +51,7 @@ describe('immutable structured observations', () => {
       { callback: () => undefined },
       accessor,
       withSymbol,
+      nonPlainArray,
       sparse,
       { value: Number.NaN },
       { value: Number.POSITIVE_INFINITY },
