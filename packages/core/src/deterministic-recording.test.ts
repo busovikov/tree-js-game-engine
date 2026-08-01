@@ -15,7 +15,7 @@ describe('deterministic recording primitives', () => {
       '{"a":[true,null,"\u00e9"],"b":2}',
     )
     expect(stableCanonicalHash(first)).toBe(stableCanonicalHash(second))
-    expect(stableCanonicalHash(first)).toMatch(/^fnv1a64:[0-9a-f]{16}$/)
+    expect(stableCanonicalHash(first)).toBe('fnv1a64:89f569122486004b')
   })
 
   it('rejects non-finite, sparse, cyclic, and unsupported values explicitly', () => {
