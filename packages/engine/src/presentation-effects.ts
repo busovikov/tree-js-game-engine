@@ -1,14 +1,14 @@
 import type { EntityId, ISystem, IWorld } from '@haku/core'
-import type { Vec3 } from '@haku/schema'
 import * as THREE from 'three'
 
 export type PresentationEffectKind = 'landing' | 'bonus' | 'fail'
 export type PresentationEffectShape = 'ring' | 'spark' | 'pulse'
+export type PresentationPosition = readonly [number, number, number]
 
 export interface PresentationBurstRequest {
   readonly kind: PresentationEffectKind
   readonly shape: PresentationEffectShape
-  readonly position: Vec3
+  readonly position: PresentationPosition
   readonly color: string
   readonly duration: number
   readonly size: number
@@ -44,7 +44,7 @@ export interface PresentationEffectsMetrics {
 
 export interface PresentationEffectsBackend {
   emit(request: PresentationBurstRequest): void
-  sampleTrail(position: Vec3): void
+  sampleTrail(position: PresentationPosition): void
   clearOwner(owner: EntityId | string): void
   reset(): void
   update(dt: number): void
@@ -170,7 +170,7 @@ export class HeadlessPresentationEffectsBackend implements PresentationEffectsBa
     else this.failEmitted += 1
   }
 
-  sampleTrail(position: Vec3): void {
+  sampleTrail(position: PresentationPosition): void {
     this.requireLive()
     if (!position.every(Number.isFinite)) throw new Error('Trail position must be finite')
     this.sampleX = position[0]
@@ -185,8 +185,21 @@ export class HeadlessPresentationEffectsBackend implements PresentationEffectsBa
       const slot = this.bursts[index]!
       if (slot.active && slot.owner === target) this.deactivateBurst(index)
     }
-    for (const slot of this.queued) {
-      if (slot.active && slot.owner === target) slot.owner = null
+    const queuedBeforeClear = this.queueCount
+    for (let index = 0; index < queuedBeforeClear; index += 1) {
+      const slot = this.queued[this.queueRead]!
+      this.queueRead = (this.queueRead + 1) % this.queued.length
+      this.queueCount -= 1
+      if (slot.owner === target) {
+        slot.active = false
+        continue
+      }
+      const targetSlot = this.queued[this.queueWrite]!
+      if (targetSlot !== slot) this.copySlot(targetSlot, slot)
+      targetSlot.active = true
+      slot.active = targetSlot === slot
+      this.queueWrite = (this.queueWrite + 1) % this.queued.length
+      this.queueCount += 1
     }
   }
 
@@ -276,7 +289,13 @@ export class HeadlessPresentationEffectsBackend implements PresentationEffectsBa
   private drainBurstQueue(): void {
     while (this.queueCount > 0) {
       const queued = this.queued[this.queueRead]!
-      let targetIndex = this.bursts.findIndex((slot) => !slot.active)
+      let targetIndex = -1
+      for (let index = 0; index < this.bursts.length; index += 1) {
+        if (!this.bursts[index]!.active) {
+          targetIndex = index
+          break
+        }
+      }
       if (targetIndex < 0) {
         targetIndex = 0
         for (let index = 1; index < this.bursts.length; index += 1) {
@@ -382,7 +401,7 @@ export class PresentationEffectsService implements ISystem {
     this.backend.emit(request)
   }
 
-  sampleTrail(position: Vec3): void {
+  sampleTrail(position: PresentationPosition): void {
     this.backend.sampleTrail(position)
   }
 

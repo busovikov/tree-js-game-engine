@@ -33,6 +33,9 @@ describe('presentation effects runtime', () => {
     }
 
     service.emit(burst)
+    service.clearOwner(owner)
+    expect(service.metrics()).toMatchObject({ queuedBursts: 0, ownedHandles: 0 })
+    service.emit(burst)
     service.emit(burst)
     service.emit(burst)
     service.sampleTrail([0, 0, 0])
@@ -43,7 +46,7 @@ describe('presentation effects runtime', () => {
       trailPoints: 1,
       ownedHandles: 2,
       droppedBursts: 1,
-      emitted: { landing: 2 },
+      emitted: { landing: 3 },
     })
 
     service.update(world, 0)
@@ -91,9 +94,9 @@ describe('presentation effects runtime', () => {
   })
 
   it('rejects invalid capacities before allocating presentation objects', () => {
-    expect(
-      () => new HeadlessPresentationEffectsBackend({ ...OPTIONS, trailCapacity: 0 }),
-    ).toThrow(/trail capacity/i)
+    expect(() => new HeadlessPresentationEffectsBackend({ ...OPTIONS, trailCapacity: 0 })).toThrow(
+      /trail capacity/i,
+    )
     expect(
       () => new HeadlessPresentationEffectsBackend({ ...OPTIONS, trailLifetime: Number.NaN }),
     ).toThrow(/trail lifetime/i)
