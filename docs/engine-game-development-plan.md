@@ -50,7 +50,7 @@ The program is done only when:
 | M10e | Browser static export and ZIP                                   | M10b–M10d  | Complete                                     |
 | M10f | Cross-service graph nodes and contract integration              | M10a–M10e  | Complete                                     |
 | M11  | Bounce Run vertical slice                                       | M10f       | Complete                                     |
-| M12  | Generator, seed/replay, QA harness, and automated browser tests | M11        | In progress — pure route slice complete      |
+| M12  | Generator, seed/replay, QA harness, and automated browser tests | M11        | In progress — dev QA boundary complete       |
 | M13  | Full gameplay, polish, saves, audio, and stabilization          | M12        | Pending                                      |
 | M14  | Final export, quality audit, and documentation                  | M13        | Pending                                      |
 
@@ -451,12 +451,13 @@ Acceptance:
 - [x] Replay either matches state hashes or reports exact divergence.
 - [x] QA uses public action/observation APIs and cannot mutate game state directly.
 - [ ] Browser E2E covers start, input, pause, game over, restart, resize, and console errors.
-- [ ] QA harness is absent from production export.
+- [x] QA harness is absent from production export.
 
 M12 route, infinite-pool, and replay slice evidence: `9bc30a6`, `fc35d55`, `38d9d6e`,
 `a4d02ab`, `c516491`, `7143dd9`, `cbb1202`, `296679c`, `482586c`, `519b5fa`,
 `ee60b05`, `264882c`, `87dbf28`, `8bc0d10`, `da1f1ef`, `c471dc3`, `d20a34d`,
-`b3115b1`, `abc9c89`, `e9fd8ed`, `369144c`, `dfd597c`, and `d92279d` add the
+`b3115b1`, `abc9c89`, `e9fd8ed`, `369144c`, `dfd597c`, `d92279d`, `e01745e`,
+and `57548f7` add the
 side-effect-free seeded generator, fixed-step analytic reachability envelope, decreasing but
 non-zero safety margins, center-to-center chained landing continuity, full candidate/selection
 logs, bounded candidate attempts, horizon-stable prefixes for infinite extension, and a
@@ -485,8 +486,19 @@ observation/assertion evidence, and bounded runtime/console error records. Bug r
 defect and root-cause fields, and canonical key-sorted UTF-8 serialization round-trips to identical
 plain data with insertion-order-independent bytes. Malformed versions, replay metadata, tick
 ranges/order, assertion references/results, error records, executable/accessor/cyclic/non-finite
-values, and excess histories are rejected transactionally. The report module remains data-only and
-unwired; full browser automation and the production-export QA exclusion boundary remain incomplete.
+values, and excess histories are rejected transactionally. A dependency-injected data-only harness
+now subscribes to public fixed-tick/action/observation and runtime/console/network diagnostic ports,
+deduplicates and bounds ordered browser evidence, composes those immutable reports, and exposes no
+world/entity/pool/physics mutation handle. The Bounce Run browser bootstrap loads a removable
+versioned read/action-only global and DOM bridge only through Vite's static
+`import.meta.env.DEV` branch and dynamic import. An executable regression runs the real production
+build with `NODE_ENV=production`, requires unique harness/report/observation/replay and browser-hook
+sentinels at their sources, and proves every sentinel, collector, and global bridge is absent from
+all emitted JavaScript. User-Chrome smoke on an agent-owned server recorded lateral action and
+public observation displacement from `x 0.000` to `x 1.069` by tick 39, showed pause through Escape,
+composed 139-tick session and bug artifacts with zero collected diagnostics, and found no console
+errors beyond the established Rapier initialization warning. The full automated browser workflow
+matrix remains incomplete.
 
 ## M13 — Full gameplay, polish, saves, audio, and stabilization
 
