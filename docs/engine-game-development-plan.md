@@ -448,13 +448,14 @@ Acceptance:
 - [x] Safe start and difficulty margins are tested.
 - [x] Many headless sequences finish without intersections, invalid gaps, missing routes, or
       unbounded attempts.
-- [ ] Replay either matches state hashes or reports exact divergence.
+- [x] Replay either matches state hashes or reports exact divergence.
 - [ ] QA uses public action/observation APIs and cannot mutate game state directly.
 - [ ] Browser E2E covers start, input, pause, game over, restart, resize, and console errors.
 - [ ] QA harness is absent from production export.
 
-M12 route and infinite-pool slice evidence: `9bc30a6`, `fc35d55`, `38d9d6e`, `a4d02ab`,
-`c516491`, `7143dd9`, `cbb1202`, `296679c`, and `482586c` add the
+M12 route, infinite-pool, and replay slice evidence: `9bc30a6`, `fc35d55`, `38d9d6e`,
+`a4d02ab`, `c516491`, `7143dd9`, `cbb1202`, `296679c`, `482586c`, `519b5fa`,
+`ee60b05`, `264882c`, and `87dbf28` add the
 side-effect-free seeded generator, fixed-step analytic reachability envelope, decreasing but
 non-zero safety margins, center-to-center chained landing continuity, full candidate/selection
 logs, bounded candidate attempts, horizon-stable prefixes for infinite extension, and a
@@ -466,7 +467,12 @@ disjoint eight-slot windows, stable entity reuse, route continuity, platform int
 rejection, and 256 seeds × 128 platforms without route validation issues or attempt overflow. A
 headless Rapier comparison locks the analytic same-height landing to the collision-event tick and
 forward position used by the current 60 Hz controller. User-Chrome smoke verified generated track
-rendering and restart at `pool 6/8` with no console errors. Replay, observations, reports, full
+rendering and restart at `pool 6/8` with no console errors. The public core now provides immutable
+versioned fixed-tick recordings and canonical key-sorted UTF-8 FNV-1a hashes with explicit rejection
+of non-finite, cyclic, sparse, and unsupported values. A headless Bounce Run integration records
+180 public action snapshots from `EngineScheduler` fixed ticks while applying the current ball
+controller, reproduces all 180 hashes, and reports a tick-73 action tamper with the exact expected
+and actual hashes without mutating the artifact. Structured observations/assertions, reports, full
 browser automation, and production QA exclusion remain incomplete.
 
 ## M13 — Full gameplay, polish, saves, audio, and stabilization
