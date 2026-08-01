@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   AudioRuntime,
+  AudioLifecycleError,
   HeadlessAudioBackend,
   AUDIO_CLIP_ASSET_TYPE,
   audioClip,
@@ -12,6 +13,43 @@ const musicClip = audioClip('a0000000-0000-4000-8000-000000000002', undefined, 1
 const clipRef = (id: typeof jumpClip.id) => ({ $ref: id, type: AUDIO_CLIP_ASSET_TYPE })
 
 describe('AudioRuntime', () => {
+  it('owns typed idempotent unlock and pause transitions without accepting backend failures', async () => {
+    class ControlledBackend extends HeadlessAudioBackend {
+      unlockCalls = 0
+      pauseCalls = 0
+      failure: Error | null = new Error('gesture rejected')
+
+      override async unlock(): Promise<void> {
+        this.unlockCalls += 1
+        if (this.failure) {
+          const failure = this.failure
+          this.failure = null
+          throw failure
+        }
+      }
+
+      override async setPaused(paused: boolean): Promise<void> {
+        this.pauseCalls += 1
+        await super.setPaused(paused)
+      }
+    }
+    const backend = new ControlledBackend()
+    const runtime = new AudioRuntime(backend)
+
+    await expect(runtime.unlock()).rejects.toBeInstanceOf(AudioLifecycleError)
+    expect(runtime.inspectLifecycle()).toEqual({ unlocked: false, paused: false })
+    await runtime.unlock()
+    await runtime.unlock()
+    expect(backend.unlockCalls).toBe(2)
+    expect(runtime.inspectLifecycle()).toEqual({ unlocked: true, paused: false })
+
+    await runtime.setPaused(true)
+    await runtime.setPaused(true)
+    await runtime.setPaused(false)
+    await runtime.setPaused(false)
+    expect(backend.pauseCalls).toBe(2)
+  })
+
   it('routes one-shot and looping sources through Master plus their category buses', () => {
     const backend = new HeadlessAudioBackend()
     const runtime = new AudioRuntime(backend)
@@ -100,7 +138,7 @@ describe('AudioRuntime', () => {
     expect(backend.releasedVoiceCount).toBe(2)
   })
 
-  it('applies Master and category bus volume/mute plus global pause to active voices', () => {
+  it('applies Master and category bus volume/mute plus global pause to active voices', async () => {
     const backend = new HeadlessAudioBackend()
     const runtime = new AudioRuntime(backend)
     runtime.registerClip(jumpClip)
@@ -121,9 +159,9 @@ describe('AudioRuntime', () => {
     expect(backend.inspectVoice(voice).effectiveVolume).toBe(0)
 
     runtime.setBusMuted('sfx', false)
-    runtime.setPaused(true)
+    await runtime.setPaused(true)
     expect(backend.inspectVoice(voice).paused).toBe(true)
-    runtime.setPaused(false)
+    await runtime.setPaused(false)
     expect(backend.inspectVoice(voice).paused).toBe(false)
   })
 

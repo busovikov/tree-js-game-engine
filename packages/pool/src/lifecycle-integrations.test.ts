@@ -1,12 +1,28 @@
 import { describe, expect, it } from 'vitest'
 import { World } from '@haku/core'
-import {
-  EntityPool,
-  createGraphPoolParticipant,
-  type PoolGraphInstance,
-} from './index.js'
+import { EntityPool, createGraphPoolParticipant, type PoolGraphInstance } from './index.js'
 
 describe('pool graph lifecycle integration', () => {
+  it('registers and removes a late universal lifecycle participant', () => {
+    const world = new World()
+    const events: string[] = []
+    const pool = new EntityPool({
+      world,
+      createInstance: () => world.createEntity('Late participant owner'),
+    })
+    const unregister = pool.registerParticipant({
+      onPoolLifecycle: (event) => events.push(event.action),
+    })
+
+    const first = pool.acquire()!
+    pool.release(first)
+    unregister()
+    const second = pool.acquire()!
+    pool.release(second)
+
+    expect(events).toEqual(['acquire', 'release'])
+  })
+
   it('creates a fresh graph runtime per lease and destroys it on release', () => {
     const world = new World()
     const calls: string[] = []
@@ -14,10 +30,12 @@ describe('pool graph lifecycle integration', () => {
     const graphParticipant = createGraphPoolParticipant({
       create(event): readonly PoolGraphInstance[] {
         const label = `${event.root.value}:${instanceNumber++}`
-        return [{
-          activate: () => calls.push(`activate:${label}`),
-          destroy: () => calls.push(`destroy:${label}`),
-        }]
+        return [
+          {
+            activate: () => calls.push(`activate:${label}`),
+            destroy: () => calls.push(`destroy:${label}`),
+          },
+        ]
       },
     })
     const pool = new EntityPool({

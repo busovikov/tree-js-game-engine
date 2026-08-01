@@ -9,9 +9,7 @@ import { PREFAB_ASSET_TYPE } from '@haku/assets'
 import { AssetRefSchema, componentTypeId, type AssetRef } from '@haku/schema'
 import { z } from 'zod'
 
-export const ENTITY_POOL_COMPONENT_TYPE_ID = componentTypeId(
-  '40000000-0000-4000-8000-000000000024',
-)
+export const ENTITY_POOL_COMPONENT_TYPE_ID = componentTypeId('40000000-0000-4000-8000-000000000024')
 
 export const PoolExpansionPolicySchema = z.enum(['fixed', 'grow'])
 export const PoolExhaustionPolicySchema = z.enum(['return-null', 'throw', 'reuse-oldest'])
@@ -168,6 +166,7 @@ export class PoolRuntimeScope {
 }
 
 class PoolSystem {
+  private readonly participants = new Set<PoolLifecycleParticipant>()
   private readonly records = new Map<string, PoolRecord>()
   private currentCapacity: number
   private nextAcquireSequence = 0
@@ -187,7 +186,13 @@ class PoolSystem {
         readonly capacity: number
       },
   ) {
+    for (const participant of options.participants ?? []) this.participants.add(participant)
     this.currentCapacity = options.capacity
+  }
+
+  registerParticipant(participant: PoolLifecycleParticipant): () => void {
+    this.participants.add(participant)
+    return () => this.participants.delete(participant)
   }
 
   prewarm(count = this.currentCapacity): void {
@@ -300,10 +305,7 @@ class PoolSystem {
 
   private canExpand(): boolean {
     if (this.records.size >= this.options.maximum) return false
-    return (
-      this.records.size < this.currentCapacity ||
-      this.options.expansionPolicy === 'grow'
-    )
+    return this.records.size < this.currentCapacity || this.options.expansionPolicy === 'grow'
   }
 
   private expandCapacity(): void {
@@ -373,9 +375,10 @@ class PoolSystem {
 
     for (const entity of record.baseline) world.setParent(entity.id, entity.parent)
     for (const entity of record.baseline) {
-      const intended = entity.id.value === record.root.value
-        ? activateRoot && entity.activeSelf
-        : entity.activeSelf
+      const intended =
+        entity.id.value === record.root.value
+          ? activateRoot && entity.activeSelf
+          : entity.activeSelf
       world.setActiveSelf(entity.id, intended)
     }
   }
@@ -400,7 +403,7 @@ class PoolSystem {
       generation: record.generation,
       scope: record.scope,
     }
-    for (const participant of this.options.participants ?? []) {
+    for (const participant of this.participants) {
       participant.onPoolLifecycle(event)
     }
     this.options.onLifecycle?.(event)
@@ -473,6 +476,10 @@ export class EntityPool {
 
   scope(handle: PoolHandle): PoolRuntimeScope {
     return this.system.scope(handle)
+  }
+
+  registerParticipant(participant: PoolLifecycleParticipant): () => void {
+    return this.system.registerParticipant(participant)
   }
 }
 

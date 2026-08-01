@@ -1,7 +1,4 @@
-import {
-  BinaryAssetSchema,
-  type AssetTypeDescriptor,
-} from '@haku/assets'
+import { BinaryAssetSchema, type AssetTypeDescriptor } from '@haku/assets'
 import type { ComponentDefinition, ComponentRegistry } from '@haku/core'
 import {
   BOOL_TYPE,
@@ -92,6 +89,7 @@ export interface AudioBusState {
 }
 
 export interface AudioBackend {
+  unlock(): void | Promise<void>
   startVoice(request: AudioVoiceRequest, onEnded: () => void): AudioVoiceId
   updateVoice(voiceId: AudioVoiceId, update: AudioVoiceUpdate): void
   stopVoice(voiceId: AudioVoiceId): void
@@ -137,6 +135,8 @@ export class HeadlessAudioBackend implements AudioBackend {
   get releasedVoiceCount(): number {
     return this.releases
   }
+
+  unlock(): void {}
 
   startVoice(request: AudioVoiceRequest, onEnded: () => void): AudioVoiceId {
     const id = `headless-audio-voice-${this.nextVoiceId++}`
@@ -243,6 +243,8 @@ export class AudioRuntime {
     AUDIO_BUSES.map((bus) => [bus, { volume: 1, muted: false }]),
   )
   private disposed = false
+  private unlocked = false
+  private paused = false
 
   constructor(private readonly backend: AudioBackend) {}
 
@@ -252,6 +254,30 @@ export class AudioRuntime {
 
   hasVoice(voiceId: AudioVoiceId): boolean {
     return this.activeVoices.has(voiceId)
+  }
+
+  async unlock(): Promise<void> {
+    this.assertUsable()
+    if (this.unlocked) return
+    try {
+      await this.backend.unlock()
+      this.unlocked = true
+    } catch (cause) {
+      throw new AudioLifecycleError('unlock', cause)
+    }
+  }
+
+  inspectLifecycle(): { readonly unlocked: boolean; readonly paused: boolean } {
+    return { unlocked: this.unlocked, paused: this.paused }
+  }
+
+  inspectBusState(bus: AudioBus): AudioBusState {
+    validateAudioBus(bus)
+    return { ...this.buses.get(bus)! }
+  }
+
+  ownedVoiceCount(owner: string): number {
+    return this.ownerVoices.get(owner)?.size ?? 0
   }
 
   registerClip(clip: AudioClip): void {
@@ -266,9 +292,8 @@ export class AudioRuntime {
     const clip = this.clips.get(source.clip.$ref)
     if (!clip) throw new Error(`Unknown audio clip: ${source.clip.$ref}`)
     let voiceId = ''
-    voiceId = this.backend.startVoice(
-      { ...source, clipData: clip },
-      () => this.removeVoiceOwnership(voiceId),
+    voiceId = this.backend.startVoice({ ...source, clipData: clip }, () =>
+      this.removeVoiceOwnership(voiceId),
     )
     this.activeVoices.add(voiceId)
     if (owner !== undefined) {
@@ -321,7 +346,13 @@ export class AudioRuntime {
 
   async setPaused(paused: boolean): Promise<void> {
     this.assertUsable()
-    await this.backend.setPaused(paused)
+    if (paused === this.paused) return
+    try {
+      await this.backend.setPaused(paused)
+      this.paused = paused
+    } catch (cause) {
+      throw new AudioLifecycleError(paused ? 'pause' : 'resume', cause)
+    }
   }
 
   dispose(): void {
@@ -352,6 +383,21 @@ export class AudioRuntime {
     const voices = this.ownerVoices.get(owner)
     voices?.delete(voiceId)
     if (voices?.size === 0) this.ownerVoices.delete(owner)
+  }
+}
+
+export type AudioLifecycleOperation = 'unlock' | 'pause' | 'resume'
+
+export class AudioLifecycleError extends Error {
+  readonly name = 'AudioLifecycleError'
+
+  constructor(
+    readonly operation: AudioLifecycleOperation,
+    cause: unknown,
+  ) {
+    super(`Audio ${operation} failed${cause instanceof Error ? `: ${cause.message}` : ''}`, {
+      cause,
+    })
   }
 }
 
@@ -404,11 +450,7 @@ export function registerAudioComponents(registry: ComponentRegistry): void {
   registry.register(AudioSourceComponent)
 }
 
-export function audioClip(
-  id: unknown,
-  bytes?: Uint8Array,
-  durationSeconds?: number,
-): AudioClip {
+export function audioClip(id: unknown, bytes?: Uint8Array, durationSeconds?: number): AudioClip {
   return {
     id: AssetIdSchema.parse(id),
     ...(bytes ? { bytes } : {}),
@@ -467,9 +509,7 @@ export class AudioSourceInstance {
   }
 }
 
-export function createAudioPoolParticipant(
-  runtime: AudioRuntime,
-): PoolLifecycleParticipant {
+export function createAudioPoolParticipant(runtime: AudioRuntime): PoolLifecycleParticipant {
   return {
     onPoolLifecycle(event) {
       if (event.action === 'acquire') return
@@ -483,6 +523,10 @@ export class AudioService {
 
   play(source: AudioSource, owner?: string): AudioVoiceId {
     return this.runtime.play(source, owner)
+  }
+
+  unlock(): Promise<void> {
+    return this.runtime.unlock()
   }
 
   stop(voiceId: AudioVoiceId): void {
@@ -508,9 +552,14 @@ export class AudioService {
   setPaused(paused: boolean): Promise<void> {
     return this.runtime.setPaused(paused)
   }
+
+  inspectLifecycle(): { readonly unlocked: boolean; readonly paused: boolean } {
+    return this.runtime.inspectLifecycle()
+  }
 }
 
 export interface AudioSdk {
+  unlock(): Promise<void>
   play(source: AudioSource, owner?: string): AudioVoiceId
   stop(voiceId: AudioVoiceId): void
   updateVoice(voiceId: AudioVoiceId, update: AudioVoiceUpdate): void
@@ -522,6 +571,7 @@ export interface AudioSdk {
 
 export function createAudioSdk(service: AudioService): AudioSdk {
   return {
+    unlock: () => service.unlock(),
     play: (source, owner) => service.play(source, owner),
     stop: (voiceId) => service.stop(voiceId),
     updateVoice: (voiceId, update) => service.updateVoice(voiceId, update),
@@ -706,9 +756,7 @@ export function registerAudioRuntimeAdapters(
   })
 
   register(AUDIO_GRAPH_CONTRACTS.stop.nodeType, (request) => {
-    const voice = z.string().min(1).parse(
-      request.readData(AUDIO_GRAPH_CONTRACTS.stop.ports.voice),
-    )
+    const voice = z.string().min(1).parse(request.readData(AUDIO_GRAPH_CONTRACTS.stop.ports.voice))
     service.stop(voice)
     return {
       flow: [AUDIO_GRAPH_CONTRACTS.stop.ports.flowOut],
@@ -718,9 +766,12 @@ export function registerAudioRuntimeAdapters(
 
   register(AUDIO_GRAPH_CONTRACTS.setBusVolume.nodeType, (request) => {
     const { bus } = AudioBusProperties.parse(request.node.properties)
-    const volume = z.number().finite().min(0).max(1).parse(
-      request.readData(AUDIO_GRAPH_CONTRACTS.setBusVolume.ports.value),
-    )
+    const volume = z
+      .number()
+      .finite()
+      .min(0)
+      .max(1)
+      .parse(request.readData(AUDIO_GRAPH_CONTRACTS.setBusVolume.ports.value))
     service.setBusVolume(bus, volume)
     return {
       flow: [AUDIO_GRAPH_CONTRACTS.setBusVolume.ports.flowOut],
@@ -730,9 +781,7 @@ export function registerAudioRuntimeAdapters(
 
   register(AUDIO_GRAPH_CONTRACTS.setBusMuted.nodeType, (request) => {
     const { bus } = AudioBusProperties.parse(request.node.properties)
-    const muted = z.boolean().parse(
-      request.readData(AUDIO_GRAPH_CONTRACTS.setBusMuted.ports.value),
-    )
+    const muted = z.boolean().parse(request.readData(AUDIO_GRAPH_CONTRACTS.setBusMuted.ports.value))
     service.setBusMuted(bus, muted)
     return {
       flow: [AUDIO_GRAPH_CONTRACTS.setBusMuted.ports.flowOut],
