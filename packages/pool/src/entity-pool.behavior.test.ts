@@ -24,6 +24,56 @@ const BaselineComponent: ComponentDefinition<{ value: string }> = {
 }
 
 describe('EntityPool hierarchy and baseline reset', () => {
+  it('prepares serializable lease state before acquire lifecycle participants observe it', () => {
+    const world = new World()
+    const observedPositions: unknown[] = []
+    const pool = new EntityPool({
+      world,
+      capacity: 1,
+      maximum: 1,
+      createInstance() {
+        const root = world.createEntity('Prepared root')
+        world.addComponent(root, TransformComponent, TransformComponent.defaults())
+        return root
+      },
+      onLifecycle(event) {
+        if (event.action === 'acquire') {
+          observedPositions.push(world.getComponent(event.root, TransformComponent)?.position)
+        }
+      },
+    })
+    pool.prewarm()
+
+    const handle = pool.acquire((root) => {
+      world.addComponent(root, TransformComponent, {
+        ...TransformComponent.defaults(),
+        position: [4, 5, 6],
+      })
+    })
+
+    expect(handle).not.toBeNull()
+    expect(observedPositions).toEqual([[4, 5, 6]])
+  })
+
+  it('rolls back a failed lease preparation without consuming the instance', () => {
+    const world = new World()
+    const pool = new EntityPool({
+      world,
+      capacity: 1,
+      maximum: 1,
+      createInstance: () => world.createEntity('Prepared root'),
+    })
+    pool.prewarm()
+
+    expect(() =>
+      pool.acquire(() => {
+        throw new Error('invalid placement')
+      }),
+    ).toThrow('invalid placement')
+    expect(pool.metrics()).toMatchObject({ active: 0, inactive: 1, acquisitions: 0 })
+    expect(pool.acquire()).not.toBeNull()
+  })
+
   it('restores hierarchy, names, activity, component membership, and serializable data', () => {
     const world = new World()
     const extraType = {

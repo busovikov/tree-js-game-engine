@@ -63,6 +63,8 @@ export interface PoolHandle {
   readonly generation: number
 }
 
+export type PoolLeaseInitializer = (root: EntityId) => void
+
 export type PoolLifecycleAction = 'acquire' | 'release' | 'clear'
 
 export interface PoolLifecycleEvent {
@@ -197,7 +199,7 @@ class PoolSystem {
     while (this.records.size < count) this.createInactiveRecord()
   }
 
-  acquire(): PoolHandle | null {
+  acquire(initialize?: PoolLeaseInitializer): PoolHandle | null {
     let record = [...this.records.values()].find((candidate) => !candidate.active)
     if (!record && this.canExpand()) {
       this.expandCapacity()
@@ -220,19 +222,24 @@ class PoolSystem {
     }
     if (!record) return null
 
-    this.restoreBaseline(record, true)
+    this.restoreBaseline(record, false)
     record.generation += 1
     record.active = true
     record.acquiredSequence = this.nextAcquireSequence++
-    this.options.world.setActiveSelf(record.root, true)
+    let lifecycleStarted = false
     try {
+      initialize?.(record.root)
+      this.options.world.setActiveSelf(record.root, true)
+      lifecycleStarted = true
       this.dispatch(record, 'acquire')
     } catch (error) {
       this.options.world.setActiveSelf(record.root, false)
-      try {
-        this.dispatch(record, 'release')
-      } catch {
-        // Preserve the acquisition failure; every owned scope is still reset below.
+      if (lifecycleStarted) {
+        try {
+          this.dispatch(record, 'release')
+        } catch {
+          // Preserve the acquisition failure; every owned scope is still reset below.
+        }
       }
       record.scope.reset()
       this.restoreBaseline(record, false)
@@ -444,8 +451,8 @@ export class EntityPool {
     this.system.prewarm(count)
   }
 
-  acquire(): PoolHandle | null {
-    return this.system.acquire()
+  acquire(initialize?: PoolLeaseInitializer): PoolHandle | null {
+    return this.system.acquire(initialize)
   }
 
   release(handle: PoolHandle): void {
