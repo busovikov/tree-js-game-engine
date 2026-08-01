@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { stepFollowCamera } from './follow-camera.js'
+import { stepFollowCamera, type FollowCameraPose } from './follow-camera.js'
 
 describe('Bounce Run follow camera', () => {
   it('converges consistently at 30 and 60 FPS', () => {
     const simulate = (dt: number) => {
-      let pose = {
+      let pose: FollowCameraPose = {
         position: [0, 4, -8] as const,
         target: [0, 1, 2] as const,
       }

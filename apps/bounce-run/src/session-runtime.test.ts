@@ -11,7 +11,7 @@ describe('Bounce Run session runtime', () => {
     const host = document.createElement('div')
     const ui = new UIService()
     ui.register(bounceRunUIDocument)
-    const documentInstance = ui.mount(BOUNCE_RUN_UI_IDS.document, host)
+    const documentInstance = ui.mount(bounceRunUIDocument.id, host)
     const session = createBounceRunSessionRuntime({
       scheduler: new EngineScheduler(),
       ui,

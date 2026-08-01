@@ -1,0 +1,167 @@
+{
+  "schemaVersion": 1,
+  "id": "b1200000-0000-4000-8000-000000000001",
+  "name": "Bounce Run HUD",
+  "root": "b1200000-0000-4000-8000-000000000002",
+  "elements": [
+    {
+      "id": "b1200000-0000-4000-8000-000000000002",
+      "type": "container",
+      "children": [
+        "b1200000-0000-4000-8000-000000000003",
+        "b1200000-0000-4000-8000-000000000007",
+        "b1200000-0000-4000-8000-000000000010",
+        "b1200000-0000-4000-8000-000000000013"
+      ],
+      "sizing": { "width": "100%", "height": "100%" },
+      "accessibility": { "role": "application", "label": "Bounce Run" }
+    },
+    {
+      "id": "b1200000-0000-4000-8000-000000000003",
+      "type": "container",
+      "children": [
+        "b1200000-0000-4000-8000-000000000004",
+        "b1200000-0000-4000-8000-000000000005",
+        "b1200000-0000-4000-8000-000000000006"
+      ],
+      "layout": { "direction": "column", "align": "center", "justify": "center", "gap": 14 },
+      "anchors": { "left": 0, "right": 0, "top": 0, "bottom": 0 },
+      "style": {
+        "color": "#f9fff1",
+        "backgroundColor": "#13233b",
+        "fontFamily": "system-ui, sans-serif",
+        "padding": 32
+      }
+    },
+    {
+      "id": "b1200000-0000-4000-8000-000000000004",
+      "type": "text",
+      "text": "BOUNCE RUN",
+      "style": { "color": "#f9e86c", "fontSize": 42, "fontWeight": "bold" }
+    },
+    {
+      "id": "b1200000-0000-4000-8000-000000000005",
+      "type": "text",
+      "text": "A / D or arrows to steer · Escape to pause · R to restart",
+      "style": { "color": "#d9f0ff", "fontSize": 16, "textAlign": "center" }
+    },
+    {
+      "id": "b1200000-0000-4000-8000-000000000006",
+      "type": "button",
+      "text": "Start run",
+      "activateEvent": "b1200000-0000-4000-8000-000000000030",
+      "accessibility": { "label": "Start Bounce Run" },
+      "style": {
+        "color": "#102038",
+        "backgroundColor": "#f9e86c",
+        "fontSize": 20,
+        "fontWeight": "bold",
+        "padding": 14,
+        "borderColor": "#ffffff",
+        "borderWidth": 2,
+        "borderRadius": 12,
+        "cursor": "pointer"
+      }
+    },
+    {
+      "id": "b1200000-0000-4000-8000-000000000007",
+      "type": "container",
+      "children": ["b1200000-0000-4000-8000-000000000008", "b1200000-0000-4000-8000-000000000009"],
+      "layout": { "direction": "column", "gap": 4 },
+      "anchors": { "left": 18, "top": 18 },
+      "style": {
+        "color": "#ffffff",
+        "backgroundColor": "#13233b",
+        "fontFamily": "system-ui, sans-serif",
+        "padding": 12,
+        "borderColor": "#77d9ff",
+        "borderWidth": 2,
+        "borderRadius": 10
+      }
+    },
+    {
+      "id": "b1200000-0000-4000-8000-000000000008",
+      "type": "text",
+      "text": "start",
+      "accessibility": { "live": "polite" },
+      "style": { "color": "#f9e86c", "fontSize": 16, "fontWeight": "bold" }
+    },
+    {
+      "id": "b1200000-0000-4000-8000-000000000009",
+      "type": "text",
+      "text": "Measuring baseline…",
+      "style": { "color": "#d9f0ff", "fontSize": 12 }
+    },
+    {
+      "id": "b1200000-0000-4000-8000-000000000010",
+      "type": "container",
+      "children": ["b1200000-0000-4000-8000-000000000011", "b1200000-0000-4000-8000-000000000012"],
+      "layout": { "direction": "column", "align": "center", "justify": "center", "gap": 14 },
+      "anchors": { "left": 0, "right": 0, "top": 0, "bottom": 0 },
+      "style": {
+        "color": "#ffffff",
+        "backgroundColor": "#26344f",
+        "fontFamily": "system-ui, sans-serif",
+        "padding": 32
+      }
+    },
+    {
+      "id": "b1200000-0000-4000-8000-000000000011",
+      "type": "text",
+      "text": "Paused",
+      "style": { "color": "#77d9ff", "fontSize": 36, "fontWeight": "bold" }
+    },
+    {
+      "id": "b1200000-0000-4000-8000-000000000012",
+      "type": "button",
+      "text": "Resume",
+      "activateEvent": "b1200000-0000-4000-8000-000000000031",
+      "style": {
+        "color": "#102038",
+        "backgroundColor": "#77d9ff",
+        "fontSize": 18,
+        "padding": 12,
+        "borderRadius": 10,
+        "cursor": "pointer"
+      }
+    },
+    {
+      "id": "b1200000-0000-4000-8000-000000000013",
+      "type": "container",
+      "children": ["b1200000-0000-4000-8000-000000000014", "b1200000-0000-4000-8000-000000000015"],
+      "layout": { "direction": "column", "align": "center", "justify": "center", "gap": 14 },
+      "anchors": { "left": 0, "right": 0, "top": 0, "bottom": 0 },
+      "style": {
+        "color": "#ffffff",
+        "backgroundColor": "#3b1835",
+        "fontFamily": "system-ui, sans-serif",
+        "padding": 32
+      }
+    },
+    {
+      "id": "b1200000-0000-4000-8000-000000000014",
+      "type": "text",
+      "text": "Run over",
+      "style": { "color": "#ff7a99", "fontSize": 36, "fontWeight": "bold" }
+    },
+    {
+      "id": "b1200000-0000-4000-8000-000000000015",
+      "type": "button",
+      "text": "Run again",
+      "activateEvent": "b1200000-0000-4000-8000-000000000032",
+      "style": {
+        "color": "#321122",
+        "backgroundColor": "#ffb5c7",
+        "fontSize": 18,
+        "padding": 12,
+        "borderRadius": 10,
+        "cursor": "pointer"
+      }
+    }
+  ],
+  "events": [
+    { "id": "b1200000-0000-4000-8000-000000000030", "name": "start-session", "payload": "none" },
+    { "id": "b1200000-0000-4000-8000-000000000031", "name": "resume-session", "payload": "none" },
+    { "id": "b1200000-0000-4000-8000-000000000032", "name": "restart-session", "payload": "none" }
+  ]
+}

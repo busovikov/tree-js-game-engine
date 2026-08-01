@@ -54,6 +54,43 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.19.21)(happy-dom@15.11.7)
 
+  apps/bounce-run:
+    dependencies:
+      '@haku/assets':
+        specifier: workspace:*
+        version: link:../../packages/assets
+      '@haku/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@haku/engine':
+        specifier: workspace:*
+        version: link:../../packages/engine
+      '@haku/graph':
+        specifier: workspace:*
+        version: link:../../packages/graph
+      '@haku/graph-runtime':
+        specifier: workspace:*
+        version: link:../../packages/graph-runtime
+      '@haku/physics-rapier':
+        specifier: workspace:*
+        version: link:../../packages/physics-rapier
+      '@haku/pool':
+        specifier: workspace:*
+        version: link:../../packages/pool
+      '@haku/schema':
+        specifier: workspace:*
+        version: link:../../packages/schema
+      '@haku/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vite:
+        specifier: ^6.0.3
+        version: 6.4.3(@types/node@22.19.21)
+
   apps/editor:
     dependencies:
       '@haku/editor':

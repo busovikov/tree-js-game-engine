@@ -1,0 +1,67 @@
+{
+  "entities": [
+    {
+      "id": "b1600000-0000-4000-8000-000000000001",
+      "name": "Pooled platform",
+      "parent": null,
+      "activeSelf": true,
+      "components": [
+        {
+          "type": "40000000-0000-4000-8000-000000000001",
+          "data": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+        },
+        {
+          "type": "40000000-0000-4000-8000-000000000004",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": { "width": 4, "height": 0.6, "depth": 6 },
+            "material": {
+              "materialType": "toon",
+              "color": "#36c9a3",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false
+            },
+            "castShadow": true,
+            "receiveShadow": true
+          }
+        },
+        {
+          "type": "40000000-0000-4000-8000-000000000009",
+          "data": {
+            "shape": "box",
+            "halfExtents": [2, 0.3, 3],
+            "friction": 0.5,
+            "restitution": 0.05
+          }
+        }
+      ]
+    },
+    {
+      "id": "b1600000-0000-4000-8000-000000000002",
+      "name": "Platform stripe",
+      "parent": "b1600000-0000-4000-8000-000000000001",
+      "activeSelf": true,
+      "components": [
+        {
+          "type": "40000000-0000-4000-8000-000000000001",
+          "data": { "position": [0, 0.34, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+        },
+        {
+          "type": "40000000-0000-4000-8000-000000000004",
+          "data": {
+            "geometryType": "BoxGeometry",
+            "geometryParams": { "width": 3.5, "height": 0.08, "depth": 0.35 },
+            "material": {
+              "materialType": "basic",
+              "color": "#f9e86c",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,161 @@
+{
+  "schemaVersion": 1,
+  "metadata": {
+    "name": "Bounce Run vertical slice",
+    "activeCameraId": "b1700000-0000-4000-8000-000000000001"
+  },
+  "renderSettings": {
+    "version": 1,
+    "features": { "toneMapping": true, "shadows": true },
+    "toneMapping": "aces",
+    "toneMappingExposure": 1.1,
+    "outputColorSpace": "srgb",
+    "background": { "type": "color", "color": "#102038" },
+    "shadows": {
+      "enabled": true,
+      "quality": "medium",
+      "type": "pcfsoft",
+      "mapSize": 1024,
+      "maxCasters": 1,
+      "bias": -0.0001,
+      "normalBias": 0.02,
+      "radius": 2,
+      "autoUpdate": true,
+      "cameraSize": 40,
+      "cameraDistance": 100,
+      "followCamera": true,
+      "followEditorCamera": false,
+      "anchorGroundY": 0,
+      "anchorMaxDistanceFactor": 4,
+      "anchorFallbackDistanceFactor": 0.5
+    },
+    "ambient": { "color": "#bde6ff", "intensity": 0.45 },
+    "postProcessing": { "enabled": false, "effects": [] },
+    "defaultLayer": 0
+  },
+  "prototypes": {},
+  "entities": [
+    {
+      "id": "b1700000-0000-4000-8000-000000000001",
+      "name": "Follow camera",
+      "parent": null,
+      "activeSelf": true,
+      "components": [
+        {
+          "type": "40000000-0000-4000-8000-000000000001",
+          "data": { "position": [0, 6, -10], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+        },
+        {
+          "type": "40000000-0000-4000-8000-000000000002",
+          "data": { "fov": 55, "near": 0.1, "far": 180 }
+        }
+      ]
+    },
+    {
+      "id": "b1700000-0000-4000-8000-000000000002",
+      "name": "Bounce ball",
+      "parent": null,
+      "activeSelf": true,
+      "components": [
+        {
+          "type": "40000000-0000-4000-8000-000000000001",
+          "data": { "position": [0, 3, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+        },
+        {
+          "type": "40000000-0000-4000-8000-000000000004",
+          "data": {
+            "geometryType": "SphereGeometry",
+            "geometryParams": { "radius": 0.55, "widthSegments": 24, "heightSegments": 16 },
+            "material": {
+              "materialType": "toon",
+              "color": "#ff6f61",
+              "opacity": 1,
+              "transparent": false,
+              "wireframe": false
+            },
+            "castShadow": true,
+            "receiveShadow": false
+          }
+        },
+        {
+          "type": "40000000-0000-4000-8000-000000000009",
+          "data": { "shape": "sphere", "radius": 0.55, "friction": 0.15, "restitution": 0.05 }
+        },
+        {
+          "type": "40000000-0000-4000-8000-000000000010",
+          "data": {
+            "type": "dynamic",
+            "massMode": "explicit",
+            "mass": 1,
+            "angularDamping": 0.8,
+            "linearDamping": 0,
+            "gravityScale": 1,
+            "canSleep": false,
+            "ccdEnabled": true,
+            "lockPosition": [false, false, false],
+            "lockRotation": [false, false, false],
+            "interpolation": "interpolate",
+            "contactMonitor": true,
+            "maxReportedContacts": 4
+          }
+        }
+      ]
+    },
+    {
+      "id": "b1700000-0000-4000-8000-000000000003",
+      "name": "Sun",
+      "parent": null,
+      "activeSelf": true,
+      "components": [
+        {
+          "type": "40000000-0000-4000-8000-000000000001",
+          "data": {
+            "position": [6, 12, -4],
+            "rotation": [-0.25, 0.3, 0.08, 0.91],
+            "scale": [1, 1, 1]
+          }
+        },
+        {
+          "type": "40000000-0000-4000-8000-000000000003",
+          "data": {
+            "type": "directional",
+            "color": "#fff4cc",
+            "intensity": 2.2,
+            "castShadow": true,
+            "shadowMapSize": 1024,
+            "shadowBias": -0.0001,
+            "shadowNormalBias": 0.02,
+            "localPosition": [0, 0, 0],
+            "targetPosition": [0, 0, 8]
+          }
+        }
+      ]
+    },
+    {
+      "id": "b1700000-0000-4000-8000-000000000004",
+      "name": "Platform pool",
+      "parent": null,
+      "activeSelf": true,
+      "components": [
+        {
+          "type": "40000000-0000-4000-8000-000000000001",
+          "data": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+        },
+        {
+          "type": "40000000-0000-4000-8000-000000000024",
+          "data": {
+            "template": {
+              "$ref": "b1500000-0000-4000-8000-000000000002",
+              "type": "20000000-0000-4000-8000-000000000002"
+            },
+            "capacity": 6,
+            "maximum": 6,
+            "prewarm": 6,
+            "expansionPolicy": "fixed",
+            "exhaustionPolicy": "return-null"
+          }
+        }
+      ]
+    }
+  ]
+}
