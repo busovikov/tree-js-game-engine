@@ -32,27 +32,27 @@ The program is done only when:
 
 ## Milestone map
 
-| ID   | Milestone                                                       | Depends on | Status                                   |
-| ---- | --------------------------------------------------------------- | ---------- | ---------------------------------------- |
-| M01  | Audit and target documentation                                  | —          | Complete with the documentation baseline |
-| M02  | Asset IDs, manifests, and decentralized registries              | M01        | Complete                                 |
-| M03  | World activation, lifecycle, and unified scheduler              | M02        | Complete                                 |
-| M04  | Graph schema, type/effect system, and compiler                  | M03        | Complete                                 |
-| M05  | Graph interpreter, domains, queues, and tracing                 | M04        | Complete                                 |
-| M06  | Checkpoint, rewind, async policies, and persistence hooks       | M05        | Complete                                 |
-| M07  | Minimal graph editor and diagnostic scene                       | M06        | Complete                                 |
-| M08  | Browser project TypeScript/build/trust tooling                  | M07        | Complete                                 |
-| M09  | Custom components and editor extensions                         | M08        | Complete                                 |
-| M10a | Pool and activation integrations                                | M09        | Complete                                 |
-| M10b | DOM UI runtime and visual UI editor                             | M09        | Complete                                 |
-| M10c | Audio contracts, Web Audio, and editor support                  | M09        | Complete                                 |
-| M10d | Save storage, replication, and platform contracts               | M09        | Complete                                 |
-| M10e | Browser static export and ZIP                                   | M10b–M10d  | Complete                                 |
-| M10f | Cross-service graph nodes and contract integration              | M10a–M10e  | Complete                                 |
-| M11  | Bounce Run vertical slice                                       | M10f       | Pending                                  |
-| M12  | Generator, seed/replay, QA harness, and automated browser tests | M11        | Pending                                  |
-| M13  | Full gameplay, polish, saves, audio, and stabilization          | M12        | Pending                                  |
-| M14  | Final export, quality audit, and documentation                  | M13        | Pending                                  |
+| ID   | Milestone                                                       | Depends on | Status                                       |
+| ---- | --------------------------------------------------------------- | ---------- | -------------------------------------------- |
+| M01  | Audit and target documentation                                  | —          | Complete with the documentation baseline     |
+| M02  | Asset IDs, manifests, and decentralized registries              | M01        | Complete                                     |
+| M03  | World activation, lifecycle, and unified scheduler              | M02        | Complete                                     |
+| M04  | Graph schema, type/effect system, and compiler                  | M03        | Complete                                     |
+| M05  | Graph interpreter, domains, queues, and tracing                 | M04        | Complete                                     |
+| M06  | Checkpoint, rewind, async policies, and persistence hooks       | M05        | Complete                                     |
+| M07  | Minimal graph editor and diagnostic scene                       | M06        | Complete                                     |
+| M08  | Browser project TypeScript/build/trust tooling                  | M07        | Complete                                     |
+| M09  | Custom components and editor extensions                         | M08        | Complete                                     |
+| M10a | Pool and activation integrations                                | M09        | Complete                                     |
+| M10b | DOM UI runtime and visual UI editor                             | M09        | Complete                                     |
+| M10c | Audio contracts, Web Audio, and editor support                  | M09        | Complete                                     |
+| M10d | Save storage, replication, and platform contracts               | M09        | Complete                                     |
+| M10e | Browser static export and ZIP                                   | M10b–M10d  | Complete                                     |
+| M10f | Cross-service graph nodes and contract integration              | M10a–M10e  | Complete                                     |
+| M11  | Bounce Run vertical slice                                       | M10f       | Implementation complete; final gates pending |
+| M12  | Generator, seed/replay, QA harness, and automated browser tests | M11        | Pending                                      |
+| M13  | Full gameplay, polish, saves, audio, and stabilization          | M12        | Pending                                      |
+| M14  | Final export, quality audit, and documentation                  | M13        | Pending                                      |
 
 ## M01 — Audit and target documentation
 
@@ -395,14 +395,30 @@ Scope:
 
 Acceptance:
 
-- [ ] A/D and arrows control lateral movement; R restarts; Escape pauses.
-- [ ] Rapier sphere uses CCD and produces one bounce event per valid landing.
-- [ ] Bounce height is predictable at 60 and 30 FPS and across multi-substep frames.
-- [ ] Side/edge contacts do not produce double landing.
-- [ ] Session rules and UI orchestration are graphs, not app-local system shortcuts.
-- [ ] Public APIs only; no editor/React dependency.
-- [ ] Real Chrome agent can start, play, fail, and restart without console errors.
-- [ ] Initial performance baselines are recorded and budgets proposed.
+- [x] A/D and arrows control lateral movement; R restarts; Escape pauses.
+- [x] Rapier sphere uses CCD and produces one bounce event per valid landing.
+- [x] Bounce height is predictable at 60 and 30 FPS and across multi-substep frames.
+- [x] Side/edge contacts do not produce double landing.
+- [x] Session rules and UI orchestration are graphs, not app-local system shortcuts.
+- [x] Public APIs only; no editor/React dependency.
+- [x] Real Chrome agent can start, play, fail, and restart without console errors.
+- [x] Initial performance baselines are recorded and budgets proposed.
+
+Evidence and provisional budgets from the first working slice:
+
+- Chrome at `http://127.0.0.1:5191/` reported an average `8.3 ms` frame over the rolling
+  30-frame HUD sample (`120 FPS` on the test display), with `16` live entities and a fixed
+  `6/6` active/total platform pool. Start, collision-driven play, pause, resume, end-of-track
+  failure, and restart completed without application console errors.
+- The production Vite build is `3,168.09 kB` minified and `1,075.24 kB` gzip in one JavaScript
+  chunk. The engine remains the dominant dependency; splitting and final export audit remain
+  M14 work.
+- Until longer M13/M14 runs establish hard device tiers, the M11 budgets are: rolling average
+  frame time at or below `16.7 ms` (provisional alert ceiling `25 ms`), exactly six platform
+  pool records with no expansion, at most `16` entities for this finite slice, no application
+  console errors, and a production JavaScript ceiling of `3.5 MB` minified / `1.2 MB` gzip.
+  Fixed simulation remains `60 Hz` with at most three catch-up substeps; memory-growth budgets
+  intentionally wait for the M13 long-run route.
 
 ## M12 — Generator, seed/replay, QA harness, and automation
 

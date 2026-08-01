@@ -125,41 +125,6 @@ async function main(): Promise<void> {
   ui.mount(uiDocument.id, hudHost)
   const session = createBounceRunSessionRuntime({ scheduler: engine.scheduler, ui })
 
-  let controlSystem: BounceRunControlSystem
-  let landingSystem: BounceRunLandingSystem
-  let failureSystem: BounceRunFailureSystem
-  let cameraSystem: BounceRunCameraSystem
-
-  const resetRun = (): void => {
-    physics.resetBodyState(BALL_ID, BALL_SPAWN, loaded.world)
-    input.disable()
-    input.enable()
-    controlSystem.reset()
-    landingSystem.reset()
-    failureSystem.reset()
-    cameraSystem.reset()
-  }
-  const startRun = (): void => {
-    resetRun()
-    session.start()
-    engine.setPaused(false)
-  }
-  const restartRun = (): void => {
-    if (session.state() === 'start') return
-    resetRun()
-    session.restart()
-    engine.setPaused(false)
-  }
-  const togglePause = (): void => {
-    if (session.state() === 'active') {
-      session.pause()
-      engine.setPaused(true)
-    } else if (session.state() === 'paused') {
-      session.resume()
-      engine.setPaused(false)
-    }
-  }
-
   const input = new InputManager({
     keyboardTarget: window,
     pointerTarget: canvas,
@@ -177,13 +142,18 @@ async function main(): Promise<void> {
   input.enable()
 
   const inputSystem = new BounceRunInputSystem(input, togglePause, restartRun)
-  controlSystem = new BounceRunControlSystem(BALL_ID, physics, inputSystem)
-  landingSystem = new BounceRunLandingSystem(BALL_ID, contacts, controlSystem, engine.scheduler)
-  failureSystem = new BounceRunFailureSystem(BALL_ID, physics, () => {
+  const controlSystem = new BounceRunControlSystem(BALL_ID, physics, inputSystem)
+  const landingSystem = new BounceRunLandingSystem(
+    BALL_ID,
+    contacts,
+    controlSystem,
+    engine.scheduler,
+  )
+  const failureSystem = new BounceRunFailureSystem(BALL_ID, physics, () => {
     session.fail()
     engine.setPaused(true)
   })
-  cameraSystem = new BounceRunCameraSystem(BALL_ID, CAMERA_ID, physics)
+  const cameraSystem = new BounceRunCameraSystem(BALL_ID, CAMERA_ID, physics)
   const performanceSystem = new BounceRunPerformanceSystem(ui, platformPool, engine.scheduler)
   const systems: ISystem[] = [
     inputSystem,
@@ -194,6 +164,36 @@ async function main(): Promise<void> {
     performanceSystem,
   ]
   systems.forEach((system) => engine.addSystem(system))
+
+  function resetRun(): void {
+    physics.resetBodyState(BALL_ID, BALL_SPAWN, loaded.world)
+    input.disable()
+    input.enable()
+    controlSystem.reset()
+    landingSystem.reset()
+    failureSystem.reset()
+    cameraSystem.reset()
+  }
+  function startRun(): void {
+    resetRun()
+    session.start()
+    engine.setPaused(false)
+  }
+  function restartRun(): void {
+    if (session.state() === 'start') return
+    resetRun()
+    session.restart()
+    engine.setPaused(false)
+  }
+  function togglePause(): void {
+    if (session.state() === 'active') {
+      session.pause()
+      engine.setPaused(true)
+    } else if (session.state() === 'paused') {
+      session.resume()
+      engine.setPaused(false)
+    }
+  }
 
   const unsubscribeUI = ui.subscribe((event) => {
     if (event.eventId === BOUNCE_RUN_UI_IDS.events.start) startRun()
