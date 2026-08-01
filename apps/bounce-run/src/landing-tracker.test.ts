@@ -24,6 +24,7 @@ describe('LandingTracker', () => {
       tick: 12,
       platformId: 'platform',
       normalUp: 1,
+      point: [0, 0, 0],
     })
     expect(tracker.consume(12, [contact('ball', 'platform-2', [0, -1, 0])], -5)).toBeNull()
   })
@@ -45,6 +46,6 @@ describe('LandingTracker', () => {
         [contact('platform', 'ball', [0, 1, 0]), contact('platform', 'ball', [0, 1, 0])],
         -6,
       ),
-    ).toEqual({ tick: 4, platformId: 'platform', normalUp: 1 })
+    ).toEqual({ tick: 4, platformId: 'platform', normalUp: 1, point: [0, 0, 0] })
   })
 })

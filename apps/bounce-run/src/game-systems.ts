@@ -22,6 +22,7 @@ import { stepFollowCamera, type FollowCameraPose } from './follow-camera.js'
 import type { PoolBackedBounceRunRoute } from './infinite-route.js'
 import { LandingTracker } from './landing-tracker.js'
 import { BOUNCE_RUN_UI_IDS } from './ui-document.js'
+import type { BounceRunEffectsComposition } from './effects-composition.js'
 
 export class BounceRunInputSystem implements ISystem {
   readonly phase = 'FrameInput' as const
@@ -117,16 +118,17 @@ export class BounceRunLandingSystem implements ISystem {
 
   constructor(
     ball: EntityId,
-    private readonly contacts: PhysicsContactSystem,
+    private readonly contacts: PhysicsContactReader,
     private readonly control: BounceRunControlSystem,
     private readonly scheduler: EngineScheduler,
     private readonly route?: PoolBackedBounceRunRoute,
     private readonly score?: BounceRunRouteScoreRuntime,
+    private readonly effects?: Pick<BounceRunEffectsComposition, 'landing'>,
   ) {
     this.tracker = new LandingTracker(ball.value)
   }
 
-  update(): void {
+  update(_world?: IWorld): void {
     const landing = this.tracker.consume(
       this.scheduler.tickNumber,
       this.contacts.peekCollisionEvents(),
@@ -135,10 +137,14 @@ export class BounceRunLandingSystem implements ISystem {
     if (landing) {
       const descriptor = this.route?.platformDescriptor(entityId(landing.platformId))
       this.control.queueLanding(descriptor?.behavior.bounceHeight)
-      const platformIndex = this.route?.activePlatforms().find(
-        ({ entity }) => entity.value === landing.platformId,
-      )?.platformIndex
+      const platformIndex = this.route
+        ?.activePlatforms()
+        .find(({ entity }) => entity.value === landing.platformId)?.platformIndex
       if (platformIndex !== undefined) this.score?.awardRouteProgress(platformIndex)
+      this.effects?.landing({
+        platform: entityId(landing.platformId),
+        position: landing.point,
+      })
     }
   }
 
@@ -168,6 +174,7 @@ export class BounceRunBonusCollectionSystem implements ISystem {
     private readonly contacts: PhysicsContactReader,
     private readonly route: PoolBackedBounceRunRoute,
     private readonly session: BounceRunBonusScoreRuntime,
+    private readonly effects?: Pick<BounceRunEffectsComposition, 'bonus'>,
   ) {}
 
   update(world: IWorld): void {
@@ -181,8 +188,11 @@ export class BounceRunBonusCollectionSystem implements ISystem {
         continue
       }
       const descriptor = this.route.collectBonus(bonus.entity)
-      if (descriptor && !this.session.collectBonus()) {
-        throw new Error('Active Bounce Run session rejected a collected bonus')
+      if (descriptor) {
+        if (!this.session.collectBonus()) {
+          throw new Error('Active Bounce Run session rejected a collected bonus')
+        }
+        this.effects?.bonus(descriptor.position)
       }
     }
   }
@@ -294,6 +304,24 @@ export class BounceRunCameraSystem implements ISystem {
 
   reset(): void {
     this.pose = null
+  }
+}
+
+export class BounceRunTrailSystem implements ISystem {
+  readonly phase = 'LateUpdate' as const
+  readonly localOrder = -10
+
+  constructor(
+    private readonly ball: EntityId,
+    private readonly physics: PhysicsWorldSystem,
+    private readonly effects: Pick<BounceRunEffectsComposition, 'trail'>,
+  ) {}
+
+  update(world: IWorld, dt: number): void {
+    if (dt <= 0) return
+    const transform = world.getComponent(this.ball, TransformComponent)
+    if (!transform) return
+    this.effects.trail(this.physics.resolvePresentationTransform(this.ball, transform).position)
   }
 }
 

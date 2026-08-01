@@ -137,8 +137,15 @@ describe('Bounce Run bounded presentation composition', () => {
       difficultySchedule: SCHEDULE,
       bonus: BONUS,
     })
+    expect(
+      route.activePlatforms().map(({ entity }) => {
+        const material = world.getComponent(entity, MeshRendererComponent)?.material
+        return material && 'color' in material ? material.color : null
+      }),
+    ).toEqual(['#35c6d0', '#35c6d0', '#48d597', '#ff9f5a', '#b46cff'])
 
     let velocity: readonly [number, number, number] = [0, -5, 0]
+    let bodyY = 3
     let collisionNormal: readonly [number, number, number] = [0, -1, 0]
     const landedPlatform = route.activePlatforms()[1]!
     const contacts = {
@@ -163,14 +170,18 @@ describe('Bounce Run bounded presentation composition', () => {
       setBodyLinearVelocity: (_entity: unknown, next: readonly [number, number, number]) => {
         velocity = next
       },
-      getBodyTransform: () => ({ position: [0, 3, 0], rotation: [0, 0, 0, 1] }),
+      getBodyTransform: () => ({ position: [0, bodyY, 0], rotation: [0, 0, 0, 1] }),
       resolvePresentationTransform: (
         _entity: unknown,
         transform: ReturnType<typeof TransformComponent.defaults>,
       ) => transform,
     } as unknown as PhysicsWorldSystem
     const scheduler = new EngineScheduler()
-    const input = new BounceRunInputSystem(new InputManager(), () => {}, () => {})
+    const input = new BounceRunInputSystem(
+      new InputManager(),
+      () => {},
+      () => {},
+    )
     const control = new BounceRunControlSystem(BALL, physics, input)
     const landing = new BounceRunLandingSystem(
       BALL,
@@ -232,10 +243,7 @@ describe('Bounce Run bounded presentation composition', () => {
       sessionState = 'game-over'
       composition.fail([0, -7, 0])
     })
-    ;(physics.getBodyTransform as unknown as () => object) = () => ({
-      position: [0, -7, 0],
-      rotation: [0, 0, 0, 1],
-    })
+    bodyY = -7
     failure.update()
     failure.update()
     effects.update(world, 1 / 60)

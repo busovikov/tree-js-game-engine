@@ -39,12 +39,14 @@ import {
   BounceRunLandingSystem,
   BounceRunPerformanceSystem,
   BounceRunRouteSystem,
+  BounceRunTrailSystem,
 } from './game-systems.js'
 import { createPoolBackedBounceRunRoute } from './infinite-route.js'
 import type { BounceRunDifficultySchedule } from './route-generator.js'
 import { instantiatePrefabDefinition } from './prefab-instance.js'
 import { BOUNCE_RUN_AUDIO_CLIP_DATA, createBounceRunAudioComposition } from './audio-composition.js'
 import { BOUNCE_RUN_UI_IDS, loadBounceRunUIDocument } from './ui-document.js'
+import { createBounceRunEffectsComposition } from './effects-composition.js'
 
 const BALL_ID = entityId('b1700000-0000-4000-8000-000000000002')
 const CAMERA_ID = entityId('b1700000-0000-4000-8000-000000000001')
@@ -196,6 +198,20 @@ async function main(): Promise<void> {
     difficultySchedule: ROUTE_DIFFICULTY,
     bonus: ROUTE_BONUS,
   })
+  const presentationEffects = engine.createPresentationEffects({
+    burstCapacity: 18,
+    burstQueueCapacity: 12,
+    trailCapacity: 28,
+    trailSampleInterval: 1 / 60,
+    trailLifetime: 0.55,
+    trailColor: '#baf7ff',
+    trailPointSize: 0.18,
+  })
+  const effectsComposition = createBounceRunEffectsComposition({
+    effects: presentationEffects,
+    platformPool,
+    bonusPool,
+  })
 
   const ui = new UIService()
   const uiDocument = await loadBounceRunUIDocument()
@@ -260,9 +276,15 @@ async function main(): Promise<void> {
     engine.scheduler,
     route,
     session,
+    effectsComposition,
   )
   const failureSystem = new BounceRunFailureSystem(BALL_ID, physics, () => {
-    void audioComposition.fail().catch((error: unknown) => {
+    const failure = audioComposition.fail()
+    if (session.state() === 'game-over') {
+      const position = physics.getBodyTransform(BALL_ID)?.position
+      if (position) effectsComposition.fail(position)
+    }
+    void failure.catch((error: unknown) => {
       console.error('[bounce-run] fail transition failed', error)
     })
   })
@@ -272,7 +294,9 @@ async function main(): Promise<void> {
     contacts,
     route,
     session,
+    effectsComposition,
   )
+  const trailSystem = new BounceRunTrailSystem(BALL_ID, physics, effectsComposition)
   const cameraSystem = new BounceRunCameraSystem(BALL_ID, CAMERA_ID, physics)
   const performanceSystem = new BounceRunPerformanceSystem(ui, platformPool, engine.scheduler)
   const systems: ISystem[] = [
@@ -282,6 +306,7 @@ async function main(): Promise<void> {
     routeSystem,
     bonusCollectionSystem,
     failureSystem,
+    trailSystem,
     cameraSystem,
     performanceSystem,
   ]
@@ -332,6 +357,7 @@ async function main(): Promise<void> {
     landingSystem.reset()
     failureSystem.reset()
     cameraSystem.reset()
+    effectsComposition.reset()
   }
   function startRun(): Promise<void> {
     return audioComposition.start()
@@ -366,6 +392,8 @@ async function main(): Promise<void> {
       ui.destroyAll()
       systems.forEach((system) => engine.removeSystem(system))
       route.dispose()
+      engine.removeSystem(presentationEffects)
+      effectsComposition.dispose()
       platformPool.clear()
       bonusPool.clear()
       engine.removeSystem(contacts)

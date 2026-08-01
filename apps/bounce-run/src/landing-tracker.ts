@@ -1,4 +1,5 @@
 import type { PhysicsCollisionEvent } from '@haku/engine'
+import type { Vec3 } from '@haku/schema'
 
 export interface LandingTrackerOptions {
   readonly minimumUpNormal?: number
@@ -9,6 +10,7 @@ export interface LandingEvent {
   readonly tick: number
   readonly platformId: string
   readonly normalUp: number
+  readonly point: Vec3
 }
 
 /**
@@ -58,7 +60,7 @@ export class LandingTracker {
         const normalUp = event.entityA === this.entityId ? -contact.normal[1] : contact.normal[1]
         if (Number.isFinite(normalUp) && normalUp >= this.minimumUpNormal) {
           this.lastLandingTick = tick
-          return { tick, platformId, normalUp }
+          return { tick, platformId, normalUp, point: [...contact.point] as Vec3 }
         }
       }
     }

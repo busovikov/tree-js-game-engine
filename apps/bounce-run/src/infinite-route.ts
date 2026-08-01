@@ -59,6 +59,13 @@ interface ActiveBonusLease {
   readonly descriptor: BounceRunBonusDescriptor
 }
 
+const PLATFORM_COLORS: Readonly<Record<BounceRunRoutePlatform['variant'], string>> = {
+  normal: '#35c6d0',
+  wide: '#48d597',
+  narrow: '#ff9f5a',
+  bounce: '#b46cff',
+}
+
 /** Materializes a deterministic route through an exclusive public entity pool. */
 export function createPoolBackedBounceRunRoute(
   options: PoolBackedBounceRunRouteOptions,
@@ -301,6 +308,16 @@ function materializePlatform(
       height: descriptor.size[1],
       depth: descriptor.size[2],
     },
+    material:
+      'color' in mesh.material
+        ? {
+            ...mesh.material,
+            color: PLATFORM_COLORS[descriptor.variant],
+            ...(mesh.material.materialType === 'standard'
+              ? { roughness: descriptor.variant === 'bounce' ? 0.25 : 0.58 }
+              : {}),
+          }
+        : mesh.material,
   })
   world.addComponent(entity, ColliderComponent, {
     ...collider,
