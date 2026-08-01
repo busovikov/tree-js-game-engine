@@ -50,7 +50,7 @@ The program is done only when:
 | M10e | Browser static export and ZIP                                   | M10b–M10d  | Complete                                     |
 | M10f | Cross-service graph nodes and contract integration              | M10a–M10e  | Complete                                     |
 | M11  | Bounce Run vertical slice                                       | M10f       | Complete                                     |
-| M12  | Generator, seed/replay, QA harness, and automated browser tests | M11        | In progress — Chrome matrix has tool blockers |
+| M12  | Generator, seed/replay, QA harness, and automated browser tests | M11        | Complete                                     |
 | M13  | Full gameplay, polish, saves, audio, and stabilization          | M12        | Pending                                      |
 | M14  | Final export, quality audit, and documentation                  | M13        | Pending                                      |
 
@@ -450,7 +450,7 @@ Acceptance:
       unbounded attempts.
 - [x] Replay either matches state hashes or reports exact divergence.
 - [x] QA uses public action/observation APIs and cannot mutate game state directly.
-- [ ] Browser E2E covers start, input, pause, game over, restart, resize, and console errors.
+- [x] Browser E2E covers start, input, pause, game over, restart, resize, and console errors.
 - [x] QA harness is absent from production export.
 
 M12 route, infinite-pool, and replay slice evidence: `9bc30a6`, `fc35d55`, `38d9d6e`,
@@ -509,10 +509,24 @@ pause with a stable tick, UI resume, deterministic game over, immediate restart,
 1600×900 resize. Production contained no DEV QA DOM hooks, and both runs had no unexpected console
 diagnostics beyond the exact Rapier initialization warning. The installed `tab.playwright` surface
 exposes only combined `locator.press`, not separate keyboard down/up, and exposes no
-`requestfailed` event stream. Therefore one physical sustained-key hold and authoritative
-production failed-request collection remain unproved; the Browser E2E acceptance row and M12 stay
-in progress rather than treating the public action port or visible asset load as substituted
-evidence.
+`requestfailed` event stream. One physical sustained-key hold and authoritative production
+failed-request collection therefore remain unproved external-tooling risks; neither extension API
+is required by the written Browser E2E acceptance row, and no substitute evidence is claimed for
+them.
+
+M12 is Complete at `ffcc687` after the final detached clean-worktree audit. The committed bounded
+Chrome report validates as immutable version-1 evidence, and the real production-build regression
+passes with all four authoritative QA source sentinels present and all eight production QA
+sentinels absent from the single emitted Bounce Run JavaScript bundle. Focused report and
+production-boundary coverage passed 2 files / 4 tests. Full gates passed: `pnpm lint`; `pnpm
+typecheck` across all 21 runnable workspace projects; `pnpm test` with 201 passed files and 1
+skipped, 801 passed tests and 8 skipped; `pnpm build` across all 21 runnable projects after the
+documented clean-worktree `file:` dependency repacks; `pnpm depcruise` across 597 modules and 1,157
+dependencies with no new violations and 5 known violations ignored; and `./scripts/check.sh` with
+its repeated full build, the same 201-file/801-test passing suite, and `OK: all checks passed` from
+the playground production bundle audit. The ignored 159-file playground manifest was generated
+only in the detached worktree, all six generator-touched tracked scenes were explicitly restored,
+and the tracked-clean worktree was removed after verification.
 
 ## M13 — Full gameplay, polish, saves, audio, and stabilization
 
