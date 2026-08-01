@@ -453,17 +453,21 @@ Acceptance:
 - [ ] Browser E2E covers start, input, pause, game over, restart, resize, and console errors.
 - [ ] QA harness is absent from production export.
 
-M12 pure route slice evidence: `9bc30a6`, `fc35d55`, `38d9d6e`, `a4d02ab`, `c516491`, and
-`7143dd9` add the
+M12 route and infinite-pool slice evidence: `9bc30a6`, `fc35d55`, `38d9d6e`, `a4d02ab`,
+`c516491`, `7143dd9`, `cbb1202`, `296679c`, and `482586c` add the
 side-effect-free seeded generator, fixed-step analytic reachability envelope, decreasing but
 non-zero safety margins, center-to-center chained landing continuity, full candidate/selection
 logs, bounded candidate attempts, horizon-stable prefixes for infinite extension, and a
-deterministic zero-attempt fallback. Focused Vitest coverage validates invalid configuration,
-vertical/forward/lateral boundaries, route continuity, platform intersection rejection, and
-256 seeds × 128 platforms without route validation issues or attempt overflow. A headless
-Rapier comparison locks the analytic same-height landing to the collision-event tick and
-forward position used by the current 60 Hz controller. Infinite pool integration, replay,
-observations, reports, browser automation, and production QA exclusion remain incomplete.
+deterministic zero-attempt fallback. The runtime now uses an eight-instance public `EntityPool`
+window with initializer-before-activation placement, exact box geometry/collider dimensions,
+bounded acquire/release/reuse, append-only pure decision prefixes, and deterministic reset and
+dispose. Focused Vitest coverage validates invalid configuration, contained exhaustion, three
+disjoint eight-slot windows, stable entity reuse, route continuity, platform intersection
+rejection, and 256 seeds × 128 platforms without route validation issues or attempt overflow. A
+headless Rapier comparison locks the analytic same-height landing to the collision-event tick and
+forward position used by the current 60 Hz controller. User-Chrome smoke verified generated track
+rendering and restart at `pool 6/8` with no console errors. Replay, observations, reports, full
+browser automation, and production QA exclusion remain incomplete.
 
 ## M13 — Full gameplay, polish, saves, audio, and stabilization
 
