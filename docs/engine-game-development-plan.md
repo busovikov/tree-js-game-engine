@@ -456,7 +456,7 @@ Acceptance:
 M12 route, infinite-pool, and replay slice evidence: `9bc30a6`, `fc35d55`, `38d9d6e`,
 `a4d02ab`, `c516491`, `7143dd9`, `cbb1202`, `296679c`, `482586c`, `519b5fa`,
 `ee60b05`, `264882c`, `87dbf28`, `8bc0d10`, `da1f1ef`, `c471dc3`, `d20a34d`,
-`b3115b1`, and `abc9c89` add the
+`b3115b1`, `abc9c89`, `e9fd8ed`, `369144c`, `dfd597c`, and `d92279d` add the
 side-effect-free seeded generator, fixed-step analytic reachability envelope, decreasing but
 non-zero safety margins, center-to-center chained landing continuity, full candidate/selection
 logs, bounded candidate attempts, horizon-stable prefixes for infinite extension, and a
@@ -479,8 +479,14 @@ or non-plain data without invoking it, and evaluate immutable `eq`/`ne`/`lt`/`lt
 results by guarded dot/array paths. The Bounce Run adapter exposes one versioned fixed-tick snapshot
 containing only session, ball, bounded route, and pool data from public read methods; focused tests
 prove source changes and direct snapshot writes cannot mutate one another. The existing graph
-`Assert` node remains the public boolean flow assertion rather than being duplicated. Session and
-bug reports, full browser automation, and production QA exclusion remain incomplete.
+`Assert` node remains the public boolean flow assertion rather than being duplicated. Bounce Run
+now composes cloned, deeply frozen version-1 session reports from one recording, bounded ordered
+observation/assertion evidence, and bounded runtime/console error records. Bug reports add strict
+defect and root-cause fields, and canonical key-sorted UTF-8 serialization round-trips to identical
+plain data with insertion-order-independent bytes. Malformed versions, replay metadata, tick
+ranges/order, assertion references/results, error records, executable/accessor/cyclic/non-finite
+values, and excess histories are rejected transactionally. The report module remains data-only and
+unwired; full browser automation and the production-export QA exclusion boundary remain incomplete.
 
 ## M13 — Full gameplay, polish, saves, audio, and stabilization
 
