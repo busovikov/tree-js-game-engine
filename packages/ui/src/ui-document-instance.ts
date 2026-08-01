@@ -43,7 +43,10 @@ export class UIDocumentInstance {
   private readonly state = new Map<UIElementId, UIElementState>()
   private activeTheme: UIElementId | undefined
 
-  constructor(input: UIDocument, private readonly options: UIDocumentInstanceOptions = {}) {
+  constructor(
+    input: UIDocument,
+    private readonly options: UIDocumentInstanceOptions = {},
+  ) {
     this.document = UIDocumentSchema.parse(input)
     this.activeTheme = options.theme ?? this.document.defaultTheme
   }
@@ -104,7 +107,7 @@ export class UIDocumentInstance {
     const state = this.state.get(id)
     if (patch.text !== undefined) node.textContent = state?.text ?? ''
     if (patch.visible !== undefined) {
-      node.hidden = state?.visible === false || element.visible === false
+      applyVisibility(node, element, state?.visible)
     }
     if (patch.enabled !== undefined) {
       const enabled = state?.enabled ?? element.enabled
@@ -171,7 +174,7 @@ export class UIDocumentInstance {
     }
 
     node.dataset.hakuUiId = element.id
-    node.hidden = this.state.get(element.id)?.visible === false || element.visible === false
+    applyVisibility(node, element, this.state.get(element.id)?.visible)
     const enabled = this.state.get(element.id)?.enabled ?? element.enabled
     if (node instanceof ownerDocument.defaultView!.HTMLButtonElement) node.disabled = !enabled
     else node.inert = !enabled
@@ -195,9 +198,21 @@ export class UIDocumentInstance {
   }
 }
 
-function flexAlignment(value: 'start' | 'center' | 'end' | 'space-between' | 'space-around' | 'stretch'): string {
+function flexAlignment(
+  value: 'start' | 'center' | 'end' | 'space-between' | 'space-around' | 'stretch',
+): string {
   if (value === 'start' || value === 'end') return `flex-${value}`
   return value
+}
+
+function applyVisibility(
+  node: HTMLElement,
+  element: UIElement,
+  runtimeVisible: boolean | undefined,
+): void {
+  const hidden = runtimeVisible === false || element.visible === false
+  node.hidden = hidden
+  node.style.display = hidden ? 'none' : element.type === 'container' ? 'flex' : ''
 }
 
 function cssLength(value: UILength): string {
@@ -205,7 +220,14 @@ function cssLength(value: UILength): string {
 }
 
 function applySizing(style: CSSStyleDeclaration, sizing: UISizing): void {
-  for (const property of ['width', 'height', 'minWidth', 'minHeight', 'maxWidth', 'maxHeight'] as const) {
+  for (const property of [
+    'width',
+    'height',
+    'minWidth',
+    'minHeight',
+    'maxWidth',
+    'maxHeight',
+  ] as const) {
     const value = sizing[property]
     if (value !== undefined) style[property] = cssLength(value)
   }
