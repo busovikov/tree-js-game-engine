@@ -1,0 +1,157 @@
+{
+  "version": 1,
+  "scenario": "bounce-run-critical-workflow",
+  "browser": {
+    "name": "Chrome",
+    "connection": "extension",
+    "automation": "tab.playwright",
+    "separateKeyDownUpAvailable": false
+  },
+  "officialSources": [
+    "https://playwright.dev/docs/api/class-keyboard",
+    "https://playwright.dev/docs/api/class-page#page-set-viewport-size",
+    "https://playwright.dev/docs/api/class-page#page-event-console",
+    "https://playwright.dev/docs/api/class-page#page-event-request-failed"
+  ],
+  "limitations": [
+    "The installed tab.playwright surface exposes locator.press but no keyboard.down or keyboard.up, so one physical multi-tick KeyD hold cannot be proved without changing the required browser surface.",
+    "The installed Chrome surface exposes console logs but no requestfailed event stream; production resource-failure collection therefore remains unproved even though all local assets rendered and no console error reported a load failure."
+  ],
+  "runs": [
+    {
+      "mode": "development",
+      "qaHooks": "present",
+      "steps": [
+        {
+          "id": "start",
+          "status": "passed",
+          "evidence": [
+            "Start Bounce Run entered active state with the public observation bridge at tick 24 and x 0.000."
+          ]
+        },
+        {
+          "id": "keyboard-input",
+          "status": "blocked",
+          "evidence": [
+            "Before the engine fix, one real locator.press KeyD was lost between fixed snapshots and the run ended at tick 155 with x 0.000.",
+            "After the generic input fix, six real locator.press KeyD events across 55 ms intervals moved x from 0.000 at tick 24 to 0.220 at tick 57.",
+            "The existing public DEV hold-right action port proved sustained multi-tick control to x 2.242, but it is not claimed as a physical keyboard hold.",
+            "Separate physical KeyD down and up calls are unavailable on the installed tab.playwright API."
+          ]
+        },
+        {
+          "id": "pause-stability",
+          "status": "passed",
+          "evidence": [
+            "Escape displayed Paused and the public observation count stayed at tick 222 across a further 300 ms."
+          ]
+        },
+        {
+          "id": "resume",
+          "status": "passed",
+          "evidence": ["The visible Resume button returned the paused run to normal simulation."]
+        },
+        {
+          "id": "game-over",
+          "status": "passed",
+          "evidence": [
+            "The seeded run deterministically reached visible Run over at tick 280; the immutable QA report contained 280 frames and 280 observations."
+          ]
+        },
+        {
+          "id": "restart",
+          "status": "passed",
+          "evidence": ["Run again immediately returned the session to active with reset x 0.000."]
+        },
+        {
+          "id": "resize",
+          "status": "passed",
+          "evidence": [
+            "At 1280x720 and 1600x900, body, canvas CSS size, and HUD size matched the requested viewport and the game continued rendering."
+          ]
+        },
+        {
+          "id": "diagnostics",
+          "status": "passed",
+          "evidence": [
+            "The DEV QA bridge reported zero diagnostics and the 280-tick session report contained an empty errors array.",
+            "Chrome reported no error and only the exact whitelisted Rapier initialization warning."
+          ]
+        }
+      ],
+      "diagnostics": {
+        "allowedWarnings": [
+          "using deprecated parameters for the initialization function; pass a single object instead"
+        ],
+        "unexpectedConsole": [],
+        "failedNetworkRequests": []
+      }
+    },
+    {
+      "mode": "production",
+      "qaHooks": "absent",
+      "steps": [
+        {
+          "id": "start",
+          "status": "passed",
+          "evidence": [
+            "The clean production preview showed only the game UI; Start Bounce Run entered active play."
+          ]
+        },
+        {
+          "id": "keyboard-input",
+          "status": "blocked",
+          "evidence": [
+            "Eight real locator.press KeyD events across 55 ms intervals visibly changed the ball trajectory between tick 16 and tick 61.",
+            "Production exposes no QA observation bridge, and separate physical KeyD down and up calls are unavailable on the installed tab.playwright API."
+          ]
+        },
+        {
+          "id": "pause-stability",
+          "status": "passed",
+          "evidence": [
+            "Escape displayed Paused and the visible HUD tick stayed at 167 across a further 320 ms."
+          ]
+        },
+        {
+          "id": "resume",
+          "status": "passed",
+          "evidence": ["The visible Resume button continued the same production run."]
+        },
+        {
+          "id": "game-over",
+          "status": "passed",
+          "evidence": ["The resumed production run reached the visible Run over screen."]
+        },
+        {
+          "id": "restart",
+          "status": "passed",
+          "evidence": ["Run again immediately returned the production HUD to active state."]
+        },
+        {
+          "id": "resize",
+          "status": "passed",
+          "evidence": [
+            "At 1280x720 and 1600x900, body, canvas, and HUD matched the viewport and continued rendering."
+          ]
+        },
+        {
+          "id": "diagnostics",
+          "status": "blocked",
+          "evidence": [
+            "The production DOM contained zero DEV QA hosts and zero QA artifact nodes.",
+            "Chrome reported no error and only the exact whitelisted Rapier warning.",
+            "The installed Chrome surface does not expose requestfailed events, so zero failed production requests cannot be asserted from the required surface."
+          ]
+        }
+      ],
+      "diagnostics": {
+        "allowedWarnings": [
+          "using deprecated parameters for the initialization function; pass a single object instead"
+        ],
+        "unexpectedConsole": [],
+        "failedNetworkRequests": []
+      }
+    }
+  ]
+}
