@@ -1,18 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import { BOUNCE_RUN_PHYSICS } from './bounce-run-physics.js'
-import { analyzeBounceRunTransition } from './route-reachability.js'
-import type { BounceRunRoutePlatform } from './route-generator.js'
+import {
+  analyzeBounceRunTransition,
+  type BounceRunPlatformSurface,
+} from './route-reachability.js'
 
-const source: BounceRunRoutePlatform = {
-  index: 0,
+const source: BounceRunPlatformSurface = {
   position: [0, 0, 0],
   size: [4, 0.6, 4.2],
 }
 
 describe('Bounce Run analytic reachability', () => {
   it('accepts a safely centered landing using the fixed-step controller constants', () => {
-    const target: BounceRunRoutePlatform = {
-      index: 1,
+    const target: BounceRunPlatformSurface = {
       position: [0, 0, 7],
       size: [4, 0.6, 4.2],
     }
@@ -28,13 +28,11 @@ describe('Bounce Run analytic reachability', () => {
   })
 
   it('rejects targets above the bounce envelope and beyond safe edge contact', () => {
-    const tooHigh: BounceRunRoutePlatform = {
-      index: 1,
+    const tooHigh: BounceRunPlatformSurface = {
       position: [0, BOUNCE_RUN_PHYSICS.bounceHeight, 4],
       size: [4, 0.6, 4.2],
     }
-    const beyondForwardEdge: BounceRunRoutePlatform = {
-      index: 1,
+    const beyondForwardEdge: BounceRunPlatformSurface = {
       position: [0, 0, 10],
       size: [4, 0.6, 4.2],
     }
@@ -50,12 +48,11 @@ describe('Bounce Run analytic reachability', () => {
   })
 
   it('includes deterministic lateral response and an explicit edge safety margin', () => {
-    const centered: BounceRunRoutePlatform = {
-      index: 1,
+    const centered: BounceRunPlatformSurface = {
       position: [0, 0, 7],
       size: [2.2, 0.6, 4.2],
     }
-    const outsideLateralEnvelope: BounceRunRoutePlatform = {
+    const outsideLateralEnvelope: BounceRunPlatformSurface = {
       ...centered,
       position: [6, 0, 7],
     }

@@ -1,6 +1,10 @@
 import { bounceVelocityForHeight } from './ball-controller.js'
 import { BOUNCE_RUN_PHYSICS } from './bounce-run-physics.js'
-import type { BounceRunRoutePlatform } from './route-generator.js'
+
+export interface BounceRunPlatformSurface {
+  readonly position: readonly [number, number, number]
+  readonly size: readonly [number, number, number]
+}
 
 export type ReachabilityFailureReason =
   | 'reachable'
@@ -30,8 +34,8 @@ export interface BounceRunReachabilityResult {
  * target's ball-radius-plus-safety inset.
  */
 export function analyzeBounceRunTransition(
-  source: BounceRunRoutePlatform,
-  target: BounceRunRoutePlatform,
+  source: BounceRunPlatformSurface,
+  target: BounceRunPlatformSurface,
 ): BounceRunReachabilityResult {
   if (!isValidPlatform(source) || !isValidPlatform(target)) {
     return failure('invalid-platform')
@@ -104,14 +108,14 @@ function simulateMaximumLateralTravel(ticks: number): number {
   return position
 }
 
-function isValidPlatform(platform: BounceRunRoutePlatform): boolean {
+function isValidPlatform(platform: BounceRunPlatformSurface): boolean {
   return (
     platform.position.every(Number.isFinite) &&
     platform.size.every((value) => Number.isFinite(value) && value > 0)
   )
 }
 
-function top(platform: BounceRunRoutePlatform): number {
+function top(platform: BounceRunPlatformSurface): number {
   return platform.position[1] + platform.size[1] / 2
 }
 
