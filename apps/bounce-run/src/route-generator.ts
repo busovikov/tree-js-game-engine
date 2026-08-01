@@ -11,6 +11,7 @@ const START_PLATFORM_SIZE = [6, 0.6, 8] as const
 const MAIN_PLATFORM_SIZE = [4, 0.6, 4.2] as const
 const START_SAFETY_MARGIN = 0.9
 const END_SAFETY_MARGIN = 0.35
+const DIFFICULTY_RAMP_PLATFORM_COUNT = 64
 
 export interface BounceRunRouteConfig {
   readonly seed: number
@@ -99,7 +100,7 @@ export function generateBounceRunRoute(config: BounceRunRouteConfig): BounceRunR
 
   for (let index = 1; index < config.platformCount; index += 1) {
     const source = platforms[index - 1]!
-    const difficulty = config.platformCount === 2 ? 1 : (index - 1) / (config.platformCount - 2)
+    const difficulty = Math.min(1, (index - 1) / (DIFFICULTY_RAMP_PLATFORM_COUNT - 1))
     const requiredSafetyMargin = lerp(
       START_SAFETY_MARGIN,
       END_SAFETY_MARGIN,

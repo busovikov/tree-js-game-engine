@@ -13,6 +13,14 @@ describe('Bounce Run route generator', () => {
     expect(first.decisionLog).toEqual(second.decisionLog)
   })
 
+  it('keeps the generated prefix stable when an infinite route requests a longer horizon', () => {
+    const short = generateBounceRunRoute({ seed: 0x5eed, platformCount: 64 })
+    const long = generateBounceRunRoute({ seed: 0x5eed, platformCount: 128 })
+
+    expect(long.platforms.slice(0, short.platforms.length)).toEqual(short.platforms)
+    expect(long.decisionLog.slice(0, short.decisionLog.length)).toEqual(short.decisionLog)
+  })
+
   it('starts safely and preserves explicit difficulty margins along a reachable main path', () => {
     const route = generateBounceRunRoute({ seed: 42, platformCount: 96 })
 
