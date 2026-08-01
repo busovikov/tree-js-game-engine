@@ -19,6 +19,7 @@
     "@haku/physics": "workspace:*",
     "@haku/physics-rapier": "workspace:*",
     "@haku/schema": "workspace:*",
+    "@haku/storage": "workspace:*",
     "@haku/ui": "workspace:*"
   },
   "devDependencies": {

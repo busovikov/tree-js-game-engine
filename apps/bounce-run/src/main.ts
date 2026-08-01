@@ -21,6 +21,12 @@ import { EntityPool, createEntityPoolFromComponent } from '@haku/pool'
 import { ColliderComponent, ColliderSchema } from '@haku/physics'
 import { createRapierPhysicsBackend } from '@haku/physics-rapier'
 import { projectPathToUrl } from '@haku/schema'
+import {
+  IndexedDbSaveStorage,
+  InMemorySaveStorage,
+  SaveStorageUnavailableError,
+  type ISaveStorage,
+} from '@haku/storage'
 import { UIService } from '@haku/ui'
 import projectAsset from '../haku.project.json'
 import {
@@ -194,7 +200,20 @@ async function main(): Promise<void> {
   const uiDocument = await loadBounceRunUIDocument()
   ui.register(uiDocument)
   ui.mount(uiDocument.id, hudHost)
-  const session = createBounceRunSessionRuntime({ scheduler: engine.scheduler, ui })
+  const saveStorage = await createBounceRunSaveStorage()
+  const session = createBounceRunSessionRuntime({
+    scheduler: engine.scheduler,
+    ui,
+    storage: saveStorage.storage,
+  })
+  await session.initialize()
+  if (!saveStorage.persistent) {
+    ui.setText(
+      { document: BOUNCE_RUN_UI_IDS.document, element: BOUNCE_RUN_UI_IDS.startHelp },
+      'A / D or arrows to steer · Escape to pause · R to restart · ' +
+        'Local saves unavailable; best score lasts this tab',
+    )
+  }
 
   const input = new InputManager({
     keyboardTarget: window,
@@ -222,7 +241,9 @@ async function main(): Promise<void> {
     route,
   )
   const failureSystem = new BounceRunFailureSystem(BALL_ID, physics, () => {
-    session.fail()
+    void session.fail().catch((error: unknown) => {
+      console.error('[bounce-run] high-score save failed', error)
+    })
     engine.setPaused(true)
   })
   const routeSystem = new BounceRunRouteSystem(BALL_ID, physics, route)
@@ -319,7 +340,6 @@ async function main(): Promise<void> {
     else if (event.eventId === BOUNCE_RUN_UI_IDS.events.restart) restartRun()
   })
 
-  session.initialize()
   engine.setPaused(true)
   engine.start()
 
@@ -342,6 +362,20 @@ async function main(): Promise<void> {
     },
     { once: true },
   )
+}
+
+async function createBounceRunSaveStorage(): Promise<{
+  readonly storage: ISaveStorage
+  readonly persistent: boolean
+}> {
+  const storage = new IndexedDbSaveStorage({ databaseName: 'haku-bounce-run' })
+  try {
+    await storage.listSlots()
+    return { storage, persistent: true }
+  } catch (error) {
+    if (!(error instanceof SaveStorageUnavailableError)) throw error
+    return { storage: new InMemorySaveStorage(), persistent: false }
+  }
 }
 
 function requireElement<T extends HTMLElement>(id: string): T {

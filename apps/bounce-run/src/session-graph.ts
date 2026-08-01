@@ -26,6 +26,8 @@ export const BOUNCE_RUN_SESSION_IDS = {
     failSession: id(14),
     restartSession: id(15),
     collectBonus: id(16),
+    renderHighScore: id(17),
+    renderScore: id(18),
   },
   variables: {
     state: 'session.state',
@@ -36,6 +38,7 @@ export const BOUNCE_RUN_SESSION_IDS = {
     paused: 'constant.state.paused',
     gameOver: 'constant.state.game-over',
     score: 'session.score',
+    highScore: 'session.high-score',
     scoreZero: 'constant.score.zero',
     bonusValue: 'constant.score.bonus',
   },
@@ -107,10 +110,43 @@ export function createBounceRunSessionGraph(registry: NodeRegistry): GraphAsset 
       undefined,
       type,
     )
+  const appendScoreText = (
+    previous: GraphNode,
+    previousFlowPort: string,
+    source: GraphNode,
+    elementId: string,
+    prefix: string,
+  ): GraphNode => {
+    const format = addNode(FOUNDATION_GRAPH_IDS.formatNumber.nodeType, {
+      prefix,
+      suffix: '',
+    })
+    connect(
+      source,
+      DETERMINISTIC_GRAPH_CONTRACTS.getVariable.ports.value,
+      format,
+      FOUNDATION_GRAPH_IDS.formatNumber.ports.value,
+    )
+    const setText = addNode(
+      UI_GRAPH_CONTRACTS.setText.nodeType,
+      { documentId: BOUNCE_RUN_UI_IDS.document, elementId },
+      'FrameGameplay',
+    )
+    connect(previous, previousFlowPort, setText, UI_GRAPH_CONTRACTS.setText.ports.flowIn)
+    connect(
+      format,
+      FOUNDATION_GRAPH_IDS.formatNumber.ports.result,
+      setText,
+      UI_GRAPH_CONTRACTS.setText.ports.value,
+    )
+    return setText
+  }
 
   const constantTrue = variable(BOUNCE_RUN_SESSION_IDS.variables.true, BOOL_TYPE)
   const constantFalse = variable(BOUNCE_RUN_SESSION_IDS.variables.false, BOOL_TYPE)
   const scoreZero = variable(BOUNCE_RUN_SESSION_IDS.variables.scoreZero, NUMBER_TYPE)
+  const currentScore = variable(BOUNCE_RUN_SESSION_IDS.variables.score, NUMBER_TYPE)
+  const highScore = variable(BOUNCE_RUN_SESSION_IDS.variables.highScore, NUMBER_TYPE)
   const stateSources = {
     start: variable(BOUNCE_RUN_SESSION_IDS.variables.start, STRING_TYPE),
     active: variable(BOUNCE_RUN_SESSION_IDS.variables.active, STRING_TYPE),
@@ -184,6 +220,20 @@ export function createBounceRunSessionGraph(registry: NodeRegistry): GraphAsset 
       DETERMINISTIC_GRAPH_CONTRACTS.getVariable.ports.value,
       setText,
       UI_GRAPH_CONTRACTS.setText.ports.value,
+    )
+    const scoreText = appendScoreText(
+      setText,
+      UI_GRAPH_CONTRACTS.setText.ports.flowOut,
+      currentScore,
+      BOUNCE_RUN_UI_IDS.scoreText,
+      'Score ',
+    )
+    appendScoreText(
+      scoreText,
+      UI_GRAPH_CONTRACTS.setText.ports.flowOut,
+      highScore,
+      BOUNCE_RUN_UI_IDS.highScoreText,
+      'Best ',
     )
     const entry = addNode(FOUNDATION_GRAPH_IDS.onStart.nodeType, {}, 'FrameGameplay', entryId)
     if (resetScore) {
@@ -279,6 +329,33 @@ export function createBounceRunSessionGraph(registry: NodeRegistry): GraphAsset 
     FOUNDATION_GRAPH_IDS.onStart.ports.next,
     setScore,
     DETERMINISTIC_GRAPH_CONTRACTS.setVariable.ports.flowIn,
+  )
+  const renderScore = addNode(
+    FOUNDATION_GRAPH_IDS.onStart.nodeType,
+    {},
+    'FrameGameplay',
+    BOUNCE_RUN_SESSION_IDS.entries.renderScore,
+  )
+  appendScoreText(
+    renderScore,
+    FOUNDATION_GRAPH_IDS.onStart.ports.next,
+    score,
+    BOUNCE_RUN_UI_IDS.scoreText,
+    'Score ',
+  )
+
+  const renderHighScore = addNode(
+    FOUNDATION_GRAPH_IDS.onStart.nodeType,
+    {},
+    'FrameGameplay',
+    BOUNCE_RUN_SESSION_IDS.entries.renderHighScore,
+  )
+  appendScoreText(
+    renderHighScore,
+    FOUNDATION_GRAPH_IDS.onStart.ports.next,
+    highScore,
+    BOUNCE_RUN_UI_IDS.highScoreText,
+    'Best ',
   )
 
   return {

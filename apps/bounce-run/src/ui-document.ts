@@ -20,6 +20,8 @@ export const BOUNCE_RUN_UI_IDS = {
   gameOverPanel: id(13),
   gameOverTitle: id(14),
   restartButton: id(15),
+  scoreText: id(16),
+  highScoreText: id(17),
   events: {
     start: id(30),
     resume: id(31),

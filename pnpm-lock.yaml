@@ -83,6 +83,9 @@ importers:
       '@haku/schema':
         specifier: workspace:*
         version: link:../../packages/schema
+      '@haku/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
       '@haku/ui':
         specifier: workspace:*
         version: link:../../packages/ui

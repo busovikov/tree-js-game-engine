@@ -14,6 +14,7 @@ import { EntityPool } from '@haku/pool'
 import { ColliderComponent, ColliderSchema } from '@haku/physics'
 import { createRapierPhysicsBackend, resetRapierPhysicsIds } from '@haku/physics-rapier'
 import { SceneDocumentSchema } from '@haku/schema'
+import { InMemorySaveStorage } from '@haku/storage'
 import { UIService } from '@haku/ui'
 import { afterEach, describe, expect, it } from 'vitest'
 import documentAsset from '../public/assets/ui/hud.ui.json'
@@ -316,7 +317,12 @@ describe('Bounce Run fixed-step runtime', () => {
     }))
     ui.register(uiDocument)
     ui.mount(uiDocument.id, host)
-    const session = createBounceRunSessionRuntime({ scheduler: new EngineScheduler(), ui })
+    const session = createBounceRunSessionRuntime({
+      scheduler: new EngineScheduler(),
+      ui,
+      storage: new InMemorySaveStorage(),
+    })
+    await session.initialize()
     session.start()
     const overlap = {
       kind: 'trigger',

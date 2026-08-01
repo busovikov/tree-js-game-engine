@@ -64,9 +64,10 @@ describe('Bounce Run session runtime', () => {
     const session = createBounceRunSessionRuntime({
       scheduler: new EngineScheduler(),
       ui,
+      storage: new InMemorySaveStorage(),
     })
 
-    session.initialize()
+    await session.initialize()
     expect(session.state()).toBe('start')
     expect(documentInstance.getElement(BOUNCE_RUN_UI_IDS.startPanel)?.hidden).toBe(false)
 
@@ -84,7 +85,7 @@ describe('Bounce Run session runtime', () => {
     expect(documentInstance.getElement(BOUNCE_RUN_UI_IDS.pausePanel)?.hidden).toBe(false)
 
     session.resume()
-    session.fail()
+    await session.fail()
     expect(session.state()).toBe('game-over')
     expect(documentInstance.getElement(BOUNCE_RUN_UI_IDS.gameOverPanel)?.hidden).toBe(false)
 

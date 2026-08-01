@@ -66,7 +66,12 @@
     {
       "id": "b1200000-0000-4000-8000-000000000007",
       "type": "container",
-      "children": ["b1200000-0000-4000-8000-000000000008", "b1200000-0000-4000-8000-000000000009"],
+      "children": [
+        "b1200000-0000-4000-8000-000000000016",
+        "b1200000-0000-4000-8000-000000000017",
+        "b1200000-0000-4000-8000-000000000009",
+        "b1200000-0000-4000-8000-000000000008"
+      ],
       "layout": { "direction": "column", "gap": 4 },
       "anchors": { "left": 18, "top": 18 },
       "style": {
@@ -91,6 +96,20 @@
       "type": "text",
       "text": "Measuring baseline…",
       "style": { "color": "#d9f0ff", "fontSize": 12 }
+    },
+    {
+      "id": "b1200000-0000-4000-8000-000000000016",
+      "type": "text",
+      "text": "Score 0",
+      "accessibility": { "live": "polite" },
+      "style": { "color": "#f9e86c", "fontSize": 26, "fontWeight": "bold" }
+    },
+    {
+      "id": "b1200000-0000-4000-8000-000000000017",
+      "type": "text",
+      "text": "Best 0",
+      "accessibility": { "live": "polite" },
+      "style": { "color": "#ffffff", "fontSize": 16, "fontWeight": "bold" }
     },
     {
       "id": "b1200000-0000-4000-8000-000000000010",
