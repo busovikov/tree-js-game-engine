@@ -453,10 +453,11 @@ Acceptance:
 - [ ] Browser E2E covers start, input, pause, game over, restart, resize, and console errors.
 - [ ] QA harness is absent from production export.
 
-M12 pure route slice evidence: `9bc30a6`, `fc35d55`, `38d9d6e`, `a4d02ab`, and `c516491` add the
+M12 pure route slice evidence: `9bc30a6`, `fc35d55`, `38d9d6e`, `a4d02ab`, `c516491`, and
+`7143dd9` add the
 side-effect-free seeded generator, fixed-step analytic reachability envelope, decreasing but
 non-zero safety margins, center-to-center chained landing continuity, full candidate/selection
-logs, bounded candidate attempts, and a
+logs, bounded candidate attempts, horizon-stable prefixes for infinite extension, and a
 deterministic zero-attempt fallback. Focused Vitest coverage validates invalid configuration,
 vertical/forward/lateral boundaries, route continuity, platform intersection rejection, and
 256 seeds × 128 platforms without route validation issues or attempt overflow. A headless
