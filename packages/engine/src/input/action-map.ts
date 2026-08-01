@@ -9,17 +9,11 @@ export type InputButtonActionBinding = {
   readonly codes: readonly string[]
 }
 
-export type InputActionBinding =
-  | InputAxisActionBinding
-  | InputButtonActionBinding
+export type InputActionBinding = InputAxisActionBinding | InputButtonActionBinding
 
-export type InputActionBindings = Readonly<
-  Record<string, InputActionBinding>
->
+export type InputActionBindings = Readonly<Record<string, InputActionBinding>>
 
-export type InputActionMapSnapshot = Readonly<
-  Record<string, number | boolean>
->
+export type InputActionMapSnapshot = Readonly<Record<string, number | boolean>>
 
 export interface InputActionMap {
   keyDown(code: string, repeat: boolean): boolean
@@ -29,28 +23,22 @@ export interface InputActionMap {
   releaseAll(): void
 }
 
-export function createInputActionMap(
-  bindings: InputActionBindings,
-): InputActionMap {
+export function createInputActionMap(bindings: InputActionBindings): InputActionMap {
   const entries = Object.entries(bindings)
   for (const [name, binding] of entries) {
-    const codes = binding.kind === 'axis'
-      ? [...binding.negative, ...binding.positive]
-      : binding.codes
+    const codes =
+      binding.kind === 'axis' ? [...binding.negative, ...binding.positive] : binding.codes
     if (codes.length === 0) {
-      throw new Error(
-        `Input action "${name}" must bind at least one key code`,
-      )
+      throw new Error(`Input action "${name}" must bind at least one key code`)
     }
   }
 
   const pressed = new Set<string>()
+  const pressedThisFrame = new Set<string>()
   const pulses = new Set<string>()
   const boundCodes = new Set(
     entries.flatMap(([, binding]) =>
-      binding.kind === 'axis'
-        ? [...binding.negative, ...binding.positive]
-        : [...binding.codes],
+      binding.kind === 'axis' ? [...binding.negative, ...binding.positive] : [...binding.codes],
     ),
   )
 
@@ -59,11 +47,9 @@ export function createInputActionMap(
       if (!boundCodes.has(code)) return false
       pressed.add(code)
       if (!repeat) {
+        pressedThisFrame.add(code)
         for (const [name, binding] of entries) {
-          if (
-            binding.kind === 'pulse' &&
-            binding.codes.includes(code)
-          ) {
+          if (binding.kind === 'pulse' && binding.codes.includes(code)) {
             pulses.add(name)
           }
         }
@@ -79,10 +65,12 @@ export function createInputActionMap(
       return Object.fromEntries(
         entries.map(([name, binding]) => {
           if (binding.kind === 'axis') {
-            const negative = binding.negative.some((code) =>
-              pressed.has(code))
-            const positive = binding.positive.some((code) =>
-              pressed.has(code))
+            const negative = binding.negative.some(
+              (code) => pressed.has(code) || pressedThisFrame.has(code),
+            )
+            const positive = binding.positive.some(
+              (code) => pressed.has(code) || pressedThisFrame.has(code),
+            )
             return [name, negative === positive ? 0 : positive ? 1 : -1]
           }
           if (binding.kind === 'pulse') {
@@ -90,16 +78,18 @@ export function createInputActionMap(
           }
           return [
             name,
-            binding.codes.some((code) => pressed.has(code)),
+            binding.codes.some((code) => pressed.has(code) || pressedThisFrame.has(code)),
           ]
         }),
       )
     },
     endFrame() {
+      pressedThisFrame.clear()
       pulses.clear()
     },
     releaseAll() {
       pressed.clear()
+      pressedThisFrame.clear()
       pulses.clear()
     },
   }

@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  createInputActionMap,
-  type InputActionMapSnapshot,
-} from './action-map.js'
+import { createInputActionMap, type InputActionMapSnapshot } from './action-map.js'
 
 const BOUNCE_RUN_BINDINGS = {
   lateral: {
@@ -48,6 +45,18 @@ describe('input action map', () => {
       restart: false,
       pause: false,
     })
+  })
+
+  it('samples a press released before the next frame exactly once', () => {
+    const actions = createInputActionMap(BOUNCE_RUN_BINDINGS)
+
+    actions.keyDown('KeyD', false)
+    actions.keyUp('KeyD')
+
+    expect(actions.snapshot().lateral).toBe(1)
+
+    actions.endFrame()
+    expect(actions.snapshot().lateral).toBe(0)
   })
 
   it('rejects action bindings without keyboard codes', () => {
