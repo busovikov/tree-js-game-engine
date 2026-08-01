@@ -239,6 +239,9 @@ describe('Bounce Run bounded presentation composition', () => {
     expect(bonusAwards).toBe(1)
     expect(backend.metrics().emitted).toMatchObject({ landing: 1, bonus: 1, fail: 0 })
 
+    composition.trail([0, 3, 0])
+    effects.update(world, 1 / 60)
+    expect(backend.metrics().trailPoints).toBe(1)
     const failure = new BounceRunFailureSystem(BALL, physics, () => {
       sessionState = 'game-over'
       composition.fail([0, -7, 0])
@@ -248,6 +251,7 @@ describe('Bounce Run bounded presentation composition', () => {
     failure.update()
     effects.update(world, 1 / 60)
     expect(backend.metrics().emitted).toMatchObject({ landing: 1, bonus: 1, fail: 1 })
+    expect(backend.metrics().trailPoints).toBe(0)
 
     const trail = new BounceRunTrailSystem(BALL, physics, composition)
     const trailBaseline = backend.metrics().trailPoints

@@ -67,6 +67,7 @@ export function createBounceRunEffectsComposition(options: {
     },
     fail(position) {
       requireLive()
+      options.effects.reset()
       options.effects.emit({
         kind: 'fail',
         shape: 'pulse',

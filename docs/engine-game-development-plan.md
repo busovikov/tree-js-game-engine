@@ -672,8 +672,8 @@ and the full visual-coherence acceptance remain open):
 - Bounce Run composes cyan landing rings, gold pickup sparks, a coral fail pulse, and a pale cyan
   fixed-capacity trail through typed methods. The trail samples in `LateUpdate`, advances only for a
   positive scheduler delta, interpolates samples at a fixed temporal interval, expires by elapsed
-  time, and clears on restart/dispose. Two removable pool lifecycle subscriptions clear lease-owned
-  bursts on release/clear and unregister on composition disposal.
+  time, and clears on fail/restart/dispose. Two removable pool lifecycle subscriptions clear
+  lease-owned bursts on release/clear and unregister on composition disposal.
 - Runtime platform materialization now reinforces the existing dimension language with distinct
   cyan normal, green wide, orange narrow, and purple low-roughness bounce styling. Bonus gold and the
   orange ball/pale trail remain contrasting without textures, remote assets, or extra render loops.
