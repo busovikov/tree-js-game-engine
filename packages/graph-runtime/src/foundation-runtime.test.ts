@@ -10,9 +10,10 @@ function execute(
   registry: NodeRuntimeRegistry,
   nodeType: string,
   values: Readonly<Record<string, unknown>> = {},
+  properties: Readonly<Record<string, unknown>> = {},
 ) {
   return registry.require(nodeType, '1').execute({
-    node: { id: 'foundation-node', nodeType, version: '1', properties: {} },
+    node: { id: 'foundation-node', nodeType, version: '1', properties },
     readData: (portId) => values[portId],
   } as NodeExecutionRequest)
 }
@@ -59,6 +60,20 @@ describe('foundation runtime adapters', () => {
     expect(right).toEqual([4, 5, 6])
   })
 
+  it('formats finite numbers through an explicit typed conversion', () => {
+    const registry = new NodeRuntimeRegistry()
+    registerFoundationRuntimeAdapters(registry)
+
+    expect(execute(
+      registry,
+      FOUNDATION_GRAPH_IDS.formatNumber.nodeType,
+      { [FOUNDATION_GRAPH_IDS.formatNumber.ports.value]: 12 },
+      { prefix: 'Score ', suffix: '!' },
+    )).toEqual({
+      data: { [FOUNDATION_GRAPH_IDS.formatNumber.ports.result]: 'Score 12!' },
+    })
+  })
+
   it('rejects invalid branch, non-finite scalar, and malformed vector inputs', () => {
     const registry = new NodeRuntimeRegistry()
     registerFoundationRuntimeAdapters(registry)
@@ -74,5 +89,11 @@ describe('foundation runtime adapters', () => {
       [FOUNDATION_GRAPH_IDS.addVec3.ports.a]: [1, 2],
       [FOUNDATION_GRAPH_IDS.addVec3.ports.b]: [3, 4, 5],
     })).toThrow()
+    expect(() => execute(
+      registry,
+      FOUNDATION_GRAPH_IDS.formatNumber.nodeType,
+      { [FOUNDATION_GRAPH_IDS.formatNumber.ports.value]: Number.NaN },
+      { prefix: '', suffix: '' },
+    )).toThrow()
   })
 })

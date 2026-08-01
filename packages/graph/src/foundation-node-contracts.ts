@@ -2,6 +2,7 @@ import { z } from 'zod'
 import {
   BOOL_TYPE,
   NUMBER_TYPE,
+  STRING_TYPE,
   VEC3_TYPE,
 } from './type-registry.js'
 import { namedType } from './graph-schema.js'
@@ -37,6 +38,10 @@ export const FOUNDATION_GRAPH_IDS = {
     nodeType: id(4),
     ports: { a: id(401), b: id(402), result: id(403) },
   },
+  formatNumber: {
+    nodeType: id(5),
+    ports: { value: id(501), result: id(502) },
+  },
 } as const
 
 const EmptyProperties = z.object({}).strict()
@@ -45,15 +50,23 @@ const DETERMINISTIC_DOMAINS = ['FixedGameplay', 'FrameGameplay'] as const
 function foundationNode(
   input: Pick<NodeDefinitionInput, 'id' | 'name' | 'category' | 'description' | 'ports'> &
     Partial<
-      Pick<NodeDefinitionInput, 'domains' | 'liveness' | 'resultPersistence'>
+      Pick<
+        NodeDefinitionInput,
+        'domains' | 'liveness' | 'resultPersistence' | 'propertySchema' | 'propertyContract'
+      >
     >,
 ): NodeDefinition {
+  const {
+    propertySchema = EmptyProperties,
+    propertyContract = {},
+    ...definition
+  } = input
   return defineNode({
     version: '1',
     kind: 'builtin',
     typeParameters: [],
-    propertySchema: EmptyProperties,
-    propertyContract: {},
+    propertySchema,
+    propertyContract,
     domains: input.domains ?? DETERMINISTIC_DOMAINS,
     capabilities: [],
     reads: [],
@@ -66,7 +79,7 @@ function foundationNode(
     resultPersistence: input.resultPersistence ?? 'none',
     liveness: input.liveness ?? 'on-flow',
     exportedState: [],
-    ...input,
+    ...definition,
   })
 }
 
@@ -179,6 +192,32 @@ export const FOUNDATION_GRAPH_CONTRACTS: readonly NodeDefinition[] = [
         type: namedType(VEC3_TYPE),
       },
     ],
+    liveness: 'pure',
+    resultPersistence: 'execution',
+  }),
+  foundationNode({
+    id: FOUNDATION_GRAPH_IDS.formatNumber.nodeType,
+    name: 'Format Number',
+    category: 'Conversion',
+    description: 'Formats a finite number with authored prefix and suffix text.',
+    ports: [
+      {
+        id: FOUNDATION_GRAPH_IDS.formatNumber.ports.value,
+        name: 'Value',
+        kind: 'data',
+        direction: 'input',
+        type: namedType(NUMBER_TYPE),
+      },
+      {
+        id: FOUNDATION_GRAPH_IDS.formatNumber.ports.result,
+        name: 'Text',
+        kind: 'data',
+        direction: 'output',
+        type: namedType(STRING_TYPE),
+      },
+    ],
+    propertySchema: z.object({ prefix: z.string(), suffix: z.string() }).strict(),
+    propertyContract: { prefix: 'text', suffix: 'text' },
     liveness: 'pure',
     resultPersistence: 'execution',
   }),

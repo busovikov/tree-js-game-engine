@@ -86,4 +86,21 @@ export function registerFoundationRuntimeAdapters(
       },
     }
   })
+
+  register(FOUNDATION_GRAPH_IDS.formatNumber.nodeType, (request) => {
+    const prefix = request.node.properties.prefix
+    const suffix = request.node.properties.suffix
+    if (typeof prefix !== 'string' || typeof suffix !== 'string') {
+      throw new TypeError('Format Number prefix and suffix must be strings')
+    }
+    return {
+      data: {
+        [FOUNDATION_GRAPH_IDS.formatNumber.ports.result]:
+          `${prefix}${finiteNumber(
+            request.readData(FOUNDATION_GRAPH_IDS.formatNumber.ports.value),
+            'Format Number value',
+          )}${suffix}`,
+      },
+    }
+  })
 }

@@ -1346,6 +1346,12 @@ export class GraphInstance {
   ): NodeExecutionResult | Promise<NodeExecutionResult> {
     if (this.scopeController.signal.aborted) return {}
     this.applyResult(node, result)
+    for (const write of node.writes) {
+      this.resourceVersions.set(
+        write.resource,
+        (this.resourceVersions.get(write.resource) ?? 0) + 1,
+      )
+    }
     this.record('node-complete', node, undefined, {
       outputs: {
         flow: [...(result.flow ?? [])],
