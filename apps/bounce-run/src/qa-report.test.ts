@@ -331,7 +331,7 @@ describe('Bounce Run QA reports', () => {
   })
 
   it.each([
-    { source: 'network', category: 'failure', message: 'bad source' },
+    { source: 'browser', category: 'failure', message: 'bad source' },
     { source: 'runtime', category: '', message: 'bad category' },
     { source: 'runtime', category: 'failure', message: '' },
     { source: 'console', category: 'failure', message: 'bad tick', tick: 3 },

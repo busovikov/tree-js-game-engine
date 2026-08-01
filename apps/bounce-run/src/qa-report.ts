@@ -72,7 +72,7 @@ const ROOT_CAUSE_KEYS = new Set([
 ])
 
 export type BounceRunSessionOutcome = 'completed' | 'failed' | 'aborted'
-export type BounceRunReportErrorSource = 'runtime' | 'console'
+export type BounceRunReportErrorSource = 'runtime' | 'console' | 'network'
 export type BounceRunRootCauseStatus = 'unknown' | 'suspected' | 'confirmed'
 
 export interface BounceRunReportError {
@@ -360,6 +360,7 @@ function validateErrors(value: unknown, tickCount: number): readonly BounceRunRe
     const source = requireOneOf(`Bounce Run report error ${index} source`, error.source, [
       'runtime',
       'console',
+      'network',
     ] as const)
     const category = requirePattern(
       `Bounce Run report error ${index} category`,
