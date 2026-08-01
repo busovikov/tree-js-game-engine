@@ -59,41 +59,40 @@ export function replayBounceRunRecording(
   recording: unknown,
   options: BounceRunReplayOptions = {},
 ): FixedTickReplayResult {
-  if (
-    typeof recording === 'object' &&
-    recording !== null &&
-    'version' in recording &&
-    recording.version !== BOUNCE_RUN_RECORDING_VERSION
-  ) {
-    throw new Error(
-      `Unsupported Bounce Run recording version: ${String(recording.version)}`,
-    )
-  }
-
-  return replayFixedTickRecording<BounceRunReplayState, InputActionMapSnapshot>(
-    recording,
-    {
-      version: BOUNCE_RUN_RECORDING_VERSION,
-      expectedSeed: options.expectedSeed,
-      expectedFixedDelta: options.expectedFixedDelta,
-      initialState: {
-        velocity: [0, 0, BOUNCE_RUN_PHYSICS.forwardSpeed],
-      },
-      step: (state, actions, context) => ({
-        velocity: applyBallControlStep({
-          velocity: state.velocity,
-          lateralInput: requireLateralAction(actions),
-          landed: false,
-          dt: context.fixedDelta,
-          forwardSpeed: BOUNCE_RUN_PHYSICS.forwardSpeed,
-          lateralSpeed: BOUNCE_RUN_PHYSICS.lateralSpeed,
-          lateralResponsiveness: BOUNCE_RUN_PHYSICS.lateralResponsiveness,
-          bounceHeight: BOUNCE_RUN_PHYSICS.bounceHeight,
-          gravity: BOUNCE_RUN_PHYSICS.gravity,
+  try {
+    return replayFixedTickRecording<BounceRunReplayState, InputActionMapSnapshot>(
+      recording,
+      {
+        version: BOUNCE_RUN_RECORDING_VERSION,
+        expectedSeed: options.expectedSeed,
+        expectedFixedDelta: options.expectedFixedDelta,
+        initialState: {
+          velocity: [0, 0, BOUNCE_RUN_PHYSICS.forwardSpeed],
+        },
+        step: (state, actions, context) => ({
+          velocity: applyBallControlStep({
+            velocity: state.velocity,
+            lateralInput: requireLateralAction(actions),
+            landed: false,
+            dt: context.fixedDelta,
+            forwardSpeed: BOUNCE_RUN_PHYSICS.forwardSpeed,
+            lateralSpeed: BOUNCE_RUN_PHYSICS.lateralSpeed,
+            lateralResponsiveness: BOUNCE_RUN_PHYSICS.lateralResponsiveness,
+            bounceHeight: BOUNCE_RUN_PHYSICS.bounceHeight,
+            gravity: BOUNCE_RUN_PHYSICS.gravity,
+          }),
         }),
-      }),
-    },
-  )
+      },
+    )
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.startsWith('Unsupported recording version:')
+    ) {
+      throw new Error(error.message.replace('recording', 'Bounce Run recording'))
+    }
+    throw error
+  }
 }
 
 function wrapRecorder(

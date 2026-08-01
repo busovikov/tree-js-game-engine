@@ -219,5 +219,19 @@ describe('Bounce Run fixed-tick action replay', () => {
         replayOptions,
       ),
     ).toThrow('lateral action must be a finite number')
+
+    let versionAccessorReads = 0
+    const accessorRecording = { ...recording } as Record<string, unknown>
+    Object.defineProperty(accessorRecording, 'version', {
+      enumerable: true,
+      get: () => {
+        versionAccessorReads += 1
+        return 1
+      },
+    })
+    expect(() => replayBounceRunRecording(accessorRecording, replayOptions)).toThrow(
+      'enumerable data property',
+    )
+    expect(versionAccessorReads).toBe(0)
   })
 })
