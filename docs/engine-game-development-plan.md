@@ -541,7 +541,7 @@ Acceptance:
 
 - [ ] Full agreed gameplay loop is understandable within seconds and visually coherent.
 - [ ] Difficulty reduces safety margins but never removes all reachable routes.
-- [ ] Bonus is reachable, sensor-safe, pooled, and cannot score twice.
+- [x] Bonus is reachable, sensor-safe, pooled, and cannot score twice.
 - [ ] High score persists locally through the universal save API.
 - [ ] Audio unlock/pause/settings/pool cleanup work.
 - [ ] No sustained active-object or memory growth in long runs.
@@ -567,6 +567,35 @@ M13 generator evidence (in progress; runtime and presentation acceptance remain 
   test files pass 69/69 tests, including the real production QA-boundary build.
 - This slice does not materialize variant behavior or the bonus in the runtime, pool a bonus sensor,
   award score, or claim the unchecked bonus/full-gameplay acceptance rows above.
+
+M13 runtime variant/bonus evidence (in progress; HUD, saves, audio, effects, and stabilization
+remain open):
+
+- One fixed-seed integration RED used four explicit one-hot difficulty bands and an enabled bonus.
+  It failed first because active platform leases exposed no descriptor, confirming that the prior
+  runtime remained normal-only. The same test now proves descriptor identity, variant dimensions,
+  launch behavior, Box geometry parameters, and Collider half-extents for the full active window.
+- The platform route and dedicated bonus `EntityPool` remain bounded and reuse authored instances.
+  Acquire initializers materialize serializable component data before the public pool activates and
+  reconciles a lease. Bonus leases use a Rapier trigger-sphere Collider matching the pure descriptor
+  and release on collection, behind-window eviction, reset, and dispose.
+- `LandingTracker`'s existing top-contact, downward-speed, and fixed-tick guards remain the only
+  landing boundary. The landing system resolves the contacted pooled platform descriptor and queues
+  its exact standard/boost height once through the existing ball controller; a focused integration
+  case proves the 3.6-unit boost and rejects the repeated enter in the same tick.
+- Bonus collection consumes only public trigger-enter events, verifies the current ball/sensor
+  overlap against current world transforms to reject stale post-reuse events, and atomically claims
+  the active route lease before invoking the session score entry. Duplicate enters cannot find a
+  second active lease; reset clears claims, while paused/game-over sessions reject collection.
+- Score ownership is the existing graph variable store and existing Get/Add/Set node composition.
+  Start/restart graph entries clear it, the bonus entry adds once, and `session.score()` plus dev-only
+  QA observation v2 expose a read without a second app-side mutable score.
+- Focused Bounce Run plus public pool/physics/graph verification passed 24 files / 111 tests. Bounce
+  Run typecheck and production build passed. In user Chrome on an agent-owned Vite server, the first
+  window visibly showed distinct platform dimensions and the yellow bonus sensor, runtime QA showed
+  bounded pool metrics and readable score, and the console contained only the established Rapier
+  initialization deprecation warning. The browser run did not collect the bonus, so once-only score
+  and boost-height claims rely on the focused integration evidence above rather than visual evidence.
 
 ## M14 — Final export, quality audit, and documentation
 
