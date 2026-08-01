@@ -85,13 +85,62 @@ describe('declarative observation assertions', () => {
     ])
 
     expect(results).toEqual([
-      { code: 'equal', path: 'session.state', operator: 'eq', passed: true, expected: 'active', actual: 'active' },
-      { code: 'not-equal', path: 'session.state', operator: 'ne', passed: true, expected: 'paused', actual: 'active' },
-      { code: 'less', path: 'ball.position[1]', operator: 'lt', passed: true, expected: 3, actual: 2 },
-      { code: 'less-equal', path: 'ball.position[1]', operator: 'lte', passed: true, expected: 2, actual: 2 },
-      { code: 'greater', path: 'scheduler.tick', operator: 'gt', passed: true, expected: 10, actual: 12 },
-      { code: 'greater-equal', path: 'scheduler.tick', operator: 'gte', passed: true, expected: 12, actual: 12 },
-      { code: 'failure', path: 'flags.safe', operator: 'eq', passed: false, expected: false, actual: true },
+      {
+        code: 'equal',
+        path: 'session.state',
+        operator: 'eq',
+        passed: true,
+        expected: 'active',
+        actual: 'active',
+      },
+      {
+        code: 'not-equal',
+        path: 'session.state',
+        operator: 'ne',
+        passed: true,
+        expected: 'paused',
+        actual: 'active',
+      },
+      {
+        code: 'less',
+        path: 'ball.position[1]',
+        operator: 'lt',
+        passed: true,
+        expected: 3,
+        actual: 2,
+      },
+      {
+        code: 'less-equal',
+        path: 'ball.position[1]',
+        operator: 'lte',
+        passed: true,
+        expected: 2,
+        actual: 2,
+      },
+      {
+        code: 'greater',
+        path: 'scheduler.tick',
+        operator: 'gt',
+        passed: true,
+        expected: 10,
+        actual: 12,
+      },
+      {
+        code: 'greater-equal',
+        path: 'scheduler.tick',
+        operator: 'gte',
+        passed: true,
+        expected: 12,
+        actual: 12,
+      },
+      {
+        code: 'failure',
+        path: 'flags.safe',
+        operator: 'eq',
+        passed: false,
+        expected: false,
+        actual: true,
+      },
     ])
     expect(Object.isFrozen(results)).toBe(true)
     expect(results.every(Object.isFrozen)).toBe(true)
@@ -99,6 +148,7 @@ describe('declarative observation assertions', () => {
   })
 
   it('rejects unknown and escaping paths, unknown operators, duplicate codes, and invalid operands', () => {
+    let callbackCalls = 0
     const invalidAssertions: unknown[] = [
       [{ code: 'missing', path: 'ball.missing', operator: 'eq', expected: 0 }],
       [{ code: 'escape', path: '__proto__.polluted', operator: 'eq', expected: 0 }],
@@ -111,8 +161,28 @@ describe('declarative observation assertions', () => {
       ],
       [{ code: 'non-finite', path: 'scheduler.tick', operator: 'gt', expected: Number.NaN }],
       [{ code: 'wrong-type', path: 'session.state', operator: 'gte', expected: 1 }],
-      [{ code: 'callback', path: 'scheduler.tick', operator: 'eq', expected: 12, run: () => true }],
-      [{ code: 'mutation', path: 'scheduler.tick', operator: 'eq', expected: 12, set: 'tick' }],
+      [
+        {
+          code: 'callback',
+          path: 'scheduler.tick',
+          operator: 'eq',
+          expected: 12,
+          run: () => {
+            callbackCalls += 1
+          },
+        },
+      ],
+      [
+        {
+          code: 'mutation',
+          path: 'scheduler.tick',
+          operator: 'eq',
+          expected: 12,
+          set: () => {
+            callbackCalls += 1
+          },
+        },
+      ],
     ]
     const before = structuredClone(observation)
 
@@ -120,6 +190,7 @@ describe('declarative observation assertions', () => {
       expect(() => evaluateDeclarativeAssertions(observation, assertions)).toThrow()
       expect(observation).toEqual(before)
     }
+    expect(callbackCalls).toBe(0)
   })
 
   it('rejects cyclic and mutation-capable observations without executing user code', () => {

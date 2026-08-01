@@ -6,17 +6,9 @@ import {
 
 export { createImmutableJsonSnapshot, type ImmutableJsonValue }
 
-export const DECLARATIVE_ASSERTION_OPERATORS = [
-  'eq',
-  'ne',
-  'lt',
-  'lte',
-  'gt',
-  'gte',
-] as const
+export const DECLARATIVE_ASSERTION_OPERATORS = ['eq', 'ne', 'lt', 'lte', 'gt', 'gte'] as const
 
-export type DeclarativeAssertionOperator =
-  (typeof DECLARATIVE_ASSERTION_OPERATORS)[number]
+export type DeclarativeAssertionOperator = (typeof DECLARATIVE_ASSERTION_OPERATORS)[number]
 
 export interface DeclarativeAssertion {
   readonly code: string
@@ -68,14 +60,16 @@ export function evaluateDeclarativeAssertions(
 
     const actual = resolveObservationPath(immutableObservation, assertion.path)
     const passed = compare(assertion.operator, actual, assertion.expected, assertion.path)
-    results.push(Object.freeze({
-      code: assertion.code,
-      path: assertion.path,
-      operator: assertion.operator,
-      passed,
-      expected: assertion.expected,
-      actual,
-    }))
+    results.push(
+      Object.freeze({
+        code: assertion.code,
+        path: assertion.path,
+        operator: assertion.operator,
+        passed,
+        expected: assertion.expected,
+        actual,
+      }),
+    )
   }
   return Object.freeze(results)
 }
@@ -108,8 +102,10 @@ function validateAssertion(value: unknown, index: number): DeclarativeAssertion 
 }
 
 function isAssertionOperator(value: unknown): value is DeclarativeAssertionOperator {
-  return typeof value === 'string' &&
+  return (
+    typeof value === 'string' &&
     (DECLARATIVE_ASSERTION_OPERATORS as readonly string[]).includes(value)
+  )
 }
 
 function compare(
@@ -126,10 +122,14 @@ function compare(
     throw new TypeError(`Numeric assertion at ${path} requires numeric actual and expected values`)
   }
   switch (operator) {
-    case 'lt': return actual < expected
-    case 'lte': return actual <= expected
-    case 'gt': return actual > expected
-    case 'gte': return actual >= expected
+    case 'lt':
+      return actual < expected
+    case 'lte':
+      return actual <= expected
+    case 'gt':
+      return actual > expected
+    case 'gte':
+      return actual >= expected
   }
 }
 
