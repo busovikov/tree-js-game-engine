@@ -50,7 +50,7 @@ The program is done only when:
 | M10e | Browser static export and ZIP                                   | M10b–M10d  | Complete                                     |
 | M10f | Cross-service graph nodes and contract integration              | M10a–M10e  | Complete                                     |
 | M11  | Bounce Run vertical slice                                       | M10f       | Complete                                     |
-| M12  | Generator, seed/replay, QA harness, and automated browser tests | M11        | In progress — dev QA boundary complete       |
+| M12  | Generator, seed/replay, QA harness, and automated browser tests | M11        | In progress — Chrome matrix has tool blockers |
 | M13  | Full gameplay, polish, saves, audio, and stabilization          | M12        | Pending                                      |
 | M14  | Final export, quality audit, and documentation                  | M13        | Pending                                      |
 
@@ -497,8 +497,22 @@ sentinels at their sources, and proves every sentinel, collector, and global bri
 all emitted JavaScript. User-Chrome smoke on an agent-owned server recorded lateral action and
 public observation displacement from `x 0.000` to `x 1.069` by tick 39, showed pause through Escape,
 composed 139-tick session and bug artifacts with zero collected diagnostics, and found no console
-errors beyond the established Rapier initialization warning. The full automated browser workflow
-matrix remains incomplete.
+errors beyond the established Rapier initialization warning.
+
+M12 Chrome workflow evidence `40af2b6` and `2438c55` preserves a key press released before the
+next frame for exactly one action-map snapshot and commits the bounded immutable user-Chrome matrix
+at `docs/evidence/m12-browser-workflow-report.v1.json`. Six real Chrome-extension
+`locator.press('KeyD')` events across fixed intervals moved the public DEV observation from
+`x 0.000` at tick 24 to `x 0.220` at tick 57; the existing public action port separately proved
+multi-tick lateral control to `x 2.242`. DEV and production both covered visible start,
+pause with a stable tick, UI resume, deterministic game over, immediate restart, and 1280×720 plus
+1600×900 resize. Production contained no DEV QA DOM hooks, and both runs had no unexpected console
+diagnostics beyond the exact Rapier initialization warning. The installed `tab.playwright` surface
+exposes only combined `locator.press`, not separate keyboard down/up, and exposes no
+`requestfailed` event stream. Therefore one physical sustained-key hold and authoritative
+production failed-request collection remain unproved; the Browser E2E acceptance row and M12 stay
+in progress rather than treating the public action port or visible asset load as substituted
+evidence.
 
 ## M13 — Full gameplay, polish, saves, audio, and stabilization
 
