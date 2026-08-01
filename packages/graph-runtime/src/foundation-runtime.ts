@@ -103,4 +103,17 @@ export function registerFoundationRuntimeAdapters(
       },
     }
   })
+
+  register(FOUNDATION_GRAPH_IDS.greaterThan.nodeType, (request) => ({
+    data: {
+      [FOUNDATION_GRAPH_IDS.greaterThan.ports.result]:
+        finiteNumber(
+          request.readData(FOUNDATION_GRAPH_IDS.greaterThan.ports.a),
+          'Greater Than A',
+        ) > finiteNumber(
+          request.readData(FOUNDATION_GRAPH_IDS.greaterThan.ports.b),
+          'Greater Than B',
+        ),
+    },
+  }))
 }

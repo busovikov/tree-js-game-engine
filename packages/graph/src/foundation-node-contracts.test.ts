@@ -15,6 +15,7 @@ const EXPECTED_FOUNDATION_IDS = {
   add: '74000000-0000-4000-8000-000000000003',
   addVec3: '74000000-0000-4000-8000-000000000004',
   formatNumber: '74000000-0000-4000-8000-000000000005',
+  greaterThan: '74000000-0000-4000-8000-000000000006',
   ports: {
     onStartNext: '74000000-0000-4000-8000-000000000101',
     branchIn: '74000000-0000-4000-8000-000000000201',
@@ -29,6 +30,9 @@ const EXPECTED_FOUNDATION_IDS = {
     addVec3Result: '74000000-0000-4000-8000-000000000403',
     formatNumberValue: '74000000-0000-4000-8000-000000000501',
     formatNumberResult: '74000000-0000-4000-8000-000000000502',
+    greaterThanA: '74000000-0000-4000-8000-000000000601',
+    greaterThanB: '74000000-0000-4000-8000-000000000602',
+    greaterThanResult: '74000000-0000-4000-8000-000000000603',
   },
 } as const
 
@@ -46,6 +50,7 @@ describe('foundation graph node contracts', () => {
       { id: EXPECTED_FOUNDATION_IDS.add, name: 'Add' },
       { id: EXPECTED_FOUNDATION_IDS.addVec3, name: 'Add Vec3' },
       { id: EXPECTED_FOUNDATION_IDS.formatNumber, name: 'Format Number' },
+      { id: EXPECTED_FOUNDATION_IDS.greaterThan, name: 'Greater Than' },
     ])
     expect(registry.all()).toEqual(FOUNDATION_GRAPH_CONTRACTS)
   })
@@ -152,9 +157,32 @@ describe('foundation graph node contracts', () => {
         type: { kind: 'named', type: STRING_TYPE, arguments: [] },
       },
     ])
+    expect(contracts['Greater Than']?.ports).toEqual([
+      {
+        id: EXPECTED_FOUNDATION_IDS.ports.greaterThanA,
+        name: 'A',
+        kind: 'data',
+        direction: 'input',
+        type: { kind: 'named', type: NUMBER_TYPE, arguments: [] },
+      },
+      {
+        id: EXPECTED_FOUNDATION_IDS.ports.greaterThanB,
+        name: 'B',
+        kind: 'data',
+        direction: 'input',
+        type: { kind: 'named', type: NUMBER_TYPE, arguments: [] },
+      },
+      {
+        id: EXPECTED_FOUNDATION_IDS.ports.greaterThanResult,
+        name: 'Result',
+        kind: 'data',
+        direction: 'output',
+        type: { kind: 'named', type: BOOL_TYPE, arguments: [] },
+      },
+    ])
 
     expect(contracts['On Start']?.domains).toEqual(['FrameGameplay'])
-    for (const name of ['Branch', 'Add', 'Add Vec3', 'Format Number']) {
+    for (const name of ['Branch', 'Add', 'Add Vec3', 'Format Number', 'Greater Than']) {
       expect(contracts[name]?.domains).toEqual([
         'FixedGameplay',
         'FrameGameplay',

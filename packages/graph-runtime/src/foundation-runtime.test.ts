@@ -74,6 +74,18 @@ describe('foundation runtime adapters', () => {
     })
   })
 
+  it('compares finite numbers through the typed scalar relation', () => {
+    const registry = new NodeRuntimeRegistry()
+    registerFoundationRuntimeAdapters(registry)
+
+    expect(execute(registry, FOUNDATION_GRAPH_IDS.greaterThan.nodeType, {
+      [FOUNDATION_GRAPH_IDS.greaterThan.ports.a]: 3,
+      [FOUNDATION_GRAPH_IDS.greaterThan.ports.b]: 2,
+    })).toEqual({
+      data: { [FOUNDATION_GRAPH_IDS.greaterThan.ports.result]: true },
+    })
+  })
+
   it('rejects invalid branch, non-finite scalar, and malformed vector inputs', () => {
     const registry = new NodeRuntimeRegistry()
     registerFoundationRuntimeAdapters(registry)
@@ -95,5 +107,9 @@ describe('foundation runtime adapters', () => {
       { [FOUNDATION_GRAPH_IDS.formatNumber.ports.value]: Number.NaN },
       { prefix: '', suffix: '' },
     )).toThrow()
+    expect(() => execute(registry, FOUNDATION_GRAPH_IDS.greaterThan.nodeType, {
+      [FOUNDATION_GRAPH_IDS.greaterThan.ports.a]: Number.POSITIVE_INFINITY,
+      [FOUNDATION_GRAPH_IDS.greaterThan.ports.b]: 1,
+    })).toThrow()
   })
 })

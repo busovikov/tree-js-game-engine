@@ -42,6 +42,10 @@ export const FOUNDATION_GRAPH_IDS = {
     nodeType: id(5),
     ports: { value: id(501), result: id(502) },
   },
+  greaterThan: {
+    nodeType: id(6),
+    ports: { a: id(601), b: id(602), result: id(603) },
+  },
 } as const
 
 const EmptyProperties = z.object({}).strict()
@@ -218,6 +222,37 @@ export const FOUNDATION_GRAPH_CONTRACTS: readonly NodeDefinition[] = [
     ],
     propertySchema: z.object({ prefix: z.string(), suffix: z.string() }).strict(),
     propertyContract: { prefix: 'text', suffix: 'text' },
+    liveness: 'pure',
+    resultPersistence: 'execution',
+  }),
+  foundationNode({
+    id: FOUNDATION_GRAPH_IDS.greaterThan.nodeType,
+    name: 'Greater Than',
+    category: 'Comparison',
+    description: 'Compares two finite scalar values.',
+    ports: [
+      {
+        id: FOUNDATION_GRAPH_IDS.greaterThan.ports.a,
+        name: 'A',
+        kind: 'data',
+        direction: 'input',
+        type: namedType(NUMBER_TYPE),
+      },
+      {
+        id: FOUNDATION_GRAPH_IDS.greaterThan.ports.b,
+        name: 'B',
+        kind: 'data',
+        direction: 'input',
+        type: namedType(NUMBER_TYPE),
+      },
+      {
+        id: FOUNDATION_GRAPH_IDS.greaterThan.ports.result,
+        name: 'Result',
+        kind: 'data',
+        direction: 'output',
+        type: namedType(BOOL_TYPE),
+      },
+    ],
     liveness: 'pure',
     resultPersistence: 'execution',
   }),
