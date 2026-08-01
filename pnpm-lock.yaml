@@ -71,6 +71,9 @@ importers:
       '@haku/graph-runtime':
         specifier: workspace:*
         version: link:../../packages/graph-runtime
+      '@haku/physics':
+        specifier: workspace:*
+        version: link:../../packages/physics
       '@haku/physics-rapier':
         specifier: workspace:*
         version: link:../../packages/physics-rapier

@@ -16,6 +16,7 @@
     "@haku/graph": "workspace:*",
     "@haku/graph-runtime": "workspace:*",
     "@haku/pool": "workspace:*",
+    "@haku/physics": "workspace:*",
     "@haku/physics-rapier": "workspace:*",
     "@haku/schema": "workspace:*",
     "@haku/ui": "workspace:*"
