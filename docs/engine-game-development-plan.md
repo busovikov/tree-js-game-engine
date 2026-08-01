@@ -654,6 +654,43 @@ M13 production audio evidence (complete; effects, polish, and stabilization rema
   read-only state observation; no claim of subjectively hearing sound is made. The agent server was
   stopped after the run.
 
+M13 bounded presentation effects evidence (complete for the bounded slice; long-run stabilization
+and the full visual-coherence acceptance remain open):
+
+- The mandatory integration RED was committed before production effects code and failed at module
+  collection because `effects-composition.js` did not exist. Its GREEN path uses a real `World`,
+  real platform and bonus `EntityPool` leases, the accepted `LandingTracker` result, the atomic bonus
+  claim boundary, and the once-only failure system. Duplicate same-tick landings, side contacts,
+  stale bonus overlaps, and repeated failure updates emit no duplicate presentation request.
+- `@haku/engine` now owns a typed `PresentationEffectsService` and replaceable backend contract.
+  Requests contain only positions, colors, shapes, durations, sizes, and optional entity ownership;
+  no Three object enters world, schema, pool, or app state. The production Three backend owns 18
+  reusable burst meshes plus one trail Points object, a fixed 12-request ring, 28 trail samples,
+  three shared burst geometries/materials, and one shared trail geometry/material. Its Presentation
+  update uses preallocated slots/buffers, reuses the oldest visual when saturated, and disposes each
+  shared GPU resource once.
+- Bounce Run composes cyan landing rings, gold pickup sparks, a coral fail pulse, and a pale cyan
+  fixed-capacity trail through typed methods. The trail samples in `LateUpdate`, advances only for a
+  positive scheduler delta, interpolates samples at a fixed temporal interval, expires by elapsed
+  time, and clears on restart/dispose. Two removable pool lifecycle subscriptions clear lease-owned
+  bursts on release/clear and unregister on composition disposal.
+- Runtime platform materialization now reinforces the existing dimension language with distinct
+  cyan normal, green wide, orange narrow, and purple low-roughness bounce styling. Bonus gold and the
+  orange ball/pale trail remain contrasting without textures, remote assets, or extra render loops.
+- The focused integration drives 100 accepted landing effect requests and 20 complete
+  restart/release/reacquire cycles. Active bursts remain at or below 8 in the controllable backend,
+  trail points at or below 12, queue at or below 16, and every cycle returns to zero active/queued
+  effects, trail samples, and owned handles with exactly two live pool subscriptions; disposal
+  leaves zero subscriptions and render objects. Engine failure/disposal tests cover invalid budgets,
+  paused updates, queued/active owner cleanup, and idempotent Three disposal.
+- All 20 Bounce Run test files pass 76/76 tests. Focused engine/pool/graph/runtime verification passes
+  33 files / 119 tests; engine build, Bounce Run typecheck, and the 202-module production build pass
+  with only the established chunk-size advisory. User Chrome on agent-owned `127.0.0.1:5194` visibly
+  showed the four platform colors/shapes, contrasting ball/trail, zero QA diagnostics, and the same
+  `pool 6/8` read-only counter after restart. The natural run reached game over, but neither its brief
+  fail burst nor a bonus pickup was captured visually, so those visual claims rely on focused tests.
+  The console contained only the established Rapier warning, and the agent server was stopped.
+
 ## M14 — Final export, quality audit, and documentation
 
 Acceptance:
