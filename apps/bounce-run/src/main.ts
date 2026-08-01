@@ -239,6 +239,7 @@ async function main(): Promise<void> {
     controlSystem,
     engine.scheduler,
     route,
+    session,
   )
   const failureSystem = new BounceRunFailureSystem(BALL_ID, physics, () => {
     void session.fail().catch((error: unknown) => {

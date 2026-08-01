@@ -28,6 +28,7 @@ export const BOUNCE_RUN_SESSION_IDS = {
     collectBonus: id(16),
     renderHighScore: id(17),
     renderScore: id(18),
+    awardRouteProgress: id(19),
   },
   variables: {
     state: 'session.state',
@@ -39,8 +40,11 @@ export const BOUNCE_RUN_SESSION_IDS = {
     gameOver: 'constant.state.game-over',
     score: 'session.score',
     highScore: 'session.high-score',
+    routePlatformIndex: 'session.route-platform-index',
+    furthestScoredPlatform: 'session.furthest-scored-platform',
     scoreZero: 'constant.score.zero',
     bonusValue: 'constant.score.bonus',
+    routeProgressValue: 'constant.score.route-progress',
   },
 } as const
 
@@ -256,8 +260,27 @@ export function createBounceRunSessionGraph(registry: NodeRegistry): GraphAsset 
         clearScore,
         DETERMINISTIC_GRAPH_CONTRACTS.setVariable.ports.flowIn,
       )
+      const clearRouteProgress = addNode(
+        DETERMINISTIC_GRAPH_CONTRACTS.setVariable.nodeType,
+        { key: BOUNCE_RUN_SESSION_IDS.variables.furthestScoredPlatform },
+        'FrameGameplay',
+        undefined,
+        NUMBER_TYPE,
+      )
+      connect(
+        scoreZero,
+        DETERMINISTIC_GRAPH_CONTRACTS.getVariable.ports.value,
+        clearRouteProgress,
+        DETERMINISTIC_GRAPH_CONTRACTS.setVariable.ports.value,
+      )
       connect(
         clearScore,
+        DETERMINISTIC_GRAPH_CONTRACTS.setVariable.ports.flowOut,
+        clearRouteProgress,
+        DETERMINISTIC_GRAPH_CONTRACTS.setVariable.ports.flowIn,
+      )
+      connect(
+        clearRouteProgress,
         DETERMINISTIC_GRAPH_CONTRACTS.setVariable.ports.flowOut,
         setState,
         DETERMINISTIC_GRAPH_CONTRACTS.setVariable.ports.flowIn,
@@ -329,6 +352,102 @@ export function createBounceRunSessionGraph(registry: NodeRegistry): GraphAsset 
     FOUNDATION_GRAPH_IDS.onStart.ports.next,
     setScore,
     DETERMINISTIC_GRAPH_CONTRACTS.setVariable.ports.flowIn,
+  )
+
+  const routePlatformIndex = variable(
+    BOUNCE_RUN_SESSION_IDS.variables.routePlatformIndex,
+    NUMBER_TYPE,
+  )
+  const furthestScoredPlatform = variable(
+    BOUNCE_RUN_SESSION_IDS.variables.furthestScoredPlatform,
+    NUMBER_TYPE,
+  )
+  const routeProgressValue = variable(
+    BOUNCE_RUN_SESSION_IDS.variables.routeProgressValue,
+    NUMBER_TYPE,
+  )
+  const isNewRouteProgress = addNode(FOUNDATION_GRAPH_IDS.greaterThan.nodeType)
+  connect(
+    routePlatformIndex,
+    DETERMINISTIC_GRAPH_CONTRACTS.getVariable.ports.value,
+    isNewRouteProgress,
+    FOUNDATION_GRAPH_IDS.greaterThan.ports.a,
+  )
+  connect(
+    furthestScoredPlatform,
+    DETERMINISTIC_GRAPH_CONTRACTS.getVariable.ports.value,
+    isNewRouteProgress,
+    FOUNDATION_GRAPH_IDS.greaterThan.ports.b,
+  )
+  const routeBranch = addNode(FOUNDATION_GRAPH_IDS.branch.nodeType)
+  connect(
+    isNewRouteProgress,
+    FOUNDATION_GRAPH_IDS.greaterThan.ports.result,
+    routeBranch,
+    FOUNDATION_GRAPH_IDS.branch.ports.condition,
+  )
+  const routeAddScore = addNode(FOUNDATION_GRAPH_IDS.add.nodeType)
+  connect(
+    score,
+    DETERMINISTIC_GRAPH_CONTRACTS.getVariable.ports.value,
+    routeAddScore,
+    FOUNDATION_GRAPH_IDS.add.ports.a,
+  )
+  connect(
+    routeProgressValue,
+    DETERMINISTIC_GRAPH_CONTRACTS.getVariable.ports.value,
+    routeAddScore,
+    FOUNDATION_GRAPH_IDS.add.ports.b,
+  )
+  const setRouteScore = addNode(
+    DETERMINISTIC_GRAPH_CONTRACTS.setVariable.nodeType,
+    { key: BOUNCE_RUN_SESSION_IDS.variables.score },
+    'FrameGameplay',
+    undefined,
+    NUMBER_TYPE,
+  )
+  connect(
+    routeAddScore,
+    FOUNDATION_GRAPH_IDS.add.ports.result,
+    setRouteScore,
+    DETERMINISTIC_GRAPH_CONTRACTS.setVariable.ports.value,
+  )
+  connect(
+    routeBranch,
+    FOUNDATION_GRAPH_IDS.branch.ports.whenTrue,
+    setRouteScore,
+    DETERMINISTIC_GRAPH_CONTRACTS.setVariable.ports.flowIn,
+  )
+  const setFurthestScoredPlatform = addNode(
+    DETERMINISTIC_GRAPH_CONTRACTS.setVariable.nodeType,
+    { key: BOUNCE_RUN_SESSION_IDS.variables.furthestScoredPlatform },
+    'FrameGameplay',
+    undefined,
+    NUMBER_TYPE,
+  )
+  connect(
+    routePlatformIndex,
+    DETERMINISTIC_GRAPH_CONTRACTS.getVariable.ports.value,
+    setFurthestScoredPlatform,
+    DETERMINISTIC_GRAPH_CONTRACTS.setVariable.ports.value,
+  )
+  connect(
+    setRouteScore,
+    DETERMINISTIC_GRAPH_CONTRACTS.setVariable.ports.flowOut,
+    setFurthestScoredPlatform,
+    DETERMINISTIC_GRAPH_CONTRACTS.setVariable.ports.flowIn,
+  )
+  const awardRouteProgress = addNode(
+    FOUNDATION_GRAPH_IDS.onStart.nodeType,
+    {},
+    'FrameGameplay',
+    BOUNCE_RUN_SESSION_IDS.entries.awardRouteProgress,
+  )
+  connect(
+    awardRouteProgress,
+    FOUNDATION_GRAPH_IDS.onStart.ports.next,
+    routeBranch,
+    FOUNDATION_GRAPH_IDS.branch.ports.flowIn,
   )
   const renderScore = addNode(
     FOUNDATION_GRAPH_IDS.onStart.nodeType,

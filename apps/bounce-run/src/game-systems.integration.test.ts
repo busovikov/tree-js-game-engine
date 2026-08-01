@@ -169,6 +169,7 @@ describe('Bounce Run fixed-step runtime', () => {
     } as unknown as PhysicsContactSystem
     const route = {
       platformDescriptor: () => ({ behavior: { kind: 'boost', bounceHeight: 3.6 } }),
+      activePlatforms: () => [],
     } as never
     const landing = new BounceRunLandingSystem(BALL, contacts, control, scheduler, route)
     const world = new World()
@@ -187,13 +188,14 @@ describe('Bounce Run fixed-step runtime', () => {
 
   it('awards route progress only for valid landings on a newly advanced mandatory platform', async () => {
     let velocity: readonly [number, number, number] = [0, -5, 0]
-    let events = [
+    let contactNormal: readonly [number, number, number] = [0, -1, 0]
+    const collisionEvents = () => [
       {
         kind: 'collision',
         phase: 'enter',
         entityA: BALL.value,
         entityB: 'route-lease',
-        contacts: [{ point: [0, 0, 0], normal: [0, -1, 0], depth: -0.01 }],
+        contacts: [{ point: [0, 0, 0], normal: contactNormal, depth: -0.01 }],
       } as const,
     ]
     let platformIndex = 1
@@ -204,7 +206,7 @@ describe('Bounce Run fixed-step runtime', () => {
       },
     } as unknown as PhysicsWorldSystem
     const contacts = {
-      peekCollisionEvents: () => events,
+      peekCollisionEvents: collisionEvents,
     } as unknown as PhysicsContactSystem
     const route = {
       platformDescriptor: () => ({ behavior: { kind: 'standard', bounceHeight: 2.6 } }),
@@ -251,12 +253,12 @@ describe('Bounce Run fixed-step runtime', () => {
     expect(session.score()).toBe(1)
 
     platformIndex = 2
-    events = [{ ...events[0]!, contacts: [{ ...events[0]!.contacts[0]!, normal: [1, 0, 0] }] }]
+    contactNormal = [1, 0, 0]
     land()
     expect(session.score()).toBe(1)
 
     platformIndex = 0
-    events = [{ ...events[0]!, contacts: [{ ...events[0]!.contacts[0]!, normal: [0, -1, 0] }] }]
+    contactNormal = [0, -1, 0]
     land()
     expect(session.score()).toBe(1)
 

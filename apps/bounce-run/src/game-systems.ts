@@ -121,6 +121,7 @@ export class BounceRunLandingSystem implements ISystem {
     private readonly control: BounceRunControlSystem,
     private readonly scheduler: EngineScheduler,
     private readonly route?: PoolBackedBounceRunRoute,
+    private readonly score?: BounceRunRouteScoreRuntime,
   ) {
     this.tracker = new LandingTracker(ball.value)
   }
@@ -134,12 +135,20 @@ export class BounceRunLandingSystem implements ISystem {
     if (landing) {
       const descriptor = this.route?.platformDescriptor(entityId(landing.platformId))
       this.control.queueLanding(descriptor?.behavior.bounceHeight)
+      const platformIndex = this.route?.activePlatforms().find(
+        ({ entity }) => entity.value === landing.platformId,
+      )?.platformIndex
+      if (platformIndex !== undefined) this.score?.awardRouteProgress(platformIndex)
     }
   }
 
   reset(): void {
     this.tracker.reset()
   }
+}
+
+interface BounceRunRouteScoreRuntime {
+  awardRouteProgress(platformIndex: number): boolean
 }
 
 interface BounceRunBonusScoreRuntime {

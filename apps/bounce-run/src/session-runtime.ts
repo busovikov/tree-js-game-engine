@@ -27,6 +27,7 @@ export interface BounceRunSessionRuntime {
   fail(): Promise<void>
   restart(): void
   collectBonus(): boolean
+  awardRouteProgress(platformIndex: number): boolean
   state(): BounceRunSessionState
   score(): number
   highScore(): number
@@ -70,8 +71,11 @@ export function createBounceRunSessionRuntime(options: {
     [BOUNCE_RUN_SESSION_IDS.variables.gameOver]: 'game-over',
     [BOUNCE_RUN_SESSION_IDS.variables.score]: 0,
     [BOUNCE_RUN_SESSION_IDS.variables.highScore]: 0,
+    [BOUNCE_RUN_SESSION_IDS.variables.routePlatformIndex]: 0,
+    [BOUNCE_RUN_SESSION_IDS.variables.furthestScoredPlatform]: 0,
     [BOUNCE_RUN_SESSION_IDS.variables.scoreZero]: 0,
     [BOUNCE_RUN_SESSION_IDS.variables.bonusValue]: 1,
+    [BOUNCE_RUN_SESSION_IDS.variables.routeProgressValue]: 1,
   })
   const runtimes = new NodeRuntimeRegistry()
   registerFoundationRuntimeAdapters(runtimes)
@@ -186,6 +190,18 @@ export function createBounceRunSessionRuntime(options: {
       run(BOUNCE_RUN_SESSION_IDS.entries.collectBonus)
       renderScore()
       return true
+    },
+    awardRouteProgress: (platformIndex) => {
+      requireInitialized()
+      if (!Number.isSafeInteger(platformIndex) || platformIndex <= 0) return false
+      if (variables.get(BOUNCE_RUN_SESSION_IDS.variables.state) !== 'active') return false
+      const previous = variables.get(BOUNCE_RUN_SESSION_IDS.variables.score) as number
+      variables.set(BOUNCE_RUN_SESSION_IDS.variables.routePlatformIndex, platformIndex)
+      instance.invalidateResource('graph.variable')
+      run(BOUNCE_RUN_SESSION_IDS.entries.awardRouteProgress)
+      const awarded = variables.get(BOUNCE_RUN_SESSION_IDS.variables.score) !== previous
+      if (awarded) renderScore()
+      return awarded
     },
     state: () => variables.get(BOUNCE_RUN_SESSION_IDS.variables.state) as BounceRunSessionState,
     score: () => variables.get(BOUNCE_RUN_SESSION_IDS.variables.score) as number,
