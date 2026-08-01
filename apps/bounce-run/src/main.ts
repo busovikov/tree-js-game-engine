@@ -1,0 +1,237 @@
+import {
+  SCENE_ASSET_TYPE,
+  validateProjectAssetComposition,
+  validateProjectManifest,
+} from '@haku/assets'
+import { entityId, TransformComponent, type ISystem } from '@haku/core'
+import {
+  Engine,
+  InputManager,
+  PhysicsColliderSystem,
+  PhysicsContactSystem,
+  SceneLoader,
+  createEngineAssetRegistry,
+  createEngineComponentRegistry,
+  createEnginePoolParticipant,
+  loadProjectPrefabAssets,
+} from '@haku/engine'
+import { createEntityPoolFromComponent, poolHandleRoot } from '@haku/pool'
+import { createRapierPhysicsBackend } from '@haku/physics-rapier'
+import { projectPathToUrl } from '@haku/schema'
+import { UIService } from '@haku/ui'
+import projectAsset from '../haku.project.json'
+import {
+  BounceRunCameraSystem,
+  BounceRunControlSystem,
+  BounceRunFailureSystem,
+  BounceRunInputSystem,
+  BounceRunLandingSystem,
+  BounceRunPerformanceSystem,
+} from './game-systems.js'
+import { instantiatePrefabDefinition } from './prefab-instance.js'
+import { createBounceRunSessionRuntime } from './session-runtime.js'
+import { BOUNCE_RUN_UI_IDS, loadBounceRunUIDocument } from './ui-document.js'
+
+const BALL_ID = entityId('b1700000-0000-4000-8000-000000000002')
+const CAMERA_ID = entityId('b1700000-0000-4000-8000-000000000001')
+const POOL_OWNER_ID = entityId('b1700000-0000-4000-8000-000000000004')
+const BALL_SPAWN = {
+  position: [0, 3, 0] as const,
+  rotation: [0, 0, 0, 1] as const,
+}
+const PLATFORM_POSITIONS = [
+  [0, 0, 2],
+  [-0.8, 0.35, 8.5],
+  [0.9, 0.7, 15],
+  [-1, 1.05, 21.5],
+  [0.75, 1.4, 28],
+  [0, 1.75, 34.5],
+] as const
+
+async function main(): Promise<void> {
+  const manifest = validateProjectManifest(projectAsset)
+  const assets = validateProjectAssetComposition(manifest, createEngineAssetRegistry()).index
+  const canvas = requireElement<HTMLCanvasElement>('canvas')
+  const hudHost = requireElement<HTMLElement>('hud')
+  const engine = new Engine({ canvas })
+  engine.backend.setViewportMode('view')
+
+  const prefabAssets = await loadProjectPrefabAssets(manifest)
+  const scenePath = assets.path(manifest.entryScene, SCENE_ASSET_TYPE)
+  const loaded = await SceneLoader.load(
+    projectPathToUrl(`${manifest.assetsDir}/${scenePath}`),
+    undefined,
+    prefabAssets,
+  )
+  engine.loadWorld(
+    loaded.world,
+    loaded.prototypes,
+    loaded.prefabAssets,
+    loaded.renderSettings,
+    loaded.activeCameraId,
+  )
+
+  const rapier = await createRapierPhysicsBackend({ gravity: [0, -18, 0] })
+  const physics = engine.setPhysicsBackend(rapier)
+  const colliders = new PhysicsColliderSystem(physics, {
+    physicsSettings: loaded.physicsSettings,
+  })
+  const contacts = new PhysicsContactSystem(physics)
+  engine.addSystem(colliders)
+  engine.addSystem(contacts)
+
+  const components = createEngineComponentRegistry()
+  const platformPool = createEntityPoolFromComponent({
+    world: loaded.world,
+    entity: POOL_OWNER_ID,
+    instantiatePrefab(reference) {
+      const prefab = prefabAssets.get(reference.$ref)
+      if (!prefab) throw new Error(`Unknown platform prefab: ${reference.$ref}`)
+      return instantiatePrefabDefinition({
+        world: loaded.world,
+        registry: components,
+        definition: prefab,
+      })
+    },
+    participants: [
+      createEnginePoolParticipant({
+        world: loaded.world,
+        colliders,
+        render: engine.backend.sync,
+      }),
+    ],
+  })
+  const platformHandles = PLATFORM_POSITIONS.map((position) => {
+    const handle = platformPool.acquire()
+    if (!handle) throw new Error('Bounce Run platform pool exhausted during setup')
+    const root = poolHandleRoot(handle)
+    const transform = loaded.world.getComponent(root, TransformComponent)
+    if (!transform) throw new Error(`Pooled platform ${root.value} has no Transform`)
+    loaded.world.addComponent(root, TransformComponent, {
+      ...transform,
+      position: [...position],
+    })
+    return handle
+  })
+  // Static bodies were created by synchronous acquire hooks at their prefab baseline.
+  // Reconcile once after all authored transforms are placed.
+  colliders.dispose()
+  colliders.update(loaded.world)
+  engine.backend.sync.update(loaded.world)
+
+  const ui = new UIService()
+  const uiDocument = await loadBounceRunUIDocument()
+  ui.register(uiDocument)
+  ui.mount(uiDocument.id, hudHost)
+  const session = createBounceRunSessionRuntime({ scheduler: engine.scheduler, ui })
+
+  let controlSystem: BounceRunControlSystem
+  let landingSystem: BounceRunLandingSystem
+  let failureSystem: BounceRunFailureSystem
+  let cameraSystem: BounceRunCameraSystem
+
+  const resetRun = (): void => {
+    physics.resetBodyState(BALL_ID, BALL_SPAWN, loaded.world)
+    input.disable()
+    input.enable()
+    controlSystem.reset()
+    landingSystem.reset()
+    failureSystem.reset()
+    cameraSystem.reset()
+  }
+  const startRun = (): void => {
+    resetRun()
+    session.start()
+    engine.setPaused(false)
+  }
+  const restartRun = (): void => {
+    if (session.state() === 'start') return
+    resetRun()
+    session.restart()
+    engine.setPaused(false)
+  }
+  const togglePause = (): void => {
+    if (session.state() === 'active') {
+      session.pause()
+      engine.setPaused(true)
+    } else if (session.state() === 'paused') {
+      session.resume()
+      engine.setPaused(false)
+    }
+  }
+
+  const input = new InputManager({
+    keyboardTarget: window,
+    pointerTarget: canvas,
+    actionBindings: {
+      lateral: {
+        kind: 'axis',
+        negative: ['KeyA', 'ArrowLeft'],
+        positive: ['KeyD', 'ArrowRight'],
+      },
+      pause: { kind: 'pulse', codes: ['Escape'] },
+      restart: { kind: 'pulse', codes: ['KeyR'] },
+    },
+  })
+  input.attach()
+  input.enable()
+
+  const inputSystem = new BounceRunInputSystem(input, togglePause, restartRun)
+  controlSystem = new BounceRunControlSystem(BALL_ID, physics, inputSystem)
+  landingSystem = new BounceRunLandingSystem(BALL_ID, contacts, controlSystem, engine.scheduler)
+  failureSystem = new BounceRunFailureSystem(BALL_ID, physics, () => {
+    session.fail()
+    engine.setPaused(true)
+  })
+  cameraSystem = new BounceRunCameraSystem(BALL_ID, CAMERA_ID, physics)
+  const performanceSystem = new BounceRunPerformanceSystem(ui, platformPool, engine.scheduler)
+  const systems: ISystem[] = [
+    inputSystem,
+    controlSystem,
+    landingSystem,
+    failureSystem,
+    cameraSystem,
+    performanceSystem,
+  ]
+  systems.forEach((system) => engine.addSystem(system))
+
+  const unsubscribeUI = ui.subscribe((event) => {
+    if (event.eventId === BOUNCE_RUN_UI_IDS.events.start) startRun()
+    else if (event.eventId === BOUNCE_RUN_UI_IDS.events.resume) togglePause()
+    else if (event.eventId === BOUNCE_RUN_UI_IDS.events.restart) restartRun()
+  })
+
+  session.initialize()
+  engine.setPaused(true)
+  engine.start()
+
+  window.addEventListener(
+    'beforeunload',
+    () => {
+      engine.stop()
+      unsubscribeUI()
+      input.detach()
+      session.destroy()
+      ui.destroyAll()
+      systems.forEach((system) => engine.removeSystem(system))
+      platformHandles.forEach((handle) => platformPool.release(handle))
+      platformPool.clear()
+      engine.removeSystem(contacts)
+      engine.removeSystem(colliders)
+      engine.dispose()
+    },
+    { once: true },
+  )
+}
+
+function requireElement<T extends HTMLElement>(id: string): T {
+  const element = document.getElementById(id)
+  if (!element) throw new Error(`Missing #${id}`)
+  return element as T
+}
+
+void main().catch((error: unknown) => {
+  console.error('[bounce-run] failed to start', error)
+  const hud = document.getElementById('hud')
+  if (hud) hud.textContent = `Bounce Run failed to start: ${String(error)}`
+})

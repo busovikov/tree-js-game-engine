@@ -14,7 +14,7 @@
           "type": "40000000-0000-4000-8000-000000000004",
           "data": {
             "geometryType": "BoxGeometry",
-            "geometryParams": { "width": 4, "height": 0.6, "depth": 6 },
+            "geometryParams": { "width": 4, "height": 0.6, "depth": 7.5 },
             "material": {
               "materialType": "toon",
               "color": "#36c9a3",
@@ -30,7 +30,7 @@
           "type": "40000000-0000-4000-8000-000000000009",
           "data": {
             "shape": "box",
-            "halfExtents": [2, 0.3, 3],
+            "halfExtents": [2, 0.3, 3.75],
             "friction": 0.5,
             "restitution": 0.05
           }

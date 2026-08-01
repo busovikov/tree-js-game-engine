@@ -10,10 +10,11 @@ import { describe, expect, it } from 'vitest'
 import projectAsset from '../haku.project.json'
 import platformAsset from '../public/assets/prefabs/platform.prefab.json'
 import sceneAsset from '../public/assets/scenes/main.scene.json'
-import { bounceRunUIDocument } from './ui-document.js'
+import uiAsset from '../public/assets/ui/hud.ui.json'
+import { loadBounceRunUIDocument } from './ui-document.js'
 
 describe('Bounce Run authored assets', () => {
-  it('compose into a scene with a CCD ball, pooled platforms, and HUD', () => {
+  it('compose into a scene with a CCD ball, pooled platforms, and HUD', async () => {
     const manifest = validateProjectManifest(projectAsset)
     const assets = validateProjectAssetComposition(manifest, createEngineAssetRegistry()).index
     const prefab = PrefabDefinitionSchema.parse(platformAsset)
@@ -44,6 +45,10 @@ describe('Bounce Run authored assets', () => {
         ),
     ).toBe(true)
     expect(prefab.entities).toHaveLength(2)
-    expect(bounceRunUIDocument.elements).toHaveLength(14)
+    const uiDocument = await loadBounceRunUIDocument(async () => ({
+      ok: true,
+      json: async () => uiAsset,
+    }))
+    expect(uiDocument.elements).toHaveLength(14)
   })
 })

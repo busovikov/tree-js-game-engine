@@ -4,14 +4,19 @@ import { EngineScheduler } from '@haku/core'
 import { UIService } from '@haku/ui'
 import { describe, expect, it } from 'vitest'
 import { createBounceRunSessionRuntime } from './session-runtime.js'
-import { bounceRunUIDocument, BOUNCE_RUN_UI_IDS } from './ui-document.js'
+import documentAsset from '../public/assets/ui/hud.ui.json'
+import { BOUNCE_RUN_UI_IDS, loadBounceRunUIDocument } from './ui-document.js'
 
 describe('Bounce Run session runtime', () => {
-  it('executes start, pause, fail, and restart UI transitions through the graph', () => {
+  it('executes start, pause, fail, and restart UI transitions through the graph', async () => {
     const host = document.createElement('div')
     const ui = new UIService()
-    ui.register(bounceRunUIDocument)
-    const documentInstance = ui.mount(bounceRunUIDocument.id, host)
+    const uiDocument = await loadBounceRunUIDocument(async () => ({
+      ok: true,
+      json: async () => documentAsset,
+    }))
+    ui.register(uiDocument)
+    const documentInstance = ui.mount(uiDocument.id, host)
     const session = createBounceRunSessionRuntime({
       scheduler: new EngineScheduler(),
       ui,

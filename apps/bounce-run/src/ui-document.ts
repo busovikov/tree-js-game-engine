@@ -1,11 +1,11 @@
-import { UIDocumentSchema } from '@haku/ui'
-import documentAsset from '../public/assets/ui/hud.ui.json'
+import { assetId } from '@haku/schema'
+import { UIDocumentSchema, type UIDocument } from '@haku/ui'
 
 const id = (value: number): string =>
   `b1200000-0000-4000-8000-${value.toString().padStart(12, '0')}`
 
 export const BOUNCE_RUN_UI_IDS = {
-  document: id(1),
+  document: assetId(id(1)),
   root: id(2),
   startPanel: id(3),
   startTitle: id(4),
@@ -27,4 +27,15 @@ export const BOUNCE_RUN_UI_IDS = {
   },
 } as const
 
-export const bounceRunUIDocument = UIDocumentSchema.parse(documentAsset)
+export type UIDocumentFetch = (path: string) => Promise<{
+  readonly ok: boolean
+  json(): Promise<unknown>
+}>
+
+export async function loadBounceRunUIDocument(
+  fetchDocument: UIDocumentFetch = fetch,
+): Promise<UIDocument> {
+  const response = await fetchDocument('/assets/ui/hud.ui.json')
+  if (!response.ok) throw new Error('Failed to load Bounce Run HUD')
+  return UIDocumentSchema.parse(await response.json())
+}
