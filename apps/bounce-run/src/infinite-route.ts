@@ -5,6 +5,9 @@ import { ColliderComponent } from '@haku/physics'
 import type { Vec3 } from '@haku/schema'
 import {
   generateBounceRunRoute,
+  type BounceRunBonusConfig,
+  type BounceRunBonusDescriptor,
+  type BounceRunDifficultySchedule,
   type BounceRunRouteDecision,
   type BounceRunRoutePlatform,
 } from './route-generator.js'
@@ -12,14 +15,24 @@ import {
 export interface PoolBackedBounceRunRouteOptions {
   readonly world: IWorld
   readonly pool: EntityPool
+  readonly bonusPool?: EntityPool
   readonly seed: number
   readonly activeAhead: number
   readonly retainBehind: number
+  readonly difficultySchedule?: BounceRunDifficultySchedule
+  readonly bonus?: BounceRunBonusConfig
 }
 
 export interface ActiveBounceRunRoutePlatform {
   readonly platformIndex: number
   readonly entity: EntityId
+  readonly descriptor: BounceRunRoutePlatform
+}
+
+export interface ActiveBounceRunRouteBonus {
+  readonly bonusIndex: number
+  readonly entity: EntityId
+  readonly descriptor: BounceRunBonusDescriptor
 }
 
 export interface PoolBackedBounceRunRoute {
@@ -28,12 +41,22 @@ export interface PoolBackedBounceRunRoute {
   reset(): void
   dispose(): void
   activePlatforms(): readonly ActiveBounceRunRoutePlatform[]
+  activeBonuses(): readonly ActiveBounceRunRouteBonus[]
+  collectBonus(entity: EntityId): BounceRunBonusDescriptor | null
+  platformDescriptor(entity: EntityId): BounceRunRoutePlatform | null
   decisionLog(): readonly BounceRunRouteDecision[]
 }
 
 interface ActiveLease {
   readonly entity: EntityId
   readonly handle: PoolHandle
+  readonly descriptor: BounceRunRoutePlatform
+}
+
+interface ActiveBonusLease {
+  readonly entity: EntityId
+  readonly handle: PoolHandle
+  readonly descriptor: BounceRunBonusDescriptor
 }
 
 /** Materializes a deterministic route through an exclusive public entity pool. */
@@ -42,6 +65,8 @@ export function createPoolBackedBounceRunRoute(
 ): PoolBackedBounceRunRoute {
   validateOptions(options)
   const active = new Map<number, ActiveLease>()
+  const activeBonuses = new Map<number, ActiveBonusLease>()
+  const collectedBonuses = new Set<number>()
   const decisions: BounceRunRouteDecision[] = []
   let currentPlatformIndex = 0
   let disposed = false
@@ -51,7 +76,12 @@ export function createPoolBackedBounceRunRoute(
     if (horizon > 10_000) {
       throw new Error('route horizon must not exceed 10000 platforms')
     }
-    const generated = generateBounceRunRoute({ seed: options.seed, platformCount: horizon })
+    const generated = generateBounceRunRoute({
+      seed: options.seed,
+      platformCount: horizon,
+      difficultySchedule: options.difficultySchedule,
+      bonus: options.bonus,
+    })
     const firstRetained = Math.max(0, platformIndex - options.retainBehind)
     const desiredIndices = new Set<number>()
     for (let index = firstRetained; index < horizon; index += 1) desiredIndices.add(index)
@@ -62,7 +92,6 @@ export function createPoolBackedBounceRunRoute(
       active.delete(index)
     }
 
-    const acquired: number[] = []
     try {
       for (const index of [...desiredIndices].sort((left, right) => left - right)) {
         if (active.has(index)) continue
@@ -71,15 +100,14 @@ export function createPoolBackedBounceRunRoute(
           materializePlatform(options.world, root, descriptor)
         })
         if (!handle) throw new Error(`Bounce Run route pool exhausted at platform ${index}`)
-        active.set(index, { handle, entity: poolHandleRoot(handle) })
-        acquired.push(index)
+        active.set(index, { handle, entity: poolHandleRoot(handle), descriptor })
       }
+      synchronizeBonusLeases(generated.bonuses, desiredIndices)
     } catch (error) {
-      for (const index of acquired.reverse()) {
-        const lease = active.get(index)
-        if (lease) options.pool.release(lease.handle)
-        active.delete(index)
-      }
+      for (const lease of active.values()) options.pool.release(lease.handle)
+      active.clear()
+      for (const lease of activeBonuses.values()) options.bonusPool?.release(lease.handle)
+      activeBonuses.clear()
       throw error
     }
 
@@ -92,6 +120,46 @@ export function createPoolBackedBounceRunRoute(
       options.pool.release(lease.handle)
     }
     active.clear()
+    for (const lease of activeBonuses.values()) options.bonusPool?.release(lease.handle)
+    activeBonuses.clear()
+  }
+
+  const synchronizeBonusLeases = (
+    descriptors: readonly BounceRunBonusDescriptor[],
+    desiredPlatformIndices: ReadonlySet<number>,
+  ): void => {
+    for (const [bonusIndex, lease] of [...activeBonuses]) {
+      const descriptor = descriptors.find((candidate) => candidate.index === bonusIndex)
+      if (
+        descriptor &&
+        desiredPlatformIndices.has(descriptor.sourcePlatformIndex) &&
+        desiredPlatformIndices.has(descriptor.targetPlatformIndex)
+      ) {
+        continue
+      }
+      options.bonusPool!.release(lease.handle)
+      activeBonuses.delete(bonusIndex)
+    }
+    if (!options.bonusPool) return
+    for (const descriptor of descriptors) {
+      if (
+        collectedBonuses.has(descriptor.index) ||
+        activeBonuses.has(descriptor.index) ||
+        !desiredPlatformIndices.has(descriptor.sourcePlatformIndex) ||
+        !desiredPlatformIndices.has(descriptor.targetPlatformIndex)
+      ) {
+        continue
+      }
+      const handle = options.bonusPool.acquire((root) => {
+        materializeBonus(options.world, root, descriptor)
+      })
+      if (!handle) throw new Error(`Bounce Run bonus pool exhausted at bonus ${descriptor.index}`)
+      activeBonuses.set(descriptor.index, {
+        entity: poolHandleRoot(handle),
+        handle,
+        descriptor,
+      })
+    }
   }
 
   activateWindow(0)
@@ -114,11 +182,7 @@ export function createPoolBackedBounceRunRoute(
       let crossedIndex = currentPlatformIndex
       for (const [platformIndex, lease] of active) {
         const transform = options.world.getComponent(lease.entity, TransformComponent)
-        if (
-          transform &&
-          platformIndex > crossedIndex &&
-          transform.position[2] <= forwardPosition
-        ) {
+        if (transform && platformIndex > crossedIndex && transform.position[2] <= forwardPosition) {
           crossedIndex = platformIndex
         }
       }
@@ -127,6 +191,7 @@ export function createPoolBackedBounceRunRoute(
     reset() {
       requireLive(disposed)
       releaseOwnedLeases()
+      collectedBonuses.clear()
       decisions.length = 0
       currentPlatformIndex = 0
       activateWindow(0)
@@ -139,11 +204,72 @@ export function createPoolBackedBounceRunRoute(
     activePlatforms() {
       return [...active]
         .sort(([left], [right]) => left - right)
-        .map(([platformIndex, lease]) => ({ platformIndex, entity: lease.entity }))
+        .map(([platformIndex, lease]) => ({
+          platformIndex,
+          entity: lease.entity,
+          descriptor: lease.descriptor,
+        }))
+    },
+    activeBonuses() {
+      return [...activeBonuses]
+        .sort(([left], [right]) => left - right)
+        .map(([bonusIndex, lease]) => ({
+          bonusIndex,
+          entity: lease.entity,
+          descriptor: lease.descriptor,
+        }))
+    },
+    collectBonus(entity) {
+      requireLive(disposed)
+      const entry = [...activeBonuses].find(([, lease]) => lease.entity.value === entity.value)
+      if (!entry) return null
+      const [bonusIndex, lease] = entry
+      options.bonusPool!.release(lease.handle)
+      activeBonuses.delete(bonusIndex)
+      collectedBonuses.add(bonusIndex)
+      return lease.descriptor
+    },
+    platformDescriptor(entity) {
+      return (
+        [...active.values()].find((lease) => lease.entity.value === entity.value)?.descriptor ??
+        null
+      )
     },
     decisionLog() {
       return [...decisions]
     },
+  }
+}
+
+function materializeBonus(
+  world: IWorld,
+  entity: EntityId,
+  descriptor: BounceRunBonusDescriptor,
+): void {
+  const transform = world.getComponent(entity, TransformComponent)
+  if (!transform) throw new Error(`Pooled bonus ${entity.value} has no Transform`)
+  const collider = world.getComponent(entity, ColliderComponent)
+  if (!collider || collider.shape !== 'sphere' || !collider.isTrigger) {
+    throw new Error(`Pooled bonus ${entity.value} must use a trigger sphere Collider`)
+  }
+  world.addComponent(entity, TransformComponent, {
+    ...transform,
+    position: [...descriptor.position] as Vec3,
+  })
+  world.addComponent(entity, ColliderComponent, {
+    ...collider,
+    radius: descriptor.radius,
+    isTrigger: true,
+  })
+  const mesh = world.getComponent(entity, MeshRendererComponent)
+  if (mesh) {
+    if (mesh.geometryType !== 'SphereGeometry') {
+      throw new Error(`Pooled bonus ${entity.value} mesh must use SphereGeometry`)
+    }
+    world.addComponent(entity, MeshRendererComponent, {
+      ...mesh,
+      geometryParams: { ...mesh.geometryParams, radius: descriptor.radius },
+    })
   }
 }
 
@@ -198,6 +324,17 @@ function validateOptions(options: PoolBackedBounceRunRouteOptions): void {
   }
   if (metrics.active !== 0) {
     throw new Error('Bounce Run route requires an entity pool with no active leases')
+  }
+  if (options.bonus?.enabled && !options.bonusPool) {
+    throw new Error('Enabled Bounce Run bonus requires a dedicated entity pool')
+  }
+  if (options.bonusPool) {
+    const bonusMetrics = options.bonusPool.metrics()
+    if (bonusMetrics.maximum < 1)
+      throw new Error('Bounce Run bonus pool maximum must be at least 1')
+    if (bonusMetrics.active !== 0) {
+      throw new Error('Bounce Run bonus requires an entity pool with no active leases')
+    }
   }
 }
 

@@ -28,10 +28,15 @@ describe('Bounce Run session runtime', () => {
 
     session.start()
     expect(session.state()).toBe('active')
+    expect(session.score()).toBe(0)
+    expect(session.collectBonus()).toBe(true)
+    expect(session.score()).toBe(1)
     expect(documentInstance.getElement(BOUNCE_RUN_UI_IDS.hudPanel)?.hidden).toBe(false)
 
     session.pause()
     expect(session.state()).toBe('paused')
+    expect(session.collectBonus()).toBe(false)
+    expect(session.score()).toBe(1)
     expect(documentInstance.getElement(BOUNCE_RUN_UI_IDS.pausePanel)?.hidden).toBe(false)
 
     session.resume()
@@ -41,6 +46,7 @@ describe('Bounce Run session runtime', () => {
 
     session.restart()
     expect(session.state()).toBe('active')
+    expect(session.score()).toBe(0)
     expect(documentInstance.getElement(BOUNCE_RUN_UI_IDS.gameOverPanel)?.hidden).toBe(true)
   })
 })

@@ -21,7 +21,9 @@ export interface BounceRunSessionRuntime {
   resume(): void
   fail(): void
   restart(): void
+  collectBonus(): boolean
   state(): BounceRunSessionState
+  score(): number
   traceCount(): number
   destroy(): void
 }
@@ -52,6 +54,9 @@ export function createBounceRunSessionRuntime(options: {
     [BOUNCE_RUN_SESSION_IDS.variables.active]: 'active',
     [BOUNCE_RUN_SESSION_IDS.variables.paused]: 'paused',
     [BOUNCE_RUN_SESSION_IDS.variables.gameOver]: 'game-over',
+    [BOUNCE_RUN_SESSION_IDS.variables.score]: 0,
+    [BOUNCE_RUN_SESSION_IDS.variables.scoreZero]: 0,
+    [BOUNCE_RUN_SESSION_IDS.variables.bonusValue]: 1,
   })
   const runtimes = new NodeRuntimeRegistry()
   registerFoundationRuntimeAdapters(runtimes)
@@ -82,7 +87,13 @@ export function createBounceRunSessionRuntime(options: {
     resume: () => run(BOUNCE_RUN_SESSION_IDS.entries.resumeSession),
     fail: () => run(BOUNCE_RUN_SESSION_IDS.entries.failSession),
     restart: () => run(BOUNCE_RUN_SESSION_IDS.entries.restartSession),
+    collectBonus: () => {
+      if (variables.get(BOUNCE_RUN_SESSION_IDS.variables.state) !== 'active') return false
+      run(BOUNCE_RUN_SESSION_IDS.entries.collectBonus)
+      return true
+    },
     state: () => variables.get(BOUNCE_RUN_SESSION_IDS.variables.state) as BounceRunSessionState,
+    score: () => variables.get(BOUNCE_RUN_SESSION_IDS.variables.score) as number,
     traceCount: () => instance.trace.length,
     destroy: () => instance.destroy(),
   }

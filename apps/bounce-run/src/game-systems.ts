@@ -1,5 +1,6 @@
 import {
   TransformComponent,
+  entityId,
   type EngineScheduler,
   type EntityId,
   type ISystem,
@@ -8,6 +9,7 @@ import {
 import {
   InputManager,
   lookAtQuaternion,
+  type PhysicsCollisionEvent,
   type PhysicsContactSystem,
   type PhysicsWorldSystem,
 } from '@haku/engine'
@@ -57,6 +59,7 @@ export class BounceRunControlSystem implements ISystem {
   readonly localOrder = -20
 
   private pendingLanding = false
+  private pendingBounceHeight: number = BOUNCE_RUN_PHYSICS.bounceHeight
   private downwardVelocity = 0
 
   constructor(
@@ -79,15 +82,20 @@ export class BounceRunControlSystem implements ISystem {
         forwardSpeed: BOUNCE_RUN_PHYSICS.forwardSpeed,
         lateralSpeed: BOUNCE_RUN_PHYSICS.lateralSpeed,
         lateralResponsiveness: BOUNCE_RUN_PHYSICS.lateralResponsiveness,
-        bounceHeight: BOUNCE_RUN_PHYSICS.bounceHeight,
+        bounceHeight: this.pendingBounceHeight,
         gravity: BOUNCE_RUN_PHYSICS.gravity,
       }),
     )
     this.pendingLanding = false
+    this.pendingBounceHeight = BOUNCE_RUN_PHYSICS.bounceHeight
   }
 
-  queueLanding(): void {
+  queueLanding(bounceHeight: number = BOUNCE_RUN_PHYSICS.bounceHeight): void {
+    if (!Number.isFinite(bounceHeight) || bounceHeight <= 0) {
+      throw new Error('Bounce height must be a finite positive number')
+    }
     this.pendingLanding = true
+    this.pendingBounceHeight = bounceHeight
   }
 
   verticalVelocityBeforeStep(): number {
@@ -96,6 +104,7 @@ export class BounceRunControlSystem implements ISystem {
 
   reset(): void {
     this.pendingLanding = false
+    this.pendingBounceHeight = BOUNCE_RUN_PHYSICS.bounceHeight
     this.downwardVelocity = 0
   }
 }
@@ -111,6 +120,7 @@ export class BounceRunLandingSystem implements ISystem {
     private readonly contacts: PhysicsContactSystem,
     private readonly control: BounceRunControlSystem,
     private readonly scheduler: EngineScheduler,
+    private readonly route?: PoolBackedBounceRunRoute,
   ) {
     this.tracker = new LandingTracker(ball.value)
   }
@@ -121,12 +131,81 @@ export class BounceRunLandingSystem implements ISystem {
       this.contacts.peekCollisionEvents(),
       this.control.verticalVelocityBeforeStep(),
     )
-    if (landing) this.control.queueLanding()
+    if (landing) {
+      const descriptor = this.route?.platformDescriptor(entityId(landing.platformId))
+      this.control.queueLanding(descriptor?.behavior.bounceHeight)
+    }
   }
 
   reset(): void {
     this.tracker.reset()
   }
+}
+
+interface BounceRunBonusScoreRuntime {
+  state(): 'start' | 'active' | 'paused' | 'game-over'
+  collectBonus(): boolean
+}
+
+type PhysicsContactReader = Pick<PhysicsContactSystem, 'peekCollisionEvents'>
+
+/** Converts public trigger-enter events into one graph-owned score award per pooled bonus lease. */
+export class BounceRunBonusCollectionSystem implements ISystem {
+  readonly phase = 'FixedGameplay' as const
+  readonly localOrder = -5
+
+  constructor(
+    private readonly ball: EntityId,
+    private readonly contacts: PhysicsContactReader,
+    private readonly route: PoolBackedBounceRunRoute,
+    private readonly session: BounceRunBonusScoreRuntime,
+  ) {}
+
+  update(world: IWorld): void {
+    if (this.session.state() !== 'active') return
+    for (const event of this.contacts.peekCollisionEvents()) {
+      const bonus = this.matchActiveBonus(event)
+      if (
+        !bonus ||
+        !isCurrentSensorOverlap(world, this.ball, bonus.entity, bonus.descriptor.radius)
+      ) {
+        continue
+      }
+      const descriptor = this.route.collectBonus(bonus.entity)
+      if (descriptor && !this.session.collectBonus()) {
+        throw new Error('Active Bounce Run session rejected a collected bonus')
+      }
+    }
+  }
+
+  private matchActiveBonus(event: PhysicsCollisionEvent) {
+    if (
+      event.kind !== 'trigger' ||
+      event.phase !== 'enter' ||
+      (event.entityA !== this.ball.value && event.entityB !== this.ball.value)
+    ) {
+      return null
+    }
+    const other = event.entityA === this.ball.value ? event.entityB : event.entityA
+    return this.route.activeBonuses().find((bonus) => bonus.entity.value === other) ?? null
+  }
+}
+
+function isCurrentSensorOverlap(
+  world: IWorld,
+  ball: EntityId,
+  bonus: EntityId,
+  bonusRadius: number,
+): boolean {
+  const ballTransform = world.getComponent(ball, TransformComponent)
+  const bonusTransform = world.getComponent(bonus, TransformComponent)
+  if (!ballTransform || !bonusTransform) return false
+  const radius = BOUNCE_RUN_PHYSICS.ballRadius + bonusRadius
+  const distanceSquared = ballTransform.position.reduce((sum, value, axis) => {
+    const delta = value - bonusTransform.position[axis]!
+    return sum + delta * delta
+  }, 0)
+  return distanceSquared <= radius * radius
 }
 
 export class BounceRunFailureSystem implements ISystem {

@@ -2,6 +2,7 @@ import {
   BOOL_TYPE,
   DETERMINISTIC_GRAPH_CONTRACTS,
   FOUNDATION_GRAPH_IDS,
+  NUMBER_TYPE,
   STRING_TYPE,
   namedType,
   type GraphAsset,
@@ -24,6 +25,7 @@ export const BOUNCE_RUN_SESSION_IDS = {
     resumeSession: id(13),
     failSession: id(14),
     restartSession: id(15),
+    collectBonus: id(16),
   },
   variables: {
     state: 'session.state',
@@ -33,6 +35,9 @@ export const BOUNCE_RUN_SESSION_IDS = {
     active: 'constant.state.active',
     paused: 'constant.state.paused',
     gameOver: 'constant.state.game-over',
+    score: 'session.score',
+    scoreZero: 'constant.score.zero',
+    bonusValue: 'constant.score.bonus',
   },
 } as const
 
@@ -105,6 +110,7 @@ export function createBounceRunSessionGraph(registry: NodeRegistry): GraphAsset 
 
   const constantTrue = variable(BOUNCE_RUN_SESSION_IDS.variables.true, BOOL_TYPE)
   const constantFalse = variable(BOUNCE_RUN_SESSION_IDS.variables.false, BOOL_TYPE)
+  const scoreZero = variable(BOUNCE_RUN_SESSION_IDS.variables.scoreZero, NUMBER_TYPE)
   const stateSources = {
     start: variable(BOUNCE_RUN_SESSION_IDS.variables.start, STRING_TYPE),
     active: variable(BOUNCE_RUN_SESSION_IDS.variables.active, STRING_TYPE),
@@ -116,6 +122,7 @@ export function createBounceRunSessionGraph(registry: NodeRegistry): GraphAsset 
     state: keyof typeof stateSources,
     visibility: readonly [boolean, boolean, boolean, boolean],
     entryId: string,
+    resetScore = false,
   ): GraphNode => {
     const source = stateSources[state]
     const setState = addNode(
@@ -179,12 +186,40 @@ export function createBounceRunSessionGraph(registry: NodeRegistry): GraphAsset 
       UI_GRAPH_CONTRACTS.setText.ports.value,
     )
     const entry = addNode(FOUNDATION_GRAPH_IDS.onStart.nodeType, {}, 'FrameGameplay', entryId)
-    connect(
-      entry,
-      FOUNDATION_GRAPH_IDS.onStart.ports.next,
-      setState,
-      DETERMINISTIC_GRAPH_CONTRACTS.setVariable.ports.flowIn,
-    )
+    if (resetScore) {
+      const clearScore = addNode(
+        DETERMINISTIC_GRAPH_CONTRACTS.setVariable.nodeType,
+        { key: BOUNCE_RUN_SESSION_IDS.variables.score },
+        'FrameGameplay',
+        undefined,
+        NUMBER_TYPE,
+      )
+      connect(
+        scoreZero,
+        DETERMINISTIC_GRAPH_CONTRACTS.getVariable.ports.value,
+        clearScore,
+        DETERMINISTIC_GRAPH_CONTRACTS.setVariable.ports.value,
+      )
+      connect(
+        entry,
+        FOUNDATION_GRAPH_IDS.onStart.ports.next,
+        clearScore,
+        DETERMINISTIC_GRAPH_CONTRACTS.setVariable.ports.flowIn,
+      )
+      connect(
+        clearScore,
+        DETERMINISTIC_GRAPH_CONTRACTS.setVariable.ports.flowOut,
+        setState,
+        DETERMINISTIC_GRAPH_CONTRACTS.setVariable.ports.flowIn,
+      )
+    } else {
+      connect(
+        entry,
+        FOUNDATION_GRAPH_IDS.onStart.ports.next,
+        setState,
+        DETERMINISTIC_GRAPH_CONTRACTS.setVariable.ports.flowIn,
+      )
+    }
     return entry
   }
 
@@ -193,11 +228,58 @@ export function createBounceRunSessionGraph(registry: NodeRegistry): GraphAsset 
     'active',
     [false, true, false, false],
     BOUNCE_RUN_SESSION_IDS.entries.startSession,
+    true,
   )
   transition('paused', [false, false, true, false], BOUNCE_RUN_SESSION_IDS.entries.pauseSession)
   transition('active', [false, true, false, false], BOUNCE_RUN_SESSION_IDS.entries.resumeSession)
   transition('game-over', [false, false, false, true], BOUNCE_RUN_SESSION_IDS.entries.failSession)
-  transition('active', [false, true, false, false], BOUNCE_RUN_SESSION_IDS.entries.restartSession)
+  transition(
+    'active',
+    [false, true, false, false],
+    BOUNCE_RUN_SESSION_IDS.entries.restartSession,
+    true,
+  )
+
+  const score = variable(BOUNCE_RUN_SESSION_IDS.variables.score, NUMBER_TYPE)
+  const bonusValue = variable(BOUNCE_RUN_SESSION_IDS.variables.bonusValue, NUMBER_TYPE)
+  const addScore = addNode(FOUNDATION_GRAPH_IDS.add.nodeType)
+  connect(
+    score,
+    DETERMINISTIC_GRAPH_CONTRACTS.getVariable.ports.value,
+    addScore,
+    FOUNDATION_GRAPH_IDS.add.ports.a,
+  )
+  connect(
+    bonusValue,
+    DETERMINISTIC_GRAPH_CONTRACTS.getVariable.ports.value,
+    addScore,
+    FOUNDATION_GRAPH_IDS.add.ports.b,
+  )
+  const setScore = addNode(
+    DETERMINISTIC_GRAPH_CONTRACTS.setVariable.nodeType,
+    { key: BOUNCE_RUN_SESSION_IDS.variables.score },
+    'FrameGameplay',
+    undefined,
+    NUMBER_TYPE,
+  )
+  connect(
+    addScore,
+    FOUNDATION_GRAPH_IDS.add.ports.result,
+    setScore,
+    DETERMINISTIC_GRAPH_CONTRACTS.setVariable.ports.value,
+  )
+  const collectBonus = addNode(
+    FOUNDATION_GRAPH_IDS.onStart.nodeType,
+    {},
+    'FrameGameplay',
+    BOUNCE_RUN_SESSION_IDS.entries.collectBonus,
+  )
+  connect(
+    collectBonus,
+    FOUNDATION_GRAPH_IDS.onStart.ports.next,
+    setScore,
+    DETERMINISTIC_GRAPH_CONTRACTS.setVariable.ports.flowIn,
+  )
 
   return {
     schemaVersion: 1,
@@ -216,6 +298,7 @@ export function createBounceRunSessionGraph(registry: NodeRegistry): GraphAsset 
           'paused->active',
           'active->game-over',
           'game-over->active',
+          'active->bonus-score',
         ],
         ui: ['start', 'session', 'game-over'],
         entryNodes: {

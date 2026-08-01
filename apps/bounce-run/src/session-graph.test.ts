@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   DETERMINISTIC_GRAPH_CONTRACTS,
+  FOUNDATION_GRAPH_IDS,
   compileGraph,
   createBuiltinTypeRegistry,
   createFoundationNodeRegistry,
@@ -22,12 +23,14 @@ describe('Bounce Run session graph', () => {
         'paused->active',
         'active->game-over',
         'game-over->active',
+        'active->bonus-score',
       ],
       ui: ['start', 'session', 'game-over'],
     })
 
     const nodeTypes = graph.graph.nodes.map((node) => node.type)
     expect(nodeTypes).toContain(DETERMINISTIC_GRAPH_CONTRACTS.setVariable.nodeType)
+    expect(nodeTypes).toContain(FOUNDATION_GRAPH_IDS.add.nodeType)
     expect(nodeTypes).toContain(UI_GRAPH_CONTRACTS.setVisible.nodeType)
     expect(nodeTypes).toContain(UI_GRAPH_CONTRACTS.setText.nodeType)
     expect(graph.graph.nodes.map((node) => node.id)).toEqual(

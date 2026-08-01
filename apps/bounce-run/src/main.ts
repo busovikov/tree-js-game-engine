@@ -3,10 +3,12 @@ import {
   validateProjectAssetComposition,
   validateProjectManifest,
 } from '@haku/assets'
-import { entityId, type ISystem } from '@haku/core'
+import { TransformComponent, entityId, type ISystem } from '@haku/core'
 import {
   Engine,
   InputManager,
+  MeshRendererComponent,
+  MeshRendererSchema,
   PhysicsColliderSystem,
   PhysicsContactSystem,
   SceneLoader,
@@ -15,13 +17,15 @@ import {
   createEnginePoolParticipant,
   loadProjectPrefabAssets,
 } from '@haku/engine'
-import { createEntityPoolFromComponent } from '@haku/pool'
+import { EntityPool, createEntityPoolFromComponent } from '@haku/pool'
+import { ColliderComponent, ColliderSchema } from '@haku/physics'
 import { createRapierPhysicsBackend } from '@haku/physics-rapier'
 import { projectPathToUrl } from '@haku/schema'
 import { UIService } from '@haku/ui'
 import projectAsset from '../haku.project.json'
 import {
   BounceRunCameraSystem,
+  BounceRunBonusCollectionSystem,
   BounceRunControlSystem,
   BounceRunFailureSystem,
   BounceRunInputSystem,
@@ -30,6 +34,7 @@ import {
   BounceRunRouteSystem,
 } from './game-systems.js'
 import { createPoolBackedBounceRunRoute } from './infinite-route.js'
+import type { BounceRunDifficultySchedule } from './route-generator.js'
 import { instantiatePrefabDefinition } from './prefab-instance.js'
 import { createBounceRunSessionRuntime } from './session-runtime.js'
 import { BOUNCE_RUN_UI_IDS, loadBounceRunUIDocument } from './ui-document.js'
@@ -42,6 +47,49 @@ const BALL_SPAWN = {
   rotation: [0, 0, 0, 1] as const,
 }
 const ROUTE_SEED = 0x5eed
+const ROUTE_BONUS = {
+  enabled: true,
+  minimumPlatformCount: 6,
+  radius: 0.35,
+  sensorClearance: 0.15,
+} as const
+const ROUTE_DIFFICULTY = [
+  {
+    startIndex: 1,
+    safetyMargin: 0.9,
+    variantWeights: { normal: 1, wide: 0, narrow: 0, bounce: 0 },
+  },
+  {
+    startIndex: 2,
+    safetyMargin: 0.8,
+    variantWeights: { normal: 0, wide: 1, narrow: 0, bounce: 0 },
+  },
+  {
+    startIndex: 3,
+    safetyMargin: 0.7,
+    variantWeights: { normal: 0, wide: 0, narrow: 1, bounce: 0 },
+  },
+  {
+    startIndex: 4,
+    safetyMargin: 0.6,
+    variantWeights: { normal: 0, wide: 0, narrow: 0, bounce: 1 },
+  },
+  {
+    startIndex: 5,
+    safetyMargin: 0.55,
+    variantWeights: { normal: 0.55, wide: 0.2, narrow: 0.15, bounce: 0.1 },
+  },
+  {
+    startIndex: 17,
+    safetyMargin: 0.45,
+    variantWeights: { normal: 0.4, wide: 0.2, narrow: 0.2, bounce: 0.2 },
+  },
+  {
+    startIndex: 33,
+    safetyMargin: 0.35,
+    variantWeights: { normal: 0.25, wide: 0.2, narrow: 0.25, bounce: 0.3 },
+  },
+] as const satisfies BounceRunDifficultySchedule
 
 async function main(): Promise<void> {
   const manifest = validateProjectManifest(projectAsset)
@@ -96,12 +144,50 @@ async function main(): Promise<void> {
       }),
     ],
   })
+  const bonusPool = new EntityPool({
+    id: 'bounce-run-bonus-pool',
+    world: loaded.world,
+    capacity: 1,
+    maximum: 1,
+    expansionPolicy: 'fixed',
+    exhaustionPolicy: 'return-null',
+    createInstance() {
+      const entity = loaded.world.createEntity('Generated bonus')
+      loaded.world.addComponent(entity, TransformComponent, TransformComponent.defaults())
+      loaded.world.addComponent(
+        entity,
+        MeshRendererComponent,
+        MeshRendererSchema.parse({
+          geometryType: 'SphereGeometry',
+          geometryParams: { radius: ROUTE_BONUS.radius, widthSegments: 16, heightSegments: 12 },
+          material: { materialType: 'standard', color: '#ffd84d' },
+        }),
+      )
+      loaded.world.addComponent(
+        entity,
+        ColliderComponent,
+        ColliderSchema.parse({ shape: 'sphere', radius: ROUTE_BONUS.radius, isTrigger: true }),
+      )
+      return entity
+    },
+    participants: [
+      createEnginePoolParticipant({
+        world: loaded.world,
+        colliders,
+        render: engine.backend.sync,
+      }),
+    ],
+  })
+  bonusPool.prewarm()
   const route = createPoolBackedBounceRunRoute({
     world: loaded.world,
     pool: platformPool,
+    bonusPool,
     seed: ROUTE_SEED,
     activeAhead: 6,
     retainBehind: 2,
+    difficultySchedule: ROUTE_DIFFICULTY,
+    bonus: ROUTE_BONUS,
   })
 
   const ui = new UIService()
@@ -133,12 +219,19 @@ async function main(): Promise<void> {
     contacts,
     controlSystem,
     engine.scheduler,
+    route,
   )
   const failureSystem = new BounceRunFailureSystem(BALL_ID, physics, () => {
     session.fail()
     engine.setPaused(true)
   })
   const routeSystem = new BounceRunRouteSystem(BALL_ID, physics, route)
+  const bonusCollectionSystem = new BounceRunBonusCollectionSystem(
+    BALL_ID,
+    contacts,
+    route,
+    session,
+  )
   const cameraSystem = new BounceRunCameraSystem(BALL_ID, CAMERA_ID, physics)
   const performanceSystem = new BounceRunPerformanceSystem(ui, platformPool, engine.scheduler)
   const systems: ISystem[] = [
@@ -146,6 +239,7 @@ async function main(): Promise<void> {
     controlSystem,
     landingSystem,
     routeSystem,
+    bonusCollectionSystem,
     failureSystem,
     cameraSystem,
     performanceSystem,
@@ -241,6 +335,7 @@ async function main(): Promise<void> {
       systems.forEach((system) => engine.removeSystem(system))
       route.dispose()
       platformPool.clear()
+      bonusPool.clear()
       engine.removeSystem(contacts)
       engine.removeSystem(colliders)
       engine.dispose()
