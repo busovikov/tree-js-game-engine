@@ -128,15 +128,10 @@ export function generateBounceRunRoute(config: BounceRunRouteConfig): BounceRunR
         envelope.maxLateralTravel + lateralHalfExtent - requiredSafetyMargin,
       )
       const lateralScale = 0.15 + difficulty * 0.75
-      const forwardHalfExtent =
-        MAIN_PLATFORM_SIZE[2] / 2 -
-        BOUNCE_RUN_PHYSICS.ballRadius -
-        BOUNCE_RUN_PHYSICS.edgeSafety
-      const forwardJitterBudget = Math.max(0, forwardHalfExtent - requiredSafetyMargin)
       const position = [
         source.position[0] + (random() * 2 - 1) * lateralBudget * lateralScale,
         source.position[1] + verticalDelta,
-        source.position[2] + envelope.predictedForwardTravel + (random() * 2 - 1) * forwardJitterBudget,
+        source.position[2] + envelope.predictedForwardTravel,
       ] as const
       const candidate: BounceRunRoutePlatform = {
         index,

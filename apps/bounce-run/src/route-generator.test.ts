@@ -39,6 +39,10 @@ describe('Bounce Run route generator', () => {
       expect(reachability.margins.lateral).toBeGreaterThanOrEqual(
         decision.requiredSafetyMargin - 1e-12,
       )
+      expect(platform.position[2] - previous.position[2]).toBeCloseTo(
+        reachability.predictedForwardTravel,
+        12,
+      )
       expect(decision.requiredSafetyMargin).toBeGreaterThanOrEqual(0.35)
       expect(decision.attempts).toBeLessThanOrEqual(decision.maxCandidateAttempts)
     }
