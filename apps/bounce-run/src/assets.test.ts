@@ -49,6 +49,7 @@ describe('Bounce Run authored assets', () => {
       ok: true,
       json: async () => uiAsset,
     }))
-    expect(uiDocument.elements).toHaveLength(16)
+    expect(uiDocument.elements).toHaveLength(21)
+    expect(uiDocument.events).toHaveLength(7)
   })
 })
