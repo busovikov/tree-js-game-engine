@@ -1,4 +1,4 @@
-import { assetId } from '@haku/schema'
+import { assetId, projectPathToUrl } from '@haku/schema'
 import { UIDocumentSchema, type UIDocument } from '@haku/ui'
 
 const id = (value: number): string =>
@@ -46,7 +46,7 @@ export type UIDocumentFetch = (path: string) => Promise<{
 export async function loadBounceRunUIDocument(
   fetchDocument: UIDocumentFetch = fetch,
 ): Promise<UIDocument> {
-  const response = await fetchDocument('/assets/ui/hud.ui.json')
+  const response = await fetchDocument(projectPathToUrl('public/assets/ui/hud.ui.json'))
   if (!response.ok) throw new Error('Failed to load Bounce Run HUD')
   return UIDocumentSchema.parse(await response.json())
 }

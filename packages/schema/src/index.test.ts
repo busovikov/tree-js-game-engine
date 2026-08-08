@@ -18,9 +18,10 @@ describe('@haku/schema', () => {
   })
 
   it('maps public assets to fetch URLs', () => {
-    expect(projectPathToUrl('public/assets/scenes/menu.scene.json')).toBe('/assets/scenes/menu.scene.json')
+    expect(projectPathToUrl('public/assets/scenes/menu.scene.json')).toBe(
+      './assets/scenes/menu.scene.json',
+    )
     expect(DEFAULT_ASSETS_DIR).toBe('public/assets')
     expect(relativeToAssetsDir('public/assets/models/box.glb')).toBe('models/box.glb')
   })
-
 })
