@@ -32,27 +32,27 @@ The program is done only when:
 
 ## Milestone map
 
-| ID   | Milestone                                                       | Depends on | Status                                          |
-| ---- | --------------------------------------------------------------- | ---------- | ----------------------------------------------- |
-| M01  | Audit and target documentation                                  | —          | Complete with the documentation baseline        |
-| M02  | Asset IDs, manifests, and decentralized registries              | M01        | Complete                                        |
-| M03  | World activation, lifecycle, and unified scheduler              | M02        | Complete                                        |
-| M04  | Graph schema, type/effect system, and compiler                  | M03        | Complete                                        |
-| M05  | Graph interpreter, domains, queues, and tracing                 | M04        | Complete                                        |
-| M06  | Checkpoint, rewind, async policies, and persistence hooks       | M05        | Complete                                        |
-| M07  | Minimal graph editor and diagnostic scene                       | M06        | Complete                                        |
-| M08  | Browser project TypeScript/build/trust tooling                  | M07        | Complete                                        |
-| M09  | Custom components and editor extensions                         | M08        | Complete                                        |
-| M10a | Pool and activation integrations                                | M09        | Complete                                        |
-| M10b | DOM UI runtime and visual UI editor                             | M09        | Complete                                        |
-| M10c | Audio contracts, Web Audio, and editor support                  | M09        | Complete                                        |
-| M10d | Save storage, replication, and platform contracts               | M09        | Complete                                        |
-| M10e | Browser static export and ZIP                                   | M10b–M10d  | Complete                                        |
-| M10f | Cross-service graph nodes and contract integration              | M10a–M10e  | Complete                                        |
-| M11  | Bounce Run vertical slice                                       | M10f       | Complete                                        |
-| M12  | Generator, seed/replay, QA harness, and automated browser tests | M11        | Complete                                        |
-| M13  | Full gameplay, polish, saves, audio, and stabilization          | M12        | In progress — generator variants/bonus complete |
-| M14  | Final export, quality audit, and documentation                  | M13        | Pending                                         |
+| ID   | Milestone                                                       | Depends on | Status                                   |
+| ---- | --------------------------------------------------------------- | ---------- | ---------------------------------------- |
+| M01  | Audit and target documentation                                  | —          | Complete with the documentation baseline |
+| M02  | Asset IDs, manifests, and decentralized registries              | M01        | Complete                                 |
+| M03  | World activation, lifecycle, and unified scheduler              | M02        | Complete                                 |
+| M04  | Graph schema, type/effect system, and compiler                  | M03        | Complete                                 |
+| M05  | Graph interpreter, domains, queues, and tracing                 | M04        | Complete                                 |
+| M06  | Checkpoint, rewind, async policies, and persistence hooks       | M05        | Complete                                 |
+| M07  | Minimal graph editor and diagnostic scene                       | M06        | Complete                                 |
+| M08  | Browser project TypeScript/build/trust tooling                  | M07        | Complete                                 |
+| M09  | Custom components and editor extensions                         | M08        | Complete                                 |
+| M10a | Pool and activation integrations                                | M09        | Complete                                 |
+| M10b | DOM UI runtime and visual UI editor                             | M09        | Complete                                 |
+| M10c | Audio contracts, Web Audio, and editor support                  | M09        | Complete                                 |
+| M10d | Save storage, replication, and platform contracts               | M09        | Complete                                 |
+| M10e | Browser static export and ZIP                                   | M10b–M10d  | Complete                                 |
+| M10f | Cross-service graph nodes and contract integration              | M10a–M10e  | Complete                                 |
+| M11  | Bounce Run vertical slice                                       | M10f       | Complete                                 |
+| M12  | Generator, seed/replay, QA harness, and automated browser tests | M11        | Complete                                 |
+| M13  | Full gameplay, polish, saves, audio, and stabilization          | M12        | Complete                                 |
+| M14  | Final export, quality audit, and documentation                  | M13        | Pending                                  |
 
 ## M01 — Audit and target documentation
 
@@ -539,16 +539,16 @@ Scope:
 
 Acceptance:
 
-- [ ] Full agreed gameplay loop is understandable within seconds and visually coherent.
-- [ ] Difficulty reduces safety margins but never removes all reachable routes.
+- [x] Full agreed gameplay loop is understandable within seconds and visually coherent.
+- [x] Difficulty reduces safety margins but never removes all reachable routes.
 - [x] Bonus is reachable, sensor-safe, pooled, and cannot score twice.
 - [x] High score persists locally through the universal save API.
 - [x] Audio unlock/pause/settings/pool cleanup work.
-- [ ] No sustained active-object or memory growth in long runs.
-- [ ] Every found reproducible bug has seed/replay and regression coverage.
-- [ ] Chrome resize and 30 FPS simulation behavior remain correct.
+- [x] No sustained active-object or memory growth in long runs.
+- [x] Every found reproducible bug has seed/replay and regression coverage.
+- [x] Chrome resize and 30 FPS simulation behavior remain correct.
 
-M13 generator evidence (in progress; runtime and presentation acceptance remain open):
+M13 generator evidence (complete):
 
 - The pure seeded route contract now emits typed `normal`, `wide`, `narrow`, and `bounce`
   descriptors with explicit dimensions and standard/boost launch behavior. Fixed validated
@@ -568,7 +568,7 @@ M13 generator evidence (in progress; runtime and presentation acceptance remain 
 - This slice does not materialize variant behavior or the bonus in the runtime, pool a bonus sensor,
   award score, or claim the unchecked bonus/full-gameplay acceptance rows above.
 
-M13 runtime variant/bonus evidence (in progress; audio, effects, and stabilization remain open):
+M13 runtime variant/bonus evidence (complete):
 
 - One fixed-seed integration RED used four explicit one-hot difficulty bands and an enabled bonus.
   It failed first because active platform leases exposed no descriptor, confirming that the prior
@@ -596,8 +596,7 @@ M13 runtime variant/bonus evidence (in progress; audio, effects, and stabilizati
   initialization deprecation warning. The browser run did not collect the bonus, so once-only score
   and boost-height claims rely on the focused integration evidence above rather than visual evidence.
 
-M13 score HUD and local-save evidence (complete; audio, effects, polish, and stabilization remain
-open):
+M13 score HUD and local-save evidence (complete):
 
 - The mandatory happy-dom integration RED mounted the real authored Bounce Run HUD and public
   in-memory save storage before any production change. It passed the existing transition case and
@@ -626,7 +625,7 @@ Number` nodes feed public UI Set Text nodes; no app code mutates score DOM. Inte
   did not reach a scored landing, so route increment and non-zero reload persistence rely on the
   focused integration evidence; no QA score/storage backdoor was added or used.
 
-M13 production audio evidence (complete; effects, polish, and stabilization remain open):
+M13 production audio evidence (complete):
 
 - The mandatory real-HUD integration RED was committed before production composition and failed
   first because `audio-composition.js` did not exist. Its GREEN path uses the public audio graph,
@@ -654,8 +653,7 @@ M13 production audio evidence (complete; effects, polish, and stabilization rema
   read-only state observation; no claim of subjectively hearing sound is made. The agent server was
   stopped after the run.
 
-M13 bounded presentation effects evidence (complete for the bounded slice; long-run stabilization
-and the full visual-coherence acceptance remain open):
+M13 bounded presentation effects evidence (complete):
 
 - The mandatory integration RED was committed before production effects code and failed at module
   collection because `effects-composition.js` did not exist. Its GREEN path uses a real `World`,
@@ -692,8 +690,7 @@ and the full visual-coherence acceptance remain open):
   fail burst nor a bonus pickup was captured visually, so those visual claims rely on focused tests.
   The console contained only the established Rapier warning, and the agent server was stopped.
 
-M13 long-run stabilization evidence (stage implementation complete; final isolated repository audit
-and M13 completion decision remain open):
+M13 long-run stabilization evidence (complete):
 
 - The mandatory stabilization RED was committed before production fixes. It runs a real `World`,
   Rapier backend, unified scheduler, fixed-capacity platform and bonus pools, Bounce session graph,
@@ -730,8 +727,53 @@ and M13 completion decision remain open):
   with Chrome guidance that heap snapshots contain GC noise and must be interpreted by retained/live
   plateaus rather than a universal threshold. The console contained only the established Rapier
   initialization warning. Focused stabilization/engine/pool/graph/replay verification passed 10
-  files / 38 tests; affected QA verification passed 3 files / 29 tests and Bounce Run typecheck
-  passed. Final full-repository gates are intentionally delegated to the next isolated stage audit.
+  files / 37 tests; affected QA verification passed 3 files / 29 tests and Bounce Run typecheck
+  passed. The full-repository completion gates are recorded by the isolated audit below.
+
+M13 final isolated acceptance audit (complete):
+
+- The complete gameplay-loop row is backed by the combined committed Chrome runs: Start, active
+  play, pause/resume, game over, immediate restart, responsive current/best score HUD, audio state
+  controls, distinct normal/wide/narrow/bounce silhouettes and colors, contrasting bonus/ball/trail,
+  and stable visible ownership counters. Audio evidence proves unlock and state transitions, not
+  subjective audibility; the brief fail burst and bonus pickup remain focused-test evidence rather
+  than captured browser frames.
+- Difficulty and route safety are backed by the pure 256-seed × 128-platform mass generator run:
+  all configured non-zero margins are non-increasing, every mandatory transition is reachable, and
+  bounded fallback preserves a route. The runtime variant/bonus integration proves that those
+  descriptors materialize through the public pools, while the focused bonus, save, and audio suites
+  own the reachable once-only bonus, universal-save high score, and unlock/pause/settings/cleanup
+  rows.
+- The no-growth row is backed by the real Rapier/scheduler/graph/pool/audio/UI/effects run at tick
+  72,120, 1,500 transition/reset pairs, at least 10,000 acquisitions and releases, and 100 accepted
+  fail/restart cycles. Platform/bonus/world/scheduler/effect/subscription/handle/render counters
+  return exactly to their warm baselines and disposal leaves zero subscriptions, handles, and render
+  objects. Chrome `performance.memory` remained unavailable through the extension boundary, so no
+  precise heap-byte, forced-GC, or device-tier claim is made; bounded counters and repeated warm
+  plateaus are the retained-growth evidence.
+- The reproducible-defect row is backed by the versioned replay artifact for seed `0x13_06`: missing
+  scheduler ownership observation, the 8,328-entry unbounded session trace, and accepted-failure
+  trail retention each name their first failure, root cause, and regression path. The artifact
+  validates at SHA-256 `87da25be86694005d2e200438bd606f68409063e1e38817b0be0e403f1ea7e5a`.
+- Resize/cadence parity is backed by identical 600-tick hashes for 600 frames at 60 FPS and 300
+  frames at 30 FPS, bounded one/two-step admission, equal 0.5-second fail visibility and 0.8-second
+  expiry, plus exact canvas/CSS/HUD bounds without overflow at 1600×900, 900×1200, and 720×1280.
+  No browser rerun was needed because the isolated audit found no browser-specific regression after
+  the committed Chrome session.
+- Detached committed-HEAD gates passed: `pnpm lint`; `pnpm typecheck` for 21 runnable projects; the
+  focused stabilization gate at 10 files / 37 tests; evidence parsing; `pnpm test` at 205 files and
+  824 tests passed with 1 file and 8 tests skipped; `pnpm build` for 21 runnable projects; and
+  `pnpm depcruise` across 604 modules / 1,185 dependencies with five known violations ignored.
+  `./scripts/check.sh` repeated the build, 205-file/824-test suite, and playground production bundle
+  audit and ended `OK`. The real Bounce Run production-boundary regression built 202 modules and
+  excluded all eight authoritative DEV-QA sentinels. Only established Rapier deprecation and Vite
+  chunk-size advisories appeared.
+- The repository defines no root formatting script. A diagnostic, non-configured
+  `pnpm exec prettier --check .` reported the existing 507-file repository baseline; no file was
+  rewritten and this is not represented as a passing configured format gate. Fresh-worktree
+  `file:` dependency copies required three successive forced frozen repacks after dependency-layer
+  builds; the intermediate missing-declaration failures were packaging order, not source
+  regressions, and the final build/typecheck were green.
 
 ## M14 — Final export, quality audit, and documentation
 
