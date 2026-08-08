@@ -692,6 +692,47 @@ and the full visual-coherence acceptance remain open):
   fail burst nor a bonus pickup was captured visually, so those visual claims rely on focused tests.
   The console contained only the established Rapier warning, and the agent server was stopped.
 
+M13 long-run stabilization evidence (stage implementation complete; final isolated repository audit
+and M13 completion decision remain open):
+
+- The mandatory stabilization RED was committed before production fixes. It runs a real `World`,
+  Rapier backend, unified scheduler, fixed-capacity platform and bonus pools, Bounce session graph,
+  public audio/UI services, and the controllable presentation backend for seed `0x13_06`. After 120
+  warm ticks it drives 72,000 fixed ticks, 1,500 route transition/reset pairs, and 100 accepted
+  fail/reset/restart cycles with a fixed-tick lateral action schedule. The first RED lacked a public
+  scheduler ownership snapshot; after that narrow seam was added, the run exposed 8,328 retained
+  graph trace records against the 4,096 budget.
+- `EngineScheduler.metrics()` now exposes only registered-system and queued-command counts.
+  `GraphInstance` now validates a configurable trace capacity, overwrites it circularly, preserves
+  chronological reads and monotonic sequence IDs, and defaults to 4,096 records. Targeted graph RED
+  coverage failed with 21 records against a five-record test capacity before the bounded fix.
+- The GREEN long run reaches tick 72,120 and at least 10,000 platform acquisitions and releases.
+  Platform and bonus totals/active counts, world entities, scheduler systems, effect subscriptions,
+  queued commands, active/queued bursts, trail samples, owned handles, and headless render objects
+  return exactly to their warm baselines. Disposal leaves zero subscriptions/effect handles/render
+  objects and only the authored ball entity. The deterministic replay and the two stabilization
+  defects, plus the earlier accepted-failure trail regression, are recorded in
+  `docs/evidence/m13-stabilization-replay.v1.json`.
+- A 600-frame 60 FPS reference and 300-frame 30 FPS admission produce the same 600 fixed-tick state
+  hashes. Maximum fixed steps are one and two respectively, both below the three-step limit; fail
+  effects exist at 0.5 seconds and expire at 0.8 seconds under both schedules. An irregular
+  half-tick/half-tick/200 ms sequence admits `[0, 1, 3]` steps and reports only the bounded 150 ms
+  overflow as dropped time.
+- Dev-only QA observation v3 exposes immutable world, scheduler, bonus-pool, effect, subscription,
+  and render-object counters; production export remains free of the QA boundary. In user Chrome on
+  agent-owned `127.0.0.1:5196`, 1600×900, 900×1200, and 720×1280 viewports each produced exact
+  canvas backing/CSS and HUD bounds with no document overflow and visible controls. Three visible
+  `Run again` activations returned to the same 21 entities, bonus 1/1, queue zero, and two
+  subscriptions; each game-over cleared 28 trail samples to zero and diagnostics stayed zero.
+- Chrome's non-standard `performance.memory` sample was unavailable through the extension isolation
+  boundary, so this stage makes no precise browser heap or forced-GC claim. Exact bounded ownership
+  counters and repeated warm plateaus are the authoritative retained-growth evidence, consistent
+  with Chrome guidance that heap snapshots contain GC noise and must be interpreted by retained/live
+  plateaus rather than a universal threshold. The console contained only the established Rapier
+  initialization warning. Focused stabilization/engine/pool/graph/replay verification passed 10
+  files / 38 tests; affected QA verification passed 3 files / 29 tests and Bounce Run typecheck
+  passed. Final full-repository gates are intentionally delegated to the next isolated stage audit.
+
 ## M14 — Final export, quality audit, and documentation
 
 Acceptance:

@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "stage": "M13",
+  "seed": 4870,
+  "fixedTimestepSeconds": 0.016666666666666666,
+  "warmupTicks": 120,
+  "runTicks": 72000,
+  "lateralAction": {
+    "periodTicks": 360,
+    "segments": [
+      { "startInclusive": 0, "endExclusive": 120, "value": -0.75 },
+      { "startInclusive": 120, "endExclusive": 240, "value": 0.5 },
+      { "startInclusive": 240, "endExclusive": 360, "value": 0.875 }
+    ]
+  },
+  "routeTransition": {
+    "condition": "tick % 48 === 47",
+    "actions": ["advanceTo(1)", "reset()"],
+    "minimumAcquisitions": 10000,
+    "minimumReleases": 10000
+  },
+  "failureRestart": {
+    "condition": "tick % 720 === 719",
+    "cycles": 100,
+    "actions": [
+      "session.fail()",
+      "effects.fail([0, -7, tick / 60])",
+      "route.reset()",
+      "physics.resetBodyState(ball, [0, 3, 0])",
+      "control.reset()",
+      "effects.reset()",
+      "session.restart()"
+    ]
+  },
+  "regressions": [
+    {
+      "id": "scheduler-ownership-observation",
+      "firstFailure": "EngineScheduler.metrics is not a function",
+      "rootCause": "The scheduler had no public bounded ownership snapshot for registered systems and queued commands.",
+      "coverage": [
+        "packages/core/src/scheduler.test.ts",
+        "apps/bounce-run/src/stabilization.integration.test.ts"
+      ]
+    },
+    {
+      "id": "unbounded-graph-trace",
+      "firstFailure": "session trace count 8328 exceeded the 4096-entry stabilization budget",
+      "rootCause": "GraphInstance.record() appended every trace entry to an unbounded array.",
+      "coverage": [
+        "packages/graph-runtime/src/graph-instance.test.ts",
+        "apps/bounce-run/src/stabilization.integration.test.ts"
+      ]
+    },
+    {
+      "id": "accepted-failure-trail-retention",
+      "firstFailure": "an accepted failure left trail samples active until ordinary expiry",
+      "rootCause": "The accepted fail boundary emitted the burst without clearing the composed trail.",
+      "coverage": [
+        "apps/bounce-run/src/effects-composition.integration.test.ts"
+      ],
+      "fixCommit": "842c036"
+    }
+  ]
+}
