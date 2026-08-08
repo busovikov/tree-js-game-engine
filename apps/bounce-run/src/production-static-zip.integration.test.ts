@@ -177,6 +177,7 @@ describe('Bounce Run production static ZIP', () => {
       'assets/prefabs/platform.prefab.json',
       'assets/scenes/main.scene.json',
       'assets/ui/hud.ui.json',
+      'favicon.svg',
     ])
     expect(entries).toEqual([
       'index.html',
