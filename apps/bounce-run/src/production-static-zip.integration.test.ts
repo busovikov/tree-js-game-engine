@@ -11,8 +11,13 @@ import {
 import { tmpdir } from 'node:os'
 import { dirname, join, posix, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { validateProjectManifest } from '@haku/assets'
 import { createBrowserStaticExportZip } from '@haku/build'
+import { loadProjectPrefabAssets } from '@haku/engine'
+import { projectPathToUrl } from '@haku/schema'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import projectAsset from '../haku.project.json'
+import { loadBounceRunUIDocument } from './ui-document.js'
 
 const APP_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const REPOSITORY_ROOT = join(APP_ROOT, '../..')
@@ -129,6 +134,28 @@ describe('Bounce Run production static ZIP', () => {
       expect(resolvedPath.startsWith(`${extractedRoot}${sep}`)).toBe(true)
       expect(statSync(resolvedPath).isFile()).toBe(true)
     }
+  })
+
+  it('resolves the production scene, prefab, and HUD below the nested archive root', async () => {
+    const manifest = validateProjectManifest(projectAsset)
+    const requestedUrls = [projectPathToUrl(`${manifest.assetsDir}/scenes/main.scene.json`)]
+    const recordMissingRequest = async (path: string) => {
+      requestedUrls.push(path)
+      return { ok: false, json: async () => ({}) }
+    }
+
+    await expect(loadProjectPrefabAssets(manifest, recordMissingRequest)).rejects.toThrow(
+      'Failed to load prefab asset',
+    )
+    await expect(loadBounceRunUIDocument(recordMissingRequest)).rejects.toThrow(
+      'Failed to load Bounce Run HUD',
+    )
+
+    expect(requestedUrls).toEqual([
+      './assets/scenes/main.scene.json',
+      './assets/prefabs/platform.prefab.json',
+      './assets/ui/hud.ui.json',
+    ])
   })
 
   it('contains only the reachable emitted production inventory', () => {
