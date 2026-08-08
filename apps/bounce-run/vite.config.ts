@@ -5,7 +5,16 @@ export default defineConfig({
   root: '.',
   base: './',
   publicDir: 'public',
-  build: { target: 'es2022' },
+  build: {
+    target: 'es2022',
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('/@dimforge/rapier3d-compat/')) return 'rapier-runtime'
+        },
+      },
+    },
+  },
   resolve: {
     alias: {
       '@haku/assets': resolve(__dirname, '../../packages/assets/src'),

@@ -53,6 +53,20 @@ function htmlAssetUrls(html: string): string[] {
   ].map((match) => match[1]!)
 }
 
+function moduleScriptPaths(html: string): string[] {
+  return [...html.matchAll(/<script\b[^>]*\btype=["']module["'][^>]*\bsrc=["']([^"']+\.js)["']/gi)]
+    .map((match) => match[1]!)
+    .map((path) => posix.normalize(path.replace(/^\.\//, '')))
+}
+
+function importedJavaScriptPaths(source: string, importer: string): string[] {
+  const imports = [
+    ...source.matchAll(/(?:\bfrom\s*|\bimport\s*\()\s*["']([^"']+\.js)["']/g),
+    ...source.matchAll(/\bimport\s*["']([^"']+\.js)["']/g),
+  ]
+  return imports.map((match) => posix.normalize(posix.join(posix.dirname(importer), match[1]!)))
+}
+
 function storedEntryMetadata(zip: Uint8Array): Array<{
   path: string
   dosTime: number
@@ -170,19 +184,36 @@ describe('Bounce Run production static ZIP', () => {
 
   it('contains only the reachable emitted production inventory', () => {
     const entries = storedEntryMetadata(archive).map(({ path }) => path)
-
     expect(entries).toEqual([
       'index.html',
-      expect.stringMatching(/^assets\/index-[A-Za-z0-9_-]+\.js$/),
+      ...[...productionFiles.keys()].filter((path) => path !== 'index.html').sort(),
+    ])
+    expect(entries.filter((path) => !path.endsWith('.js'))).toEqual([
+      'index.html',
       'assets/prefabs/platform.prefab.json',
       'assets/scenes/main.scene.json',
       'assets/ui/hud.ui.json',
       'favicon.svg',
     ])
-    expect(entries).toEqual([
-      'index.html',
-      ...[...productionFiles.keys()].filter((path) => path !== 'index.html').sort(),
-    ])
+
+    const javascriptEntries = entries.filter((path) => path.endsWith('.js'))
+    const reachableJavaScript = new Set(
+      moduleScriptPaths(readFileSync(join(extractedRoot, 'index.html'), 'utf8')),
+    )
+    const pending = [...reachableJavaScript]
+    while (pending.length > 0) {
+      const path = pending.shift()!
+      expect(javascriptEntries, `missing imported JavaScript ${path}`).toContain(path)
+      const source = readFileSync(join(extractedRoot, path), 'utf8')
+      for (const importedPath of importedJavaScriptPaths(source, path)) {
+        if (!reachableJavaScript.has(importedPath)) {
+          reachableJavaScript.add(importedPath)
+          pending.push(importedPath)
+        }
+      }
+    }
+    expect([...reachableJavaScript].sort()).toEqual(javascriptEntries)
+
     for (const path of entries) {
       expect(path).toBe(posix.normalize(path))
       expect(path).not.toMatch(/^(?:\/|.*(?:^|\/)\.\.(?:\/|$))/)

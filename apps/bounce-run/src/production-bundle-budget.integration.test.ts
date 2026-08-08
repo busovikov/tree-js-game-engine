@@ -10,6 +10,9 @@ const REPOSITORY_ROOT = join(APP_ROOT, '../..')
 const DIST_ROOT = join(APP_ROOT, 'dist')
 const TOTAL_MINIFIED_LIMIT = 3_500_000
 const TOTAL_GZIP_LIMIT = 1_200_000
+const LARGEST_CHUNK_MINIFIED_LIMIT = 2_250_000
+const LARGEST_CHUNK_GZIP_LIMIT = 850_000
+const RAPIER_VENDOR_SENTINEL = 'RigidBodySet'
 const PRODUCTION_EXCLUSIONS = [
   'haku:bounce-run:qa-harness:v1',
   'haku:bounce-run:qa-report:v1',
@@ -92,14 +95,27 @@ describe('Bounce Run production bundle budget', () => {
       reachable.size,
       `production runtime must have at least two reachable chunks\n${inventory.join('\n')}`,
     ).toBeGreaterThanOrEqual(2)
+    const rapierChunks = [...chunks].filter(([path]) => /^assets\/rapier-runtime-[\w-]+\.js$/.test(path))
+    expect(rapierChunks, `expected one stable Rapier runtime boundary\n${inventory.join('\n')}`).toHaveLength(1)
+    expect(rapierChunks[0]![1].toString('utf8')).toContain(RAPIER_VENDOR_SENTINEL)
+    expect(
+      [...chunks].filter(([, contents]) => contents.includes(RAPIER_VENDOR_SENTINEL)),
+      'Rapier vendor payload must not be duplicated across chunks',
+    ).toHaveLength(1)
 
     const totalMinified = [...chunks.values()].reduce((total, contents) => total + contents.byteLength, 0)
     const totalGzip = [...chunks.values()].reduce(
       (total, contents) => total + gzipSync(contents).byteLength,
       0,
     )
+    const largestMinified = Math.max(...[...chunks.values()].map((contents) => contents.byteLength))
+    const largestGzip = Math.max(
+      ...[...chunks.values()].map((contents) => gzipSync(contents).byteLength),
+    )
     expect(totalMinified, inventory.join('\n')).toBeLessThanOrEqual(TOTAL_MINIFIED_LIMIT)
     expect(totalGzip, inventory.join('\n')).toBeLessThanOrEqual(TOTAL_GZIP_LIMIT)
+    expect(largestMinified, inventory.join('\n')).toBeLessThanOrEqual(LARGEST_CHUNK_MINIFIED_LIMIT)
+    expect(largestGzip, inventory.join('\n')).toBeLessThanOrEqual(LARGEST_CHUNK_GZIP_LIMIT)
 
     for (const [path, contents] of chunks) {
       const source = contents.toString('utf8')
