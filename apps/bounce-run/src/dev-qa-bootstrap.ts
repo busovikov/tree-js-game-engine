@@ -224,7 +224,15 @@ function createQaDomBridge(
     const snapshot = harness.snapshot()
     const x = snapshot.lastObservation?.ball.position[0]
     const state = snapshot.lastObservation?.session.state ?? 'none'
-    status.textContent = `QA ticks ${snapshot.tickCount} · diagnostics ${snapshot.diagnostics.length} · state ${state} · x ${x?.toFixed(3) ?? 'n/a'}`
+    const runtime = snapshot.lastObservation?.runtime
+    status.textContent =
+      `QA ticks ${snapshot.tickCount} · diagnostics ${snapshot.diagnostics.length} · ` +
+      `state ${state} · x ${x?.toFixed(3) ?? 'n/a'} · ` +
+      `entities ${runtime?.worldEntities ?? 'n/a'} · ` +
+      `bonus ${runtime?.bonusPool.active ?? 'n/a'}/${runtime?.bonusPool.total ?? 'n/a'} · ` +
+      `effects ${runtime?.effects.activeBursts ?? 'n/a'}/${runtime?.effects.trailPoints ?? 'n/a'} · ` +
+      `queue ${runtime?.scheduler.queuedCommands ?? 'n/a'} · ` +
+      `subscriptions ${runtime?.effectSubscriptions ?? 'n/a'}`
   }
   render()
 
