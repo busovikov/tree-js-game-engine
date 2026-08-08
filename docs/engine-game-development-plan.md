@@ -780,10 +780,10 @@ M13 final isolated acceptance audit (complete):
 Acceptance:
 
 - [ ] Full repository format/lint/typecheck/test/build gates pass.
-- [ ] Playwright and browser-agent sessions pass against a clean production export.
+- [x] Playwright and browser-agent sessions pass against a clean production export.
 - [x] ZIP extracts and runs from a simple static server with no external requests.
-- [ ] Bundle boundaries are proven.
-- [ ] Performance budgets are documented against measured baselines.
+- [x] Bundle boundaries are proven.
+- [x] Performance budgets are documented against measured baselines.
 - [ ] Current capability matrix, public API links, package graph, examples, create templates,
       and user documentation describe the final implementation.
 - [ ] Deferred backlog contains only genuinely deferred work.
@@ -800,8 +800,45 @@ HTML, JS, prefab, scene, HUD, and favicon during page load; no CDN or external o
 The user-Chrome extension loaded the archive with no DEV QA bridge, exercised
 start/pause/resume/game-over/restart, and retained exact canvas/HUD bounds without overflow at
 `900×1200` and `1600×900`. Its fresh console contained no error and only the established Rapier
-initialization deprecation warning. The combined Playwright/browser-agent row remains open until a
-fresh production Playwright run is completed in the next bounded audit.
+initialization deprecation warning. M14-02 below completes the combined Playwright/browser-agent
+row against the split extracted runtime.
+
+Bundle and measured performance evidence (M14-02): the mandatory production-budget RED built
+with `NODE_ENV=production` and failed on the prior single reachable
+`assets/index-BkpFlw_4.js` at `3,231.33 kB` minified / `1,093.90 kB` gzip. Vite 6 now uses one
+deliberate Rollup `manualChunks` function for the resolved `@dimforge/rapier3d-compat` package,
+following Vite's documented [chunking strategy](https://v6.vite.dev/guide/build#chunking-strategy)
+and Rollup's [manual chunk contract and side-effect warning](https://rollupjs.org/configuration-options/#output-manualchunks).
+The extracted runtime has exactly two reachable JavaScript files: entry
+`index-DrKu2EzJ.js` at `994.85/261.43 kB` minified/gzip and
+`rapier-runtime-CKC5f6tm.js` at `2,235.46/829.87 kB`. The entry statically imports the Rapier
+chunk and Vite emits its relative `modulepreload`, consistent with Vite's
+[relative-base preload semantics](https://v6.vite.dev/config/build-options#build-modulepreload).
+Total JavaScript is `3,230.31/1,091.30 kB`, still below the `3.5 MB/1.2 MB` ceilings. The
+largest chunk fell `30.82%` minified and `24.14%` gzip from the single-chunk baseline; the
+measured largest-chunk budgets are therefore `2.25 MB` minified and `850 kB` gzip. Regression
+coverage traverses the HTML/import graph, rejects orphan chunks, requires exactly one named
+Rapier boundary and one owner of its vendor sentinel, scans every chunk for all QA,
+editor/compiler/server/CDN exclusions, and keeps the generic static ZIP exact emitted closure.
+
+The user Chrome extension loaded the extracted build below `/deployments/preview/v2/`; server
+page-load logs recorded HTTP 200 for the HTML, both chunks, prefab, scene, HUD, and favicon and
+no external origin. `tab.playwright` exercised Start, ArrowLeft/ArrowRight input, pause, resume,
+game over, immediate restart, and exact no-overflow canvas/HUD resizing at `1600x900` and
+`900x1200`. The QA global remained `undefined`, no QA DOM bridge existed, and the console
+contained only the established Rapier initialization deprecation warning. Five warm public HUD
+samples at ticks `169/337/508/621/790` all reported `33.3 ms / 30 FPS`, `21` entities, and a
+bounded platform pool at `6-7/8`. This installed Chrome-extension surface therefore crossed the
+`25 ms` alert and cannot validate the `<=16.7 ms` 60 Hz target: `requestAnimationFrame` cadence
+[generally follows the display/surface refresh rate](https://developer.mozilla.org/en-US/docs/Web/API/Window/requestAnimationFrame),
+and no forbidden standalone runner was substituted. The applicable 60 Hz baseline remains the
+M11 measured `8.3 ms`; its hard target remains `<=16.7 ms`, with `25 ms` as the alert ceiling.
+Committed M13 scheduler evidence remains authoritative for fixed `60 Hz`, one/two steps at
+60/30 FPS and at most three catch-up steps, while its stabilization run owns bounded
+effects/subscriptions/render objects. Production exposed only entity, pool, tick, frame-time,
+and FPS telemetry, so no hidden effect counter was invented. No precise heap-byte budget is
+claimed: [`performance.memory` is non-standard, deprecated, and unreliable](https://developer.mozilla.org/en-US/docs/Web/API/Performance/memory),
+and bounded ownership counters plus repeated warm plateaus remain the retained-growth contract.
 
 ## Required node categories by full MVP
 
