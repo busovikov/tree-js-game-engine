@@ -679,7 +679,7 @@ fail with structured asset diagnostics.
 | -------------------------------- | ----------------------------------------- | ----------------------- |
 | ECS backend                      | Out of scope                              | IMPLEMENTATION_PLAN §10 |
 | Spatial index / 6k objects       | Out of scope                              | IMPLEMENTATION_PLAN §10 |
-| Script system runtime            | Stub / ScriptRef only                     | Phase 5 placeholder     |
+| Live-state-preserving hot reload | Deferred; disposable Play remains supported | M14 deferred backlog |
 | Instanced/batched render buckets | Stub                                      | RENDER_PLAN §2.2        |
 | WebGPU / TSL                     | Future                                    | RENDER_PLAN §13         |
 | Full post-processing stack       | Partial                                   | RENDER_PLAN §8          |
@@ -688,6 +688,12 @@ fail with structured asset diagnostics.
 | Multi-user editing               | Out of scope                              | IMPLEMENTATION_PLAN §10 |
 | Remote API / auth / database     | Not in v1                                 | —                       |
 | `render-backend.ts` size         | Refactor in progress — split to `render/` | RENDER_PLAN §12         |
+
+Release evidence has two measurement limits: the installed user-Chrome extension ran at
+30 Hz, so its `33.3 ms` frame samples are an alert rather than a 60 Hz performance verdict;
+and no precise heap-byte claim is made because `performance.memory` is non-standard and
+deprecated. Mobile/touch input and real platform SDK adapters remain deferred, not broken
+fallbacks hidden behind no-op implementations.
 
 ---
 

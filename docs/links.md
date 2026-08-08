@@ -65,6 +65,36 @@
 
 > **Do not use APIs not exported here.** Read the file if signature is unclear.
 
+### Published entrypoints
+
+This inventory is the release import boundary derived from workspace `package.json` exports.
+Subpaths not listed here are private even when their source file exists.
+
+| Specifier | Source entrypoint |
+| --------- | ----------------- |
+| `@haku/assets` | `packages/assets/src/index.ts` |
+| `@haku/audio` | `packages/audio/src/index.ts` |
+| `@haku/audio-web` | `packages/audio-web/src/index.ts` |
+| `@haku/build` | `packages/build/src/index.ts` |
+| `@haku/build/browser-static-export` | `packages/build/src/browser-static-export.ts` |
+| `@haku/core` | `packages/core/src/index.ts` |
+| `@haku/create` | `packages/create/src/index.ts` |
+| `@haku/editor` | `packages/editor/src/index.ts` |
+| `@haku/engine` | `packages/engine/src/index.ts` |
+| `@haku/engine/runtime` | `packages/engine/src/runtime.ts` |
+| `@haku/graph` | `packages/graph/src/index.ts` |
+| `@haku/graph-runtime` | `packages/graph-runtime/src/index.ts` |
+| `@haku/graph-runtime/diagnostic-graph` | `packages/graph-runtime/src/diagnostic-graph.ts` |
+| `@haku/physics` | `packages/physics/src/index.ts` |
+| `@haku/physics-rapier` | `packages/physics-rapier/src/index.ts` |
+| `@haku/platform` | `packages/platform/src/index.ts` |
+| `@haku/pool` | `packages/pool/src/index.ts` |
+| `@haku/schema` | `packages/schema/src/index.ts` |
+| `@haku/serializer` | `packages/serializer/src/index.ts` |
+| `@haku/serializer/node` | `packages/serializer/src/node.ts` |
+| `@haku/storage` | `packages/storage/src/index.ts` |
+| `@haku/ui` | `packages/ui/src/index.ts` |
+
 ### `@haku/schema` — `packages/schema/src/index.ts`
 
 | Export                                                                    | Purpose                                                                                      |
@@ -219,7 +249,8 @@
 | `roundtripSceneDocument(doc, componentRegistry)`                                                     | Test helper                          |
 | `validateSceneDocument`                                                                              | Re-export from schema                |
 
-**Node only:** `@haku/serializer/node` — [`node.ts`](../packages/serializer/src/node.ts) — `loadSceneDocumentFromFile(path)`.
+**Node only:** `@haku/serializer/node` — [`node.ts`](../packages/serializer/src/node.ts) —
+`loadSceneFromPath(path, componentRegistry)`.
 
 ### `@haku/engine` — full API — `packages/engine/src/index.ts`
 
@@ -402,7 +433,7 @@ Append-only project log: `logs/haku.log` via `projectService.appendProjectLog()`
 | No React in engine/playground | ESLint enforced                                 | [`architecture.md`](./architecture.md) |
 | No Three.js in core/schema    | Pure data layer                                 | `eslint.config.js`                     |
 | `schemaVersion` only `1`      | v2 not implemented                              | serializer tests                       |
-| ScriptRef runtime             | Stub — no hot reload                            | `IMPLEMENTATION_PLAN.md`               |
+| Live-state-preserving hot reload | Deferred; Play is disposable and restartable | development plan deferred backlog |
 | Instancing/batching           | Stub hooks only                                 | `RENDER_PLAN.md`                       |
 | ECS                           | Out of scope                                    | `IMPLEMENTATION_PLAN.md` §10           |
 | File System Access            | Chrome/Edge native write; others use virtual FS | MDN link below                         |
@@ -593,7 +624,8 @@ provider-specific adapters.
 | Resource                     | Path                                                            |
 | ---------------------------- | --------------------------------------------------------------- |
 | Minimal valid scene          | [`examples/minimal.scene.json`](../examples/minimal.scene.json) |
-| Playground entry scene       | `apps/playground/public/assets/scenes/menu.scene.json`          |
+| Bounce Run proving game      | [`apps/bounce-run`](../apps/bounce-run) — engine-only           |
+| Diagnostic catalog          | [`apps/playground`](../apps/playground) — engine-only           |
 | External game template       | `packages/create/templates/`                                    |
 | Serializer tests (roundtrip) | `packages/serializer/src/index.test.ts`                         |
 | Schema legacy tests          | `packages/schema/src/index.test.ts`, `render-settings.test.ts`  |
@@ -605,6 +637,8 @@ provider-specific adapters.
 ```bash
 pnpm install && pnpm build
 pnpm test
+pnpm --filter @haku/bounce-run dev
+pnpm --filter @haku/bounce-run build
 pnpm --filter @haku/playground dev
 pnpm --filter @haku/editor-app dev
 pnpm --filter @haku/schema test

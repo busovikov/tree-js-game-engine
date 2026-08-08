@@ -2,54 +2,90 @@
 
 > System design for @haku — browser game engine + standalone editor.
 
-This document describes the architecture implemented today. The audited capability delta is
-[`engine-game-current-state.md`](./engine-game-current-state.md). The approved target
-package, scheduler, gameplay graph, checkpoint, custom-code, and browser-authoring contracts
-are in [`node-graph-architecture.md`](./node-graph-architecture.md), delivered in the order
-defined by [`engine-game-development-plan.md`](./engine-game-development-plan.md).
-
-Do not describe target packages below as already implemented. During the active program,
-explicit target decisions supersede conflicting historical choices in
-[`IMPLEMENTATION_PLAN.md`](../IMPLEMENTATION_PLAN.md).
+This document describes the implemented M01–M14 release surface. Stable graph, scheduler,
+checkpoint, custom-code, and browser-authoring contracts remain defined by
+[`node-graph-architecture.md`](./node-graph-architecture.md); genuinely deferred work stays in
+[`engine-game-development-plan.md`](./engine-game-development-plan.md#deferred-backlog).
 
 ## Product split
 
-```
-Production game                    Development
-─────────────────                  ───────────
-@haku/engine                       @haku/editor
-@haku/schema                       apps/editor (Vite shell)
-@haku/core
-@haku/serializer
-scene assets (.scene.json)
-```
+Production games compose the runtime packages they use, normally starting from
+`@haku/engine/runtime`. Bounce Run additionally composes graph, pool, physics, UI, audio,
+storage, and adapter packages through their public entrypoints. Development-only authoring is
+owned by `@haku/editor`, `@haku/build`, and `apps/editor`.
 
-**Rule:** shipped games never bundle editor code or React.
+**Rule:** shipped games never import `@haku/editor` and never bundle React, Monaco, React
+Flow, editor extensions, build tooling, or DEV QA code.
 
 ---
 
 ## Monorepo dependency graph
 
-```
-@haku/schema          (no deps)
-    ↓
-@haku/assets          → schema
-    ↓
-@haku/core            → schema
-    ↓
-@haku/physics         (abstract API — no Rapier/Three.js)
-@haku/physics-rapier  → physics, @dimforge/rapier3d-compat (adapter only)
-@haku/serializer      → schema, core
-    ↓
-@haku/engine          → assets, core, schema, serializer, physics, three
-    ↓
-@haku/editor          → engine, core, schema, serializer, react*, zustand
-    ↓
-@haku/editor-app      → editor
+The table follows each package's current `dependencies` manifest; external dependencies are
+shown only where they define a boundary.
 
-@haku/playground      → assets, engine
-@haku/create          → schema (templates)
-```
+| Package | Direct internal dependencies | Boundary / role |
+| ------- | ---------------------------- | --------------- |
+| `@haku/schema` | — | Serializable UUID schemas and paths; no Three.js |
+| `@haku/assets` | schema | Manifest, registry, typed refs, dependency closure |
+| `@haku/core` | schema | World, lifecycle, scheduler, replay primitives; no DOM/Three.js |
+| `@haku/graph` | assets, core, schema | Metadata, types, nodes, compiler; no runtime implementations |
+| `@haku/graph-runtime` | core, graph | Interpreter, effects, checkpoint/rewind |
+| `@haku/pool` | assets, core, graph, graph-runtime, schema | Prefab-backed entity pool |
+| `@haku/physics` | core, schema | Backend-neutral physics; no Rapier/Three.js |
+| `@haku/physics-rapier` | physics | Rapier `^0.19.3` adapter only |
+| `@haku/serializer` | assets, core, physics, schema | Scene/prefab hydration and persistence |
+| `@haku/ui` | assets, graph, graph-runtime, schema | React-free DOM UI runtime |
+| `@haku/audio` | assets, core, graph, graph-runtime, pool, schema | DOM-free audio contracts/headless runtime |
+| `@haku/audio-web` | audio | Web Audio adapter |
+| `@haku/storage` | graph-runtime | Async slots, IndexedDB, replication contracts |
+| `@haku/platform` | — | Provider-neutral lifecycle and capabilities |
+| `@haku/engine` | audio, assets, core, graph, physics, pool, schema, serializer, ui | Three.js runtime and system composition |
+| `@haku/build` | assets | Browser-local tooling and static export |
+| `@haku/editor` | runtime packages above | React authoring application library |
+| `@haku/create` | schema | Node scaffolder; emitted games depend on assets + engine |
+
+`apps/bounce-run` is the engine-only release proof. `apps/playground` remains the engine-only
+diagnostic catalog, and `apps/editor` is the React editor shell.
+
+## Implemented MVP capability matrix
+
+| ID | Public owner | Implemented release capability |
+| -- | ------------ | ------------------------------ |
+| MVP-GRAPH | `@haku/graph` | typed flow/event and dependency-data graphs |
+| MVP-COMPILER | `@haku/graph` | graph compiler and validated execution plans |
+| MVP-GRAPH-RUNTIME | `@haku/graph-runtime` | plan interpreter, effects, and structured concurrency |
+| MVP-SCHEDULER | `@haku/core` | multi-phase fixed-step scheduler |
+| MVP-CHECKPOINT | `@haku/graph-runtime` | checkpoint, rewind, persistence, and migrations |
+| MVP-PREFAB | `@haku/serializer` | prefab loading and expansion |
+| MVP-POOL | `@haku/pool` | entity pooling and lifecycle integration |
+| MVP-PHYSICS | `@haku/physics` | backend-neutral physics contracts and Rapier adapter |
+| MVP-UI | `@haku/ui` | production DOM UI assets and runtime |
+| MVP-AUDIO | `@haku/audio` | audio contracts, mixer buses, and Web Audio adapter |
+| MVP-STORAGE | `@haku/storage` | asynchronous storage and replication contracts |
+| MVP-PLATFORM | `@haku/platform` | browser platform lifecycle and capability contracts |
+| MVP-BUILD | `@haku/build` | browser-local TypeScript tooling and production build |
+| MVP-QA | `apps/bounce-run` | development-only browser QA evidence |
+| MVP-REPLAY | `@haku/core` | seeded fixed-tick recording and replay evidence |
+| MVP-GENERATOR | `apps/bounce-run` | deterministic reachable route generation |
+| MVP-BOUNCE-RUN | `apps/bounce-run` | engine-only proving game |
+| MVP-STATIC-ZIP | `@haku/build/browser-static-export` | relative self-contained static HTML5 ZIP |
+
+The matrix records ownership, not a promise that every package is needed by every game.
+Node categories cover lifecycle/control/math/containers, world/components, prefab/pool,
+physics queries and commands, seeded random, UI/audio/save/platform, subgraphs, and debug/QA.
+No published node encodes Bounce Run-specific rules.
+
+### Release limitations
+
+- The installed user-Chrome extension surface supplied 30 Hz animation frames during M14
+  evidence. Its `33.3 ms` samples are an alert, not evidence against the measured 60 Hz
+  `8.3 ms` baseline from M11.
+- No exact retained heap byte budget is claimed: `performance.memory` is non-standard and
+  deprecated. Bounded engine ownership counters and warm plateaus are the supported evidence.
+- Chrome desktop is the MVP browser. A mobile/touch input provider, real Yandex/Poki
+  adapters, and the Safari/Firefox matrix remain deferred; the platform/input contracts are
+  implemented extension points.
 
 ---
 
@@ -267,22 +303,29 @@ Play snapshot: `cloneWorld()` stored in `playSnapshot`; restored in `exitPlayMod
 
 ## Project layout (game project)
 
-External games and `apps/playground` share this layout:
+External games and engine-only apps share this layout:
 
 ```
 my-game/
 ├── haku.project.json       # UUID asset inventory, paths, dependencies, entry scene ref
 ├── package.json            # @haku/assets + @haku/engine
-├── src/main.ts             # Engine bootstrap
+├── src/main.ts             # Standalone Vite runtime bootstrap
+├── src/gameplay.ts         # Browser-editor gameplay/custom-node bundle entry
+├── src/editor-extension.ts # Separate trusted editor-extension bundle entry
 ├── public/assets/
 │   ├── scenes/*.scene.json
+│   ├── graphs/*.graph.json
+│   ├── types/*.type.json
+│   ├── components/*.component.json
 │   ├── models/
 │   └── textures/
-└── scripts/                # ScriptRef targets (future)
+└── scripts/                # Typed algorithms called by graphs/behaviors
 ```
 
-Editor opens folder containing `haku.project.json`; reads/writes scenes under project root.
-Asset paths are locations relative to `assetsDir`; manifest UUIDs are stable identity.
+Graph/type/component directories are conventions, while the manifest UUID is identity and its
+relative `path` is location. The browser editor generates shared declarations under
+`.haku/generated/`. Gameplay and editor-extension code compile into separate outputs; the
+extension output is never part of a production game.
 
 ---
 
@@ -299,15 +342,17 @@ Entities reference `RenderPrototype` (`mode: mesh | instanced | batched | sprite
 
 | Need | Where |
 | ---- | ----- |
-| New component type | `@haku/schema` Zod + `@haku/core` registry + serializer + inspector fields + render sync |
+| Visual data type | `public/assets/types/*.type.json` + manifest UUID entry |
+| Custom component type | `public/assets/components/*.component.json` + manifest UUID entry; generated schema/Inspector/graph contracts |
+| Gameplay graph | `public/assets/graphs/*.graph.json` + manifest UUID entry |
+| Custom node or algorithm | `src/gameplay.ts` / `scripts/*.ts`, using generated Node SDK declarations |
+| Editor extension | `src/editor-extension.ts`, trusted and built separately from gameplay |
 | New material type | `material.ts` schema + `mesh-factory.ts` factory + inspector auto-lists from registry |
 | New render feature | `render-settings.ts` feature flag + engine pass + Render Settings UI |
-| Custom game logic | `apps/playground/src/main.ts` — add `ISystem` to engine |
 | Editor command | `commands/*.ts` — implement `Command`, use `commitSceneEdit` for scene mutations |
 
-These are current extension points. Their approved replacements—package-owned component
-schemas, universal registries, Custom Node SDK, behavior graphs/systems, editor extensions,
-and asset UUIDs—are target work and become authoritative only as their milestones land.
+Custom assets must be present in `haku.project.json`; source and assets stay local to the
+user-selected project. Imported-untrusted custom code/extensions remain inert.
 
 ---
 

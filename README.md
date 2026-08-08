@@ -1,74 +1,57 @@
 # @haku
 
-Three.js-based browser game **engine** + standalone **editor**. Production games depend on `@haku/engine` only.
-
-The active development program grows reusable engine/editor capabilities through the
-Bounce Run proving game. Start at
-[`docs/autonomous-engine-game-agent.md`](docs/autonomous-engine-game-agent.md); the current
-audit, stable graph architecture, and ordered backlog are indexed in
-[`docs/README.md`](docs/README.md).
+Browser-first Three.js game engine and standalone React editor. Production games compose
+public runtime packages beginning with `@haku/engine/runtime`; they never depend on
+`@haku/editor` or React.
 
 ## Quick start
 
+Requires Node.js 20+ and pnpm 9.15.0.
+
 ```bash
-# Install (pnpm recommended; npm per-package also works in this repo)
 corepack prepare pnpm@9.15.0 --activate
 pnpm install
-
-# Build all packages
 pnpm build
-
-# Run reference game (engine only)
-pnpm --filter @haku/playground dev
-
-# Run editor
-pnpm --filter @haku/editor-app dev
-
-# Tests (serializer roundtrip + core smoke)
 pnpm test
 ```
 
-## Monorepo layout
-
-| Package | Role |
-|---------|------|
-| `@haku/schema` | Scene JSON v1 Zod schemas |
-| `@haku/assets` | UUID asset manifests, registries, references, and dependency closure |
-| `@haku/core` | `IWorld`, components, systems |
-| `@haku/serializer` | Load/save scenes (+ `@haku/serializer/node` for fs) |
-| `@haku/engine` | Three.js runtime (`@haku/engine/runtime` for games) |
-| `@haku/editor` | React editor UI library |
-| `@haku/create` | `create-haku` scaffolder for external games |
-| `apps/playground` | Reference game project |
-| `apps/editor` | Editor shell |
-
-## Editor features
-
-- **Open Project…** — pick a folder with `haku.project.json` (e.g. `apps/playground`)
-- **Hierarchy / Inspector / Viewport / Assets** — edit entities, transforms, prototypes
-- **Undo/Redo** — transform, create/delete entity, prefab ops
-- **Create Prefab / Place Prefab** — prefab workflow v1
-- **Play mode** — snapshot on play, restore on stop
-- **Import assets** — GLTF/PNG into virtual project (browser folder picker)
-
-## CI
+Run the engine-only Bounce Run release proof or the diagnostic playground:
 
 ```bash
-./scripts/check.sh
+pnpm --filter @haku/bounce-run dev
+pnpm --filter @haku/playground dev
+pnpm --filter @haku/editor-app dev
 ```
+
+Bounce Run uses public engine packages only—no editor or React dependency. Build its relative
+static site with `pnpm --filter @haku/bounce-run build`, then serve `apps/bounce-run/dist/`
+from a simple static HTTP server. The browser editor's trusted-project export uses
+`@haku/build/browser-static-export` to produce the equivalent self-contained static HTML5 ZIP;
+`file://` is not required or supported.
+
+## Create a game
 
 ```bash
-pnpm --filter @haku/create exec create-haku ../my-game --name my-game --no-install
-cd ../my-game
-# set "@haku/engine": "file:../tree-js-projects/packages/engine"
-pnpm install && pnpm dev
+pnpm --filter @haku/create build
+pnpm --filter @haku/create exec create-haku ../games --name my-game --no-install
 ```
 
-## Architecture
+The generated engine-only Vite project uses relative assets and public
+`@haku/engine/runtime` + `@haku/assets` imports. See
+[`packages/create/README.md`](packages/create/README.md) for local engine linking and commands.
 
-- **Simulation ≠ Presentation**: component data in `IWorld`; `RenderSyncSystem` syncs to Three.js
-- **Editor/engine split**: no React in engine/playground bundles
-- **Scene format**: `examples/minimal.scene.json`, validated by `@haku/schema`
+## Project map
 
-See [`AGENTS.md`](AGENTS.md), [`docs/architecture.md`](docs/architecture.md), and the
-current [engine-game development plan](docs/engine-game-development-plan.md).
+- [`examples/minimal.scene.json`](examples/minimal.scene.json) — minimal valid scene fixture.
+- [`apps/bounce-run`](apps/bounce-run) — complete engine-only proving game.
+- [`apps/playground`](apps/playground) — small engine feature diagnostics.
+- [`apps/editor`](apps/editor) — editor shell.
+- [`docs/README.md`](docs/README.md) — documentation index.
+- [`docs/architecture.md`](docs/architecture.md) — package graph, capability matrix, and
+  project authoring locations.
+- [`docs/links.md`](docs/links.md) — public entrypoints and pinned official references.
+- [`docs/engine-game-development-plan.md`](docs/engine-game-development-plan.md) — milestone
+  evidence and deferred backlog.
+
+Run `./scripts/check.sh` for the repository CI-style check. M14's isolated final full-repository
+gate remains pending; see the development plan rather than inferring completion from this README.

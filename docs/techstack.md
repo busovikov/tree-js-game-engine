@@ -12,14 +12,41 @@ or server-side processing.
 
 | Tool | Version / notes |
 | ---- | --------------- |
-| **Package manager** | pnpm 9.x workspaces (`pnpm-workspace.yaml`) |
-| **Language** | TypeScript 5.7+ |
+| **Package manager** | pnpm 9.15.0 workspaces (`packageManager`, `pnpm-workspace.yaml`) |
+| **Language** | TypeScript ^5.7.2 at the root |
 | **Node** | ≥ 20 |
-| **Test runner** | Vitest (root `vitest.config.ts`) |
-| **Lint** | ESLint 9 + `@typescript-eslint` |
-| **Format** | Prettier |
+| **Test runner** | Vitest ^2.1.8 (root `vitest.config.ts`) |
+| **Lint** | ESLint ^9.16.0 + `@typescript-eslint` ^8.18.0 |
+| **Format** | Prettier ^3.4.2 |
 
 Root scripts: `pnpm build`, `pnpm test`, `pnpm lint`, `pnpm typecheck`.
+
+## Published workspace inventory
+
+All published `@haku/*` manifests currently declare version `0.1.0`. Public specifiers are
+defined by each package's `exports`; [`links.md`](./links.md#published-entrypoints) inventories
+every root and subpath entrypoint.
+
+| Package | Public role |
+| ------- | ----------- |
+| `@haku/assets` | UUID manifest, asset registry, and dependency closure |
+| `@haku/audio` | DOM-free audio contracts, headless runtime, graph/SDK integration |
+| `@haku/audio-web` | Web Audio backend |
+| `@haku/build` | Browser TypeScript tooling, Worker build, static export/ZIP |
+| `@haku/core` | World, lifecycle, scheduler, custom behavior, replay primitives |
+| `@haku/create` | Node scaffolder for engine-only games |
+| `@haku/editor` | React editor library; development only |
+| `@haku/engine` | Three.js runtime and engine systems |
+| `@haku/graph` | Typed graph schema, node/type registries, compiler |
+| `@haku/graph-runtime` | Interpreter, effects, checkpoint/rewind/persistence |
+| `@haku/physics` | Backend-neutral physics contracts |
+| `@haku/physics-rapier` | Rapier ^0.19.3 adapter |
+| `@haku/platform` | Provider-neutral lifecycle/capability contracts |
+| `@haku/pool` | Prefab-backed entity pooling and lifecycle integration |
+| `@haku/schema` | Serializable scene/project primitives and path helpers |
+| `@haku/serializer` | Scene/prefab hydration and persistence |
+| `@haku/storage` | Async save slots, IndexedDB, replication contracts |
+| `@haku/ui` | React-free production DOM UI assets/runtime |
 
 ## `@haku/assets`
 
@@ -101,7 +128,8 @@ registry, manifest index, and deterministic dependency closure.
 
 | Dependency | Purpose |
 | ---------- | ------- |
-| *(none)* | Pure TypeScript interfaces + stub backend for CI |
+| `@haku/core`, `@haku/schema` | Entity/world IDs and serializable physics components |
+| **Zod** ^3.25.76 | Physics component validation |
 
 **Build:** `tsc` → `dist/`
 
@@ -144,7 +172,7 @@ registry, manifest index, and deterministic dependency closure.
 | Dependency | Purpose |
 | ---------- | ------- |
 | **Three.js** ^0.171 | WebGL rendering, loaders, post-processing examples |
-| `@haku/core`, `@haku/schema`, `@haku/serializer` | World + scene data |
+| `@haku/audio`, `@haku/assets`, `@haku/core`, `@haku/graph`, `@haku/physics`, `@haku/pool`, `@haku/schema`, `@haku/serializer`, `@haku/ui` | Runtime subsystem contracts |
 
 **Build:** `tsc`
 
@@ -331,19 +359,20 @@ browser-client RPC.
 
 | Dependency | Purpose |
 | ---------- | ------- |
-| `@haku/assets` | Validate and resolve template project manifests |
 | `@haku/schema` | Validate template scene JSON |
 | Node built-ins | File copy, `git init` |
 
 **CLI:** `create-haku` (bin)
 
-**Templates:** `packages/create/templates/` — Vite game shell with `@haku/engine/runtime` only.
+**Templates:** `packages/create/templates/` — relative Vite game shell with public
+`@haku/engine/runtime` and `@haku/assets` imports. A local `file:` engine link derives its
+complete internal production dependency closure from package manifests.
 
 ---
 
 ## `apps/playground` (`@haku/playground`)
 
-**Role:** Reference game — engine only, no React.
+**Role:** Diagnostic catalog — engine only, no React.
 
 | Dependency | Purpose |
 | ---------- | ------- |
@@ -358,6 +387,23 @@ browser-client RPC.
 
 **Layout:** `haku.project.json`, `public/assets/scenes/`, `src/main.ts`; isolated M10f browser
 QA uses `m10f-diagnostic.html` and `vite.m10f.config.ts` with `publicDir: false`.
+
+---
+
+## `apps/bounce-run` (`@haku/bounce-run`)
+
+**Role:** Complete engine-only proof for graph/runtime/scheduler/checkpoint, prefab/pool,
+Rapier physics, DOM UI, Web Audio, IndexedDB saves, replay/generator/QA, and static export.
+It imports public `@haku/*` entrypoints only and has no editor or React dependency.
+
+| Dependency | Purpose |
+| ---------- | ------- |
+| `@haku/engine` and runtime subsystem packages | Production game composition |
+| `@haku/physics-rapier` | Concrete browser physics adapter |
+| **Vite** ^6.0.3 | Dev server and relative production build |
+
+**Commands:** `pnpm --filter @haku/bounce-run dev`,
+`pnpm --filter @haku/bounce-run typecheck`, `pnpm --filter @haku/bounce-run build`.
 
 ---
 

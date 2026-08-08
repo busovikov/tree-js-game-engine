@@ -24,6 +24,18 @@
 | [ui-kit.md](./ui-kit.md) | Editor UI patterns, components, how to add inspector fields |
 | [links.md](./links.md) | **Canonical refs** — official docs, internal API, read/write rules, migrations |
 
+## User-facing release paths
+
+- [`../examples/minimal.scene.json`](../examples/minimal.scene.json) is the minimal valid scene
+  fixture used by schema/serializer examples.
+- [`../apps/bounce-run`](../apps/bounce-run) is the complete engine-only proving game; run it
+  with `pnpm --filter @haku/bounce-run dev` and build it with
+  `pnpm --filter @haku/bounce-run build`.
+- [`../apps/playground`](../apps/playground) is the engine-only diagnostic catalog of smaller
+  feature examples, not the release game.
+- [`../packages/create/README.md`](../packages/create/README.md) documents the standalone
+  engine-only scaffold and its relative static deployment.
+
 ## Agent skills (`.agents/skills/`)
 
 Skills are updated to use `docs/` — load skill + relevant doc together:

@@ -784,9 +784,9 @@ Acceptance:
 - [x] ZIP extracts and runs from a simple static server with no external requests.
 - [x] Bundle boundaries are proven.
 - [x] Performance budgets are documented against measured baselines.
-- [ ] Current capability matrix, public API links, package graph, examples, create templates,
+- [x] Current capability matrix, public API links, package graph, examples, create templates,
       and user documentation describe the final implementation.
-- [ ] Deferred backlog contains only genuinely deferred work.
+- [x] Deferred backlog contains only genuinely deferred work.
 - [ ] Final handoff lists all local commits and known residual risks; no push is performed.
 
 Static ZIP evidence (M14-01): the real Bounce Run Vite production output now uses Vite's relative

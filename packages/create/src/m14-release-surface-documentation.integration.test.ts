@@ -18,7 +18,9 @@ function filesBelow(path: string): string[] {
       .sort()
       .flatMap((entry) => {
         const absolute = join(directory, entry)
-        return statSync(absolute).isDirectory() ? visit(absolute) : [relative(absoluteRoot, absolute)]
+        return statSync(absolute).isDirectory()
+          ? visit(absolute)
+          : [relative(absoluteRoot, absolute)]
       })
   return visit(absoluteRoot)
 }
@@ -61,7 +63,11 @@ function publicSpecifier(packageName: string, exportKey: string): string {
 const CAPABILITIES = [
   ['MVP-GRAPH', '@haku/graph', 'typed flow/event and dependency-data graphs'],
   ['MVP-COMPILER', '@haku/graph', 'graph compiler and validated execution plans'],
-  ['MVP-GRAPH-RUNTIME', '@haku/graph-runtime', 'plan interpreter, effects, and structured concurrency'],
+  [
+    'MVP-GRAPH-RUNTIME',
+    '@haku/graph-runtime',
+    'plan interpreter, effects, and structured concurrency',
+  ],
   ['MVP-SCHEDULER', '@haku/core', 'multi-phase fixed-step scheduler'],
   ['MVP-CHECKPOINT', '@haku/graph-runtime', 'checkpoint, rewind, persistence, and migrations'],
   ['MVP-PREFAB', '@haku/serializer', 'prefab loading and expansion'],
@@ -76,7 +82,11 @@ const CAPABILITIES = [
   ['MVP-REPLAY', '@haku/core', 'seeded fixed-tick recording and replay evidence'],
   ['MVP-GENERATOR', 'apps/bounce-run', 'deterministic reachable route generation'],
   ['MVP-BOUNCE-RUN', 'apps/bounce-run', 'engine-only proving game'],
-  ['MVP-STATIC-ZIP', '@haku/build/browser-static-export', 'relative self-contained static HTML5 ZIP'],
+  [
+    'MVP-STATIC-ZIP',
+    '@haku/build/browser-static-export',
+    'relative self-contained static HTML5 ZIP',
+  ],
 ] as const
 
 const IMPLEMENTED_NOT_DEFERRED = [
@@ -101,7 +111,9 @@ const IMPLEMENTED_NOT_DEFERRED = [
 describe('M14 release surface documentation', () => {
   it('links the manifest-derived runtime dependency closure for local engine scaffolds', async () => {
     const packages = workspacePackages()
-    const byName = new Map(packages.map((workspacePackage) => [workspacePackage.name, workspacePackage]))
+    const byName = new Map(
+      packages.map((workspacePackage) => [workspacePackage.name, workspacePackage]),
+    )
     const expected = new Set<string>()
     const visit = (packageName: string): void => {
       if (expected.has(packageName)) return
@@ -122,7 +134,9 @@ describe('M14 release surface documentation', () => {
         git: false,
         install: false,
       })
-      const manifest = JSON.parse(readFileSync(join(result.projectDir, 'package.json'), 'utf8')) as {
+      const manifest = JSON.parse(
+        readFileSync(join(result.projectDir, 'package.json'), 'utf8'),
+      ) as {
         pnpm?: { overrides?: Record<string, string> }
       }
       expect(Object.keys(manifest.pnpm?.overrides ?? {}).sort()).toEqual([...expected].sort())
@@ -242,7 +256,9 @@ describe('M14 release surface documentation', () => {
         /@haku\/editor|react|monaco|QA|https?:\/\//i,
       )
       for (const asset of projectManifest.assets) {
-        expect(existsSync(join(result.projectDir, projectManifest.assetsDir, asset.path))).toBe(true)
+        expect(existsSync(join(result.projectDir, projectManifest.assetsDir, asset.path))).toBe(
+          true,
+        )
       }
       expect(createReadme).toContain('relative')
       expect(createReadme).toContain('pnpm build')
@@ -258,10 +274,10 @@ describe('M14 release surface documentation', () => {
     const links = read('docs/links.md')
     const docs = `${rootReadme}\n${architecture}\n${links}`
 
-    expect(docs).toContain('graphs/')
-    expect(docs).toContain('types/')
-    expect(docs).toContain('components/')
-    expect(docs).toContain('extensions/')
+    expect(docs).toContain('public/assets/graphs/')
+    expect(docs).toContain('public/assets/types/')
+    expect(docs).toContain('public/assets/components/')
+    expect(docs).toContain('src/editor-extension.ts')
     expect(docs).toContain('pnpm --filter @haku/bounce-run dev')
     expect(docs).toContain('pnpm --filter @haku/bounce-run build')
     expect(docs).toContain('simple static HTTP server')
