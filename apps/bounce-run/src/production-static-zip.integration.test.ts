@@ -136,6 +136,16 @@ describe('Bounce Run production static ZIP', () => {
     }
   })
 
+  it('declares a relative favicon instead of requesting the server root implicitly', () => {
+    const html = readFileSync(join(extractedRoot, 'index.html'), 'utf8')
+    const faviconUrl = html.match(
+      /<link\b[^>]*\brel=["']icon["'][^>]*\bhref=["']([^"']+)["']/i,
+    )?.[1]
+
+    expect(faviconUrl).toBe('./favicon.svg')
+    expect(statSync(resolve(extractedRoot, faviconUrl!)).isFile()).toBe(true)
+  })
+
   it('resolves the production scene, prefab, and HUD below the nested archive root', async () => {
     const manifest = validateProjectManifest(projectAsset)
     const requestedUrls = [projectPathToUrl(`${manifest.assetsDir}/scenes/main.scene.json`)]
