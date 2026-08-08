@@ -52,7 +52,7 @@ The program is done only when:
 | M11  | Bounce Run vertical slice                                       | M10f       | Complete                                 |
 | M12  | Generator, seed/replay, QA harness, and automated browser tests | M11        | Complete                                 |
 | M13  | Full gameplay, polish, saves, audio, and stabilization          | M12        | Complete                                 |
-| M14  | Final export, quality audit, and documentation                  | M13        | Pending                                  |
+| M14  | Final export, quality audit, and documentation                  | M13        | In progress — static ZIP complete        |
 
 ## M01 — Audit and target documentation
 
@@ -781,13 +781,27 @@ Acceptance:
 
 - [ ] Full repository format/lint/typecheck/test/build gates pass.
 - [ ] Playwright and browser-agent sessions pass against a clean production export.
-- [ ] ZIP extracts and runs from a simple static server with no external requests.
+- [x] ZIP extracts and runs from a simple static server with no external requests.
 - [ ] Bundle boundaries are proven.
 - [ ] Performance budgets are documented against measured baselines.
 - [ ] Current capability matrix, public API links, package graph, examples, create templates,
       and user documentation describe the final implementation.
 - [ ] Deferred backlog contains only genuinely deferred work.
 - [ ] Final handoff lists all local commits and known residual risks; no push is performed.
+
+Static ZIP evidence (M14-01): the real Bounce Run Vite production output now uses Vite's relative
+base and the shared project-path resolver emits document-relative runtime asset URLs. The generic
+`@haku/build` writer archived only root `index.html`, one hashed runtime module, the reachable
+prefab/scene/HUD JSON files, and the declared favicon. The six-entry stored archive passed
+`unzip -t`, deterministic byte/order checks, fixed DOS timestamps, portable `0644` modes, safe-path
+checks, static external-URL scans, and the existing authoritative production exclusion regression.
+A clean extraction served below `/deployments/preview/v1/` returned HTTP 200 for only its nested
+HTML, JS, prefab, scene, HUD, and favicon during page load; no CDN or external origin was requested.
+The user-Chrome extension loaded the archive with no DEV QA bridge, exercised
+start/pause/resume/game-over/restart, and retained exact canvas/HUD bounds without overflow at
+`900×1200` and `1600×900`. Its fresh console contained no error and only the established Rapier
+initialization deprecation warning. The combined Playwright/browser-agent row remains open until a
+fresh production Playwright run is completed in the next bounded audit.
 
 ## Required node categories by full MVP
 
