@@ -61,6 +61,7 @@ export function installBounceRunDevQa(options: BounceRunDevQaOptions): BounceRun
           scheduler: {
             tickNumber: localTick,
             fixedTimestep: options.observations.scheduler.fixedTimestep,
+            metrics: () => options.observations.scheduler.metrics(),
           },
         })
       },

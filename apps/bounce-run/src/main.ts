@@ -342,6 +342,12 @@ async function main(): Promise<void> {
         },
         route,
         pool: platformPool,
+        runtime: {
+          worldEntityCount: () => loaded.world.getAllEntities().length,
+          bonusPool,
+          effects: presentationEffects,
+          effectSubscriptions: () => effectsComposition.metrics().subscriptions,
+        },
       },
     })
     disposeDevQa = () => installation.dispose()

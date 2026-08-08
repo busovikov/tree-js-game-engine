@@ -28,7 +28,7 @@ function createPort<T>() {
 
 function createObservation(tick: number) {
   return {
-    version: 2 as const,
+    version: 3 as const,
     scheduler: { tick, fixedDelta: 1 / 60 },
     session: { state: tick === 0 ? ('active' as const) : ('paused' as const), score: tick },
     ball: { position: [tick, 2, tick + 4], velocity: [1, 7, 9] },
@@ -49,6 +49,31 @@ function createObservation(tick: number) {
       expansions: 0,
       exhaustions: 0,
       forcedReleases: 0,
+    },
+    runtime: {
+      worldEntities: 4,
+      scheduler: { registeredSystems: 6, queuedCommands: 0 },
+      bonusPool: {
+        capacity: 1,
+        maximum: 1,
+        total: 1,
+        active: 1,
+        inactive: 0,
+        acquisitions: 1,
+        releases: 0,
+        expansions: 0,
+        exhaustions: 0,
+        forcedReleases: 0,
+      },
+      effects: {
+        activeBursts: 0,
+        queuedBursts: 0,
+        trailPoints: 2,
+        ownedHandles: 0,
+        renderObjects: 19,
+        disposed: false,
+      },
+      effectSubscriptions: 2,
     },
   }
 }

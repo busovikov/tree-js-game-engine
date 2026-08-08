@@ -8,7 +8,7 @@ import {
 import type { PoolMetrics } from '@haku/pool'
 import type { BounceRunSessionState } from './session-runtime.js'
 
-export const BOUNCE_RUN_OBSERVATION_VERSION = 2 as const
+export const BOUNCE_RUN_OBSERVATION_VERSION = 3 as const
 export const BOUNCE_RUN_QA_OBSERVATIONS_SENTINEL = 'haku:bounce-run:qa-observations:v1' as const
 
 export interface BounceRunBallObservationReader {
@@ -22,11 +22,26 @@ export interface BounceRunRouteObservationReader {
 }
 
 export interface BounceRunObservationSources {
-  readonly scheduler: Pick<EngineScheduler, 'tickNumber' | 'fixedTimestep'>
+  readonly scheduler: Pick<EngineScheduler, 'tickNumber' | 'fixedTimestep' | 'metrics'>
   readonly session: Readonly<{ state(): BounceRunSessionState; score(): number }>
   readonly ball: BounceRunBallObservationReader
   readonly route: BounceRunRouteObservationReader
   readonly pool: Readonly<{ metrics(): PoolMetrics }>
+  readonly runtime: Readonly<{
+    worldEntityCount(): number
+    bonusPool: Readonly<{ metrics(): PoolMetrics }>
+    effects: Readonly<{
+      metrics(): Readonly<{
+        activeBursts: number
+        queuedBursts: number
+        trailPoints: number
+        ownedHandles: number
+        renderObjects: number
+        disposed: boolean
+      }>
+    }>
+    effectSubscriptions(): number
+  }>
 }
 
 export interface BounceRunObservation {
@@ -44,6 +59,20 @@ export interface BounceRunObservation {
     decisionCount: number
   }>
   readonly pool: Readonly<PoolMetrics>
+  readonly runtime: Readonly<{
+    worldEntities: number
+    scheduler: Readonly<{ registeredSystems: number; queuedCommands: number }>
+    bonusPool: Readonly<PoolMetrics>
+    effects: Readonly<{
+      activeBursts: number
+      queuedBursts: number
+      trailPoints: number
+      ownedHandles: number
+      renderObjects: number
+      disposed: boolean
+    }>
+    effectSubscriptions: number
+  }>
 }
 
 /** Composes a bounded data-only QA snapshot from public read surfaces. */
@@ -76,6 +105,29 @@ export function createBounceRunObservationSnapshot(
   if (activeIndices.length !== pool.active) {
     throw new Error('route active platform count must match pool active count')
   }
+  const schedulerMetrics = sources.scheduler.metrics()
+  const runtime = {
+    worldEntities: requireNonNegativeInteger(
+      'runtime worldEntities',
+      sources.runtime.worldEntityCount(),
+    ),
+    scheduler: {
+      registeredSystems: requireNonNegativeInteger(
+        'runtime scheduler registeredSystems',
+        schedulerMetrics.registeredSystems,
+      ),
+      queuedCommands: requireNonNegativeInteger(
+        'runtime scheduler queuedCommands',
+        schedulerMetrics.queuedCommands,
+      ),
+    },
+    bonusPool: requirePoolMetrics(sources.runtime.bonusPool.metrics()),
+    effects: requireEffectsMetrics(sources.runtime.effects.metrics()),
+    effectSubscriptions: requireNonNegativeInteger(
+      'runtime effectSubscriptions',
+      sources.runtime.effectSubscriptions(),
+    ),
+  }
   const observation: BounceRunObservation = {
     version: BOUNCE_RUN_OBSERVATION_VERSION,
     scheduler: {
@@ -94,8 +146,22 @@ export function createBounceRunObservationSnapshot(
       decisionCount,
     },
     pool,
+    runtime,
   }
   return createImmutableJsonSnapshot(observation)
+}
+
+function requireEffectsMetrics(value: unknown): BounceRunObservation['runtime']['effects'] {
+  const immutable = createImmutableJsonSnapshot(value)
+  if (!isRecord(immutable)) throw new TypeError('effects metrics must be an object')
+  return {
+    activeBursts: requireNonNegativeInteger('effects activeBursts', immutable.activeBursts),
+    queuedBursts: requireNonNegativeInteger('effects queuedBursts', immutable.queuedBursts),
+    trailPoints: requireNonNegativeInteger('effects trailPoints', immutable.trailPoints),
+    ownedHandles: requireNonNegativeInteger('effects ownedHandles', immutable.ownedHandles),
+    renderObjects: requireNonNegativeInteger('effects renderObjects', immutable.renderObjects),
+    disposed: requireBoolean('effects disposed', immutable.disposed),
+  }
 }
 
 /** Evaluates data-only assertions without exposing any Bounce Run runtime capability. */
@@ -170,6 +236,11 @@ function requirePositiveFinite(label: string, value: unknown): number {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
     throw new TypeError(`${label} must be a positive finite number`)
   }
+  return value
+}
+
+function requireBoolean(label: string, value: unknown): boolean {
+  if (typeof value !== 'boolean') throw new TypeError(`${label} must be a boolean`)
   return value
 }
 

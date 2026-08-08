@@ -39,7 +39,15 @@ const SESSION_INPUT_KEYS = new Set([
 const RECORDING_KEYS = new Set(['version', 'seed', 'fixedDelta', 'tickCount', 'frames'])
 const FRAME_KEYS = new Set(['tick', 'actions', 'expectedHash'])
 const OBSERVATION_EVIDENCE_KEYS = new Set(['observation', 'assertionResults'])
-const OBSERVATION_KEYS = new Set(['version', 'scheduler', 'session', 'ball', 'route', 'pool'])
+const OBSERVATION_KEYS = new Set([
+  'version',
+  'scheduler',
+  'session',
+  'ball',
+  'route',
+  'pool',
+  'runtime',
+])
 const SCHEDULER_KEYS = new Set(['tick', 'fixedDelta'])
 const SESSION_KEYS = new Set(['state', 'score'])
 const BALL_KEYS = new Set(['position', 'velocity'])
@@ -60,6 +68,22 @@ const POOL_KEYS = new Set([
   'expansions',
   'exhaustions',
   'forcedReleases',
+])
+const RUNTIME_KEYS = new Set([
+  'worldEntities',
+  'scheduler',
+  'bonusPool',
+  'effects',
+  'effectSubscriptions',
+])
+const RUNTIME_SCHEDULER_KEYS = new Set(['registeredSystems', 'queuedCommands'])
+const EFFECTS_KEYS = new Set([
+  'activeBursts',
+  'queuedBursts',
+  'trailPoints',
+  'ownedHandles',
+  'renderObjects',
+  'disposed',
 ])
 const ERROR_KEYS = new Set(['source', 'category', 'message', 'tick', 'context'])
 const BUG_INPUT_KEYS = new Set(['version', 'kind', 'session', 'defect', 'rootCause'])
@@ -323,12 +347,56 @@ function validateObservation(value: unknown, index: number): BounceRunObservatio
     throw new Error(`${label} route bounds must be ordered`)
   }
 
-  const pool = requireExactRecord(`${label} pool`, observation.pool, POOL_KEYS)
-  const capacity = requireNonNegativeInteger(`${label} pool capacity`, pool.capacity)
-  const maximum = requireNonNegativeInteger(`${label} pool maximum`, pool.maximum)
-  const total = requireNonNegativeInteger(`${label} pool total`, pool.total)
-  const active = requireNonNegativeInteger(`${label} pool active`, pool.active)
-  const inactive = requireNonNegativeInteger(`${label} pool inactive`, pool.inactive)
+  const pool = validatePoolMetrics(`${label} pool`, observation.pool)
+  if (pool.active !== activeCount) throw new Error(`${label} pool metrics are inconsistent`)
+
+  const runtime = requireExactRecord(`${label} runtime`, observation.runtime, RUNTIME_KEYS)
+  requireNonNegativeInteger(`${label} runtime worldEntities`, runtime.worldEntities)
+  const runtimeScheduler = requireExactRecord(
+    `${label} runtime scheduler`,
+    runtime.scheduler,
+    RUNTIME_SCHEDULER_KEYS,
+  )
+  requireNonNegativeInteger(
+    `${label} runtime scheduler registeredSystems`,
+    runtimeScheduler.registeredSystems,
+  )
+  requireNonNegativeInteger(
+    `${label} runtime scheduler queuedCommands`,
+    runtimeScheduler.queuedCommands,
+  )
+  validatePoolMetrics(`${label} runtime bonusPool`, runtime.bonusPool)
+  const effects = requireExactRecord(`${label} runtime effects`, runtime.effects, EFFECTS_KEYS)
+  for (const field of [
+    'activeBursts',
+    'queuedBursts',
+    'trailPoints',
+    'ownedHandles',
+    'renderObjects',
+  ] as const) {
+    requireNonNegativeInteger(`${label} runtime effects ${field}`, effects[field])
+  }
+  if (typeof effects.disposed !== 'boolean') {
+    throw new TypeError(`${label} runtime effects disposed must be a boolean`)
+  }
+  requireNonNegativeInteger(
+    `${label} runtime effectSubscriptions`,
+    runtime.effectSubscriptions,
+  )
+  requireBoundedCanonicalValue(label, observation)
+  return observation as unknown as BounceRunObservation
+}
+
+function validatePoolMetrics(
+  label: string,
+  value: unknown,
+): Readonly<{ active: number }> {
+  const pool = requireExactRecord(label, value, POOL_KEYS)
+  const capacity = requireNonNegativeInteger(`${label} capacity`, pool.capacity)
+  const maximum = requireNonNegativeInteger(`${label} maximum`, pool.maximum)
+  const total = requireNonNegativeInteger(`${label} total`, pool.total)
+  const active = requireNonNegativeInteger(`${label} active`, pool.active)
+  const inactive = requireNonNegativeInteger(`${label} inactive`, pool.inactive)
   for (const field of [
     'acquisitions',
     'releases',
@@ -336,18 +404,12 @@ function validateObservation(value: unknown, index: number): BounceRunObservatio
     'exhaustions',
     'forcedReleases',
   ] as const) {
-    requireNonNegativeInteger(`${label} pool ${field}`, pool[field])
+    requireNonNegativeInteger(`${label} ${field}`, pool[field])
   }
-  if (
-    capacity > maximum ||
-    total > maximum ||
-    active + inactive !== total ||
-    active !== activeCount
-  ) {
-    throw new Error(`${label} pool metrics are inconsistent`)
+  if (capacity > maximum || total > maximum || active + inactive !== total) {
+    throw new Error(`${label} metrics are inconsistent`)
   }
-  requireBoundedCanonicalValue(label, observation)
-  return observation as unknown as BounceRunObservation
+  return { active }
 }
 
 function validateErrors(value: unknown, tickCount: number): readonly BounceRunReportError[] {

@@ -32,6 +32,26 @@ describe('Bounce Run QA observations', () => {
         exhaustions: 0,
         forcedReleases: 0,
       },
+      bonusPool: {
+        capacity: 1,
+        maximum: 1,
+        total: 1,
+        active: 1,
+        inactive: 0,
+        acquisitions: 1,
+        releases: 0,
+        expansions: 0,
+        exhaustions: 0,
+        forcedReleases: 0,
+      },
+      effects: {
+        activeBursts: 2,
+        queuedBursts: 0,
+        trailPoints: 12,
+        ownedHandles: 1,
+        renderObjects: 19,
+        disposed: false,
+      },
     }
     const before = structuredClone(source)
 
@@ -48,15 +68,28 @@ describe('Bounce Run QA observations', () => {
         decisionLog: () => Array.from({ length: source.decisionCount }, () => ({})),
       },
       pool: { metrics: () => source.pool },
+      runtime: {
+        worldEntityCount: () => 11,
+        bonusPool: { metrics: () => source.bonusPool },
+        effects: { metrics: () => source.effects },
+        effectSubscriptions: () => 2,
+      },
     })
 
     expect(observation).toEqual({
-      version: 2,
+      version: 3,
       scheduler: { tick: 1, fixedDelta: 1 / 60 },
       session: { state: 'active', score: 3 },
       ball: { position: [1, 2, 3], velocity: [0.5, -1, 8] },
       route: { activeCount: 3, firstPlatformIndex: 3, lastPlatformIndex: 5, decisionCount: 6 },
       pool: source.pool,
+      runtime: {
+        worldEntities: 11,
+        scheduler: { registeredSystems: 0, queuedCommands: 0 },
+        bonusPool: source.bonusPool,
+        effects: source.effects,
+        effectSubscriptions: 2,
+      },
     })
     expect(Object.isFrozen(observation)).toBe(true)
     expect(Object.isFrozen(observation.ball.position)).toBe(true)
@@ -132,7 +165,13 @@ describe('Bounce Run QA observations', () => {
     }
     const before = structuredClone(source)
     const sources = {
-      scheduler: source,
+      scheduler: {
+        get tickNumber() {
+          return source.tickNumber
+        },
+        fixedTimestep: source.fixedTimestep,
+        metrics: () => ({ registeredSystems: 0, queuedCommands: 0 }),
+      },
       session: { state: () => 'active' as const, score: () => 0 },
       ball: { position: () => source.position, velocity: () => source.velocity },
       route: {
@@ -140,6 +179,21 @@ describe('Bounce Run QA observations', () => {
         decisionLog: () => [],
       },
       pool: { metrics: () => source.metrics },
+      runtime: {
+        worldEntityCount: () => 4,
+        bonusPool: { metrics: () => ({ ...source.metrics, capacity: 1, maximum: 1, total: 1, active: 1, inactive: 0 }) },
+        effects: {
+          metrics: () => ({
+            activeBursts: 0,
+            queuedBursts: 0,
+            trailPoints: 0,
+            ownedHandles: 0,
+            renderObjects: 0,
+            disposed: false,
+          }),
+        },
+        effectSubscriptions: () => 2,
+      },
     }
 
     expect(() => createBounceRunObservationSnapshot(sources)).toThrow('tick')
@@ -159,7 +213,7 @@ describe('Bounce Run QA observations', () => {
         { code: 'escape', path: '__proto__.polluted', operator: 'eq', expected: true },
       ]),
     ).toThrow('Forbidden observation path')
-    expect(() => evaluateBounceRunAssertions({ ...valid, version: 3 }, [])).toThrow(
+    expect(() => evaluateBounceRunAssertions({ ...valid, version: 4 }, [])).toThrow(
       'Unsupported Bounce Run observation version',
     )
     expect(valid).toEqual(validBefore)

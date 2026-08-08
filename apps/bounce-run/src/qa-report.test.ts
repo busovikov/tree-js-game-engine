@@ -44,7 +44,7 @@ function createRecording() {
 
 function createObservation(tick: number) {
   return {
-    version: 2,
+    version: 3,
     scheduler: { tick, fixedDelta: FIXED_DELTA },
     session: { state: 'active', score: tick },
     ball: { position: [0, 2 + tick, tick], velocity: [0, 8 - tick, 9] },
@@ -65,6 +65,31 @@ function createObservation(tick: number) {
       expansions: 0,
       exhaustions: 0,
       forcedReleases: 0,
+    },
+    runtime: {
+      worldEntities: 4,
+      scheduler: { registeredSystems: 6, queuedCommands: 0 },
+      bonusPool: {
+        capacity: 1,
+        maximum: 1,
+        total: 1,
+        active: 1,
+        inactive: 0,
+        acquisitions: 1,
+        releases: 0,
+        expansions: 0,
+        exhaustions: 0,
+        forcedReleases: 0,
+      },
+      effects: {
+        activeBursts: 0,
+        queuedBursts: 0,
+        trailPoints: 0,
+        ownedHandles: 0,
+        renderObjects: 19,
+        disposed: false,
+      },
+      effectSubscriptions: 2,
     },
   }
 }
