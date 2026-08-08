@@ -25,6 +25,7 @@
     "@haku/ui": "workspace:*"
   },
   "devDependencies": {
+    "@haku/build": "workspace:*",
     "typescript": "^5.7.2",
     "vite": "^6.0.3"
   }

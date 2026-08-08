@@ -96,6 +96,9 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui
     devDependencies:
+      '@haku/build':
+        specifier: workspace:*
+        version: link:../../packages/build
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
