@@ -32,6 +32,12 @@ export interface SchedulerFrameReport {
   readonly droppedTime: number
 }
 
+/** Allocation-free read-only ownership counters for diagnostics and long-run verification. */
+export interface EngineSchedulerMetrics {
+  readonly registeredSystems: number
+  readonly queuedCommands: number
+}
+
 export interface SchedulerCommand<T> {
   readonly targetPhase: SchedulerPhase
   readonly sourcePhase: SchedulerSourcePhase
@@ -115,6 +121,13 @@ export class EngineScheduler {
 
   get currentPhase(): SchedulerPhase | null {
     return this.activePhase
+  }
+
+  metrics(): EngineSchedulerMetrics {
+    return {
+      registeredSystems: this.systems.length,
+      queuedCommands: this.queue.length,
+    }
   }
 
   addSystem(system: SchedulerSystem): void {
