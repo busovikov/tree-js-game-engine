@@ -1,6 +1,17 @@
-/** Example script hook — wire when engine script system is ready */
-export function onStart(): void {
-  console.log('player script started')
+export interface PlayerMotion {
+  lateralPosition: number
+  lateralSpeed: number
 }
 
-export function onUpdate(_dt: number): void {}
+/** Pure game algorithm example that a graph or component behavior can call. */
+export function advancePlayerMotion(
+  motion: PlayerMotion,
+  input: number,
+  deltaSeconds: number,
+): PlayerMotion {
+  const lateralSpeed = Math.max(-1, Math.min(1, input)) * 6
+  return {
+    lateralPosition: motion.lateralPosition + lateralSpeed * deltaSeconds,
+    lateralSpeed,
+  }
+}

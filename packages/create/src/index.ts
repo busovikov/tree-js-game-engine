@@ -1,6 +1,6 @@
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { execSync } from 'node:child_process'
-import { join, dirname } from 'node:path'
+import { join, dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 export interface CreateProjectOptions {
@@ -34,26 +34,31 @@ function isNonEmpty(dir: string): boolean {
   return existsSync(dir) && readdirSync(dir).length > 0
 }
 
-const MONOREPO_HAKU_PACKAGES = [
-  'schema',
-  'assets',
-  'core',
-  'serializer',
-  'physics',
-  'physics-rapier',
-  'engine',
-] as const
-
 /** When engine is a file: link into the monorepo, wire all @haku/* deps for standalone install. */
 function resolveMonorepoPackageLinks(engineVersion: string): Record<string, string> | null {
   if (!engineVersion.startsWith('file:')) return null
-  const enginePath = engineVersion.slice('file:'.length).replace(/\/$/, '')
+  const enginePath = resolve(engineVersion.slice('file:'.length).replace(/\/$/, ''))
   const packagesDir = dirname(enginePath)
   if (!enginePath.endsWith('/engine') && !enginePath.endsWith('\\engine')) return null
 
   const links: Record<string, string> = {}
-  for (const pkg of MONOREPO_HAKU_PACKAGES) {
-    links[`@haku/${pkg}`] = `file:${join(packagesDir, pkg)}`
+  const pending = [enginePath]
+  while (pending.length > 0) {
+    const packagePath = pending.pop()!
+    const manifestPath = join(packagePath, 'package.json')
+    if (!existsSync(manifestPath)) return null
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
+      name?: string
+      dependencies?: Record<string, string>
+    }
+    if (!manifest.name?.startsWith('@haku/')) return null
+    if (links[manifest.name]) continue
+
+    links[manifest.name] = `file:${packagePath}`
+    for (const dependency of Object.keys(manifest.dependencies ?? {})) {
+      if (!dependency.startsWith('@haku/')) continue
+      pending.push(join(packagesDir, dependency.slice('@haku/'.length)))
+    }
   }
   return links
 }
@@ -82,13 +87,7 @@ export async function createHakuProject(
   const monorepoLinks = resolveMonorepoPackageLinks(engineVersion)
   if (monorepoLinks) {
     for (const [dep, link] of Object.entries(monorepoLinks)) {
-      if (
-        dep === '@haku/engine' ||
-        dep === '@haku/assets' ||
-        dep === '@haku/schema' ||
-        dep === '@haku/core' ||
-        dep === '@haku/serializer'
-      ) {
+      if (dep in pkg.dependencies) {
         pkg.dependencies[dep] = link
       }
     }

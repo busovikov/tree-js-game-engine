@@ -1,7 +1,9 @@
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { createHakuProject } from './index.js'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
 
@@ -97,6 +99,38 @@ const IMPLEMENTED_NOT_DEFERRED = [
 ] as const
 
 describe('M14 release surface documentation', () => {
+  it('links the manifest-derived runtime dependency closure for local engine scaffolds', async () => {
+    const packages = workspacePackages()
+    const byName = new Map(packages.map((workspacePackage) => [workspacePackage.name, workspacePackage]))
+    const expected = new Set<string>()
+    const visit = (packageName: string): void => {
+      if (expected.has(packageName)) return
+      expected.add(packageName)
+      const workspacePackage = byName.get(packageName)
+      for (const dependency of Object.keys(workspacePackage?.dependencies ?? {})) {
+        if (dependency.startsWith('@haku/')) visit(dependency)
+      }
+    }
+    visit('@haku/engine')
+
+    const temporaryRoot = mkdtempSync(join(tmpdir(), 'haku-m14-local-link-audit-'))
+    try {
+      const result = await createHakuProject({
+        targetDir: temporaryRoot,
+        name: 'local-link-audit',
+        engineVersion: `file:${join(ROOT, 'packages/engine')}`,
+        git: false,
+        install: false,
+      })
+      const manifest = JSON.parse(readFileSync(join(result.projectDir, 'package.json'), 'utf8')) as {
+        pnpm?: { overrides?: Record<string, string> }
+      }
+      expect(Object.keys(manifest.pnpm?.overrides ?? {}).sort()).toEqual([...expected].sort())
+    } finally {
+      rmSync(temporaryRoot, { recursive: true, force: true })
+    }
+  })
+
   it('derives every workspace public package and export from manifests and documents it', () => {
     const packages = workspacePackages()
     const techstack = read('docs/techstack.md')
@@ -140,10 +174,14 @@ describe('M14 release surface documentation', () => {
 
   it('keeps implemented capabilities out of the deferred backlog', () => {
     const plan = read('docs/engine-game-development-plan.md')
-    const deferred = plan.slice(plan.indexOf('## Deferred backlog')).toLowerCase()
+    const deferredBullets = plan
+      .slice(plan.indexOf('## Deferred backlog'))
+      .split('\n')
+      .filter((line) => line.startsWith('- '))
+      .map((line) => line.slice(2).replace(/;$/, '').toLowerCase())
 
     for (const implemented of IMPLEMENTED_NOT_DEFERRED) {
-      expect(deferred, `${implemented} is still presented as deferred`).not.toContain(
+      expect(deferredBullets, `${implemented} is still presented as deferred`).not.toContain(
         implemented.toLowerCase(),
       )
     }
@@ -162,33 +200,56 @@ describe('M14 release surface documentation', () => {
     expect(combined).toContain('@haku/engine/runtime')
   })
 
-  it('derives the complete create-template file set and requires a production-usable relative scaffold', () => {
+  it('derives the emitted create-template file set and requires a production-usable relative scaffold', async () => {
     const templateFiles = filesBelow('packages/create/templates')
-    const html = read('packages/create/templates/index.html')
-    const viteConfig = read('packages/create/templates/vite.config.ts')
-    const packageManifest = JSON.parse(read('packages/create/templates/package.json')) as {
-      scripts: Record<string, string>
-      dependencies: Record<string, string>
-    }
-    const source = read('packages/create/templates/src/main.ts')
-    const createReadme = read('packages/create/README.md')
+    const temporaryRoot = mkdtempSync(join(tmpdir(), 'haku-m14-release-audit-'))
 
-    expect(templateFiles).toContain('README.md')
-    expect(templateFiles).toContain('public/assets/scenes/menu.scene.json')
-    expect(html).toContain('src="./src/main.ts"')
-    expect(viteConfig).toMatch(/base:\s*['"]\.\/['"]/)
-    expect(packageManifest.scripts).toMatchObject({
-      build: 'tsc && vite build',
-      typecheck: 'tsc --noEmit',
-    })
-    expect(source).toContain("from '@haku/engine/runtime'")
-    expect(source).toContain("from '@haku/assets'")
-    expect(`${source}\n${html}\n${viteConfig}`).not.toMatch(
-      /@haku\/editor|react|monaco|QA|https?:\/\//i,
-    )
-    expect(createReadme).toContain('relative')
-    expect(createReadme).toContain('pnpm build')
-    expect(createReadme).toContain('static HTTP server')
+    try {
+      const result = await createHakuProject({
+        targetDir: temporaryRoot,
+        name: 'release-audit',
+        engineVersion: '0.1.0',
+        git: false,
+        install: false,
+      })
+      const emittedFiles = filesBelow(relative(ROOT, result.projectDir))
+      const emittedRead = (path: string) => readFileSync(join(result.projectDir, path), 'utf8')
+      const html = emittedRead('index.html')
+      const viteConfig = emittedRead('vite.config.ts')
+      const packageManifest = JSON.parse(emittedRead('package.json')) as {
+        scripts: Record<string, string>
+        dependencies: Record<string, string>
+      }
+      const projectManifest = JSON.parse(emittedRead('haku.project.json')) as {
+        assetsDir: string
+        assets: Array<{ path: string }>
+      }
+      const source = emittedRead('src/main.ts')
+      const createReadme = read('packages/create/README.md')
+
+      expect(emittedFiles).toEqual(templateFiles)
+      expect(emittedFiles).toContain('public/assets/scenes/menu.scene.json')
+      expect(html).toContain('src="./src/main.ts"')
+      expect(viteConfig).toMatch(/base:\s*['"]\.\/['"]/)
+      expect(packageManifest.scripts).toMatchObject({
+        build: 'tsc && vite build',
+        typecheck: 'tsc --noEmit',
+      })
+      expect(Object.keys(packageManifest.dependencies)).toEqual(['@haku/assets', '@haku/engine'])
+      expect(source).toContain("from '@haku/engine/runtime'")
+      expect(source).toContain("from '@haku/assets'")
+      expect(`${source}\n${html}\n${viteConfig}`).not.toMatch(
+        /@haku\/editor|react|monaco|QA|https?:\/\//i,
+      )
+      for (const asset of projectManifest.assets) {
+        expect(existsSync(join(result.projectDir, projectManifest.assetsDir, asset.path))).toBe(true)
+      }
+      expect(createReadme).toContain('relative')
+      expect(createReadme).toContain('pnpm build')
+      expect(createReadme).toContain('static HTTP server')
+    } finally {
+      rmSync(temporaryRoot, { recursive: true, force: true })
+    }
   })
 
   it('documents authoring locations and the Bounce Run run/export workflow honestly', () => {
