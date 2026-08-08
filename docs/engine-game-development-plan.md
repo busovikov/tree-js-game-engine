@@ -52,7 +52,7 @@ The program is done only when:
 | M11  | Bounce Run vertical slice                                       | M10f       | Complete                                 |
 | M12  | Generator, seed/replay, QA harness, and automated browser tests | M11        | Complete                                 |
 | M13  | Full gameplay, polish, saves, audio, and stabilization          | M12        | Complete                                 |
-| M14  | Final export, quality audit, and documentation                  | M13        | In progress — static ZIP complete        |
+| M14  | Final export, quality audit, and documentation                  | M13        | Complete                                 |
 
 ## M01 — Audit and target documentation
 
@@ -779,7 +779,7 @@ M13 final isolated acceptance audit (complete):
 
 Acceptance:
 
-- [ ] Full repository format/lint/typecheck/test/build gates pass.
+- [x] Full repository format/lint/typecheck/test/build gates pass.
 - [x] Playwright and browser-agent sessions pass against a clean production export.
 - [x] ZIP extracts and runs from a simple static server with no external requests.
 - [x] Bundle boundaries are proven.
@@ -787,7 +787,7 @@ Acceptance:
 - [x] Current capability matrix, public API links, package graph, examples, create templates,
       and user documentation describe the final implementation.
 - [x] Deferred backlog contains only genuinely deferred work.
-- [ ] Final handoff lists all local commits and known residual risks; no push is performed.
+- [x] Final handoff lists all local commits and known residual risks; no push is performed.
 
 Static ZIP evidence (M14-01): the real Bounce Run Vite production output now uses Vite's relative
 base and the shared project-path resolver emits document-relative runtime asset URLs. The generic
@@ -839,6 +839,36 @@ effects/subscriptions/render objects. Production exposed only entity, pool, tick
 and FPS telemetry, so no hidden effect counter was invented. No precise heap-byte budget is
 claimed: [`performance.memory` is non-standard, deprecated, and unreliable](https://developer.mozilla.org/en-US/docs/Web/API/Performance/memory),
 and bounded ownership counters plus repeated warm plateaus remain the retained-growth contract.
+
+Final audit evidence (M14-04): detached committed HEAD `43bdd61` passed the frozen install for all
+22 workspaces, configured ESLint, typecheck and build for all 21 runnable projects, the focused
+M14 release gate (5 files / 17 tests), the full suite (208 passed files / 838 passed tests, with
+1 file / 8 tests skipped), dependency cruising (608 modules / 1,202 dependencies, five known
+violations ignored and no new violation), and `./scripts/check.sh` through its repeated build,
+suite, and playground bundle audit. The clean `file:` package graph required the established three
+forced frozen-lockfile repacks as declaration layers became available; its intermediate failures
+were packaging order, not source regressions. The repository still has no configured root format
+script. Only the owned completion documents were checked with Prettier; the optional repo-wide
+check retains the established 507-file baseline and no mass reformat was attempted.
+
+A fresh local-link `@haku/create` project installed, typechecked, and built 167 modules into a
+relative static site with no editor, QA, CDN, or server coupling. The final generic stored ZIP was
+recreated from the clean Bounce Run production build at SHA-256
+`3f1ee897d16936b1f8c9217d65a6bd42c23c5028d020fd317b53d5be920c2a35`: seven deterministic
+`0644` entries with fixed 1980 timestamps, root HTML, the reachable entry and Rapier chunks, the
+prefab, scene, HUD, and favicon. `unzip -t` passed. A nested simple static server recorded exactly
+seven page-load HTTP 200 requests, no external origin and no root `/assets`; Chrome later made one
+implicit root `/favicon.ico` 404 during tab cleanup.
+
+The final user-Chrome extension session repeated Start, ArrowLeft/ArrowRight input, pause, resume,
+game over, and immediate restart. Canvas, HUD, and document bounds matched `1600x900` and
+`900x1200` without overflow; the QA global remained `undefined` and no QA DOM bridge existed. The
+fresh console contained only Rapier's established initialization deprecation warning. The
+extension reset once after a full post-start snapshot exceeded its 30-second control window; the
+same tab was recovered and targeted checks completed. This reinforces the documented extension
+cadence, key-hold, request-failure, and heap-telemetry limitations rather than indicating a game
+regression. M14 and the full agreed MVP are complete; the final handoff owns the chronological
+commit inventory and residual-risk record, and no push was performed.
 
 ## Required node categories by full MVP
 

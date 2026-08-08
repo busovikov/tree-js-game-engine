@@ -1,164 +1,161 @@
-# Engine improvement through Bounce Run: current-state audit
+# Engine improvement through Bounce Run: final full-MVP state
 
-> Baseline verified on 2026-07-26 at commit `d8e74a1`; current claims are updated through
-> M10f. Target contracts live in
-> [node-graph-architecture.md](./node-graph-architecture.md) and execution order lives in
+> Final baseline verified on 2026-08-08 through M14. The isolated repository and release audit ran
+> at committed HEAD `43bdd61`; the completion and final handoff commits record the documentation
+> closure. Stable contracts live in
+> [node-graph-architecture.md](./node-graph-architecture.md), and the completed milestone map and
+> measured evidence live in
 > [engine-game-development-plan.md](./engine-game-development-plan.md).
 
-## Audit scope
+## Outcome
 
-The audit used the repository documentation and narrow source entrypoints rather than a
-whole-repository source load:
+The engine-improvement program and the agreed Bounce Run MVP are complete. Haku now provides a
+browser-first engine/editor platform that can author, run, test, save, and export a polished small
+3D game. Bounce Run is the engine-only proving application: it uses public `@haku/*` APIs and does
+not depend on the editor, React, QA code, a CDN, or a runtime server.
 
-- [`AGENTS.md`](../AGENTS.md), [`agent-workflow.md`](./agent-workflow.md),
-  [`architecture.md`](./architecture.md), and [`links.md`](./links.md);
-- relevant architecture, scene, editor, asset, render, and test sections in
-  [`IMPLEMENTATION_PLAN.md`](../IMPLEMENTATION_PLAN.md) and
-  [`RENDER_PLAN.md`](../RENDER_PLAN.md);
-- `packages/core/src/{types,world,components}.ts`;
-- `packages/schema/src/index.ts` and `packages/serializer/src/index.ts`;
-- `packages/engine/src/engine.ts`, `systems/physics-world-system.ts`,
-  `input/input-manager.ts`, and `render/render-graph.ts`;
-- `packages/physics/src/{types,capabilities,physics-world}.ts`;
-- `packages/editor/src/services/project-service.ts` and
-  `viewport/play-mode-physics.ts`.
+The final generic export is a deterministic static ZIP with root HTML and relative local paths. It
+runs after extraction below an arbitrary nested path on a simple HTTP server in the user's Chrome.
 
-The original instruction in
-`/Users/pavel/Downloads/autonomous_threejs_engine_game_agent_instruction.md` was read but
-not modified. The repository documents supersede it where the user made a later decision.
-
-## Current engine map
+## Implemented system
 
 ```text
-SceneDocument v1
-  -> @haku/schema validation
-  -> @haku/serializer
-  -> @haku/core World (scene graph + plain-data components + hierarchy activity)
-  -> EngineScheduler
-       -> named frame/fixed phases with deterministic phase-local ordering
-       -> sole fixed-step accumulator, pause, single-step, and tick numbering
-       -> PhysicsWorldSystem performs exactly one step in PhysicsStep
-  -> RenderSyncSystem in Presentation
-  -> ThreeRenderBackend / render-only RenderGraph in Render
-  -> @haku/audio AudioRuntime
-       -> headless or Web Audio backend
-       -> Master plus Music/SFX/UI buses, listener pose, activation/pool cleanup
-  -> @haku/storage
-       -> in-memory or IndexedDB save slots + separate replay artifacts
-       -> expected-revision writes + optional explicit/platform-managed replication
-  -> @haku/platform BrowserPlatformAdapter
-       -> visibility/focus + simulation/input/audio controls
+Project assets and source
+  -> @haku/schema + @haku/assets + @haku/serializer
+  -> @haku/core World and EngineScheduler
+       -> one fixed-step accumulator and deterministic frame/fixed phases
+       -> @haku/graph compiler plans
+       -> @haku/graph-runtime instances, queues, effects, checkpoints, and rewind
+       -> @haku/physics abstraction + application-selected Rapier backend
+       -> @haku/pool entity reuse and lifecycle cleanup
+       -> @haku/ui React-free production DOM UI
+       -> @haku/audio + @haku/audio-web
+       -> @haku/storage + @haku/platform
+  -> @haku/engine runtime composition and Three.js presentation
 
 Browser editor
-  -> React + Zustand + command history
-  -> ProjectService (native File System Access or virtual project)
-  -> graph asset create/open/save + Haku-owned authoring commands
-  -> lazy replaceable React Flow canvas, compiler diagnostics, and Play trace/port values
-  -> conflict-safe TypeScript workspace + generated declarations
-  -> local TypeScript/esbuild Workers + trust/capability gate
-  -> lazy replaceable Monaco + disposable opaque-origin Play sandbox
-  -> visual project Component Types + generated Inspector/graph/type contracts
-  -> constrained gizmo primitives + opaque sandbox widgets + unresolved untrusted state
-  -> local binary audio import + AudioSource Inspector/gesture preview
-  -> trust-gated static ZIP export in a dedicated browser Worker
-       -> manifest/module dependency closure + relative nested-base URLs
-       -> navigable graph/type/code/UI diagnostics
-  -> same Engine for viewport and Play mode
-  -> snapshot world on Play, restore on Stop
+  -> React authoring shell and undoable commands
+  -> local File System Access / virtual projects
+  -> graph, custom type/component, UI, audio, and code authoring
+  -> lazy React Flow and Monaco adapters
+  -> local TypeScript/esbuild Workers and trust/capability gates
+  -> disposable opaque-origin Play sandbox
+  -> @haku/build deterministic static ZIP export
+
+Bounce Run
+  -> start / active / paused / game-over / immediate-restart loop
+  -> desktop action input, Rapier bounce/controller, forward camera
+  -> deterministic reachable infinite route + universal pooling
+  -> difficulty variants, scoring, bonus, local high score
+  -> DOM HUD, audio, presentation effects, seed/replay, and QA evidence
 ```
 
-The strongest current architectural property is the separation of simulation data from
-Three.js presentation. `IWorld` is the shared boundary between serializer, editor, engine,
-and physics systems. App composition roots select Rapier; `@haku/engine` depends on the
-abstract physics API.
+## Package and application baseline
 
-## Capability matrix
+| Surface                                 | Final responsibility                                                                                               |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `@haku/schema`                          | Base IDs, scene envelopes, shared serializable primitives, and relative project paths.                             |
+| `@haku/assets`                          | UUID manifests, descriptors, registries, typed references, and dependency closure.                                 |
+| `@haku/core`                            | World/entity/component lifecycle and the sole multi-phase scheduler.                                               |
+| `@haku/serializer`                      | Registry-driven scene, prefab, and project serialization.                                                          |
+| `@haku/graph`                           | Graph assets, types, node/effect contracts, diagnostics, compiler, and plans.                                      |
+| `@haku/graph-runtime`                   | Deterministic execution, domains, queues, structured async work, trace, checkpoint, rewind, and persistence hooks. |
+| `@haku/physics`, `@haku/physics-rapier` | Replaceable physics contracts and the selected browser Rapier implementation.                                      |
+| `@haku/pool`                            | Prefab-backed deterministic generational entity pools and lifecycle integrations.                                  |
+| `@haku/ui`                              | Strict UI assets, accessible React-free DOM rendering, services, SDK, and graph nodes.                             |
+| `@haku/audio`, `@haku/audio-web`        | DOM-free audio model/runtime and gesture-gated Web Audio backend.                                                  |
+| `@haku/storage`, `@haku/platform`       | Async local saves, replay artifacts, replication contracts, and browser lifecycle/capabilities.                    |
+| `@haku/build`                           | Browser-local indexing, trusted build Workers, diagnostics, and deterministic static ZIP export.                   |
+| `@haku/engine`                          | Public runtime composition and Three.js presentation without editor or React dependencies.                         |
+| `@haku/editor`                          | Browser authoring UI, project service, provider adapters, sandboxed Play, and export workflow.                     |
+| `@haku/create`                          | Standalone engine-only scaffold with relative production output and local-link support.                            |
+| `apps/playground`                       | Engine diagnostic catalog; not the shipped game.                                                                   |
+| `apps/editor`                           | Editor application shell.                                                                                          |
+| `apps/bounce-run`                       | Complete public-API-only proving game and production release target.                                               |
 
-Status meanings: **ready**, **partial**, **awkward**, **absent**, or **unverified**.
+## Full-MVP capability state
 
-| Capability                   | Status                    | Current evidence and target gap                                                                                                                                                                                                          |
-| ---------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Scene documents              | **Ready for current v1**  | Zod validation, load/save, hierarchy, render/physics settings, and roundtrip tests exist. Target deliberately replaces the format; no compatibility layer is required.                                                                   |
-| Entity and component model   | **Ready as a foundation** | `World`, stable entity UUIDs, hierarchy, active-state propagation, inactive-aware queries, deterministic component lifecycle hooks, plain component data, package/project registries, and visual Component Type assets exist. Project types survive scene/prefab save/load and export dependency closure. |
-| Prefabs                      | **Ready for current v1**  | Prefabs are standalone manifest assets referenced by typed UUID, with component-ID overrides and load-time expansion. Deep override paths and nested variants remain intentionally deferred.                                               |
-| Asset system                 | **Ready as a foundation** | Universal UUID manifests, typed references, package-contributed descriptors, structured diagnostics, path-independent identity, and deterministic dependency closure feed browser static export.                                        |
-| Runtime scheduler            | **Ready as a foundation** | `EngineScheduler` owns named frame/fixed phases, deterministic local ordering and typed queued commands, bounded fixed-step catch-up, tick/frame numbering, interpolation alpha, pause, and single-step. `@haku/graph-runtime` enters every domain through this scheduler and owns no second loop. |
-| Gameplay node system         | **Ready as a foundation**  | `@haku/graph` provides strict graph assets, registered types/nodes/effects, generics, diagnostics, checkpoint scope/taint and async-liveness metadata, and deterministic plans. M10f composes lifecycle/control/math/vector, variable/seeded-random, world/component/prefab/physics, pool, UI, audio, save, platform, debug, and assertion foundations through one deterministic catalog. `@haku/graph-runtime` adds instances, queues, scoped async work, tracing, bounded checkpoint/rewind, all seven async policies, effect reconciliation, persistent hooks, and public-service runtime composition. |
-| Script/custom-node runtime   | **Ready as a foundation**  | Metadata-only Custom Node declarations are paired with type/version-bound runtime adapters behind a replaceable `ExecutionBackend`. Browser-local TypeScript diagnostics and separate gameplay/editor-extension bundles are trust-gated. M09 adds scheduler batch behavior contracts, typed component commands, graph adapters, constrained gizmos, sandbox widgets, and visible inert untrusted state. Named project TypeScript exports are bundled but the Inspector trace is explicitly a non-mutating core-runner contract preview rather than export execution. |
-| Rapier integration           | **Ready as a foundation** | Abstract and Rapier packages support dynamic/static/kinematic bodies, CCD, layers, material properties, multiple worlds, joints, and debug rendering. Gameplay bindings and graph effects still need to be designed.                     |
-| Collision and trigger events | **Ready as a foundation** | Collision/trigger events and contact manifolds are supported; editor Play mode exposes contact buffers. No graph event bindings or landing/bounce controller exists.                                                                     |
-| Physics queries              | **Ready as a foundation** | Raycast, shapecast, and overlap exist in the abstract API and Rapier backend. Node/Custom Node SDK bindings are absent.                                                                                                                  |
-| Input                        | **Partial**               | Keyboard/pointer `InputManager` produces action-like vehicle inputs and has attach/detach/enable lifecycle. It is vehicle-shaped rather than a general provider/action registry; no replay injection or future mobile provider boundary. |
-| Object pooling               | **Ready as a foundation** | `@haku/pool` provides prefab-backed serializable configuration, deterministic generational handles, authored hierarchy baselines, bounded growth/exhaustion policies, runtime scopes, graph/engine lifecycle integration, metrics, general SDK/nodes, and a 10,000-cycle playground diagnostic. |
-| Runtime DOM UI               | **Ready as a foundation** | `@haku/ui` provides strict UUID UI assets, native semantic DOM rendering without React, typed events, public service/SDK/graph mutations, asset closure, and visible playground proof. The React editor adds hierarchy, preview, Inspector, undo/redo, three desktop presets, and project persistence. |
-| Audio                        | **Ready as a foundation** | `@haku/audio` provides Audio Clip/AudioSource models, headless mixer/runtime, Master/Music/SFX/UI buses, one-shot/loop/spatial controls, listener pose, activation/pool cleanup, service/SDK/graph effects, and manifest closure. `@haku/audio-web` adds gesture-gated decoding/playback and deterministic disposal; the editor Inspector/preview and user-Chrome production diagnostic are verified. |
-| Save/storage                 | **Ready as a foundation** | `@haku/storage` provides typed async in-memory/IndexedDB slots, separate replay artifacts, atomic expected-revision writes, estimates/errors, honest replication modes, explicit mock limits/stats, and a graph checkpoint adapter that preserves slot data. M10f adds general Save/Load Value graph service nodes without weakening their async checkpoint policies. |
-| Platform integration         | **Ready as a foundation** | `@haku/platform` provides honest lifecycle/auth/pause/input/audio capabilities, distinct visibility/focus state, composed pause reasons, and narrow browser runtime controls without provider SDK ownership. Provider-specific adapters remain deferred. |
-| Seeded random                | **Ready as a foundation** | M10f adds deterministic seeded-random graph contracts/runtime state, stable effect IDs, declared-resource snapshots, and checkpoint/rewind restoration. Full replay recording remains M12. |
-| Replay/QA harness            | **Absent**                | There are tests and debug helpers, but no tick-action recorder, state hashes, replay artifact, or structured browser QA session report.                                                                                                  |
-| Tests                        | **Ready as a foundation** | Unit/integration coverage exists across core, schema, serializer, physics, engine, editor, and apps. Playwright/export gates and the new graph/generator suites are absent.                                                              |
-| Browser-only project editing | **Ready as a foundation** | Chrome File System Access and dev-target persistence feed a conflict-safe source workspace. Generated declarations are shared by lazy Monaco and external VS Code; TypeScript/esbuild and static export run locally in dedicated Workers; trust gates compilation/export; Play is disposable and DOM/file-handle isolated. |
-| Production export            | **Ready as a foundation** | The editor resolves the manifest/module closure, compiles only the runtime locally, downloads a deterministic static ZIP, preserves navigable source diagnostics, and produces nested-base-safe relative URLs.                            |
-| Rendering                    | **Ready and evolving**    | Three.js backend, RenderSync, shadows/settings, render targets, post pipeline, and render-only RenderGraph exist. Bounce Run should use the backend offered by Haku and preserve the render roadmap boundaries.                          |
+| Capability            | State and evidence                                                                                                                                                                                     |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Asset/component model | Complete for MVP: universal UUID manifest, decentralized registries, custom component types, prefab closure, lifecycle, and roundtrip coverage.                                                        |
+| Scheduler and graphs  | Complete for MVP: one scheduler; compiler/interpreter domains; typed nodes/effects; structured concurrency; trace; checkpoint/rewind; persistence and cross-service nodes.                             |
+| Browser authoring     | Complete for MVP: local project source/assets, graph and visual type/component/UI authoring, shared declarations, lazy code/canvas providers, trust gates, and sandboxed Play.                         |
+| Physics and pooling   | Complete for MVP: abstract/Rapier bodies, colliders, events, queries, controllers, lifecycle cleanup, and deterministic prefab-backed pooling.                                                         |
+| UI and audio          | Complete for MVP: accessible production DOM HUD, visual authoring, headless/Web Audio separation, buses, gesture unlock, graph/service bindings, and cleanup.                                          |
+| Storage and platform  | Complete for MVP: async slots, IndexedDB, replay artifacts, expected revisions, honest replication modes, and browser lifecycle/pause/input/audio controls.                                            |
+| Replay and QA         | Complete for MVP: fixed-tick action recording, state hashes, deterministic replay, structured observations/assertions/reports, long-run counters, and browser workflow evidence.                       |
+| Production export     | Complete for MVP: local Worker build, deterministic portable ZIP, relative nested-base paths, reachable dependency closure, diagnostics, and authoritative editor/QA/CDN/server exclusions.            |
+| Bounce Run            | Complete: polished full loop, input, controlled bounce, camera, reachable deterministic route, variants/difficulty, score/bonus/save, audio/effects, replay, stabilization, and responsive desktop UI. |
 
-## Current versus remaining target
+## Final verification baseline
 
-| Current contract                | Target contract                                                              |
-| ------------------------------- | ---------------------------------------------------------------------------- |
-| Named multi-phase scheduler     | Graph flow/events now use every existing frame/fixed domain                  |
-| Scheduler-owned accumulator     | Graph runtime adds no loop or accumulator                                    |
-| Typed gameplay graph compiler   | Graph authoring, diagnostics, and shared editor/headless diagnostic execution are implemented |
-| Runtime adapter boundary        | Browser project-code compilation, sandboxed Play, and custom component/editor-extension adapters are implemented |
-| Hierarchy activation foundation | Pooling and graph lifecycle integrations now reuse the existing contract      |
-| Runtime entity pooling          | Package-level pool uses authored baseline reset and external resource lifecycle |
-| Production/editor UI split      | React-free DOM UI runtime and separate React visual authoring are implemented |
-| Headless/browser audio split    | DOM-free contracts plus Web Audio adapter, service/graph, editor preview, and local asset closure are implemented |
-| Checkpoint persistence hooks    | Typed save slots, IndexedDB, replication modes, platform lifecycle, and general graph save/platform nodes are implemented |
-| Browser-local code toolchain    | Separate gameplay/editor outputs, trust-gated component extensions, and deterministic static ZIP export are implemented |
+The final isolated audit used a detached worktree at committed HEAD `43bdd61`, generated the
+ignored 159-file playground manifest, and restored the generator's six tracked Isaac scenes before
+and after verification.
 
-## Confirmed risks
+| Command or check                 | Final evidence                                                                                                              |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm install --frozen-lockfile` | Passed for all 22 workspaces.                                                                                               |
+| `pnpm lint`                      | Passed with no ESLint findings.                                                                                             |
+| `pnpm typecheck`                 | Passed all 21 runnable projects after the established clean-worktree repacks.                                               |
+| Focused M14 release gate         | 5 files / 17 tests passed: bundle budget, real static ZIP, production QA boundary, generic ZIP, and release/create surface. |
+| `pnpm test`                      | 208 files / 838 tests passed; 1 file / 8 tests skipped.                                                                     |
+| `pnpm build`                     | Passed all 21 runnable projects. Bounce Run emitted the entry and Rapier chunks within explicit budgets.                    |
+| `pnpm depcruise`                 | 608 modules / 1,202 dependencies, no new violations; five known violations ignored.                                         |
+| `./scripts/check.sh`             | Repeated install/build/test and finished `OK: all checks passed` after the playground bundle audit.                         |
+| `git diff --check`               | Passed in the detached audit and for the owned completion documents.                                                        |
 
-- **Scheduler integration risk:** the central scheduler refactor is complete; later graph,
-  replay, and checkpoint work must reuse its phases, fixed tick, and typed queues rather
-  than create a second loop or accumulator.
-- **Graph-runtime risk:** multi-domain execution, structured task ownership, checkpoint
-  policies, rewind, effect reconciliation, and persistence hooks now have headless coverage.
-  M07 exposes the same compiler/runtime diagnostic plan in editor Play and the playground;
-  later tooling must preserve that shared-plan boundary.
-- **Browser toolchain risk:** TypeScript, bundling, custom code, and sandbox messaging are
-  local and daemon-free; later extensions must preserve that boundary and the production
-  bundle exclusion gate.
-- **Runtime UI boundary risk:** UI documents now persist strict UUID references and the
-  production renderer is React-free. Later export and platform work must mutate UI
-  through `UIService` and must not move editor state or DOM handles into saved assets.
-- **Audio boundary risk:** Web Audio state remains isolated in `@haku/audio-web`, while
-  serialized audio data stays in `@haku/audio`. Later platform pause/export integration
-  must preserve real-gesture unlock, local asset closure, and deterministic voice cleanup.
-- **Isolation risk:** declarative gizmos and opaque sandbox widgets now keep project extensions
-  away from editor DOM/file handles. Future extension features must preserve that constrained
-  boundary; Inspector behavior tracing currently previews the declared batch contract and does
-  not execute the named project TypeScript export.
-- **Persistent checkpoint risk:** checksums, fingerprints, registered migration, and
-  per-graph fallback are enforced. The M10d save-slot adapter preserves sibling/game data
-  and keeps a graph failure from invalidating the whole slot.
-- **Browser persistence risk:** IndexedDB transaction completion and quota estimates are
-  observable, but neither proves a synchronous disk flush. Real quota exhaustion is not
-  forced during QA because filling the user's origin/disk is unsafe and nondeterministic.
-- **Physics/checkpoint risk:** dynamic-physics-dependent graph scopes cannot promise exact
-  logical restore and must be rejected transitively.
-- **Performance risk:** graph interpretation, inactive pooled entities, editor modules, build
-  Workers, and Play cleanup need baselines before hard budgets are chosen.
-- **Browser QA risk:** real Chrome interaction is essential but slow and visually fragile;
-  deterministic tests and replay support it rather than replace it.
-- **Scope risk:** the MVP includes the complete agreed engine platform and game, not a thin
-  prototype. Dependency-ordered stages and granular commits are mandatory.
+There is no configured root formatter. Prettier is therefore not represented as a configured
+repository gate. The owned final documentation files pass focused Prettier checks; the optional
+repo-wide Prettier check retains the established 507-file baseline and was not used to mass-reformat
+unrelated or protected files.
 
-## Audit conclusion
+## Create and release proof
 
-Haku is a viable foundation: its world, serializer, editor mutation path, Three.js boundary,
-and abstract Rapier integration should be extended rather than replaced. The target work is
-nevertheless a platform expansion, not merely a game implementation. The graph runtime,
-registries, scheduler, browser project toolchain, UI/audio services, and pooling are proven
-engine facilities. Storage and generic browser-platform foundations are now engine
-facilities too. Static export is now an engine facility; cross-service graph nodes,
-provider SDK adapters, and Bounce Run integration remain.
+A fresh `@haku/create` local-link project installed, typechecked, and built 167 modules. Its output
+uses relative paths and contains no editor, QA, CDN, or runtime-server coupling.
+
+The final Bounce Run production build emitted:
+
+- `assets/index-DrKu2EzJ.js` — 994.85 kB minified / 261.43 kB gzip;
+- `assets/rapier-runtime-CKC5f6tm.js` — 2,235.46 kB minified / 829.87 kB gzip;
+- 3,230.31 kB / 1,091.30 kB total JavaScript, within the explicit 3.5 MB / 1.2 MB ceilings;
+- largest-chunk results within the 2.25 MB / 850 kB ceilings.
+
+The generic writer produced a deterministic 3,248,308-byte stored archive with SHA-256
+`3f1ee897d16936b1f8c9217d65a6bd42c23c5028d020fd317b53d5be920c2a35`. Its seven `0644`
+entries have fixed 1980 timestamps: root HTML, both reachable JavaScript chunks, platform prefab,
+main scene, HUD document, and favicon. `unzip -t` passed.
+
+A simple server below `/deployments/preview/final/` recorded one HTTP 200 for every archive entry
+and no external-origin or root `/assets` request. After the tab was finalized, Chrome made one
+implicit same-origin root `/favicon.ico` request that returned 404 despite the declared nested SVG;
+this cleanup-only behavior is retained as evidence rather than hidden.
+
+The user Chrome extension completed Start, left/right input, pause, resume, game over, and immediate
+restart. At `1600x900` and `900x1200`, canvas and HUD bounds exactly matched the viewport and the
+document had no overflow. The QA global was `undefined`, no QA DOM bridge existed, and the fresh
+console contained only Rapier's established initialization deprecation warning.
+
+## Known limitations and deferred work
+
+- Fresh clean worktrees currently need three successive forced frozen-lockfile repacks as
+  `file:` dependency declaration layers become available. This is packaging-order debt, not a
+  runtime regression.
+- The installed Chrome extension surface has measured 30 Hz cadence and cannot validate the 60 Hz
+  rendering target. Committed scheduler tests retain fixed 60 Hz simulation and bounded catch-up;
+  M11's measured 8.3 ms 60 Hz baseline remains authoritative.
+- Chrome extension automation cannot represent durable key holds precisely, exposes no reliable
+  `requestfailed` stream or forced-GC/heap telemetry, and may exceed its 30-second control window on
+  full live-game snapshots. Targeted DOM checks, server logs, deterministic replay, and bounded
+  ownership counters provide the retained evidence.
+- Rapier prints its upstream initialization deprecation warning. Its deliberate production chunk
+  also triggers Vite's generic 500 kB advisory while remaining within the measured explicit budget.
+- Browser evidence proves successful audio unlock and visible state transitions, not subjective
+  loudness or mix quality. Brief bonus/fail effects can evade screenshot capture and remain covered
+  by deterministic lifecycle/integration tests.
+- Mobile/touch input, real Poki/Yandex adapters, Safari/Firefox qualification, advanced graph/code
+  debugging, advanced audio tooling, moving/destructible platforms, and the later rendering roadmap
+  remain genuinely deferred as listed in the execution plan.
+
+No push, pull request, or history rewrite was performed for the engine-improvement program.
