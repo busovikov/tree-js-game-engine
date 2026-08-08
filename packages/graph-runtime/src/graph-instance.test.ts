@@ -201,4 +201,34 @@ describe('GraphInstance compiled flow execution', () => {
     ])
     expect(reentrant).toBe(false)
   })
+
+  it('retains only the newest chronological entries within the configured trace budget', () => {
+    const plan = compileFlowPlan()
+    const scheduler = new EngineScheduler({ fixedTimestep: 1 })
+    const world = new World()
+    const instance = new GraphInstance({
+      id: uid(902),
+      plan,
+      registryFingerprint: plan.registryFingerprint,
+      scheduler,
+      backend: {
+        execute: (request) =>
+          request.node.id === uid(101)
+            ? { flow: [uid(201)] }
+            : request.node.id === uid(102)
+              ? { flow: [uid(203)] }
+              : {},
+      },
+      limits: { maxTraceEntries: 5 },
+    })
+
+    for (let run = 0; run < 3; run += 1) {
+      instance.start(uid(101))
+      scheduler.runFrame(world, 1)
+    }
+
+    expect(instance.trace).toHaveLength(5)
+    expect(instance.trace.map(({ sequence }) => sequence)).toEqual([16, 17, 18, 19, 20])
+    expect(instance.trace.at(-1)).toMatchObject({ kind: 'node-complete', nodeId: uid(103) })
+  })
 })

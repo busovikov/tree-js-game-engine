@@ -325,6 +325,7 @@ export interface CheckpointEffectReconciler {
 
 export interface GraphRuntimeLimits {
   readonly maxStepsPerExecution: number
+  readonly maxTraceEntries: number
 }
 
 export type GraphInstanceStatus =
@@ -431,6 +432,7 @@ export class GraphInstance {
   private readonly limits: GraphRuntimeLimits
   private scopeController = new AbortController()
   private readonly traceEntries: ExecutionTraceEntry[] = []
+  private traceWriteIndex = 0
   private readonly parameters = new Map<string, unknown>()
   private readonly outputs = new Map<string, unknown>()
   private readonly exportedState = new Map<string, ReadonlyMap<string, unknown>>()
@@ -491,12 +493,16 @@ export class GraphInstance {
     }
     this.limits = {
       maxStepsPerExecution: options.limits?.maxStepsPerExecution ?? 1_000,
+      maxTraceEntries: options.limits?.maxTraceEntries ?? 4_096,
     }
     if (
       !Number.isInteger(this.limits.maxStepsPerExecution) ||
       this.limits.maxStepsPerExecution <= 0
     ) {
       throw new Error('maxStepsPerExecution must be a positive integer')
+    }
+    if (!Number.isInteger(this.limits.maxTraceEntries) || this.limits.maxTraceEntries <= 0) {
+      throw new Error('maxTraceEntries must be a positive integer')
     }
     this.nodes = new Map(options.plan.nodes.map((node) => [node.id, node]))
     if (
@@ -514,7 +520,13 @@ export class GraphInstance {
   }
 
   get trace(): readonly ExecutionTraceEntry[] {
-    return this.traceEntries
+    if (this.traceEntries.length < this.limits.maxTraceEntries || this.traceWriteIndex === 0) {
+      return this.traceEntries
+    }
+    return [
+      ...this.traceEntries.slice(this.traceWriteIndex),
+      ...this.traceEntries.slice(0, this.traceWriteIndex),
+    ]
   }
 
   get status(): GraphInstanceStatus {
@@ -1919,7 +1931,7 @@ export class GraphInstance {
     connectionId?: string,
     details?: Pick<ExecutionTraceEntry, 'input' | 'outputs'>,
   ): void {
-    this.traceEntries.push({
+    const entry: ExecutionTraceEntry = {
       kind,
       sequence: this.nextTraceSequence++,
       instanceId: this.id,
@@ -1931,7 +1943,13 @@ export class GraphInstance {
       connectionId,
       effects: node.effects,
       ...details,
-    })
+    }
+    if (this.traceEntries.length < this.limits.maxTraceEntries) {
+      this.traceEntries.push(entry)
+      return
+    }
+    this.traceEntries[this.traceWriteIndex] = entry
+    this.traceWriteIndex = (this.traceWriteIndex + 1) % this.traceEntries.length
   }
 }
 
