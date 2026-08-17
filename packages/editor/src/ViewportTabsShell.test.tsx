@@ -157,10 +157,47 @@ function inspectorEventAsset(
   })
 }
 
+function canvasOverlayAsset() {
+  return UIDocumentSchema.parse({
+    ...INITIAL_UI_ASSET,
+    elements: INITIAL_UI_ASSET.elements.map((element, index) =>
+      index === 0
+        ? {
+            ...element,
+            layout: {
+              mode: 'horizontal' as const,
+              padding: { top: 10, right: 20, bottom: 30, left: 40 },
+              rowGap: 12,
+              columnGap: 16,
+              wrap: false,
+            },
+            overflowX: 'hidden' as const,
+            overflowY: 'scroll' as const,
+          }
+        : { ...element, placement: { positioning: 'flow' as const } },
+    ),
+  })
+}
+
+function measuredRect(left: number, top: number, width: number, height: number): DOMRect {
+  return {
+    left,
+    top,
+    right: left + width,
+    bottom: top + height,
+    x: left,
+    y: top,
+    width,
+    height,
+    toJSON: () => ({}),
+  } as DOMRect
+}
+
 afterEach(cleanup)
 beforeEach(() => {
   useEditorStore.setState({ activeWorkspace: 'viewport' })
   uiAuthoringSession.openAsset('builtin:m10b-runtime-hud.ui.json', INITIAL_UI_ASSET)
+  uiAuthoringSession.setPreviewMode('edit')
   uiCommandBus.clear()
 })
 
@@ -376,6 +413,106 @@ describe('ViewportTabsShell UI workspace baseline', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
     expect(uiAuthoringSession.asset).toEqual(before)
+  })
+
+  it('renders measured Frame padding, gap, and distinct overflow overlays only in Edit', async () => {
+    const asset = canvasOverlayAsset()
+    uiAuthoringSession.openAsset('memory:canvas-overlays.ui.json', asset)
+    uiCommandBus.clear()
+    const before = structuredClone(uiAuthoringSession.asset)
+    const originalRect = HTMLElement.prototype.getBoundingClientRect
+    const rects = new Map([
+      ['13000000-0000-4000-8000-000000000101', measuredRect(100, 50, 400, 240)],
+      ['13000000-0000-4000-8000-000000000102', measuredRect(140, 80, 40, 30)],
+      ['13000000-0000-4000-8000-000000000103', measuredRect(196, 80, 40, 30)],
+      ['13000000-0000-4000-8000-000000000104', measuredRect(252, 80, 40, 30)],
+    ])
+    const rectSpy = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function () {
+        if (this.dataset.hakuUiPreview) return measuredRect(100, 50, 400, 240)
+        return rects.get(this.dataset.hakuUiId ?? '') ?? originalRect.call(this)
+      })
+
+    try {
+      const { container } = render(<ViewportTabsShell />)
+      fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+
+      await waitFor(() =>
+        expect(container.querySelectorAll('[data-haku-ui-padding-edge]')).toHaveLength(4),
+      )
+      const top = container.querySelector('[data-haku-ui-padding-edge="top"]') as HTMLElement
+      expect(top.style.left).toBe('40px')
+      expect(top.style.top).toBe('10px')
+      expect(top.style.width).toBe('340px')
+      expect(container.querySelectorAll('[data-haku-ui-gap-marker="column"]')).toHaveLength(2)
+      expect(container.querySelector('[data-haku-ui-overflow-boundary="x-hidden"]')).toBeTruthy()
+      expect(container.querySelector('[data-haku-ui-overflow-boundary="y-scroll"]')).toBeTruthy()
+      expect(uiAuthoringSession.asset).toEqual(before)
+      expect(uiCommandBus.canUndo()).toBe(false)
+
+      fireEvent.click(screen.getByRole('button', { name: 'Preview' }))
+      expect(container.querySelector('[data-haku-ui-padding-edge]')).toBeNull()
+      expect(container.querySelector('[data-haku-ui-gap-marker]')).toBeNull()
+      expect(container.querySelector('[data-haku-ui-overflow-boundary]')).toBeNull()
+      expect(container.querySelector('[data-haku-ui-constraint-anchor]')).toBeNull()
+    } finally {
+      rectSpy.mockRestore()
+    }
+  })
+
+  it('shows the resolved canvas insertion index in document space without history', async () => {
+    const asset = canvasOverlayAsset()
+    uiAuthoringSession.openAsset('memory:canvas-insertion.ui.json', asset)
+    uiCommandBus.clear()
+    const before = structuredClone(uiAuthoringSession.asset)
+    const originalRect = HTMLElement.prototype.getBoundingClientRect
+    const rects = new Map([
+      ['13000000-0000-4000-8000-000000000101', measuredRect(0, 0, 400, 240)],
+      ['13000000-0000-4000-8000-000000000102', measuredRect(40, 30, 40, 30)],
+      ['13000000-0000-4000-8000-000000000103', measuredRect(96, 30, 40, 30)],
+      ['13000000-0000-4000-8000-000000000104', measuredRect(152, 30, 40, 30)],
+    ])
+    const rectSpy = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function () {
+        if (this.classList.contains('haku-ui-editor__viewport-scroll'))
+          return measuredRect(0, 0, 800, 600)
+        if (this.dataset.hakuUiPreview) return measuredRect(0, 0, 400, 240)
+        return rects.get(this.dataset.hakuUiId ?? '') ?? originalRect.call(this)
+      })
+
+    try {
+      const { container } = render(<ViewportTabsShell />)
+      fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+      await waitFor(() =>
+        expect(container.querySelector('[data-haku-ui-padding-edge]')).toBeTruthy(),
+      )
+      const paletteButton = screen.getByRole('button', { name: 'Add Text' })
+      const canvas = screen
+        .getByRole('main', { name: 'UI Canvas' })
+        .querySelector('.haku-ui-editor__viewport-scroll') as HTMLElement
+      const transfer = { setData: vi.fn(), dropEffect: '', effectAllowed: '' }
+
+      fireEvent.dragStart(paletteButton, { dataTransfer: transfer })
+      fireEvent.dragOver(canvas, { clientX: 145, clientY: 45, dataTransfer: transfer })
+
+      const insertion = await waitFor(() => {
+        const node = container.querySelector('[data-haku-ui-insertion-marker]') as HTMLElement
+        expect(node).toBeTruthy()
+        return node
+      })
+      expect(insertion.dataset.hakuUiInsertionParent).toBe('13000000-0000-4000-8000-000000000101')
+      expect(insertion.dataset.hakuUiInsertionIndex).toBe('3')
+      expect(insertion.style.left).toBe('192px')
+      expect(uiAuthoringSession.asset).toEqual(before)
+      expect(uiCommandBus.canUndo()).toBe(false)
+
+      fireEvent.dragEnd(paletteButton, { dataTransfer: transfer })
+      expect(container.querySelector('[data-haku-ui-insertion-marker]')).toBeNull()
+    } finally {
+      rectSpy.mockRestore()
+    }
   })
 
   it('converts auto-layout Flow and Absolute placement with exact undo and safe drafts', () => {

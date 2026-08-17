@@ -41,6 +41,11 @@ import {
 } from './ui-canvas-transform.js'
 import { cycleCanvasHit, orderCanvasHits } from './ui-canvas-selection.js'
 import {
+  deriveUIInsertionOverlay,
+  deriveUISelectionOverlay,
+  type UIInsertionTarget,
+} from './ui-canvas-overlays.js'
+import {
   clampUIRect,
   resizeDimensionIntent,
   snapUIRect,
@@ -2137,6 +2142,7 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
   )
   const [renamingId, setRenamingId] = useState<UIElementId | null>(null)
   const [dropIndicator, setDropIndicator] = useState<UIDropIndicator | null>(null)
+  const [canvasInsertionTarget, setCanvasInsertionTarget] = useState<UIInsertionTarget | null>(null)
   const [paletteQuery, setPaletteQuery] = useState('')
   const [texturePickerOpen, setTexturePickerOpen] = useState(false)
   const [pendingImageCreation, setPendingImageCreation] = useState<{
@@ -2193,6 +2199,10 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
     `${entry.label} ${entry.type}`.toLowerCase().includes(paletteQuery.trim().toLowerCase()),
   )
 
+  useEffect(() => {
+    if (previewMode !== 'edit') setCanvasInsertionTarget(null)
+  }, [previewMode])
+
   const runHierarchyAction = useCallback((action: () => void, success: string) => {
     try {
       action()
@@ -2203,22 +2213,14 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
   }, [])
 
   const hierarchyParents = useMemo(() => (asset ? elementParents(asset) : new Map()), [asset])
-  const constraintOverlay = useMemo(() => {
-    if (!asset || selectedIds.length !== 1) return null
-    const element = asset.elements.find((candidate) => candidate.id === selectedIds[0])
-    if (!element || element.placement.positioning !== 'free') return null
-    const placement = element.placement
-    const parentId = hierarchyParents.get(element.id)
-    const rect = elementBounds.get(element.id)
-    const parentRect = parentId ? elementBounds.get(parentId as UIElementId) : undefined
-    if (!rect || !parentRect) return null
-    return {
-      horizontalConstraint: placement.horizontalConstraint,
-      verticalConstraint: placement.verticalConstraint,
-      rect,
-      parentRect,
-    }
-  }, [asset, elementBounds, hierarchyParents, selectedIds])
+  const selectionOverlay = useMemo(
+    () => (asset ? deriveUISelectionOverlay(asset, selectedIds, elementBounds) : null),
+    [asset, elementBounds, selectedIds],
+  )
+  const insertionOverlay = useMemo(
+    () => (asset ? deriveUIInsertionOverlay(asset, canvasInsertionTarget, elementBounds) : null),
+    [asset, canvasInsertionTarget, elementBounds],
+  )
 
   const focusLayer = useCallback((id: UIElementId) => {
     document.querySelector<HTMLElement>(`[data-haku-ui-tree-item="${id}"]`)?.focus()
@@ -3140,9 +3142,14 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
   }
 
   const handleCanvasDragOver = (event: ReactDragEvent<HTMLDivElement>) => {
-    if (paletteDragRef.current || hierarchyDragRef.current.length > 0) {
+    if (previewMode === 'edit' && (paletteDragRef.current || hierarchyDragRef.current.length > 0)) {
       event.preventDefault()
       event.dataTransfer.dropEffect = paletteDragRef.current ? 'copy' : 'move'
+      const context = canvasCreationContext(event.clientX, event.clientY)
+      setCanvasInsertionTarget({
+        parentId: context.parentId,
+        insertionIndex: context.insertionIndex,
+      })
     }
   }
 
@@ -3173,6 +3180,7 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
       paletteDragRef.current = null
       hierarchyDragRef.current = []
       setDropIndicator(null)
+      setCanvasInsertionTarget(null)
     }
   }
 
@@ -3451,6 +3459,7 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
                     }}
                     onDragEnd={() => {
                       paletteDragRef.current = null
+                      setCanvasInsertionTarget(null)
                     }}
                   >
                     <span aria-hidden="true">{entry.icon}</span>
@@ -3576,6 +3585,10 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
               onPointerCancel={cancelGesture}
               onDoubleClick={enterNestedFrame}
               onDragOver={handleCanvasDragOver}
+              onDragLeave={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+                  setCanvasInsertionTarget(null)
+              }}
               onDrop={handleCanvasDrop}
               style={{ cursor: canvasCursor }}
             >
@@ -3657,24 +3670,77 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
                           ),
                         )
                       })}
-                    {constraintOverlay && (
+                    {selectionOverlay?.padding.map((edge) => (
+                      <div
+                        key={edge.side}
+                        className={`haku-ui-editor__padding-edge haku-ui-editor__padding-edge--${edge.side}`}
+                        data-haku-ui-padding-edge={edge.side}
+                        style={{
+                          left: edge.x,
+                          top: edge.y,
+                          width: edge.width,
+                          height: edge.height,
+                        }}
+                      />
+                    ))}
+                    {selectionOverlay?.gaps.map((gap) => (
+                      <div
+                        key={`${gap.axis}-${gap.beforeId}-${gap.afterId}`}
+                        className={`haku-ui-editor__gap-marker haku-ui-editor__gap-marker--${gap.axis}`}
+                        data-haku-ui-gap-marker={gap.axis}
+                        data-haku-ui-gap-value={gap.value}
+                        style={{ left: gap.x, top: gap.y, width: gap.width, height: gap.height }}
+                      />
+                    ))}
+                    {selectionOverlay?.overflow.map((boundary) => (
+                      <div
+                        key={boundary.axis}
+                        className={`haku-ui-editor__overflow-boundary haku-ui-editor__overflow-boundary--${boundary.axis} haku-ui-editor__overflow-boundary--${boundary.policy}`}
+                        data-haku-ui-overflow-boundary={`${boundary.axis}-${boundary.policy}`}
+                        style={{
+                          left: boundary.x,
+                          top: boundary.y,
+                          width: boundary.width,
+                          height: boundary.height,
+                        }}
+                      />
+                    ))}
+                    {insertionOverlay && (
+                      <div
+                        className={`haku-ui-editor__insertion-marker haku-ui-editor__insertion-marker--${insertionOverlay.axis}`}
+                        data-haku-ui-insertion-marker={`${insertionOverlay.parentId}:${insertionOverlay.insertionIndex}`}
+                        data-haku-ui-insertion-parent={insertionOverlay.parentId}
+                        data-haku-ui-insertion-index={insertionOverlay.insertionIndex}
+                        style={{
+                          left: insertionOverlay.x,
+                          top: insertionOverlay.y,
+                          width: insertionOverlay.width,
+                          height: insertionOverlay.height,
+                        }}
+                      />
+                    )}
+                    {selectionOverlay?.constraint && (
                       <>
                         <div
                           className="haku-ui-editor__constraint-anchor haku-ui-editor__constraint-anchor--horizontal"
-                          data-haku-ui-constraint-anchor={`horizontal-${constraintOverlay.horizontalConstraint}`}
+                          data-haku-ui-constraint-anchor={`horizontal-${selectionOverlay.constraint.horizontalConstraint}`}
                           style={{
-                            left: constraintOverlay.parentRect.x,
-                            top: constraintOverlay.rect.y + constraintOverlay.rect.height / 2,
-                            width: constraintOverlay.parentRect.width,
+                            left: selectionOverlay.constraint.parentRect.x,
+                            top:
+                              selectionOverlay.constraint.rect.y +
+                              selectionOverlay.constraint.rect.height / 2,
+                            width: selectionOverlay.constraint.parentRect.width,
                           }}
                         />
                         <div
                           className="haku-ui-editor__constraint-anchor haku-ui-editor__constraint-anchor--vertical"
-                          data-haku-ui-constraint-anchor={`vertical-${constraintOverlay.verticalConstraint}`}
+                          data-haku-ui-constraint-anchor={`vertical-${selectionOverlay.constraint.verticalConstraint}`}
                           style={{
-                            left: constraintOverlay.rect.x + constraintOverlay.rect.width / 2,
-                            top: constraintOverlay.parentRect.y,
-                            height: constraintOverlay.parentRect.height,
+                            left:
+                              selectionOverlay.constraint.rect.x +
+                              selectionOverlay.constraint.rect.width / 2,
+                            top: selectionOverlay.constraint.parentRect.y,
+                            height: selectionOverlay.constraint.parentRect.height,
                           }}
                         />
                       </>

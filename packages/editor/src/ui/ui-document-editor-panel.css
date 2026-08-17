@@ -403,6 +403,91 @@
   height: 1px;
 }
 
+.haku-ui-editor__padding-edge,
+.haku-ui-editor__gap-marker,
+.haku-ui-editor__overflow-boundary,
+.haku-ui-editor__insertion-marker {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.haku-ui-editor__padding-edge {
+  z-index: 9997;
+}
+
+.haku-ui-editor__padding-edge--top,
+.haku-ui-editor__padding-edge--bottom {
+  border-top: 1px dashed #45e0c2;
+}
+
+.haku-ui-editor__padding-edge--right,
+.haku-ui-editor__padding-edge--left {
+  border-left: 1px dashed #45e0c2;
+}
+
+.haku-ui-editor__gap-marker {
+  z-index: 9998;
+}
+
+.haku-ui-editor__gap-marker--column {
+  border-top: 2px solid #ffd166;
+}
+
+.haku-ui-editor__gap-marker--row {
+  border-left: 2px solid #ffd166;
+}
+
+.haku-ui-editor__overflow-boundary {
+  z-index: 9996;
+}
+
+.haku-ui-editor__overflow-boundary--x {
+  border-top: 2px solid #ff8c69;
+}
+
+.haku-ui-editor__overflow-boundary--y {
+  border-left: 2px solid #c78cff;
+}
+
+.haku-ui-editor__overflow-boundary--x.haku-ui-editor__overflow-boundary--visible {
+  border-top-style: dotted;
+}
+
+.haku-ui-editor__overflow-boundary--y.haku-ui-editor__overflow-boundary--visible {
+  border-left-style: dotted;
+}
+
+.haku-ui-editor__overflow-boundary--x.haku-ui-editor__overflow-boundary--auto {
+  border-top-style: dashed;
+}
+
+.haku-ui-editor__overflow-boundary--y.haku-ui-editor__overflow-boundary--auto {
+  border-left-style: dashed;
+}
+
+.haku-ui-editor__overflow-boundary--x.haku-ui-editor__overflow-boundary--scroll {
+  border-top-style: double;
+  border-top-width: 3px;
+}
+
+.haku-ui-editor__overflow-boundary--y.haku-ui-editor__overflow-boundary--scroll {
+  border-left-style: double;
+  border-left-width: 3px;
+}
+
+.haku-ui-editor__insertion-marker {
+  z-index: 10003;
+}
+
+.haku-ui-editor__insertion-marker--x {
+  border-left: 3px solid #ff4fd8;
+}
+
+.haku-ui-editor__insertion-marker--y {
+  border-top: 3px solid #ff4fd8;
+}
+
 .haku-ui-editor__constraint-anchor {
   position: absolute;
   z-index: 9999;
