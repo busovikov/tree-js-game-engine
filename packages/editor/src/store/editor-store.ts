@@ -8,6 +8,7 @@ import type { HierarchyFilterMode } from '../hierarchy/entity-filter.js'
 import type { ColliderBakeService } from '../viewport/collider-mesh-bake.js'
 
 export type EditorMode = 'edit' | 'play'
+export type EditorWorkspace = 'viewport' | 'graph' | 'code' | 'ui'
 export type TransformTool = 'translate' | 'rotate' | 'scale' | 'hand'
 export type GizmoSpace = 'local' | 'world'
 
@@ -47,6 +48,7 @@ interface EditorState {
   colliderBakeService: ColliderBakeService | null
   gizmoSpace: GizmoSpace
   activeViewportTab: ViewportTab
+  activeWorkspace: EditorWorkspace
   playPreviousTab: ViewportTab | null
   focusSelectionRequest: number
   playSnapshot: World | null
@@ -75,6 +77,7 @@ interface EditorState {
   setColliderBakeService: (service: ColliderBakeService | null) => void
   setGizmoSpace: (space: GizmoSpace) => void
   setActiveViewportTab: (tab: ViewportTab) => void
+  setActiveWorkspace: (workspace: EditorWorkspace) => void
   requestFocusSelection: () => void
   enterPlayMode: () => void
   exitPlayMode: () => void
@@ -106,6 +109,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   colliderBakeService: null,
   gizmoSpace: 'local',
   activeViewportTab: 'scene',
+  activeWorkspace: 'viewport',
   playPreviousTab: null,
   focusSelectionRequest: 0,
   playSnapshot: null,
@@ -166,6 +170,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setColliderBakeService: (service) => set({ colliderBakeService: service }),
   setGizmoSpace: (space) => set({ gizmoSpace: space }),
   setActiveViewportTab: (tab) => set({ activeViewportTab: tab }),
+  setActiveWorkspace: (workspace) => set({ activeWorkspace: workspace }),
   requestFocusSelection: () => set((s) => ({ focusSelectionRequest: s.focusSelectionRequest + 1 })),
 
   enterPlayMode: () => {
@@ -219,7 +224,11 @@ export function useSelectionStore() {
 }
 
 export function useWorldStore() {
-  return useEditorStore((s) => ({ world: s.world, setWorld: s.setWorld, sceneDocument: s.sceneDocument }))
+  return useEditorStore((s) => ({
+    world: s.world,
+    setWorld: s.setWorld,
+    sceneDocument: s.sceneDocument,
+  }))
 }
 
 export function useModeStore() {

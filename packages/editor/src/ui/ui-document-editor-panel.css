@@ -30,14 +30,13 @@
 }
 
 .haku-ui-editor__workspace {
-  display: grid;
   min-height: 0;
   flex: 1;
-  grid-template-columns: 190px minmax(320px, 1fr) 230px;
 }
 
 .haku-ui-editor__hierarchy,
 .haku-ui-editor__inspector {
+  height: 100%;
   min-width: 0;
   overflow: auto;
   padding: 8px;
@@ -111,8 +110,7 @@
   border: 1px solid #333;
   background:
     linear-gradient(45deg, #20202a 25%, transparent 25%),
-    linear-gradient(-45deg, #20202a 25%, transparent 25%),
-    #181820;
+    linear-gradient(-45deg, #20202a 25%, transparent 25%), #181820;
   background-size: 16px 16px;
 }
 

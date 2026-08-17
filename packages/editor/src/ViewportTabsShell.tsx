@@ -1,4 +1,4 @@
-import { memo, useEffect, useState } from 'react'
+import { memo, useEffect } from 'react'
 import { useEditorStore } from './store/editor-store.js'
 import { projectService } from './services/project-service.js'
 import { ViewportPanel } from './panels/ViewportPanel.js'
@@ -12,7 +12,8 @@ import { subscribeBuildDiagnosticNavigation } from './build/build-diagnostic-nav
 import './viewport-tabs.css'
 
 export const ViewportTabsShell = memo(function ViewportTabsShell() {
-  const [workspace, setWorkspace] = useState<'viewport' | 'graph' | 'code' | 'ui'>('viewport')
+  const workspace = useEditorStore((s) => s.activeWorkspace)
+  const setWorkspace = useEditorStore((s) => s.setActiveWorkspace)
   const activeViewportTab = useEditorStore((s) => s.activeViewportTab)
   const setActiveViewportTab = useEditorStore((s) => s.setActiveViewportTab)
   const scenePath = useEditorStore((s) => s.scenePath)
@@ -46,8 +47,8 @@ export const ViewportTabsShell = memo(function ViewportTabsShell() {
           <button
             type="button"
             role="tab"
-            className={`haku-viewport-tab${activeViewportTab === 'scene' ? ' haku-viewport-tab--active' : ''}`}
-            aria-selected={activeViewportTab === 'scene'}
+            className={`haku-viewport-tab${workspace === 'viewport' && activeViewportTab === 'scene' ? ' haku-viewport-tab--active' : ''}`}
+            aria-selected={workspace === 'viewport' && activeViewportTab === 'scene'}
             onClick={() => {
               setWorkspace('viewport')
               onSelectTab('scene')
@@ -58,8 +59,8 @@ export const ViewportTabsShell = memo(function ViewportTabsShell() {
           <button
             type="button"
             role="tab"
-            className={`haku-viewport-tab${activeViewportTab === 'view' ? ' haku-viewport-tab--active' : ''}`}
-            aria-selected={activeViewportTab === 'view'}
+            className={`haku-viewport-tab${workspace === 'viewport' && activeViewportTab === 'view' ? ' haku-viewport-tab--active' : ''}`}
+            aria-selected={workspace === 'viewport' && activeViewportTab === 'view'}
             onClick={() => {
               setWorkspace('viewport')
               onSelectTab('view')

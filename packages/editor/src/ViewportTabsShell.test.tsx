@@ -1,7 +1,7 @@
 /**
  * @vitest-environment happy-dom
  */
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 
 vi.mock('./panels/ViewportPanel.js', () => ({
@@ -16,10 +16,25 @@ vi.mock('./code/ProjectCodeWorkspacePanel.js', () => ({
 vi.mock('./components/PlaygroundDemoBanner.js', () => ({
   PlaygroundDemoBanner: () => null,
 }))
+vi.mock('./panels/HierarchyPanel.js', () => ({
+  HierarchyPanel: () => <div>Scene hierarchy</div>,
+}))
+vi.mock('./panels/HierarchyToolsPanel.js', () => ({
+  HierarchyToolsPanel: () => <div>Scene tools</div>,
+}))
+vi.mock('./panels/InspectorPanel.js', () => ({
+  InspectorPanel: () => <div>Scene inspector</div>,
+}))
+vi.mock('./panels/AssetBrowserPanel.js', () => ({
+  AssetBrowserPanel: () => <div>Scene asset browser</div>,
+}))
 
+import { EditorLayout } from './EditorLayout.js'
 import { ViewportTabsShell } from './ViewportTabsShell.js'
+import { useEditorStore } from './store/editor-store.js'
 
 afterEach(cleanup)
+beforeEach(() => useEditorStore.setState({ activeWorkspace: 'viewport' }))
 
 describe('ViewportTabsShell Code workspace', () => {
   it('opens the project code workflow from a user-visible Code tab', () => {
@@ -28,13 +43,40 @@ describe('ViewportTabsShell Code workspace', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Code' }))
 
     expect(screen.getByText('Project code panel')).toBeTruthy()
-    expect(
-      screen.getByRole('tab', { name: 'Code' }).getAttribute('aria-selected'),
-    ).toBe('true')
+    expect(screen.getByRole('tab', { name: 'Code' }).getAttribute('aria-selected')).toBe('true')
   })
 })
 
 describe('ViewportTabsShell UI workspace baseline', () => {
+  it('replaces the scene body with dedicated resizable UI panels and restores it on exit', () => {
+    render(<EditorLayout />)
+
+    expect(screen.getByText('Scene hierarchy')).toBeTruthy()
+    expect(screen.getByText('Scene tools')).toBeTruthy()
+    expect(screen.getByText('Scene inspector')).toBeTruthy()
+    expect(screen.getByText('Scene asset browser')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+
+    expect(screen.queryByText('Scene hierarchy')).toBeNull()
+    expect(screen.queryByText('Scene tools')).toBeNull()
+    expect(screen.queryByText('Scene inspector')).toBeNull()
+    expect(screen.queryByText('Scene asset browser')).toBeNull()
+    expect(screen.getByRole('complementary', { name: 'UI Layers' })).toBeTruthy()
+    expect(screen.getByRole('main', { name: 'UI Canvas' })).toBeTruthy()
+    expect(screen.getByRole('complementary', { name: 'UI Inspector' })).toBeTruthy()
+    expect(screen.getAllByRole('separator')).toHaveLength(2)
+    expect(screen.getByRole('tab', { name: 'Scene' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Scene' }).getAttribute('aria-selected')).toBe('false')
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Scene' }))
+
+    expect(screen.getByText('Scene hierarchy')).toBeTruthy()
+    expect(screen.getByText('Scene tools')).toBeTruthy()
+    expect(screen.getByText('Scene inspector')).toBeTruthy()
+    expect(screen.getByText('Scene asset browser')).toBeTruthy()
+  })
+
   it('exposes the four-element fixture, selection, path, and current preview transform', () => {
     const { container } = render(<ViewportTabsShell />)
     fireEvent.click(screen.getByRole('tab', { name: 'UI' }))

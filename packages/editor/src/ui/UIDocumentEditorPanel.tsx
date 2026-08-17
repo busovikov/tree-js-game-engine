@@ -3,6 +3,7 @@ import { TEXTURE_ASSET_TYPE } from '@haku/assets'
 import { UIDocumentInstance, type UIElement, type UIElementId, type UIThemeId } from '@haku/ui'
 import { assetId, assetRef, projectPathToUrl } from '@haku/schema'
 import { NumberField } from '../components/NumberField.js'
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { projectService } from '../services/project-service.js'
 import {
   UI_DESKTOP_VIEWPORTS,
@@ -35,18 +36,21 @@ function HierarchyNode({
         className={item.id === selected ? 'haku-ui-editor__tree-item--selected' : undefined}
         onClick={() => onSelect(item.id)}
       >
-        <span aria-hidden="true">{item.type === 'frame' ? '▣' : item.type === 'text' ? 'T' : item.type === 'button' ? '◉' : '▧'}</span>
+        <span aria-hidden="true">
+          {item.type === 'frame'
+            ? '▣'
+            : item.type === 'text'
+              ? 'T'
+              : item.type === 'button'
+                ? '◉'
+                : '▧'}
+        </span>
         {item.name}
       </button>
       {item.children.length > 0 && (
         <ul>
           {item.children.map((child) => (
-            <HierarchyNode
-              key={child.id}
-              item={child}
-              selected={selected}
-              onSelect={onSelect}
-            />
+            <HierarchyNode key={child.id} item={child} selected={selected} onSelect={onSelect} />
           ))}
         </ul>
       )}
@@ -57,8 +61,14 @@ function HierarchyNode({
 function UIInspector({ element }: { element: UIElement }) {
   const update = (patch: Record<string, unknown>) =>
     uiAuthoringSession.updateElement(element.id, patch)
-  const numericWidth = element.sizing.width.mode === 'fixed' && element.sizing.width.unit === 'px' ? element.sizing.width.value : 0
-  const numericHeight = element.sizing.height.mode === 'fixed' && element.sizing.height.unit === 'px' ? element.sizing.height.value : 0
+  const numericWidth =
+    element.sizing.width.mode === 'fixed' && element.sizing.width.unit === 'px'
+      ? element.sizing.width.value
+      : 0
+  const numericHeight =
+    element.sizing.height.mode === 'fixed' && element.sizing.height.unit === 'px'
+      ? element.sizing.height.value
+      : 0
 
   return (
     <div className="haku-ui-editor__inspector-fields">
@@ -111,14 +121,22 @@ function UIInspector({ element }: { element: UIElement }) {
         value={numericWidth}
         min={0}
         step={1}
-        onChange={(width) => update({ sizing: { ...element.sizing, width: { mode: 'fixed', value: width, unit: 'px' } } })}
+        onChange={(width) =>
+          update({
+            sizing: { ...element.sizing, width: { mode: 'fixed', value: width, unit: 'px' } },
+          })
+        }
       />
       <NumberField
         label="Height (px)"
         value={numericHeight}
         min={0}
         step={1}
-        onChange={(height) => update({ sizing: { ...element.sizing, height: { mode: 'fixed', value: height, unit: 'px' } } })}
+        onChange={(height) =>
+          update({
+            sizing: { ...element.sizing, height: { mode: 'fixed', value: height, unit: 'px' } },
+          })
+        }
       />
       <label className="mesh-field">
         <span className="mesh-field__label">Text color</span>
@@ -268,8 +286,7 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
     return <div className="haku-ui-editor haku-ui-editor--empty">No UI document open</div>
   }
 
-  const parent =
-    selected && 'children' in selected ? selected.id : uiAuthoringSession.asset?.root
+  const parent = selected && 'children' in selected ? selected.id : uiAuthoringSession.asset?.root
 
   const add = (type: UIElement['type']) => {
     if (!parent) return
@@ -297,8 +314,12 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
       data-haku-ui-selected-id={uiAuthoringSession.selectedElementId ?? undefined}
     >
       <div className="haku-ui-editor__toolbar">
-        <button type="button" onClick={() => void createDocument()}>New</button>
-        <button type="button" onClick={() => void openDocument()}>Open</button>
+        <button type="button" onClick={() => void createDocument()}>
+          New
+        </button>
+        <button type="button" onClick={() => void openDocument()}>
+          Open
+        </button>
         <button
           type="button"
           data-haku-ui-action="save"
@@ -312,10 +333,18 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
         >
           Save
         </button>
-        <button type="button" disabled={!uiCommandBus.canUndo()} onClick={() => uiCommandBus.undo()}>
+        <button
+          type="button"
+          disabled={!uiCommandBus.canUndo()}
+          onClick={() => uiCommandBus.undo()}
+        >
           Undo
         </button>
-        <button type="button" disabled={!uiCommandBus.canRedo()} onClick={() => uiCommandBus.redo()}>
+        <button
+          type="button"
+          disabled={!uiCommandBus.canRedo()}
+          onClick={() => uiCommandBus.redo()}
+        >
           Redo
         </button>
         <label>
@@ -328,7 +357,9 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
             }
           >
             {Object.values(UI_DESKTOP_VIEWPORTS).map((candidate) => (
-              <option key={candidate.id} value={candidate.id}>{candidate.label}</option>
+              <option key={candidate.id} value={candidate.id}>
+                {candidate.label}
+              </option>
             ))}
           </select>
         </label>
@@ -341,57 +372,78 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
           >
             <option value="">Base</option>
             {asset.themes.map((theme) => (
-              <option key={theme.id} value={theme.id}>{theme.name}</option>
+              <option key={theme.id} value={theme.id}>
+                {theme.name}
+              </option>
             ))}
           </select>
         </label>
-        <span>{uiAuthoringSession.path}{uiAuthoringSession.isDirty ? ' *' : ''}</span>
+        <span>
+          {uiAuthoringSession.path}
+          {uiAuthoringSession.isDirty ? ' *' : ''}
+        </span>
       </div>
-      <div className="haku-ui-editor__workspace">
-        <aside className="haku-ui-editor__hierarchy">
-          <h3>UI Hierarchy</h3>
-          <div className="haku-ui-editor__palette">
-            {(['frame', 'text', 'button', 'image'] as const).map((type) => (
-              <button key={type} type="button" onClick={() => add(type)}>+ {type}</button>
-            ))}
-          </div>
-          <ul>
-            {hierarchy.map((item) => (
-              <HierarchyNode
-                key={item.id}
-                item={item}
-                selected={uiAuthoringSession.selectedElementId}
-                onSelect={(id) => uiAuthoringSession.select(id)}
+      <PanelGroup
+        direction="horizontal"
+        autoSaveId="haku-ui-editor-panels-h"
+        className="haku-ui-editor__workspace"
+      >
+        <Panel defaultSize={20} minSize={14} maxSize={34}>
+          <aside className="haku-ui-editor__hierarchy" aria-label="UI Layers">
+            <h3>Layers</h3>
+            <div className="haku-ui-editor__palette">
+              {(['frame', 'text', 'button', 'image'] as const).map((type) => (
+                <button key={type} type="button" onClick={() => add(type)}>
+                  + {type}
+                </button>
+              ))}
+            </div>
+            <ul>
+              {hierarchy.map((item) => (
+                <HierarchyNode
+                  key={item.id}
+                  item={item}
+                  selected={uiAuthoringSession.selectedElementId}
+                  onSelect={(id) => uiAuthoringSession.select(id)}
+                />
+              ))}
+            </ul>
+            <button
+              type="button"
+              disabled={!selected || selected.id === asset.root}
+              onClick={() => selected && uiAuthoringSession.removeElement(selected.id)}
+            >
+              Delete selected
+            </button>
+          </aside>
+        </Panel>
+        <PanelResizeHandle className="haku-resize-handle haku-resize-handle--horizontal" />
+        <Panel defaultSize={56} minSize={32}>
+          <main className="haku-ui-editor__preview" aria-label="UI Canvas">
+            <div className="haku-ui-editor__viewport-label">{viewport.label}</div>
+            <div className="haku-ui-editor__viewport-scroll">
+              <div
+                ref={previewHost}
+                className="haku-ui-editor__viewport"
+                data-haku-ui-preview="true"
+                data-haku-ui-preview-scale="0.5"
+                data-haku-ui-preview-origin="top-left"
+                style={{ width: viewport.width, height: viewport.height }}
               />
-            ))}
-          </ul>
-          <button
-            type="button"
-            disabled={!selected || selected.id === asset.root}
-            onClick={() => selected && uiAuthoringSession.removeElement(selected.id)}
-          >
-            Delete selected
-          </button>
-        </aside>
-        <main className="haku-ui-editor__preview">
-          <div className="haku-ui-editor__viewport-label">{viewport.label}</div>
-          <div className="haku-ui-editor__viewport-scroll">
-            <div
-              ref={previewHost}
-              className="haku-ui-editor__viewport"
-              data-haku-ui-preview="true"
-              data-haku-ui-preview-scale="0.5"
-              data-haku-ui-preview-origin="top-left"
-              style={{ width: viewport.width, height: viewport.height }}
-            />
-          </div>
-          <output aria-live="polite" data-haku-ui-status="true">{status}</output>
-        </main>
-        <aside className="haku-ui-editor__inspector">
-          <h3>UI Inspector</h3>
-          {selected ? <UIInspector element={selected} /> : <p>Select a UI element</p>}
-        </aside>
-      </div>
+            </div>
+            <output aria-live="polite" data-haku-ui-status="true">
+              {status}
+            </output>
+          </main>
+        </Panel>
+        <PanelResizeHandle className="haku-resize-handle haku-resize-handle--horizontal" />
+        <Panel defaultSize={24} minSize={16} maxSize={40}>
+          <aside className="haku-ui-editor__inspector" aria-label="UI Inspector">
+            <h3>UI Inspector</h3>
+            {selected ? <UIInspector element={selected} /> : <p>Select a UI element</p>}
+          </aside>
+        </Panel>
+      </PanelGroup>
     </section>
   )
 })

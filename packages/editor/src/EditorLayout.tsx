@@ -5,52 +5,55 @@ import { HierarchyToolsPanel } from './panels/HierarchyToolsPanel.js'
 import { InspectorPanel } from './panels/InspectorPanel.js'
 import { ViewportTabsShell } from './ViewportTabsShell.js'
 import { AssetBrowserPanel } from './panels/AssetBrowserPanel.js'
+import { useEditorStore } from './store/editor-store.js'
 import './editor-layout.css'
 import './viewport-tabs.css'
 
 const panelShell = 'haku-panel-shell'
 
 function ResizeHandle({ direction }: { direction: 'horizontal' | 'vertical' }) {
-  return (
-    <PanelResizeHandle
-      className={`haku-resize-handle haku-resize-handle--${direction}`}
-    />
-  )
+  return <PanelResizeHandle className={`haku-resize-handle haku-resize-handle--${direction}`} />
 }
 
 export const EditorLayout = memo(function EditorLayout() {
+  const activeWorkspace = useEditorStore((state) => state.activeWorkspace)
+
   return (
     <div className="haku-editor-layout">
-      <PanelGroup direction="horizontal" autoSaveId="haku-editor-panels-h">
-        <Panel defaultSize={18} minSize={12} maxSize={35} className={panelShell}>
-          <div className="haku-hierarchy-column">
-            <HierarchyPanel />
-            <HierarchyToolsPanel />
-          </div>
-        </Panel>
+      {activeWorkspace === 'ui' ? (
+        <ViewportTabsShell />
+      ) : (
+        <PanelGroup direction="horizontal" autoSaveId="haku-editor-panels-h">
+          <Panel defaultSize={18} minSize={12} maxSize={35} className={panelShell}>
+            <div className="haku-hierarchy-column">
+              <HierarchyPanel />
+              <HierarchyToolsPanel />
+            </div>
+          </Panel>
 
-        <ResizeHandle direction="horizontal" />
+          <ResizeHandle direction="horizontal" />
 
-        <Panel defaultSize={58} minSize={35} className={panelShell}>
-          <PanelGroup direction="vertical" autoSaveId="haku-editor-panels-v">
-            <Panel defaultSize={72} minSize={35} className={panelShell}>
-              <ViewportTabsShell />
-            </Panel>
+          <Panel defaultSize={58} minSize={35} className={panelShell}>
+            <PanelGroup direction="vertical" autoSaveId="haku-editor-panels-v">
+              <Panel defaultSize={72} minSize={35} className={panelShell}>
+                <ViewportTabsShell />
+              </Panel>
 
-            <ResizeHandle direction="vertical" />
+              <ResizeHandle direction="vertical" />
 
-            <Panel defaultSize={28} minSize={15} maxSize={50} className={panelShell}>
-              <AssetBrowserPanel />
-            </Panel>
-          </PanelGroup>
-        </Panel>
+              <Panel defaultSize={28} minSize={15} maxSize={50} className={panelShell}>
+                <AssetBrowserPanel />
+              </Panel>
+            </PanelGroup>
+          </Panel>
 
-        <ResizeHandle direction="horizontal" />
+          <ResizeHandle direction="horizontal" />
 
-        <Panel defaultSize={24} minSize={16} maxSize={40} className={panelShell}>
-          <InspectorPanel />
-        </Panel>
-      </PanelGroup>
+          <Panel defaultSize={24} minSize={16} maxSize={40} className={panelShell}>
+            <InspectorPanel />
+          </Panel>
+        </PanelGroup>
+      )}
     </div>
   )
 })
