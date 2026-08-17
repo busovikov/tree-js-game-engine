@@ -489,17 +489,21 @@ export class ProjectService {
       throw new Error(`An asset already exists at ${path}`)
     }
     const asset = UIDocumentSchema.parse({
-      schemaVersion: 1,
+      schemaVersion: 2,
       id,
       name,
       root,
       elements: [
         {
           id: root,
-          type: 'container',
+          type: 'frame',
           name: 'Root',
           children: [],
-          sizing: { width: '100%', height: '100%' },
+          layout: { mode: 'vertical' },
+          sizing: {
+            width: { mode: 'fixed', value: 1280, unit: 'px' },
+            height: { mode: 'fixed', value: 720, unit: 'px' },
+          },
         },
       ],
     })

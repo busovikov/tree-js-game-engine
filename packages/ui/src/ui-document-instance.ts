@@ -305,6 +305,7 @@ export class UIDocumentInstance {
 
   private applyVisualStyle(entry: RuntimeEntry): void {
     clearVisualStyle(entry.node.style)
+    applyLayout(entry.node.style, entry.element)
     const themed = this.document.themes.find((theme) => theme.id === this.activeTheme)?.styles[
       entry.sourceElementId ?? entry.element.id
     ]
@@ -704,6 +705,8 @@ const VISUAL_PROPERTIES = [
   'letterSpacing',
   'textAlign',
   'verticalAlign',
+  'padding',
+  'margin',
   'borderColor',
   'borderWidth',
   'borderStyle',
@@ -728,6 +731,8 @@ function applyStyle(style: CSSStyleDeclaration, value: UIStyle): void {
   if (value.letterSpacing !== undefined) style.letterSpacing = `${value.letterSpacing}px`
   if (value.textAlign !== undefined) style.textAlign = value.textAlign
   if (value.verticalAlign !== undefined) style.verticalAlign = value.verticalAlign
+  if (value.padding !== undefined) style.padding = `${value.padding.top}px ${value.padding.right}px ${value.padding.bottom}px ${value.padding.left}px`
+  if (value.margin !== undefined) style.margin = `${value.margin.top}px ${value.margin.right}px ${value.margin.bottom}px ${value.margin.left}px`
   if (value.borderColor !== undefined) style.borderColor = value.borderColor
   if (value.borderWidth !== undefined) {
     style.borderWidth = `${value.borderWidth}px`

@@ -44,17 +44,21 @@ export function createEmptyUIDocument(
   root: string = crypto.randomUUID(),
 ): UIDocument {
   return UIDocumentSchema.parse({
-    schemaVersion: 1,
+    schemaVersion: 2,
     id: assetId(id),
     name,
     root,
     elements: [
       {
         id: root,
-        type: 'container',
+        type: 'frame',
         name: 'Root',
         children: [],
-        sizing: { width: '100%', height: '100%' },
+        layout: { mode: 'vertical' },
+        sizing: {
+          width: { mode: 'fixed', value: 1280, unit: 'px' },
+          height: { mode: 'fixed', value: 720, unit: 'px' },
+        },
       },
     ],
   })
@@ -154,24 +158,37 @@ export class UIAuthoringSession {
   ): UIElementId {
     const asset = this.requireAsset()
     const parent = asset.elements.find((element) => element.id === parentId)
-    if (!parent || parent.type !== 'container') {
-      throw new Error(`UI parent must be a container: ${parentId}`)
+    if (!parent || !('children' in parent)) {
+      throw new Error(`UI parent must be a frame, scroll container, or list: ${parentId}`)
     }
     const id = this.uuid() as UIElementId
-    const common = { id, type, name: `${type[0]!.toUpperCase()}${type.slice(1)}` }
+    const name = `${type[0]!.toUpperCase()}${type.slice(1)}`
+    const common = { id, type, name }
     let element: unknown
-    if (type === 'container') element = { ...common, children: [] }
+    if (type === 'frame') element = { ...common, children: [], layout: { mode: 'vertical' } }
     else if (type === 'text') element = { ...common, text: '' }
     else if (type === 'button') element = { ...common, text: 'Button' }
-    else {
+    else if (type === 'image') {
       if (!options.source) throw new Error('Image elements require a texture asset reference')
-      element = { ...common, source: options.source, alt: '' }
-    }
+      element = { ...common, source: options.source, alt: 'Image' }
+    } else if (type === 'rectangle' || type === 'spacer') element = common
+    else if (type === 'text-input') element = { ...common, value: '', accessibility: { label: name } }
+    else if (type === 'text-area') element = { ...common, value: '', accessibility: { label: name } }
+    else if (type === 'checkbox') element = { ...common, value: false, label: name }
+    else if (type === 'radio') element = { ...common, group: 'group', optionValue: id, value: null, label: name }
+    else if (type === 'switch') element = { ...common, value: false, label: name }
+    else if (type === 'select') element = { ...common, value: null, options: [{ value: 'option', label: 'Option' }], accessibility: { label: name } }
+    else if (type === 'slider') element = { ...common, min: 0, max: 100, step: 1, value: 0, accessibility: { label: name } }
+    else if (type === 'progress') element = { ...common, min: 0, max: 100, value: null, accessibility: { label: name } }
+    else if (type === 'divider') element = { ...common, orientation: 'horizontal', thickness: 1 }
+    else if (type === 'scroll-container') element = { ...common, children: [], layout: { mode: 'vertical' } }
+    else if (type === 'list') element = { ...common, children: [], ordered: false, layout: { mode: 'vertical' } }
+    else throw new Error('Component instances require a component authoring command')
     this.replaceAsset({
       ...asset,
       elements: [
         ...asset.elements.map((candidate) =>
-          candidate.id === parent.id && candidate.type === 'container'
+          candidate.id === parent.id && 'children' in candidate
             ? { ...candidate, children: [...candidate.children, id] }
             : candidate,
         ),
@@ -203,7 +220,7 @@ export class UIAuthoringSession {
       if (remove.has(elementId)) return
       remove.add(elementId)
       const element = asset.elements.find((candidate) => candidate.id === elementId)
-      if (element?.type === 'container') {
+      if (element && 'children' in element) {
         for (const child of element.children) visit(child)
       }
     }
@@ -216,7 +233,7 @@ export class UIAuthoringSession {
       elements: asset.elements
         .filter((element) => !remove.has(element.id))
         .map((element) =>
-          element.type === 'container'
+          'children' in element
             ? { ...element, children: element.children.filter((child) => !remove.has(child)) }
             : element,
         ),
@@ -248,7 +265,7 @@ export class UIAuthoringSession {
         id: element.id,
         type: element.type,
         name: element.name ?? element.type,
-        children: element.type === 'container' ? element.children.map(visit) : [],
+        children: 'children' in element ? element.children.map(visit) : [],
       }
     }
     return [visit(asset.root)]

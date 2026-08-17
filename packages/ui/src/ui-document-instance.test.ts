@@ -143,26 +143,23 @@ describe('UIDocumentInstance v2', () => {
     expect(instance.getElement(LIST)?.tagName).toBe('OL')
 
     const root = instance.getElement(ROOT)!
-    expect(root.style).toMatchObject({
-      display: 'flex',
-      flexDirection: 'column',
-      flexWrap: 'wrap',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      rowGap: '7px',
-      columnGap: '9px',
-      padding: '1px 2px 3px 4px',
-      width: '800px',
-      height: '600px',
-      minWidth: '320px',
-      maxWidth: '900px',
-    })
-    expect(instance.getElement(NESTED_FRAME)?.style).toMatchObject({
-      display: 'grid',
-      gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-      rowGap: '2px',
-      columnGap: '5px',
-    })
+    expect(root.style.display).toBe('flex')
+    expect(root.style.flexDirection).toBe('column')
+    expect(root.style.flexWrap).toBe('wrap')
+    expect(root.style.justifyContent).toBe('space-between')
+    expect(root.style.alignItems).toBe('center')
+    expect(root.style.rowGap).toBe('7px')
+    expect(root.style.columnGap).toBe('9px')
+    expect(root.style.padding).toBe('1px 2px 3px 4px')
+    expect(root.style.width).toBe('800px')
+    expect(root.style.height).toBe('600px')
+    expect(root.style.minWidth).toBe('320px')
+    expect(root.style.maxWidth).toBe('900px')
+    const grid = instance.getElement(NESTED_FRAME)!
+    expect(grid.style.display).toBe('grid')
+    expect(grid.style.gridTemplateColumns).toBe('repeat(3, minmax(0, 1fr))')
+    expect(grid.style.rowGap).toBe('2px')
+    expect(grid.style.columnGap).toBe('5px')
   })
 
   it('keeps typed values in instance state, resets them, and never emits for programmatic writes', () => {

@@ -10,7 +10,6 @@ import {
   UIDocumentSchema,
   registerUIRuntimeAdapters,
   type UIElementId,
-  type UIElementTarget,
 } from '@haku/ui'
 
 const DOCUMENT = '13000000-0000-4000-8000-000000000001'
@@ -23,29 +22,35 @@ const HELP = '13000000-0000-4000-8000-000000000007'
 const EVENT = '13000000-0000-4000-8000-000000000008'
 
 const documentAsset = UIDocumentSchema.parse({
-  schemaVersion: 1,
+  schemaVersion: 2,
   id: DOCUMENT,
   name: 'M10b Runtime UI Diagnostic',
   root: ROOT,
   elements: [
     {
       id: ROOT,
-      type: 'container',
+      type: 'frame',
       children: [PANEL],
-      sizing: { width: '100%', height: '100%' },
+      layout: { mode: 'vertical' },
+      sizing: {
+        width: { mode: 'fixed', value: 600, unit: 'px' },
+        height: { mode: 'fixed', value: 180, unit: 'px' },
+      },
       accessibility: { role: 'region', label: 'M10b runtime UI diagnostic' },
     },
     {
       id: PANEL,
-      type: 'container',
+      type: 'frame',
       children: [TITLE, STATUS, BUTTON, HELP],
-      layout: { direction: 'column', gap: 10 },
-      anchors: { left: 0, right: 0, top: 0 },
+      layout: {
+        mode: 'vertical',
+        rowGap: 10,
+        padding: { top: 16, right: 16, bottom: 16, left: 16 },
+      },
       style: {
         color: '#f5f7ff',
         backgroundColor: '#171a2b',
         fontFamily: 'system-ui, sans-serif',
-        padding: 16,
         borderColor: '#6574ff',
         borderWidth: 1,
         borderRadius: 10,
@@ -68,12 +73,12 @@ const documentAsset = UIDocumentSchema.parse({
       id: BUTTON,
       type: 'button',
       text: 'Advance UI boundary',
-      activateEvent: EVENT,
+      events: { activate: EVENT },
       accessibility: { label: 'Run UI diagnostic' },
       style: {
         color: '#ffffff',
         backgroundColor: '#4355d9',
-        padding: 10,
+        padding: { top: 10, right: 10, bottom: 10, left: 10 },
         borderColor: '#8290ff',
         borderWidth: 1,
         borderRadius: 6,
@@ -96,7 +101,10 @@ export interface UIDiagnostic {
   readonly rootId: UIElementId
   readonly statusId: UIElementId
   readonly buttonId: UIElementId
-  readonly statusTarget: UIElementTarget
+  readonly statusTarget: {
+    readonly document: typeof documentAsset.id
+    readonly element: UIElementId
+  }
   readonly flowOut: string
   setTextFromGraph(text: string): NodeExecutionResult
   destroy(): void
@@ -120,7 +128,7 @@ export function createUIDiagnostic(host: HTMLElement): UIDiagnostic {
 
   let activationCount = 0
   const unsubscribe = service.subscribe((event) => {
-    if (event.elementId !== buttonId || event.eventId !== EVENT) return
+    if (event.elementId !== buttonId || event.bindingId !== EVENT) return
     activationCount += 1
     if (activationCount === 1) {
       service.setText(statusTarget, 'Native button activated')

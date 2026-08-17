@@ -161,6 +161,8 @@ export const UIStyleSchema = z
     letterSpacing: finite.optional(),
     textAlign: z.enum(['left', 'center', 'right', 'justify']).optional(),
     verticalAlign: z.enum(['top', 'middle', 'bottom']).optional(),
+    padding: UIEdgesSchema.optional(),
+    margin: UIEdgesSchema.optional(),
     borderColor: z.string().min(1).optional(),
     borderWidth: nonnegativeFinite.optional(),
     borderRadius: z.union([nonnegativeFinite, cornerRadii]).optional(),

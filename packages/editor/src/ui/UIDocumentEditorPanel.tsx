@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { TEXTURE_ASSET_TYPE } from '@haku/assets'
-import { UIDocumentInstance, type UIElement, type UIElementId } from '@haku/ui'
+import { UIDocumentInstance, type UIElement, type UIElementId, type UIThemeId } from '@haku/ui'
 import { assetId, assetRef, projectPathToUrl } from '@haku/schema'
 import { NumberField } from '../components/NumberField.js'
 import { projectService } from '../services/project-service.js'
@@ -35,7 +35,7 @@ function HierarchyNode({
         className={item.id === selected ? 'haku-ui-editor__tree-item--selected' : undefined}
         onClick={() => onSelect(item.id)}
       >
-        <span aria-hidden="true">{item.type === 'container' ? '▣' : item.type === 'text' ? 'T' : item.type === 'button' ? '◉' : '▧'}</span>
+        <span aria-hidden="true">{item.type === 'frame' ? '▣' : item.type === 'text' ? 'T' : item.type === 'button' ? '◉' : '▧'}</span>
         {item.name}
       </button>
       {item.children.length > 0 && (
@@ -57,8 +57,8 @@ function HierarchyNode({
 function UIInspector({ element }: { element: UIElement }) {
   const update = (patch: Record<string, unknown>) =>
     uiAuthoringSession.updateElement(element.id, patch)
-  const numericWidth = typeof element.sizing.width === 'number' ? element.sizing.width : 0
-  const numericHeight = typeof element.sizing.height === 'number' ? element.sizing.height : 0
+  const numericWidth = element.sizing.width.mode === 'fixed' && element.sizing.width.unit === 'px' ? element.sizing.width.value : 0
+  const numericHeight = element.sizing.height.mode === 'fixed' && element.sizing.height.unit === 'px' ? element.sizing.height.value : 0
 
   return (
     <div className="haku-ui-editor__inspector-fields">
@@ -111,14 +111,14 @@ function UIInspector({ element }: { element: UIElement }) {
         value={numericWidth}
         min={0}
         step={1}
-        onChange={(width) => update({ sizing: { ...element.sizing, width } })}
+        onChange={(width) => update({ sizing: { ...element.sizing, width: { mode: 'fixed', value: width, unit: 'px' } } })}
       />
       <NumberField
         label="Height (px)"
         value={numericHeight}
         min={0}
         step={1}
-        onChange={(height) => update({ sizing: { ...element.sizing, height } })}
+        onChange={(height) => update({ sizing: { ...element.sizing, height: { mode: 'fixed', value: height, unit: 'px' } } })}
       />
       <label className="mesh-field">
         <span className="mesh-field__label">Text color</span>
@@ -206,7 +206,7 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
     const host = previewHost.current
     if (!host || !asset) return
     const instance = new UIDocumentInstance(asset, {
-      ...(previewTheme ? { theme: previewTheme as UIElementId } : {}),
+      ...(previewTheme ? { theme: previewTheme as UIThemeId } : {}),
       assets: {
         resolve(reference) {
           const relativePath = projectService.getAssetPath(reference)
@@ -269,7 +269,7 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
   }
 
   const parent =
-    selected?.type === 'container' ? selected.id : uiAuthoringSession.asset?.root
+    selected && 'children' in selected ? selected.id : uiAuthoringSession.asset?.root
 
   const add = (type: UIElement['type']) => {
     if (!parent) return
@@ -351,7 +351,7 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
         <aside className="haku-ui-editor__hierarchy">
           <h3>UI Hierarchy</h3>
           <div className="haku-ui-editor__palette">
-            {(['container', 'text', 'button', 'image'] as const).map((type) => (
+            {(['frame', 'text', 'button', 'image'] as const).map((type) => (
               <button key={type} type="button" onClick={() => add(type)}>+ {type}</button>
             ))}
           </div>

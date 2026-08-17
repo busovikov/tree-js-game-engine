@@ -19,22 +19,30 @@ export const uiAuthoringSession = new UIAuthoringSession(uiCommandBus, {
 uiAuthoringSession.openAsset(
   'builtin:m10b-runtime-hud.ui.json',
   UIDocumentSchema.parse({
-    schemaVersion: 1,
+    schemaVersion: 2,
     id: '13000000-0000-4000-8000-000000000100',
     name: 'Runtime HUD',
     root: '13000000-0000-4000-8000-000000000101',
     elements: [
       {
         id: '13000000-0000-4000-8000-000000000101',
-        type: 'container',
+        type: 'frame',
         name: 'HUD Root',
         children: [
           '13000000-0000-4000-8000-000000000102',
           '13000000-0000-4000-8000-000000000103',
           '13000000-0000-4000-8000-000000000104',
         ],
-        layout: { direction: 'column', align: 'center', justify: 'center', gap: 20 },
-        sizing: { width: '100%', height: '100%' },
+        layout: {
+          mode: 'vertical',
+          alignment: 'center',
+          distribution: 'center',
+          rowGap: 20,
+        },
+        sizing: {
+          width: { mode: 'fixed', value: 1280, unit: 'px' },
+          height: { mode: 'fixed', value: 720, unit: 'px' },
+        },
         style: { backgroundColor: '#172033' },
         accessibility: { role: 'main', label: 'Runtime HUD preview' },
       },
@@ -56,7 +64,7 @@ uiAuthoringSession.openAsset(
           color: '#ffffff',
           backgroundColor: '#3d5afe',
           fontSize: 22,
-          padding: 14,
+          padding: { top: 14, right: 14, bottom: 14, left: 14 },
           borderRadius: 8,
           cursor: 'pointer',
         },
@@ -66,7 +74,7 @@ uiAuthoringSession.openAsset(
         type: 'text',
         name: 'Hint',
         text: 'Press Continue',
-        sizing: { width: 'auto' },
+        sizing: { width: { mode: 'hug' } },
         style: { color: '#aeb8d0', fontSize: 16 },
       },
     ],

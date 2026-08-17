@@ -120,7 +120,7 @@ describe('UIAuthoringSession', () => {
         root: TEXT,
         elements: [{ id: TEXT, type: 'text', text: 'Not a root container' }],
       }),
-    ).toThrow('UI root must reference a container element')
+    ).toThrow('UI root must reference a frame element')
     expect(session.asset?.name).toBe('HUD updated')
 
     commands.undo()
@@ -139,7 +139,7 @@ describe('UIAuthoringSession', () => {
       createEmptyUIDocument('HUD', DOCUMENT, ROOT),
     )
     const root = session.asset!.elements[0]!
-    if (root.type !== 'container') throw new Error('Expected root container fixture')
+    if (root.type !== 'frame') throw new Error('Expected root frame fixture')
     root.children.push(TEXT as typeof root.children[number])
 
     await expect(session.save()).rejects.toThrow('Unknown UI child')

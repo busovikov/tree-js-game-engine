@@ -180,16 +180,16 @@ export function createBounceRunAudioComposition(options: {
     )
   }
   const unsubscribeUI = options.ui.subscribe((event) => {
-    if (event.eventId === BOUNCE_RUN_UI_IDS.events.start) track(start())
-    else if (event.eventId === BOUNCE_RUN_UI_IDS.events.resume) track(resume())
-    else if (event.eventId === BOUNCE_RUN_UI_IDS.events.restart) track(restart())
-    else if (event.eventId === BOUNCE_RUN_UI_IDS.events.toggleMasterAudio) {
+    if (event.bindingId === BOUNCE_RUN_UI_IDS.events.start) track(start())
+    else if (event.bindingId === BOUNCE_RUN_UI_IDS.events.resume) track(resume())
+    else if (event.bindingId === BOUNCE_RUN_UI_IDS.events.restart) track(restart())
+    else if (event.bindingId === BOUNCE_RUN_UI_IDS.events.toggleMasterAudio) {
       toggleBus('master', BOUNCE_RUN_UI_IDS.masterAudioButton, 'Master')
-    } else if (event.eventId === BOUNCE_RUN_UI_IDS.events.toggleMusicAudio) {
+    } else if (event.bindingId === BOUNCE_RUN_UI_IDS.events.toggleMusicAudio) {
       toggleBus('music', BOUNCE_RUN_UI_IDS.musicAudioButton, 'Music')
-    } else if (event.eventId === BOUNCE_RUN_UI_IDS.events.toggleSfxAudio) {
+    } else if (event.bindingId === BOUNCE_RUN_UI_IDS.events.toggleSfxAudio) {
       toggleBus('sfx', BOUNCE_RUN_UI_IDS.sfxAudioButton, 'SFX')
-    } else if (event.eventId === BOUNCE_RUN_UI_IDS.events.toggleUIAudio) {
+    } else if (event.bindingId === BOUNCE_RUN_UI_IDS.events.toggleUIAudio) {
       toggleBus('ui', BOUNCE_RUN_UI_IDS.uiAudioButton, 'UI')
     }
   })
