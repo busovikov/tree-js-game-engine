@@ -33,3 +33,53 @@ describe('ViewportTabsShell Code workspace', () => {
     ).toBe('true')
   })
 })
+
+describe('ViewportTabsShell UI workspace baseline', () => {
+  it('exposes the four-element fixture, selection, path, and current preview transform', () => {
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+
+    const workspace = container.querySelector('[data-haku-ui-workspace]')
+    const treeItems = container.querySelectorAll('[data-haku-ui-tree-item]')
+    const preview = container.querySelector('[data-haku-ui-preview]')
+    expect(workspace?.getAttribute('data-haku-ui-document-path')).toBe(
+      'builtin:m10b-runtime-hud.ui.json',
+    )
+    expect(treeItems).toHaveLength(4)
+    expect(preview?.getAttribute('data-haku-ui-preview-scale')).toBe('0.5')
+    expect(preview?.getAttribute('data-haku-ui-preview-origin')).toBe('top-left')
+
+    const continueItem = container.querySelector(
+      '[data-haku-ui-tree-item="13000000-0000-4000-8000-000000000103"]',
+    ) as HTMLButtonElement
+    fireEvent.click(continueItem)
+    expect(workspace?.getAttribute('data-haku-ui-selected-id')).toBe(
+      '13000000-0000-4000-8000-000000000103',
+    )
+  })
+
+  // M5 removes `fails` when the Inspector preserves non-pixel sizing values.
+  it.fails.each([
+    ['13000000-0000-4000-8000-000000000101', '100%'],
+    ['13000000-0000-4000-8000-000000000104', 'auto'],
+  ])('round-trips the %s element width as %s in the Inspector', (elementId, expected) => {
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    const treeItem = container.querySelector(
+      `[data-haku-ui-tree-item="${elementId}"]`,
+    ) as HTMLButtonElement
+    fireEvent.click(treeItem)
+
+    expect((screen.getByLabelText('Width (px)') as HTMLInputElement).value).toBe(expected)
+  })
+
+  // M3 removes `fails` when preview navigation owns a centered fit scale.
+  it.fails('fits and centers the preview instead of using the fixed 0.5 top-left transform', () => {
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    const preview = container.querySelector('[data-haku-ui-preview]')
+
+    expect(preview?.getAttribute('data-haku-ui-preview-scale')).toBe('fit')
+    expect(preview?.getAttribute('data-haku-ui-preview-origin')).toBe('center')
+  })
+})

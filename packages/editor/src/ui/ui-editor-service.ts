@@ -31,6 +31,7 @@ uiAuthoringSession.openAsset(
         children: [
           '13000000-0000-4000-8000-000000000102',
           '13000000-0000-4000-8000-000000000103',
+          '13000000-0000-4000-8000-000000000104',
         ],
         layout: { direction: 'column', align: 'center', justify: 'center', gap: 20 },
         sizing: { width: '100%', height: '100%' },
@@ -59,6 +60,14 @@ uiAuthoringSession.openAsset(
           borderRadius: 8,
           cursor: 'pointer',
         },
+      },
+      {
+        id: '13000000-0000-4000-8000-000000000104',
+        type: 'text',
+        name: 'Hint',
+        text: 'Press Continue',
+        sizing: { width: 'auto' },
+        style: { color: '#aeb8d0', fontSize: 16 },
       },
     ],
   }),

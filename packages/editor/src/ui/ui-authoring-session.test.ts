@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { CommandBus } from '../commands/command-bus.js'
 import {
   UIAuthoringSession,
@@ -82,5 +82,89 @@ describe('UIAuthoringSession', () => {
     expect(session.asset?.elements).toHaveLength(2)
     expect(JSON.parse(saved)).not.toHaveProperty('viewport')
     expect(JSON.parse(saved)).not.toHaveProperty('selectedElementId')
+  })
+
+  it('keeps selection editor-only and clears unknown selections', () => {
+    const session = new UIAuthoringSession(
+      new CommandBus(),
+      { readText: async () => '', writeText: async () => undefined },
+      ids(),
+    )
+    session.openAsset(
+      'assets/ui/hud.ui.json',
+      createEmptyUIDocument('HUD', DOCUMENT, ROOT),
+    )
+
+    session.select('13000000-0000-4000-8000-000000000099')
+
+    expect(session.selectedElementId).toBeNull()
+    expect(session.asset).not.toHaveProperty('selectedElementId')
+  })
+
+  it('replaces the full strict asset atomically and restores it on undo', () => {
+    const commands = new CommandBus()
+    const session = new UIAuthoringSession(
+      commands,
+      { readText: async () => '', writeText: async () => undefined },
+      ids(),
+    )
+    const original = createEmptyUIDocument('HUD', DOCUMENT, ROOT)
+    session.openAsset('assets/ui/hud.ui.json', original)
+    session.replaceAsset({ ...original, name: 'HUD updated' })
+
+    expect(session.asset?.name).toBe('HUD updated')
+
+    expect(() =>
+      session.replaceAsset({
+        ...original,
+        root: TEXT,
+        elements: [{ id: TEXT, type: 'text', text: 'Not a root container' }],
+      }),
+    ).toThrow('UI root must reference a container element')
+    expect(session.asset?.name).toBe('HUD updated')
+
+    commands.undo()
+    expect(session.asset).toEqual(original)
+  })
+
+  it('rejects an invalid in-memory asset before save without writing it', async () => {
+    const writeText = vi.fn(async () => undefined)
+    const session = new UIAuthoringSession(
+      new CommandBus(),
+      { readText: async () => '', writeText },
+      ids(),
+    )
+    session.openAsset(
+      'assets/ui/hud.ui.json',
+      createEmptyUIDocument('HUD', DOCUMENT, ROOT),
+    )
+    const root = session.asset!.elements[0]!
+    if (root.type !== 'container') throw new Error('Expected root container fixture')
+    root.children.push(TEXT as typeof root.children[number])
+
+    await expect(session.save()).rejects.toThrow('Unknown UI child')
+    expect(writeText).not.toHaveBeenCalled()
+    expect(session.isDirty).toBe(true)
+  })
+
+  it('keeps the asset dirty when project storage rejects save', async () => {
+    const session = new UIAuthoringSession(
+      new CommandBus(),
+      {
+        readText: async () => '',
+        writeText: async () => {
+          throw new Error('Read-only project')
+        },
+      },
+      ids(),
+    )
+    session.openAsset(
+      'assets/ui/hud.ui.json',
+      createEmptyUIDocument('HUD', DOCUMENT, ROOT),
+    )
+    session.updateElement(ROOT, { name: 'Changed root' })
+
+    await expect(session.save()).rejects.toThrow('Read-only project')
+    expect(session.isDirty).toBe(true)
   })
 })

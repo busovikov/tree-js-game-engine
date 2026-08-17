@@ -30,6 +30,8 @@ function HierarchyNode({
     <li>
       <button
         type="button"
+        data-haku-ui-tree-item={item.id}
+        data-haku-ui-selected={item.id === selected ? 'true' : 'false'}
         className={item.id === selected ? 'haku-ui-editor__tree-item--selected' : undefined}
         onClick={() => onSelect(item.id)}
       >
@@ -287,12 +289,19 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
   }
 
   return (
-    <section className="haku-ui-editor" aria-label="UI document editor">
+    <section
+      className="haku-ui-editor"
+      aria-label="UI document editor"
+      data-haku-ui-workspace="true"
+      data-haku-ui-document-path={uiAuthoringSession.path ?? undefined}
+      data-haku-ui-selected-id={uiAuthoringSession.selectedElementId ?? undefined}
+    >
       <div className="haku-ui-editor__toolbar">
         <button type="button" onClick={() => void createDocument()}>New</button>
         <button type="button" onClick={() => void openDocument()}>Open</button>
         <button
           type="button"
+          data-haku-ui-action="save"
           disabled={!uiAuthoringSession.isDirty || uiAuthoringSession.path?.startsWith('builtin:')}
           onClick={() =>
             void uiAuthoringSession.save().then(
@@ -370,10 +379,13 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
             <div
               ref={previewHost}
               className="haku-ui-editor__viewport"
+              data-haku-ui-preview="true"
+              data-haku-ui-preview-scale="0.5"
+              data-haku-ui-preview-origin="top-left"
               style={{ width: viewport.width, height: viewport.height }}
             />
           </div>
-          <output aria-live="polite">{status}</output>
+          <output aria-live="polite" data-haku-ui-status="true">{status}</output>
         </main>
         <aside className="haku-ui-editor__inspector">
           <h3>UI Inspector</h3>

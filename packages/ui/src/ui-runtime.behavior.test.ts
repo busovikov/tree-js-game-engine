@@ -18,6 +18,9 @@ const EVENT = '11000000-0000-4000-8000-000000000005'
 const THEME = '11000000-0000-4000-8000-000000000006'
 const DOCUMENT = '11000000-0000-4000-8000-000000000007'
 const TEXTURE = '11000000-0000-4000-8000-000000000008'
+const PANEL_A = '11000000-0000-4000-8000-000000000009'
+const PANEL_B = '11000000-0000-4000-8000-000000000010'
+const MISSING = '11000000-0000-4000-8000-000000000011'
 
 function uiDocument() {
   return UIDocumentSchema.parse({
@@ -92,6 +95,45 @@ describe('UI document schema and DOM behavior', () => {
       expect(result.error.issues.map((issue) => issue.message).join('\n')).toMatch(
         /Duplicate UI element ID|unreachable/,
       )
+    }
+  })
+
+  it.each([
+    {
+      name: 'missing-child',
+      elements: [{ id: ROOT, type: 'container', children: [MISSING] }],
+      message: /Unknown UI child/,
+    },
+    {
+      name: 'multiply-parented',
+      elements: [
+        { id: ROOT, type: 'container', children: [PANEL_A, PANEL_B] },
+        { id: PANEL_A, type: 'container', children: [LABEL] },
+        { id: PANEL_B, type: 'container', children: [LABEL] },
+        { id: LABEL, type: 'text', text: 'Shared' },
+      ],
+      message: /already has parent/,
+    },
+    {
+      name: 'cyclic',
+      elements: [
+        { id: ROOT, type: 'container', children: [PANEL_A] },
+        { id: PANEL_A, type: 'container', children: [ROOT] },
+      ],
+      message: /UI hierarchy cycle/,
+    },
+  ])('rejects a $name strict tree', ({ elements, message }) => {
+    const result = UIDocumentSchema.safeParse({
+      schemaVersion: 1,
+      id: DOCUMENT,
+      name: 'Invalid tree',
+      root: ROOT,
+      elements,
+    })
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues.map((issue) => issue.message).join('\n')).toMatch(message)
     }
   })
 
