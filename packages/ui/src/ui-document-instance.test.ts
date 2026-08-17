@@ -134,6 +134,9 @@ describe('UIDocumentInstance v2', () => {
     expect((instance.getElement(CHECKBOX) as HTMLInputElement).type).toBe('checkbox')
     expect((instance.getElement(RADIO_A) as HTMLInputElement).type).toBe('radio')
     expect(instance.getElement(SWITCH)?.getAttribute('role')).toBe('switch')
+    expect((instance.getElement(CHECKBOX) as HTMLInputElement).labels?.[0]?.textContent).toBe('Accept')
+    expect((instance.getElement(RADIO_A) as HTMLInputElement).labels?.[0]?.textContent).toBe('Mode A')
+    expect((instance.getElement(SWITCH) as HTMLInputElement).labels?.[0]?.textContent).toBe('Music')
     expect(instance.getElement(SELECT)?.tagName).toBe('SELECT')
     expect((instance.getElement(SLIDER) as HTMLInputElement).type).toBe('range')
     expect(instance.getElement(PROGRESS)?.tagName).toBe('PROGRESS')
@@ -220,6 +223,37 @@ describe('UIDocumentInstance v2', () => {
       expect.objectContaining({ type: 'change', elementId: CHECKBOX, value: false }),
       expect.objectContaining({ type: 'change', elementId: RADIO_B, value: 'b' }),
       expect.objectContaining({ type: 'input', elementId: SLIDER, value: 6 }),
+    ]))
+  })
+
+  it('keeps natively labeled controls addressable while activation updates values and events', () => {
+    const events: unknown[] = []
+    const instance = new UIDocumentInstance(documentAsset(), { assets: { resolve: () => '/star.png' } })
+    instance.subscribe((event) => events.push(event))
+    instance.mount(document.createElement('div'))
+
+    const checkbox = instance.getElement(CHECKBOX) as HTMLInputElement
+    const radio = instance.getElement(RADIO_B) as HTMLInputElement
+    const toggle = instance.getElement(SWITCH) as HTMLInputElement
+    expect(checkbox.dataset.hakuUiId).toBe(CHECKBOX)
+    expect(radio.dataset.hakuUiId).toBe(RADIO_B)
+    expect(toggle.dataset.hakuUiId).toBe(SWITCH)
+
+    expect(checkbox.labels?.[0]?.htmlFor).toBe(checkbox.id)
+    expect(radio.labels?.[0]?.htmlFor).toBe(radio.id)
+    expect(toggle.labels?.[0]?.htmlFor).toBe(toggle.id)
+    checkbox.click()
+    radio.click()
+    toggle.focus()
+    toggle.click()
+
+    expect(instance.getValue(CHECKBOX)).toBe(false)
+    expect(instance.getValue(RADIO_A)).toBe('b')
+    expect(instance.getValue(SWITCH)).toBe(true)
+    expect(events).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: 'change', elementId: CHECKBOX, value: false }),
+      expect.objectContaining({ type: 'change', elementId: RADIO_B, value: 'b' }),
+      expect.objectContaining({ type: 'change', elementId: SWITCH, value: true }),
     ]))
   })
 

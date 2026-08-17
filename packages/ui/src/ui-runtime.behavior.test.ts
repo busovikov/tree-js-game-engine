@@ -66,6 +66,39 @@ describe('v2 runtime behavior', () => {
     expect(instance.getElement(absoluteChild)?.style).toMatchObject({ position: 'absolute', right: '5px', bottom: '6px' })
   })
 
+  it('renders hug, fill, bounds, and combined center/scale constraints deterministically', () => {
+    const autoFrame = '23000000-0000-4000-8000-000000000020'
+    const fillChild = '23000000-0000-4000-8000-000000000021'
+    const centerChild = '23000000-0000-4000-8000-000000000022'
+    const scaleChild = '23000000-0000-4000-8000-000000000023'
+    const asset = UIDocumentSchema.parse({
+      schemaVersion: 2,
+      id: '23000000-0000-4000-8000-000000000024',
+      name: 'Representative sizing',
+      root: ROOT,
+      elements: [
+        { id: ROOT, type: 'frame', children: [autoFrame, centerChild, scaleChild], layout: { mode: 'free' }, sizing: { width: { mode: 'fixed', value: 400, unit: 'px' }, height: { mode: 'fixed', value: 300, unit: 'px' } } },
+        { id: autoFrame, type: 'frame', children: [fillChild], layout: { mode: 'horizontal' }, sizing: { width: { mode: 'hug' }, height: { mode: 'fixed', value: 80, unit: 'px' }, minWidth: { value: 120, unit: 'px' }, maxWidth: { value: 240, unit: 'px' }, minHeight: { value: 60, unit: 'px' }, maxHeight: { value: 100, unit: 'px' } }, placement: { positioning: 'free', x: 0, y: 0, horizontalConstraint: 'left', verticalConstraint: 'top', referenceWidth: 400, referenceHeight: 300 } },
+        { id: fillChild, type: 'text', text: 'Fill', sizing: { width: { mode: 'fill' }, height: { mode: 'hug' } } },
+        { id: centerChild, type: 'rectangle', sizing: { width: { mode: 'fixed', value: 100, unit: 'px' }, height: { mode: 'fixed', value: 40, unit: 'px' } }, placement: { positioning: 'free', x: 150, y: 130, horizontalConstraint: 'center', verticalConstraint: 'center', referenceWidth: 400, referenceHeight: 300 } },
+        { id: scaleChild, type: 'rectangle', sizing: { width: { mode: 'fixed', value: 100, unit: 'px' }, height: { mode: 'fixed', value: 60, unit: 'px' } }, placement: { positioning: 'free', x: 40, y: 60, horizontalConstraint: 'scale', verticalConstraint: 'scale', referenceWidth: 400, referenceHeight: 300 } },
+      ],
+    })
+    const instance = new UIDocumentInstance(asset)
+    instance.mount(document.createElement('div'))
+
+    expect(instance.getElement(autoFrame)?.style).toMatchObject({
+      width: 'fit-content', minWidth: '120px', maxWidth: '240px', minHeight: '60px', maxHeight: '100px',
+    })
+    expect(instance.getElement(fillChild)?.style).toMatchObject({ width: '100%', height: 'fit-content', flexGrow: '1' })
+    expect(instance.getElement(centerChild)?.style).toMatchObject({
+      left: 'calc(50% + 0px)', top: 'calc(50% + 0px)', transform: 'translate(-50%, -50%)',
+    })
+    expect(instance.getElement(scaleChild)?.style).toMatchObject({
+      left: '10%', top: '20%', width: '25%', height: '20%',
+    })
+  })
+
   it('reports asset references and requires resolver failures before host mutation', () => {
     expect(UI_DOCUMENT_ASSET_DESCRIPTOR.dependencies(uiDocument())).toEqual([
       assetRef(assetId(TEXTURE), TEXTURE_ASSET_TYPE),

@@ -216,4 +216,118 @@ describe('UIDocumentSchema version 2', () => {
     }
     expect(UIDocumentSchema.safeParse(structural).success).toBe(false)
   })
+
+  it('accepts sparse instance overrides and rejects values incompatible with the source widget', () => {
+    const component = id(60)
+    const componentRoot = id(61)
+    const input = id(62)
+    const checkbox = id(63)
+    const radioA = id(64)
+    const radioB = id(65)
+    const select = id(66)
+    const slider = id(67)
+    const progress = id(68)
+    const instance = id(69)
+    const elements = [
+      leaf(61, 'frame', {
+        children: [input, checkbox, radioA, radioB, select, slider, progress],
+        layout: { mode: 'vertical' },
+      }),
+      leaf(62, 'text-input', {
+        value: 'short',
+        maxLength: 5,
+        accessibility: { label: 'Name' },
+      }),
+      leaf(63, 'checkbox', { value: false, label: 'Accept' }),
+      leaf(64, 'radio', {
+        group: 'mode',
+        optionValue: 'a',
+        value: 'a',
+        label: 'Mode A',
+      }),
+      leaf(65, 'radio', {
+        group: 'mode',
+        optionValue: 'b',
+        value: 'a',
+        label: 'Mode B',
+      }),
+      leaf(66, 'select', {
+        value: 'one',
+        accessibility: { label: 'Choice' },
+        options: [{ value: 'one', label: 'One' }],
+      }),
+      leaf(67, 'slider', {
+        min: 0,
+        max: 10,
+        step: 2,
+        value: 4,
+        accessibility: { label: 'Volume' },
+      }),
+      leaf(68, 'progress', {
+        min: 0,
+        max: 100,
+        value: 50,
+        accessibility: { label: 'Loading' },
+      }),
+    ]
+    const candidate = (overrides: Record<string, unknown>) => ({
+      ...baseDocument(),
+      elements: [
+        { ...baseDocument().elements[0], children: [instance] },
+        leaf(69, 'instance', { component, overrides }),
+      ],
+      components: [{ id: component, name: 'Controls', root: componentRoot, elements }],
+    })
+
+    expect(UIDocumentSchema.safeParse(candidate({ [checkbox]: { visible: false } })).success).toBe(true)
+    expect(UIDocumentSchema.safeParse(candidate({
+      [radioA]: { value: 'b' },
+      [radioB]: { value: 'b' },
+    })).success).toBe(true)
+
+    const invalidOverrides = [
+      { [input]: { value: 'too long' } },
+      { [checkbox]: { value: 'true' } },
+      { [radioA]: { value: 'missing' } },
+      { [radioB]: { value: 'b' } },
+      { [select]: { value: 'missing' } },
+      { [slider]: { value: 11 } },
+      { [slider]: { value: 5 } },
+      { [progress]: { value: -1 } },
+    ]
+    for (const overrides of invalidOverrides) {
+      expect(UIDocumentSchema.safeParse(candidate(overrides)).success).toBe(false)
+    }
+  })
+
+  it('rejects instance override event slots and payloads incompatible with the source element', () => {
+    const component = id(60)
+    const componentRoot = id(61)
+    const button = id(62)
+    const checkbox = id(63)
+    const instance = id(64)
+    const candidate = (overrides: Record<string, unknown>) => ({
+      ...baseDocument(),
+      elements: [
+        { ...baseDocument().elements[0], children: [instance] },
+        leaf(64, 'instance', { component, overrides }),
+      ],
+      components: [{
+        id: component,
+        name: 'Actions',
+        root: componentRoot,
+        elements: [
+          leaf(61, 'frame', { children: [button, checkbox], layout: { mode: 'vertical' } }),
+          leaf(62, 'button', { text: 'Run' }),
+          leaf(63, 'checkbox', { value: false, label: 'Accept' }),
+        ],
+      }],
+    })
+
+    expect(UIDocumentSchema.safeParse(candidate({ [button]: { events: { activate: EVENT_NONE } } })).success).toBe(true)
+    expect(UIDocumentSchema.safeParse(candidate({ [button]: { events: { change: EVENT_NONE } } })).success).toBe(false)
+    expect(UIDocumentSchema.safeParse(candidate({ [button]: { events: { activate: EVENT_STRING } } })).success).toBe(false)
+    expect(UIDocumentSchema.safeParse(candidate({ [checkbox]: { events: { change: EVENT_STRING } } })).success).toBe(false)
+    expect(UIDocumentSchema.safeParse(candidate({ [checkbox]: { events: { change: id(999) } } })).success).toBe(false)
+  })
 })

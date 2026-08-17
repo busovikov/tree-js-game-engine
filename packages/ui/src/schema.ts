@@ -641,6 +641,27 @@ const EVENT_PAYLOADS: Partial<Record<UIElement['type'], Partial<Record<string, U
   slider: { input: 'number', change: 'number' },
 }
 
+function validateEventBindings(
+  type: UIElement['type'],
+  bindings: Record<string, UIEventId | undefined>,
+  path: (string | number)[],
+  events: Map<UIEventId, UIEventDefinition>,
+  context: z.RefinementCtx,
+): void {
+  for (const [slot, binding] of Object.entries(bindings)) {
+    if (!binding) continue
+    const expectedPayload = EVENT_PAYLOADS[type]?.[slot]
+    const definition = events.get(binding)
+    if (expectedPayload === undefined) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: [...path, slot], message: `UI event slot ${type}.${slot} is invalid` })
+    } else if (!definition) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: [...path, slot], message: `Unknown UI event: ${binding}` })
+    } else if (expectedPayload !== definition.payload) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: [...path, slot], message: `UI event ${binding} has incompatible payload for ${type}.${slot}` })
+    }
+  }
+}
+
 function validateElementSemantics(
   element: UIElement,
   indexPath: (string | number)[],
@@ -648,23 +669,7 @@ function validateElementSemantics(
   context: z.RefinementCtx,
 ): void {
   const bindings = element.events as Record<string, UIEventId | undefined>
-  for (const [slot, binding] of Object.entries(bindings)) {
-    if (!binding) continue
-    const definition = events.get(binding)
-    if (!definition) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: [...indexPath, 'events', slot],
-        message: `Unknown UI event: ${binding}`,
-      })
-    } else if (EVENT_PAYLOADS[element.type]?.[slot] !== definition.payload) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: [...indexPath, 'events', slot],
-        message: `UI event ${binding} has incompatible payload for ${element.type}.${slot}`,
-      })
-    }
-  }
+  validateEventBindings(element.type, bindings, [...indexPath, 'events'], events, context)
 
   if (element.type === 'image') {
     if (element.decorative ? element.alt !== '' : element.alt.trim() === '') {
@@ -729,6 +734,32 @@ function validateElementSemantics(
       })
     }
   }
+}
+
+function validateOverrideValue(
+  source: UIElement,
+  value: string | number | boolean | null,
+  sourceElements: readonly UIElement[],
+  path: (string | number)[],
+  context: z.RefinementCtx,
+): void {
+  let valid = false
+  if (source.type === 'text-input' || source.type === 'text-area') {
+    valid = typeof value === 'string' && (source.maxLength === undefined || value.length <= source.maxLength)
+  } else if (source.type === 'checkbox' || source.type === 'switch') {
+    valid = typeof value === 'boolean'
+  } else if (source.type === 'radio') {
+    valid = value === null || (typeof value === 'string' && sourceElements.some((candidate) =>
+      candidate.type === 'radio' && candidate.group === source.group && candidate.optionValue === value))
+  } else if (source.type === 'select') {
+    valid = value === null || (typeof value === 'string' && source.options.some((option) => option.value === value))
+  } else if (source.type === 'slider') {
+    valid = typeof value === 'number' && Number.isFinite(value) && value >= source.min && value <= source.max &&
+      Math.abs((value - source.min) / source.step - Math.round((value - source.min) / source.step)) < 1e-9
+  } else if (source.type === 'progress') {
+    valid = value === null || (typeof value === 'number' && Number.isFinite(value) && value >= source.min && value <= source.max)
+  }
+  if (!valid) context.addIssue({ code: z.ZodIssueCode.custom, path, message: `Value override is invalid for ${source.type}` })
 }
 
 function validateRadioGroups(
@@ -826,8 +857,32 @@ export const UIDocumentSchema: z.ZodType<UIDocument, z.ZodTypeDef, unknown> =
               }
               if (override.value !== undefined && !VALUE_TYPES.has(source.type)) {
                 context.addIssue({ code: z.ZodIssueCode.custom, path: [...scope.path, index, 'overrides', sourceId, 'value'], message: `Value override is invalid for ${source.type}` })
+              } else if (override.value !== undefined) {
+                validateOverrideValue(
+                  source,
+                  override.value,
+                  component.elements,
+                  [...scope.path, index, 'overrides', sourceId, 'value'],
+                  context,
+                )
+              }
+              if (override.events) {
+                validateEventBindings(
+                  source.type,
+                  override.events,
+                  [...scope.path, index, 'overrides', sourceId, 'events'],
+                  eventMap,
+                  context,
+                )
               }
             }
+            const effectiveElements = component.elements.map((source) => {
+              const override = element.overrides[source.id]
+              return override?.value !== undefined
+                ? ({ ...source, value: override.value } as UIElement)
+                : source
+            })
+            validateRadioGroups(effectiveElements, [...scope.path, index, 'overrides'], context)
           }
         }
       }

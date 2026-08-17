@@ -42,6 +42,7 @@ export type UIEventListener = (event: UIRuntimeEvent) => void
 interface RuntimeEntry {
   readonly element: UIElement
   readonly node: HTMLElement
+  readonly mountNode: HTMLElement
   readonly key: string
   readonly topLevelId: UIElementId
   readonly instancePath?: readonly UIElementId[]
@@ -146,6 +147,7 @@ export class UIDocumentInstance {
     this.patchState(entry, { visible })
     if (!visible && entry.node.ownerDocument.activeElement === entry.node) entry.node.blur()
     entry.node.hidden = !visible
+    entry.mountNode.hidden = !visible
   }
 
   setEnabled(target: UIRuntimeTarget, enabled: boolean): void {
@@ -192,7 +194,7 @@ export class UIDocumentInstance {
       const node = element.type === 'instance'
         ? this.renderInstance(ownerDocument, element, [element.id], element.id, instanceNodes, entries)
         : this.renderElement(ownerDocument, element, element.id, element.id, undefined, undefined, nodes, instanceNodes, entries)
-      nodes.set(element.id, node)
+      if (element.type === 'instance') nodes.set(element.id, node)
       if (isContainer(element)) for (const child of element.children) node.append(render(child))
       return node
     }
@@ -259,6 +261,7 @@ export class UIDocumentInstance {
     entries: Map<string, RuntimeEntry>,
   ): HTMLElement {
     const node = createNativeNode(ownerDocument, element, this.options.assets)
+    const mountNode = createMountNode(ownerDocument, node, element, key)
     const defaultValue = valueOf(element)
     const radioGroupKey = element.type === 'radio'
       ? `${instancePath?.join('/') ?? 'document'}:${element.group}`
@@ -266,6 +269,7 @@ export class UIDocumentInstance {
     const entry: RuntimeEntry = {
       element,
       node,
+      mountNode,
       key,
       topLevelId,
       ...(instancePath ? { instancePath } : {}),
@@ -287,7 +291,7 @@ export class UIDocumentInstance {
     }
     this.applyEntryBase(entry)
     this.bindEvents(entry)
-    return node
+    return mountNode
   }
 
   private applyEntryBase(entry: RuntimeEntry): void {
@@ -298,6 +302,7 @@ export class UIDocumentInstance {
     this.applyVisualStyle(entry)
     applyAccessibility(node, element)
     node.hidden = !(this.state.get(entry.key)?.visible ?? element.visible)
+    entry.mountNode.hidden = node.hidden
     applyEnabled(node, this.state.get(entry.key)?.enabled ?? element.enabled)
     if (element.id === this.document.root) node.style.position = 'relative'
     this.syncNodeValue(entry)
@@ -599,6 +604,24 @@ function createNativeNode(
   return ownerDocument.createElement('div')
 }
 
+function createMountNode(
+  ownerDocument: Document,
+  node: HTMLElement,
+  element: UIElement,
+  key: string,
+): HTMLElement {
+  if (element.type !== 'checkbox' && element.type !== 'radio' && element.type !== 'switch') return node
+  const label = ownerDocument.createElement('label')
+  const text = ownerDocument.createElement('span')
+  const controlId = `haku-ui-control-${key.replace(/[^a-zA-Z0-9_-]/g, '-')}`
+  node.id = controlId
+  label.htmlFor = controlId
+  label.style.display = 'contents'
+  text.textContent = element.label
+  label.append(node, text)
+  return label
+}
+
 function applyEnabled(node: HTMLElement, enabled: boolean): void {
   if (NATIVE_CONTROL_TAGS.has(node.tagName)) (node as HTMLButtonElement).disabled = !enabled
   else node.inert = !enabled
@@ -687,7 +710,11 @@ function applyConstraint(
   } else if (constraint === 'center') {
     const delta = start + fixed / 2 - reference / 2
     style[startProperty] = `calc(50% + ${delta}px)`
-    style.transform = horizontal ? 'translateX(-50%)' : 'translateY(-50%)'
+    style.transform = horizontal
+      ? 'translateX(-50%)'
+      : style.transform === 'translateX(-50%)'
+        ? 'translate(-50%, -50%)'
+        : 'translateY(-50%)'
   } else {
     style[startProperty] = `${(start / reference) * 100}%`
     if (fixed > 0) style[sizeProperty] = `${(fixed / reference) * 100}%`
