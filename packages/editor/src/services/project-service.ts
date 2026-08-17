@@ -59,16 +59,8 @@ import { loadPersonalizedProjectTemplate } from './project-template.js'
 import { PLAYGROUND_PROJECT } from './playground-demos.js'
 import { GRAPH_ASSET_TYPE, GraphAssetSchema, type GraphAsset } from '@haku/graph'
 import type { BrowserProjectTrustMode } from '@haku/build'
-import {
-  UIDocumentSchema,
-  UI_DOCUMENT_ASSET_TYPE,
-  type UIDocument,
-} from '@haku/ui'
-import {
-  AUDIO_CLIP_ASSET_TYPE,
-  audioClip,
-  type AudioClip,
-} from '@haku/audio'
+import { UIDocumentSchema, UI_DOCUMENT_ASSET_TYPE, type UIDocument } from '@haku/ui'
+import { AUDIO_CLIP_ASSET_TYPE, audioClip, type AudioClip } from '@haku/audio'
 import {
   BrowserProjectWorkspace,
   type BrowserProjectDiskFile,
@@ -79,6 +71,12 @@ export interface ProjectFileEntry {
   path: string
   name: string
   isDirectory: boolean
+}
+
+export interface ProjectTextureAsset {
+  readonly name: string
+  readonly path: string
+  readonly reference: AssetRef
 }
 
 type ProjectStorage = 'memory' | 'native' | 'playground' | 'dev-target'
@@ -1042,12 +1040,21 @@ export class ProjectService {
     return new ProjectAssetIndex(this.manifest).path(reference)
   }
 
+  listTextureAssets(): ProjectTextureAsset[] {
+    if (!this.manifest) return []
+    return this.manifest.assets
+      .filter((entry) => entry.type === TEXTURE_ASSET_TYPE)
+      .map((entry) => ({
+        name: entry.path.split('/').at(-1) ?? entry.path,
+        path: entry.path,
+        reference: assetRef(entry.id, TEXTURE_ASSET_TYPE),
+      }))
+      .sort((a, b) => a.path.localeCompare(b.path))
+  }
+
   async loadAudioClipAsset(reference: AssetRef): Promise<AudioClip> {
     if (!this.manifest) throw new Error('No project manifest is open')
-    const entry = new ProjectAssetIndex(this.manifest).require(
-      reference,
-      AUDIO_CLIP_ASSET_TYPE,
-    )
+    const entry = new ProjectAssetIndex(this.manifest).require(reference, AUDIO_CLIP_ASSET_TYPE)
     const projectPath = `${this.manifest.assetsDir}/${entry.path}`.replace(/\/+/g, '/')
     const bytes = await this.readProjectBytes(projectPath)
     return audioClip(entry.id, bytes)
@@ -1641,14 +1648,9 @@ export class ProjectService {
     await this.persistManifest()
   }
 
-  private collectProjectAssetReferences(
-    document: SceneDocument | PrefabDefinition,
-  ): AssetRef[] {
+  private collectProjectAssetReferences(document: SceneDocument | PrefabDefinition): AssetRef[] {
     const references = new Map(
-      collectAssetReferences(document).map((reference) => [
-        reference.$ref,
-        reference,
-      ]),
+      collectAssetReferences(document).map((reference) => [reference.$ref, reference]),
     )
     const visit = (candidate: unknown): void => {
       if (Array.isArray(candidate)) {
@@ -1662,10 +1664,7 @@ export class ProjectService {
           if (typeof component !== 'object' || component === null) continue
           const type = (component as { type?: unknown }).type
           if (typeof type === 'string' && this.customComponentTypes.has(type)) {
-            const reference = assetRef(
-              assetId(type),
-              CUSTOM_COMPONENT_TYPE_ASSET_TYPE,
-            )
+            const reference = assetRef(assetId(type), CUSTOM_COMPONENT_TYPE_ASSET_TYPE)
             references.set(reference.$ref, reference)
           }
         }
@@ -1673,9 +1672,7 @@ export class ProjectService {
       for (const value of Object.values(record)) visit(value)
     }
     visit(document)
-    return [...references.values()].sort((left, right) =>
-      left.$ref.localeCompare(right.$ref),
-    )
+    return [...references.values()].sort((left, right) => left.$ref.localeCompare(right.$ref))
   }
 
   private resolveEntryScenePath(manifest: ProjectManifest): string {

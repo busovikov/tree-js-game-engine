@@ -91,18 +91,15 @@ describe('ProjectService disk saving', () => {
         ],
       }),
     )
-    browserProjectStore.registerFile(
-      'public/assets/components/mover.component.json',
-      {
-        content: JSON.stringify({
-          schemaVersion: 1,
-          id: componentTypeId,
-          name: 'Mover',
-          version: 1,
-          fields: [{ name: 'speed', type: 'number', default: 4 }],
-        }),
-      },
-    )
+    browserProjectStore.registerFile('public/assets/components/mover.component.json', {
+      content: JSON.stringify({
+        schemaVersion: 1,
+        id: componentTypeId,
+        name: 'Mover',
+        version: 1,
+        fields: [{ name: 'speed', type: 'number', default: 4 }],
+      }),
+    })
     browserProjectStore.registerFile('public/assets/scenes/main.scene.json', {
       content: JSON.stringify({
         schemaVersion: 1,
@@ -118,14 +115,9 @@ describe('ProjectService disk saving', () => {
       }),
     })
 
-    const loaded = await service.loadScene(
-      'public/assets/scenes/main.scene.json',
-    )
+    const loaded = await service.loadScene('public/assets/scenes/main.scene.json')
     const entity = loaded.world.getAllEntities()[0]!
-    const definition = loaded.world.getComponentDefinition(
-      entity,
-      componentTypeId,
-    )!
+    const definition = loaded.world.getComponentDefinition(entity, componentTypeId)!
 
     expect(definition.name).toBe('Mover')
     expect(loaded.world.getComponent(entity, definition)).toEqual({ speed: 9 })
@@ -194,9 +186,7 @@ describe('ProjectService disk saving', () => {
     )
     expect(
       JSON.parse(
-        await browserProjectStore.readText(
-          'public/assets/components/mover.component.json',
-        ),
+        await browserProjectStore.readText('public/assets/components/mover.component.json'),
       ),
     ).toEqual(asset)
     await expect(
@@ -272,10 +262,39 @@ describe('ProjectService disk saving', () => {
       ]),
     )
     expect(
-      validateProjectManifest(
-        JSON.parse(await browserProjectStore.readText('haku.project.json')),
-      ),
+      validateProjectManifest(JSON.parse(await browserProjectStore.readText('haku.project.json'))),
     ).toEqual(service.getManifest())
+  })
+
+  it('lists project texture assets as typed picker choices and returns an empty state', () => {
+    const empty = new ProjectService()
+    expect(empty.listTextureAssets()).toEqual([])
+
+    const service = new ProjectService()
+    const sceneAssetId = '10000000-0000-4000-8000-000000000051'
+    const textureAssetId = '10000000-0000-4000-8000-000000000052'
+    service.openFromManifest(
+      'texture-picker',
+      validateProjectManifest({
+        schemaVersion: 1,
+        name: 'Texture picker',
+        entryScene: assetRef(sceneAssetId, SCENE_ASSET_TYPE),
+        assetsDir: 'public/assets',
+        scriptsDir: 'src',
+        assets: [
+          { id: sceneAssetId, type: SCENE_ASSET_TYPE, path: 'scenes/main.scene.json' },
+          { id: textureAssetId, type: TEXTURE_ASSET_TYPE, path: 'textures/logo.png' },
+        ],
+      }),
+    )
+
+    expect(service.listTextureAssets()).toEqual([
+      {
+        name: 'logo.png',
+        path: 'textures/logo.png',
+        reference: assetRef(textureAssetId, TEXTURE_ASSET_TYPE),
+      },
+    ])
   })
 
   it('retains visual component type definitions in scene and prefab dependency closures', async () => {
@@ -300,16 +319,13 @@ describe('ProjectService disk saving', () => {
         ],
       }),
     )
-    await service.createCustomComponentTypeAsset(
-      'public/assets/components/mover.component.json',
-      {
-        schemaVersion: 1,
-        id: componentTypeId,
-        name: 'Mover',
-        version: 1,
-        fields: [{ name: 'speed', type: 'number', default: 4 }],
-      },
-    )
+    await service.createCustomComponentTypeAsset('public/assets/components/mover.component.json', {
+      schemaVersion: 1,
+      id: componentTypeId,
+      name: 'Mover',
+      version: 1,
+      fields: [{ name: 'speed', type: 'number', default: 4 }],
+    })
     browserProjectStore.registerFile('public/assets/scenes/main.scene.json', {
       content: JSON.stringify({
         schemaVersion: 1,
@@ -326,11 +342,7 @@ describe('ProjectService disk saving', () => {
     })
 
     const loaded = await service.loadScene('public/assets/scenes/main.scene.json')
-    await service.saveScene(
-      'public/assets/scenes/main.scene.json',
-      loaded.world,
-      loaded.document,
-    )
+    await service.saveScene('public/assets/scenes/main.scene.json', loaded.world, loaded.document)
     const prefabRef = await service.createPrefabAsset(
       {
         entities: [
@@ -346,22 +358,19 @@ describe('ProjectService disk saving', () => {
     )
 
     const manifest = service.getManifest()!
-    const componentTypeRef = assetRef(
-      componentTypeId,
-      CUSTOM_COMPONENT_TYPE_ASSET_TYPE,
+    const componentTypeRef = assetRef(componentTypeId, CUSTOM_COMPONENT_TYPE_ASSET_TYPE)
+    expect(manifest.assets.find((entry) => entry.id === sceneAssetId)?.dependencies).toContainEqual(
+      componentTypeRef,
     )
-    expect(
-      manifest.assets.find((entry) => entry.id === sceneAssetId)?.dependencies,
-    ).toContainEqual(componentTypeRef)
     expect(
       manifest.assets.find((entry) => entry.id === prefabRef.$ref)?.dependencies,
     ).toContainEqual(componentTypeRef)
-    expect(
-      dependencyClosure(manifest, [manifest.entryScene]).map((entry) => entry.id),
-    ).toContain(componentTypeId)
-    expect(
-      dependencyClosure(manifest, [prefabRef]).map((entry) => entry.id),
-    ).toContain(componentTypeId)
+    expect(dependencyClosure(manifest, [manifest.entryScene]).map((entry) => entry.id)).toContain(
+      componentTypeId,
+    )
+    expect(dependencyClosure(manifest, [prefabRef]).map((entry) => entry.id)).toContain(
+      componentTypeId,
+    )
   })
 
   it('writes playground editor settings through the project file endpoint', async () => {
@@ -489,7 +498,7 @@ describe('ProjectService disk saving', () => {
     )
     const clip = await service.loadAudioClipAsset(reference)
 
-    expect([...clip.bytes ?? []]).toEqual([82, 73, 70, 70])
+    expect([...(clip.bytes ?? [])]).toEqual([82, 73, 70, 70])
     expect(service.getManifest()?.assets).toContainEqual(
       expect.objectContaining({
         id: reference.$ref,
@@ -664,22 +673,20 @@ describe('ProjectService browser code workspace', () => {
   it('writes dev-target code workspace creates and saves through to disk', async () => {
     let diskText = ''
     let lastModified = 0
-    const fetchMock = vi.fn().mockImplementation(
-      async (_url: string, init?: RequestInit) => {
-        if (init?.method === 'PUT') {
-          diskText = String(init.body)
-          lastModified += 1
-          return new Response(null, { status: 204 })
-        }
-        return new Response(diskText, {
-          status: 200,
-          headers: {
-            'X-Haku-Last-Modified': String(lastModified),
-            'X-Haku-File-Size': String(new Blob([diskText]).size),
-          },
-        })
-      },
-    )
+    const fetchMock = vi.fn().mockImplementation(async (_url: string, init?: RequestInit) => {
+      if (init?.method === 'PUT') {
+        diskText = String(init.body)
+        lastModified += 1
+        return new Response(null, { status: 204 })
+      }
+      return new Response(diskText, {
+        status: 200,
+        headers: {
+          'X-Haku-Last-Modified': String(lastModified),
+          'X-Haku-File-Size': String(new Blob([diskText]).size),
+        },
+      })
+    })
     vi.stubGlobal('fetch', fetchMock)
     const service = new ProjectService()
     service.openFromManifest(

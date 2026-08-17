@@ -147,18 +147,41 @@ describe('UIAuthoringSession', () => {
           children: [TEXT, '13000000-0000-4000-8000-000000000004'],
           layout: { mode: 'free', padding: {} },
         },
-        { id: TEXT, type: 'text', text: 'A', placement: { positioning: 'free', x: 0, y: 0, horizontalConstraint: 'left', verticalConstraint: 'top', referenceWidth: 1280, referenceHeight: 720 } },
-        { id: '13000000-0000-4000-8000-000000000004', type: 'text', text: 'B', placement: { positioning: 'free', x: 10, y: 10, horizontalConstraint: 'left', verticalConstraint: 'top', referenceWidth: 1280, referenceHeight: 720 } },
+        {
+          id: TEXT,
+          type: 'text',
+          text: 'A',
+          placement: {
+            positioning: 'free',
+            x: 0,
+            y: 0,
+            horizontalConstraint: 'left',
+            verticalConstraint: 'top',
+            referenceWidth: 1280,
+            referenceHeight: 720,
+          },
+        },
+        {
+          id: '13000000-0000-4000-8000-000000000004',
+          type: 'text',
+          text: 'B',
+          placement: {
+            positioning: 'free',
+            x: 10,
+            y: 10,
+            horizontalConstraint: 'left',
+            verticalConstraint: 'top',
+            referenceWidth: 1280,
+            referenceHeight: 720,
+          },
+        },
       ],
     })
 
     session.select(TEXT)
     session.toggleSelection('13000000-0000-4000-8000-000000000004')
 
-    expect(session.selectedElementIds).toEqual([
-      TEXT,
-      '13000000-0000-4000-8000-000000000004',
-    ])
+    expect(session.selectedElementIds).toEqual([TEXT, '13000000-0000-4000-8000-000000000004'])
     expect(session.selectedElementId).toBe('13000000-0000-4000-8000-000000000004')
   })
 
@@ -182,11 +205,106 @@ describe('UIAuthoringSession', () => {
     expect(session.selectedElementIds).toEqual([root])
   })
 
+  it('commits a hierarchy move once and restores exact order and placement on undo', () => {
+    const commands = new CommandBus()
+    const session = new UIAuthoringSession(
+      commands,
+      { readText: async () => '', writeText: async () => undefined },
+      ids(),
+    )
+    const base = createEmptyUIDocument('HUD', DOCUMENT, ROOT)
+    session.openAsset('assets/ui/hud.ui.json', {
+      ...base,
+      elements: [
+        {
+          ...base.elements[0],
+          layout: { mode: 'vertical' },
+          children: [TEXT, '13000000-0000-4000-8000-000000000004'],
+        },
+        { id: TEXT, type: 'text', text: 'A' },
+        { id: '13000000-0000-4000-8000-000000000004', type: 'text', text: 'B' },
+      ],
+    })
+    const before = structuredClone(session.asset)
+    const state = commands.getStateId()
+
+    session.moveElements([TEXT], {
+      targetId: '13000000-0000-4000-8000-000000000004' as never,
+      position: 'after',
+    })
+
+    expect(commands.getStateId()).not.toBe(state)
+    expect(session.hierarchy()[0]?.children.map((item) => item.id)).toEqual([
+      '13000000-0000-4000-8000-000000000004',
+      TEXT,
+    ])
+    commands.undo()
+    expect(session.asset).toEqual(before)
+  })
+
+  it('rejects invalid hierarchy operations without dirtying or entering command history', () => {
+    const commands = new CommandBus()
+    const session = new UIAuthoringSession(
+      commands,
+      { readText: async () => '', writeText: async () => undefined },
+      ids(),
+    )
+    session.openAsset('assets/ui/hud.ui.json', createEmptyUIDocument('HUD', DOCUMENT, ROOT))
+    const state = commands.getStateId()
+
+    expect(() =>
+      session.moveElements([ROOT], { targetId: ROOT as never, position: 'inside' }),
+    ).toThrow('root')
+    expect(() => session.renameElement(ROOT, '   ')).toThrow('cannot be empty')
+    expect(commands.getStateId()).toBe(state)
+    expect(session.isDirty).toBe(false)
+  })
+
+  it('duplicates and deletes multiple subtrees as single undoable operations with fresh IDs', () => {
+    const commands = new CommandBus()
+    let sequence = 10
+    const session = new UIAuthoringSession(
+      commands,
+      { readText: async () => '', writeText: async () => undefined },
+      () => `13000000-0000-4000-8000-${String(sequence++).padStart(12, '0')}`,
+    )
+    const base = createEmptyUIDocument('HUD', DOCUMENT, ROOT)
+    session.openAsset('assets/ui/hud.ui.json', {
+      ...base,
+      elements: [
+        { ...base.elements[0], layout: { mode: 'vertical' }, children: [TEXT] },
+        {
+          id: TEXT,
+          type: 'frame',
+          layout: { mode: 'vertical' },
+          children: ['13000000-0000-4000-8000-000000000004'],
+        },
+        { id: '13000000-0000-4000-8000-000000000004', type: 'text', text: 'Nested' },
+      ],
+    })
+
+    const duplicated = session.duplicateElements([TEXT])
+    expect(duplicated).toHaveLength(1)
+    expect(session.asset?.elements).toHaveLength(5)
+    commands.undo()
+    expect(session.asset?.elements).toHaveLength(3)
+
+    session.removeElements([TEXT])
+    expect(session.asset?.elements).toHaveLength(1)
+    commands.undo()
+    expect(session.asset?.elements).toHaveLength(3)
+  })
+
   it('keeps editor lock state outside serialized assets and excludes it after replacement', async () => {
     let saved = ''
     const session = new UIAuthoringSession(
       new CommandBus(),
-      { readText: async () => saved, writeText: async (_path, value) => { saved = value } },
+      {
+        readText: async () => saved,
+        writeText: async (_path, value) => {
+          saved = value
+        },
+      },
       ids(),
     )
     session.openAsset('assets/ui/hud.ui.json', createEmptyUIDocument('HUD', DOCUMENT, ROOT))

@@ -2,6 +2,14 @@ import { UIDocumentSchema, type UIDocument, type UIElement, type UIElementId } f
 import { assetId, type AssetRef } from '@haku/schema'
 import type { Command, CommandBus } from '../commands/command-bus.js'
 import { reduceUISelection } from './ui-canvas-selection.js'
+import {
+  duplicateUISubtrees,
+  moveUIElements,
+  resolveUICreationTarget,
+  type UICreationTargetOptions,
+  type UIHierarchyBounds,
+  type UIHierarchyDropTarget,
+} from './ui-hierarchy-commands.js'
 
 export const UI_DESKTOP_VIEWPORTS = {
   'desktop-1280x720': {
@@ -145,6 +153,10 @@ export class UIAuthoringSession {
     return this.selection
   }
 
+  get editorLockedElementIds(): ReadonlySet<UIElementId> {
+    return new Set(this.editorLockedIds)
+  }
+
   get viewport(): UIPreviewViewport {
     return this.viewportId === 'custom'
       ? this.customViewport
@@ -163,7 +175,14 @@ export class UIAuthoringSession {
   create(path: string, name: string): UIDocument {
     const asset = createEmptyUIDocument(name, this.uuid(), this.uuid())
     this.commands.execute(
-      new ReplaceUIDocumentCommand(this, this.currentAsset, this.selection, asset, [asset.root], path),
+      new ReplaceUIDocumentCommand(
+        this,
+        this.currentAsset,
+        this.selection,
+        asset,
+        [asset.root],
+        path,
+      ),
     )
     return asset
   }
@@ -201,7 +220,11 @@ export class UIAuthoringSession {
   addElement(
     parentId: UIElementId | string,
     type: UIElement['type'],
-    options: { readonly source?: AssetRef } = {},
+    options: {
+      readonly source?: AssetRef
+      readonly index?: number
+      readonly point?: { readonly x: number; readonly y: number }
+    } = {},
   ): UIElementId {
     const asset = this.requireAsset()
     const parent = asset.elements.find((element) => element.id === parentId)
@@ -210,7 +233,27 @@ export class UIAuthoringSession {
     }
     const id = this.uuid() as UIElementId
     const name = `${type[0]!.toUpperCase()}${type.slice(1)}`
-    const common = { id, type, name }
+    const width =
+      parent.sizing.width.mode === 'fixed' && parent.sizing.width.unit === 'px'
+        ? parent.sizing.width.value
+        : 1
+    const height =
+      parent.sizing.height.mode === 'fixed' && parent.sizing.height.unit === 'px'
+        ? parent.sizing.height.value
+        : 1
+    const placement =
+      parent.layout.mode === 'free'
+        ? {
+            positioning: 'free' as const,
+            x: options.point?.x ?? parent.layout.padding.left,
+            y: options.point?.y ?? parent.layout.padding.top,
+            horizontalConstraint: 'left' as const,
+            verticalConstraint: 'top' as const,
+            referenceWidth: Math.max(1, width),
+            referenceHeight: Math.max(1, height),
+          }
+        : { positioning: 'flow' as const }
+    const common = { id, type, name, placement }
     let element: unknown
     if (type === 'frame') element = { ...common, children: [], layout: { mode: 'vertical' } }
     else if (type === 'text') element = { ...common, text: '' }
@@ -244,18 +287,88 @@ export class UIAuthoringSession {
     else if (type === 'list')
       element = { ...common, children: [], ordered: false, layout: { mode: 'vertical' } }
     else throw new Error('Component instances require a component authoring command')
-    this.replaceAsset({
-      ...asset,
-      elements: [
-        ...asset.elements.map((candidate) =>
-          candidate.id === parent.id && 'children' in candidate
-            ? { ...candidate, children: [...candidate.children, id] }
-            : candidate,
-        ),
-        element,
-      ],
-    }, [id])
+    const insertionIndex = Math.max(
+      0,
+      Math.min(Math.trunc(options.index ?? parent.children.length), parent.children.length),
+    )
+    this.replaceAsset(
+      {
+        ...asset,
+        elements: [
+          ...asset.elements.map((candidate) =>
+            candidate.id === parent.id && 'children' in candidate
+              ? {
+                  ...candidate,
+                  children: [
+                    ...candidate.children.slice(0, insertionIndex),
+                    id,
+                    ...candidate.children.slice(insertionIndex),
+                  ],
+                }
+              : candidate,
+          ),
+          element,
+        ],
+      },
+      [id],
+    )
     return id
+  }
+
+  createElement(
+    type: Exclude<UIElement['type'], 'instance'>,
+    options: UICreationTargetOptions & {
+      readonly source?: AssetRef
+      readonly point?: { readonly x: number; readonly y: number }
+    } = {},
+  ): UIElementId {
+    const asset = this.requireAsset()
+    const target = resolveUICreationTarget(asset, {
+      ...options,
+      selectedId: options.selectedId ?? this.selectedElementId,
+      lockedIds: this.editorLockedIds,
+    })
+    return this.addElement(target.parentId, type, {
+      index: target.index,
+      ...(options.source ? { source: options.source } : {}),
+      ...(options.point ? { point: options.point } : {}),
+    })
+  }
+
+  moveElements(
+    ids: readonly (UIElementId | string)[],
+    target: UIHierarchyDropTarget,
+    bounds?: UIHierarchyBounds,
+  ): void {
+    const asset = this.requireAsset()
+    const typedIds = ids.map((id) => id as UIElementId)
+    const candidate = moveUIElements(asset, typedIds, target, {
+      lockedIds: this.editorLockedIds,
+      ...(bounds ? { bounds } : {}),
+    })
+    this.replaceAsset(candidate, typedIds)
+  }
+
+  duplicateElements(
+    ids: readonly (UIElementId | string)[] = this.selection,
+  ): readonly UIElementId[] {
+    const result = duplicateUISubtrees(
+      this.requireAsset(),
+      ids.map((id) => id as UIElementId),
+      this.uuid,
+    )
+    this.replaceAsset(result.asset, result.ids)
+    return result.ids
+  }
+
+  renameElement(id: UIElementId | string, name: string): void {
+    const next = name.trim()
+    if (!next) throw new Error('UI layer name cannot be empty')
+    this.updateElement(id, { name: next })
+  }
+
+  setElementVisible(id: UIElementId | string, visible: boolean): void {
+    this.updateElement(id, { visible })
   }
 
   updateElement(id: UIElementId | string, patch: Record<string, unknown>): void {
@@ -272,8 +385,12 @@ export class UIAuthoringSession {
   }
 
   removeElement(id: UIElementId | string): void {
+    this.removeElements([id])
+  }
+
+  removeElements(ids: readonly (UIElementId | string)[]): void {
     const asset = this.requireAsset()
-    if (id === asset.root) throw new Error('Cannot remove the UI root')
+    if (ids.some((id) => id === asset.root)) throw new Error('Cannot remove the UI root')
     const remove = new Set<string>()
     const visit = (elementId: string): void => {
       if (remove.has(elementId)) return
@@ -283,20 +400,28 @@ export class UIAuthoringSession {
         for (const child of element.children) visit(child)
       }
     }
-    visit(id)
-    if (!asset.elements.some((element) => element.id === id)) {
-      throw new Error(`Unknown UI element: ${id}`)
+    for (const id of ids) {
+      if (!asset.elements.some((element) => element.id === id)) {
+        throw new Error(`Unknown UI element: ${id}`)
+      }
+      if (this.editorLockedIds.has(id as UIElementId)) {
+        throw new Error(`Cannot remove locked UI layer: ${id}`)
+      }
+      visit(id)
     }
-    this.replaceAsset({
-      ...asset,
-      elements: asset.elements
-        .filter((element) => !remove.has(element.id))
-        .map((element) =>
-          'children' in element
-            ? { ...element, children: element.children.filter((child) => !remove.has(child)) }
-            : element,
-        ),
-    }, [asset.root])
+    this.replaceAsset(
+      {
+        ...asset,
+        elements: asset.elements
+          .filter((element) => !remove.has(element.id))
+          .map((element) =>
+            'children' in element
+              ? { ...element, children: element.children.filter((child) => !remove.has(child)) }
+              : element,
+          ),
+      },
+      [asset.root],
+    )
   }
 
   select(id: UIElementId | string | null): void {
@@ -387,7 +512,11 @@ export class UIAuthoringSession {
     this.notify()
   }
 
-  apply(asset: UIDocument | null, path: string, selection: readonly UIElementId[] = this.selection): void {
+  apply(
+    asset: UIDocument | null,
+    path: string,
+    selection: readonly UIElementId[] = this.selection,
+  ): void {
     this.currentAsset = asset ? cloneAsset(asset) : null
     this.currentPath = asset ? path : null
     if (asset) {
