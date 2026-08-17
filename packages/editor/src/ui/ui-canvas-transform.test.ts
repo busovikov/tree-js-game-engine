@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { fitCanvasView, resizeCanvasView, setCanvasZoom } from './ui-canvas-transform.js'
+import {
+  canvasPointToDocument,
+  fitCanvasBounds,
+  fitCanvasView,
+  panCanvasView,
+  resizeCanvasView,
+  setCanvasZoom,
+} from './ui-canvas-transform.js'
 
 describe('UI canvas transform', () => {
   it('centers and fits the complete root with bounded zoom', () => {
@@ -28,5 +35,24 @@ describe('UI canvas transform', () => {
     )
 
     expect(resized).toEqual({ scale: 0.5, x: 200, y: 0 })
+  })
+
+  it('pans in canvas pixels and converts pointer coordinates to document space', () => {
+    const view = panCanvasView({ scale: 2, x: 100, y: 50 }, { x: -20, y: 30 })
+
+    expect(view).toEqual({ scale: 2, x: 80, y: 80 })
+    expect(canvasPointToDocument({ x: 280, y: 180 }, view)).toEqual({ x: 100, y: 50 })
+  })
+
+  it('fits an arbitrary selection bounds under the cursor-independent canvas padding', () => {
+    const fitted = fitCanvasBounds(
+      { width: 1000, height: 800 },
+      { x: 400, y: 200, width: 200, height: 100 },
+      40,
+    )
+
+    expect(fitted.scale).toBeCloseTo(4.6)
+    expect(fitted.x).toBeCloseTo(-1800)
+    expect(fitted.y).toBeCloseTo(-750)
   })
 })

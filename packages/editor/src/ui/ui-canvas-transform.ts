@@ -17,6 +17,8 @@ export interface UICanvasView {
   readonly y: number
 }
 
+export interface UICanvasBounds extends UICanvasSize, UICanvasPoint {}
+
 function clampScale(scale: number): number {
   return Math.min(UI_CANVAS_MAX_SCALE, Math.max(UI_CANVAS_MIN_SCALE, scale))
 }
@@ -33,6 +35,19 @@ export function fitCanvasView(
     scale,
     x: (canvas.width - root.width * scale) / 2,
     y: (canvas.height - root.height * scale) / 2,
+  }
+}
+
+export function fitCanvasBounds(
+  canvas: UICanvasSize,
+  bounds: UICanvasBounds,
+  padding = 32,
+): UICanvasView {
+  const fitted = fitCanvasView(canvas, bounds, padding)
+  return {
+    scale: fitted.scale,
+    x: fitted.x - bounds.x * fitted.scale,
+    y: fitted.y - bounds.y * fitted.scale,
   }
 }
 
@@ -60,4 +75,12 @@ export function resizeCanvasView(
     x: view.x + (next.width - previous.width) / 2,
     y: view.y + (next.height - previous.height) / 2,
   }
+}
+
+export function panCanvasView(view: UICanvasView, delta: UICanvasPoint): UICanvasView {
+  return { ...view, x: view.x + delta.x, y: view.y + delta.y }
+}
+
+export function canvasPointToDocument(point: UICanvasPoint, view: UICanvasView): UICanvasPoint {
+  return { x: (point.x - view.x) / view.scale, y: (point.y - view.y) / view.scale }
 }

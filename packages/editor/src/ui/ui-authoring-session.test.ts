@@ -133,6 +133,71 @@ describe('UIAuthoringSession', () => {
     expect(session.asset).not.toHaveProperty('selectedElementId')
   })
 
+  it('shares multi-selection and rejects a toggle without a common parent', () => {
+    const session = new UIAuthoringSession(
+      new CommandBus(),
+      { readText: async () => '', writeText: async () => undefined },
+      ids(),
+    )
+    session.openAsset('assets/ui/hud.ui.json', {
+      ...createEmptyUIDocument('HUD', DOCUMENT, ROOT),
+      elements: [
+        {
+          ...createEmptyUIDocument('HUD', DOCUMENT, ROOT).elements[0],
+          children: [TEXT, '13000000-0000-4000-8000-000000000004'],
+          layout: { mode: 'free', padding: {} },
+        },
+        { id: TEXT, type: 'text', text: 'A', placement: { positioning: 'free', x: 0, y: 0, horizontalConstraint: 'left', verticalConstraint: 'top', referenceWidth: 1280, referenceHeight: 720 } },
+        { id: '13000000-0000-4000-8000-000000000004', type: 'text', text: 'B', placement: { positioning: 'free', x: 10, y: 10, horizontalConstraint: 'left', verticalConstraint: 'top', referenceWidth: 1280, referenceHeight: 720 } },
+      ],
+    })
+
+    session.select(TEXT)
+    session.toggleSelection('13000000-0000-4000-8000-000000000004')
+
+    expect(session.selectedElementIds).toEqual([
+      TEXT,
+      '13000000-0000-4000-8000-000000000004',
+    ])
+    expect(session.selectedElementId).toBe('13000000-0000-4000-8000-000000000004')
+  })
+
+  it('restores selection with a deleted subtree across undo and redo', () => {
+    const commands = new CommandBus()
+    const session = new UIAuthoringSession(
+      commands,
+      { readText: async () => '', writeText: async () => undefined },
+      ids(),
+    )
+    session.create('assets/ui/hud.ui.json', 'HUD')
+    const root = session.asset!.root
+    const text = session.addElement(root, 'text')
+    session.select(text)
+
+    session.removeElement(text)
+    expect(session.selectedElementIds).toEqual([root])
+    commands.undo()
+    expect(session.selectedElementIds).toEqual([text])
+    commands.redo()
+    expect(session.selectedElementIds).toEqual([root])
+  })
+
+  it('keeps editor lock state outside serialized assets and excludes it after replacement', async () => {
+    let saved = ''
+    const session = new UIAuthoringSession(
+      new CommandBus(),
+      { readText: async () => saved, writeText: async (_path, value) => { saved = value } },
+      ids(),
+    )
+    session.openAsset('assets/ui/hud.ui.json', createEmptyUIDocument('HUD', DOCUMENT, ROOT))
+    session.setEditorLocked(ROOT, true)
+    await session.save()
+
+    expect(session.isEditorLocked(ROOT)).toBe(true)
+    expect(JSON.parse(saved)).not.toHaveProperty('editorLocked')
+    expect(JSON.parse(saved).elements[0]).not.toHaveProperty('editorLocked')
+  })
+
   it('replaces the full strict asset atomically and restores it on undo', () => {
     const commands = new CommandBus()
     const session = new UIAuthoringSession(

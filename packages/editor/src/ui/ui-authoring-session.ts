@@ -1,6 +1,7 @@
 import { UIDocumentSchema, type UIDocument, type UIElement, type UIElementId } from '@haku/ui'
 import { assetId, type AssetRef } from '@haku/schema'
 import type { Command, CommandBus } from '../commands/command-bus.js'
+import { reduceUISelection } from './ui-canvas-selection.js'
 
 export const UI_DESKTOP_VIEWPORTS = {
   'desktop-1280x720': {
@@ -87,16 +88,18 @@ class ReplaceUIDocumentCommand implements Command {
   constructor(
     private readonly session: UIAuthoringSession,
     private readonly before: UIDocument | null,
+    private readonly beforeSelection: readonly UIElementId[],
     private readonly after: UIDocument,
+    private readonly afterSelection: readonly UIElementId[],
     private readonly path: string,
   ) {}
 
   execute(): void {
-    this.session.apply(this.after, this.path)
+    this.session.apply(this.after, this.path, this.afterSelection)
   }
 
   undo(): void {
-    this.session.apply(this.before, this.path)
+    this.session.apply(this.before, this.path, this.beforeSelection)
   }
 }
 
@@ -104,7 +107,8 @@ export class UIAuthoringSession {
   private currentAsset: UIDocument | null = null
   private currentPath: string | null = null
   private savedAssetJson: string | null = null
-  private selectedId: UIElementId | null = null
+  private selection: UIElementId[] = []
+  private editorLockedIds = new Set<UIElementId>()
   private listeners = new Set<UIListener>()
   private viewportId: UIDesktopViewportId | 'custom' = 'desktop-1280x720'
   private customViewport: UIPreviewViewport = {
@@ -134,7 +138,11 @@ export class UIAuthoringSession {
   }
 
   get selectedElementId(): UIElementId | null {
-    return this.selectedId
+    return this.selection.at(-1) ?? null
+  }
+
+  get selectedElementIds(): readonly UIElementId[] {
+    return this.selection
   }
 
   get viewport(): UIPreviewViewport {
@@ -154,8 +162,9 @@ export class UIAuthoringSession {
 
   create(path: string, name: string): UIDocument {
     const asset = createEmptyUIDocument(name, this.uuid(), this.uuid())
-    this.commands.execute(new ReplaceUIDocumentCommand(this, this.currentAsset, asset, path))
-    this.select(asset.root)
+    this.commands.execute(
+      new ReplaceUIDocumentCommand(this, this.currentAsset, this.selection, asset, [asset.root], path),
+    )
     return asset
   }
 
@@ -169,16 +178,24 @@ export class UIAuthoringSession {
     this.currentAsset = cloneAsset(asset)
     this.currentPath = path
     this.savedAssetJson = serialized(asset)
-    this.selectedId = asset.root
+    this.selection = [asset.root]
     this.notify()
     return asset
   }
 
-  replaceAsset(input: unknown): void {
+  replaceAsset(input: unknown, selectionOverride?: readonly (UIElementId | string)[]): void {
     const asset = this.requireAsset()
     const path = this.requirePath()
     const next = UIDocumentSchema.parse(input)
-    this.commands.execute(new ReplaceUIDocumentCommand(this, asset, next, path))
+    const validIds = new Set(next.elements.map((element) => element.id))
+    const nextSelection = reduceUISelection(
+      selectionOverride ?? this.selection,
+      { type: 'reconcile', validIds, fallback: next.root },
+      parentMap(next),
+    ) as UIElementId[]
+    this.commands.execute(
+      new ReplaceUIDocumentCommand(this, asset, this.selection, next, nextSelection, path),
+    )
   }
 
   addElement(
@@ -237,8 +254,7 @@ export class UIAuthoringSession {
         ),
         element,
       ],
-    })
-    this.select(id)
+    }, [id])
     return id
   }
 
@@ -280,17 +296,39 @@ export class UIAuthoringSession {
             ? { ...element, children: element.children.filter((child) => !remove.has(child)) }
             : element,
         ),
-    })
-    this.select(asset.root)
+    }, [asset.root])
   }
 
   select(id: UIElementId | string | null): void {
-    if (id === null) this.selectedId = null
+    if (id === null) this.selection = []
     else {
       const element = this.currentAsset?.elements.find((candidate) => candidate.id === id)
-      this.selectedId = element?.id ?? null
+      this.selection = element ? [element.id] : []
     }
     this.notify()
+  }
+
+  toggleSelection(id: UIElementId | string): void {
+    const asset = this.currentAsset
+    if (!asset?.elements.some((element) => element.id === id)) return
+    this.selection = reduceUISelection(
+      this.selection,
+      { type: 'toggle', id },
+      parentMap(asset),
+    ) as UIElementId[]
+    this.notify()
+  }
+
+  setEditorLocked(id: UIElementId | string, locked: boolean): void {
+    const element = this.currentAsset?.elements.find((candidate) => candidate.id === id)
+    if (!element) return
+    if (locked) this.editorLockedIds.add(element.id)
+    else this.editorLockedIds.delete(element.id)
+    this.notify()
+  }
+
+  isEditorLocked(id: UIElementId | string): boolean {
+    return this.editorLockedIds.has(id as UIElementId)
   }
 
   setViewport(id: UIDesktopViewportId | 'custom'): void {
@@ -344,17 +382,26 @@ export class UIAuthoringSession {
     this.currentAsset = null
     this.currentPath = null
     this.savedAssetJson = null
-    this.selectedId = null
+    this.selection = []
+    this.editorLockedIds.clear()
     this.notify()
   }
 
-  apply(asset: UIDocument | null, path: string): void {
+  apply(asset: UIDocument | null, path: string, selection: readonly UIElementId[] = this.selection): void {
     this.currentAsset = asset ? cloneAsset(asset) : null
     this.currentPath = asset ? path : null
-    if (asset && !asset.elements.some((element) => element.id === this.selectedId)) {
-      this.selectedId = asset.root
+    if (asset) {
+      const validIds = new Set(asset.elements.map((element) => element.id))
+      this.selection = reduceUISelection(
+        selection,
+        { type: 'reconcile', validIds, fallback: asset.root },
+        parentMap(asset),
+      ) as UIElementId[]
+      this.editorLockedIds = new Set([...this.editorLockedIds].filter((id) => validIds.has(id)))
+    } else {
+      this.selection = []
+      this.editorLockedIds.clear()
     }
-    if (!asset) this.selectedId = null
     this.notify()
   }
 
@@ -371,4 +418,13 @@ export class UIAuthoringSession {
   private notify(): void {
     for (const listener of this.listeners) listener()
   }
+}
+
+function parentMap(asset: UIDocument): ReadonlyMap<string, string | null> {
+  const parents = new Map<string, string | null>([[asset.root, null]])
+  for (const element of asset.elements) {
+    if (!('children' in element)) continue
+    for (const child of element.children) parents.set(child, element.id)
+  }
+  return parents
 }
