@@ -413,9 +413,10 @@ Evidence:
 **Status (2026-08-17): complete.**
 
 - TDD RED: `pnpm exec vitest run packages/editor/src/ViewportTabsShell.test.tsx -t
-  'round-trips|fits and centers'` reproduced `0` instead of `100%`, `0` instead of `auto`, and
-  `0.5` instead of the desired fit scale. The three cases remain in the green suite as
-  milestone-owned `it.fails` tests (M5 for sizing, M3 for preview navigation).
+'round-trips|fits and centers'` reproduced `0` instead of `100%`, `0` instead of `auto`, and
+  `0.5` instead of the desired fit scale. The two sizing cases remain milestone-owned
+  `it.fails` tests for M5; the fixed-scale case was assigned to M2 by the later normative M2
+  canvas-shell contract and is now a normal green regression.
 - TDD GREEN: focused `@haku/ui` and `@haku/editor` package runs cover strict-tree rejection,
   layout-to-DOM translation, selection, atomic full-asset undo, save validation/I/O failure,
   the four-element fixture, and stable workspace selectors.
@@ -510,6 +511,25 @@ Evidence:
 - TDD: workspace routing, editor-state exclusion, dirty/read-only, and canvas transform unit tests.
 - Browser: screenshots of Scene→UI→Scene, fit, 100%, resized window, and a built-in read-only save
   denial.
+
+**Status (2026-08-17): complete.**
+
+- TDD RED→GREEN covers whole-body workspace routing, scene layout restoration, the editor-only
+  custom preview/mode contract, fit/clamp math, exact 100% scale, focal-point-preserving resize,
+  toolbar controls, and built-in read-only Save. The fixed-scale regression is now a normal green
+  test; the two M5 sizing `it.fails` cases are unchanged.
+- UI owns a dedicated persisted `Layers | Canvas | UI Inspector` splitter while active. Scene
+  Hierarchy/tools/Inspector and the permanent Asset Browser are absent; the latter is available
+  only through the toolbar's compact on-demand asset dialog. Leaving UI restores the original
+  scene splitter and workspace tabs remain available throughout.
+- The canvas opens at centered Fit, supports 10%–800% zoom and exact 100%, preserves the centered
+  root focal point across responsive resize, remeasures Fit directly, and combines
+  `ResizeObserver` with window/visual-viewport lifecycle cleanup. Preview size and Edit/Preview
+  mode remain editor-only and never enter serialized UI JSON.
+- `@haku/editor` passes 48 files / 158 tests plus typecheck/build and affected-file lint. User
+  Chrome verified Scene→UI→Scene, wide/narrow Fit, exact 100%, custom size controls,
+  Preview→Escape, on-demand assets, disabled built-in Save, and zero console warnings/errors.
+  Evidence and exact commands are recorded in [`handoffs/UI-M2-01.md`](./handoffs/UI-M2-01.md).
 
 ### Milestone 3 — Canvas selection, navigation, and direct manipulation
 
