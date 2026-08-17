@@ -206,6 +206,34 @@ describe('UIDocumentSchema version 2', () => {
     }
   })
 
+  it.each(['text-input', 'text-area', 'select', 'slider', 'progress'] as const)(
+    'rejects a whitespace-only accessible name for %s',
+    (type) => {
+      const fields =
+        type === 'select'
+          ? { value: 'one', options: [{ value: 'one', label: 'One' }] }
+          : type === 'slider'
+            ? { min: 0, max: 10, step: 1, value: 5 }
+            : type === 'progress'
+              ? { min: 0, max: 10, value: 5 }
+              : { value: '' }
+      const result = UIDocumentSchema.safeParse({
+        ...baseDocument(),
+        elements: [
+          { ...baseDocument().elements[0], children: [id(2)] },
+          leaf(2, type, { ...fields, accessibility: { label: '   ' } }),
+        ],
+      })
+
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        expect(result.error.issues.map((issue) => issue.message).join('\n')).toMatch(
+          /accessible label/i,
+        )
+      }
+    },
+  )
+
   it('rejects Fill sizing on absolute-positioned auto-layout children', () => {
     const child = id(2)
     const result = UIDocumentSchema.safeParse({

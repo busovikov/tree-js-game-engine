@@ -5,6 +5,7 @@ import {
   convertFrameLayout,
   convertUIFixedUnit,
   convertUISize,
+  explainUIAccessibilityField,
   explainUIConstraintEdit,
   explainUIPlacementMode,
   explainUIStyleSection,
@@ -15,8 +16,10 @@ import {
   updateUIFreeConstraint,
   updateUISizingBound,
   updateUICornerRadius,
+  updateUIElementAccessibility,
   updateUIElementStrict,
   updateUIElementStyle,
+  updateUIImageAccessibility,
 } from './ui-inspector-model.js'
 
 const DOCUMENT = '15000000-0000-4000-8000-000000000001'
@@ -62,6 +65,47 @@ function document(layout: 'free' | 'vertical' = 'free'): UIDocument {
             : { positioning: 'flow' },
       },
     ],
+  })
+}
+
+function elementDocument(
+  type: 'image' | 'text-input' | 'text-area' | 'select' | 'slider' | 'progress',
+): UIDocument {
+  const asset = document('vertical')
+  const current = asset.elements[1]!
+  const fields =
+    type === 'image'
+      ? {
+          source: {
+            $ref: '15000000-0000-4000-8000-000000000004',
+            type: '15000000-0000-4000-8000-000000000005',
+          },
+          alt: 'Preview image',
+        }
+      : type === 'select'
+        ? {
+            value: 'one',
+            options: [{ value: 'one', label: 'One' }],
+            accessibility: { label: 'Choice' },
+          }
+        : type === 'slider'
+          ? { min: 0, max: 10, step: 1, value: 5, accessibility: { label: 'Volume' } }
+          : type === 'progress'
+            ? { min: 0, max: 10, value: 5, accessibility: { label: 'Loading' } }
+            : { value: '', accessibility: { label: type === 'text-input' ? 'Name' : 'Notes' } }
+  return UIDocumentSchema.parse({
+    ...asset,
+    elements: asset.elements.map((element) =>
+      element.id === CHILD
+        ? {
+            id: element.id,
+            type,
+            ...fields,
+            sizing: current.sizing,
+            placement: current.placement,
+          }
+        : element,
+    ),
   })
 }
 
@@ -433,5 +477,81 @@ describe('UI Inspector field model', () => {
     expect(explainUIStyleSection(text, 'typography')).toBeNull()
     expect(explainUIStyleSection(text, 'image-fit')).toMatch(/Image/i)
     expect(explainUIStyleSection(frame, 'typography')).toMatch(/text content/i)
+  })
+
+  it('edits and removes every optional accessibility value without lossy coercion', () => {
+    const asset = document()
+    const accessible = updateUIElementAccessibility(asset, CHILD, {
+      label: 'Score announcement',
+      description: 'Updates when the score changes',
+      role: 'status',
+      live: 'assertive',
+      tabIndex: -1,
+    })
+
+    expect(accessible.elements[1]!.accessibility).toEqual({
+      label: 'Score announcement',
+      description: 'Updates when the score changes',
+      role: 'status',
+      live: 'assertive',
+      tabIndex: -1,
+    })
+    const reset = updateUIElementAccessibility(accessible, CHILD, {
+      label: undefined,
+      description: undefined,
+      role: undefined,
+      live: undefined,
+      tabIndex: undefined,
+    })
+    expect(reset.elements[1]!.accessibility).toEqual({})
+    expect(() => UIDocumentSchema.parse(reset)).not.toThrow()
+  })
+
+  it.each(['text-input', 'text-area', 'select', 'slider', 'progress'] as const)(
+    'rejects removal of the required accessible name for %s atomically',
+    (type) => {
+      const asset = elementDocument(type)
+      const before = structuredClone(asset)
+
+      expect(() => updateUIElementAccessibility(asset, CHILD, { label: undefined })).toThrow(
+        /accessible label/i,
+      )
+      expect(() => updateUIElementAccessibility(asset, CHILD, { label: '   ' })).toThrow(
+        /accessible label/i,
+      )
+      expect(asset).toEqual(before)
+    },
+  )
+
+  it('couples decorative Images and meaningful alt text through strict whole-document edits', () => {
+    const asset = elementDocument('image')
+    const decorative = updateUIImageAccessibility(asset, CHILD, { decorative: true })
+
+    expect(decorative.elements[1]).toMatchObject({ decorative: true, alt: '' })
+    expect(() => updateUIImageAccessibility(decorative, CHILD, { decorative: false })).toThrow(
+      /meaningful alt text/i,
+    )
+    const meaningful = updateUIImageAccessibility(decorative, CHILD, {
+      alt: 'A gold star beside the score',
+    })
+    expect(meaningful.elements[1]).toMatchObject({
+      decorative: false,
+      alt: 'A gold star beside the score',
+    })
+    expect(() => updateUIImageAccessibility(meaningful, CHILD, { alt: '   ' })).toThrow(
+      /meaningful alt text/i,
+    )
+    expect(() => UIDocumentSchema.parse(meaningful)).not.toThrow()
+  })
+
+  it('explains Image-only controls and required accessible-name removal', () => {
+    const text = document().elements[1]!
+    const image = elementDocument('image').elements[1]!
+    const input = elementDocument('text-input').elements[1]!
+
+    expect(explainUIAccessibilityField(text, 'alt')).toMatch(/Image elements/i)
+    expect(explainUIAccessibilityField(image, 'alt')).toBeNull()
+    expect(explainUIAccessibilityField(text, 'label-reset')).toBeNull()
+    expect(explainUIAccessibilityField(input, 'label-reset')).toMatch(/required/i)
   })
 })

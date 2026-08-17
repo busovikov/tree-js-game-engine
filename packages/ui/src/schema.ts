@@ -179,7 +179,11 @@ export type UIStyle = z.infer<typeof UIStyleSchema>
 
 export const UIAccessibilitySchema = z
   .object({
-    label: z.string().min(1).optional(),
+    label: z
+      .string()
+      .min(1)
+      .refine((value) => value.trim().length > 0, 'Accessible label must contain text')
+      .optional(),
     description: z.string().min(1).optional(),
     role: z
       .enum([

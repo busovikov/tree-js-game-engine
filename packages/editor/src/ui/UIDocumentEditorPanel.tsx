@@ -7,6 +7,7 @@ import type {
 import {
   UIDocumentInstance,
   type UIDocument,
+  type UIAccessibility,
   type UIBound,
   type UIElement,
   type UIElementId,
@@ -57,14 +58,17 @@ import {
   convertUIFixedUnit,
   convertUIPlacement,
   convertUISize,
+  explainUIAccessibilityField,
   explainUIConstraintEdit,
   explainUIPlacementMode,
   explainUIStyleSection,
   explainUISizeMode,
   updateUIAbsoluteOffset,
   updateUICornerRadius,
+  updateUIElementAccessibility,
   updateUIElementStyle,
   updateUIFreeConstraint,
+  updateUIImageAccessibility,
   updateUISizingBound,
   type UISizingBoundKey,
   type UISizeContext,
@@ -912,15 +916,17 @@ const UIPlacementSection = memo(function UIPlacementSection({
   )
 })
 
-const UIOptionalTextStyleField = memo(function UIOptionalTextStyleField({
+const UIOptionalTextField = memo(function UIOptionalTextField({
   label,
   value,
   placeholder,
+  required = false,
   onCommit,
 }: {
   label: string
   value: string | undefined
   placeholder: string
+  required?: boolean
   onCommit: (value: string | undefined) => void
 }) {
   const [draft, setDraft] = useState(value ?? '')
@@ -939,13 +945,14 @@ const UIOptionalTextStyleField = memo(function UIOptionalTextStyleField({
         aria-label={label}
         value={draft}
         placeholder={placeholder}
+        aria-required={required}
         onChange={(event) => setDraft(event.target.value)}
         onBlur={commit}
         onKeyDown={(event) => {
           if (event.key === 'Enter') event.currentTarget.blur()
           if (event.key === 'Escape') {
             setDraft(value ?? '')
-            event.currentTarget.blur()
+            event.preventDefault()
           }
         }}
       />
@@ -1054,7 +1061,7 @@ const UIStyleSection = memo(function UIStyleSection({
       <h4>Style</h4>
       {typography && (
         <>
-          <UIOptionalTextStyleField
+          <UIOptionalTextField
             label="Font family"
             value={element.style.fontFamily}
             placeholder="Default (sans-serif)"
@@ -1173,7 +1180,7 @@ const UIStyleSection = memo(function UIStyleSection({
               <option value="justify">Justify</option>
             </select>
           </label>
-          <UIOptionalTextStyleField
+          <UIOptionalTextField
             label="Text color"
             value={element.style.color}
             placeholder="Default"
@@ -1181,13 +1188,13 @@ const UIStyleSection = memo(function UIStyleSection({
           />
         </>
       )}
-      <UIOptionalTextStyleField
+      <UIOptionalTextField
         label="Fill"
         value={element.style.backgroundColor}
         placeholder="None"
         onCommit={(backgroundColor) => updateStyle({ backgroundColor })}
       />
-      <UIOptionalTextStyleField
+      <UIOptionalTextField
         label="Stroke color"
         value={element.style.borderColor}
         placeholder="None"
@@ -1292,6 +1299,155 @@ const UIStyleSection = memo(function UIStyleSection({
   )
 })
 
+const UIAccessibilitySection = memo(function UIAccessibilitySection({
+  asset,
+  element,
+}: {
+  asset: UIDocument
+  element: UIElement
+}) {
+  const [error, setError] = useState<string | null>(null)
+  const requiredLabelReason = explainUIAccessibilityField(element, 'label-reset')
+  const imageControls = explainUIAccessibilityField(element, 'alt') === null
+  const run = (candidate: () => UIDocument) => {
+    try {
+      uiAuthoringSession.replaceAsset(candidate())
+      setError(null)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    }
+  }
+  const updateAccessibility = (patch: Partial<UIAccessibility>) => {
+    run(() => updateUIElementAccessibility(asset, element.id, patch))
+  }
+
+  return (
+    <section className="haku-ui-editor__inspector-section" aria-label="Accessibility" role="region">
+      <h4>Accessibility</h4>
+      <UIOptionalTextField
+        label="Accessible label"
+        value={element.accessibility.label}
+        placeholder={requiredLabelReason ? 'Required' : 'None'}
+        required={requiredLabelReason !== null}
+        onCommit={(label) => updateAccessibility({ label })}
+      />
+      {requiredLabelReason && <small>{requiredLabelReason}</small>}
+      <UIOptionalTextField
+        label="Accessible description"
+        value={element.accessibility.description}
+        placeholder="None"
+        onCommit={(description) => updateAccessibility({ description })}
+      />
+      <label className="mesh-field">
+        <span className="mesh-field__label">ARIA role</span>
+        <select
+          className="mesh-field__input"
+          aria-label="ARIA role"
+          value={element.accessibility.role ?? ''}
+          onChange={(event) =>
+            updateAccessibility({
+              role: (event.target.value || undefined) as UIAccessibility['role'],
+            })
+          }
+        >
+          <option value="">Default</option>
+          {[
+            'application',
+            'banner',
+            'complementary',
+            'contentinfo',
+            'group',
+            'main',
+            'region',
+            'status',
+          ].map((role) => (
+            <option value={role} key={role}>
+              {role[0]!.toUpperCase() + role.slice(1)}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="mesh-field">
+        <span className="mesh-field__label">Live region</span>
+        <select
+          className="mesh-field__input"
+          aria-label="Live region"
+          value={element.accessibility.live ?? ''}
+          onChange={(event) =>
+            updateAccessibility({
+              live: (event.target.value || undefined) as UIAccessibility['live'],
+            })
+          }
+        >
+          <option value="">Default</option>
+          <option value="off">Off</option>
+          <option value="polite">Polite</option>
+          <option value="assertive">Assertive</option>
+        </select>
+      </label>
+      <label className="mesh-field">
+        <span className="mesh-field__label">Tab order</span>
+        <select
+          className="mesh-field__input"
+          aria-label="Tab order"
+          value={
+            element.accessibility.tabIndex === undefined
+              ? ''
+              : String(element.accessibility.tabIndex)
+          }
+          onChange={(event) =>
+            updateAccessibility({
+              tabIndex:
+                event.target.value === '' ? undefined : (Number(event.target.value) as 0 | -1),
+            })
+          }
+        >
+          <option value="">Default</option>
+          <option value="0">Focusable (0)</option>
+          <option value="-1">Programmatic (-1)</option>
+        </select>
+      </label>
+      {imageControls && element.type === 'image' && (
+        <>
+          <label className="mesh-field">
+            <span className="mesh-field__label">Image purpose</span>
+            <select
+              className="mesh-field__input"
+              aria-label="Image purpose"
+              value={element.decorative ? 'decorative' : 'meaningful'}
+              onChange={(event) =>
+                run(() =>
+                  updateUIImageAccessibility(asset, element.id, {
+                    decorative: event.target.value === 'decorative',
+                  }),
+                )
+              }
+            >
+              <option value="meaningful" disabled={element.decorative && element.alt === ''}>
+                Meaningful
+              </option>
+              <option value="decorative">Decorative</option>
+            </select>
+          </label>
+          {element.decorative && element.alt === '' && (
+            <small>Enter meaningful alternative text to make this Image non-decorative.</small>
+          )}
+          <UIOptionalTextField
+            label="Alternative text"
+            value={element.alt}
+            placeholder={element.decorative ? 'Decorative image' : 'Required'}
+            required={!element.decorative}
+            onCommit={(alt) =>
+              run(() => updateUIImageAccessibility(asset, element.id, { alt: alt ?? '' }))
+            }
+          />
+        </>
+      )}
+      {error && <small role="alert">{error}</small>}
+    </section>
+  )
+})
+
 function UIInspector({
   asset,
   element,
@@ -1354,16 +1510,6 @@ function UIInspector({
           />
         </label>
       )}
-      {element.type === 'image' && (
-        <label className="mesh-field">
-          <span className="mesh-field__label">Alt text</span>
-          <input
-            className="mesh-field__input"
-            value={element.alt}
-            onChange={(event) => update({ alt: event.target.value })}
-          />
-        </label>
-      )}
       <UIDimensionField
         axis="Width"
         size={element.sizing.width}
@@ -1389,21 +1535,7 @@ function UIInspector({
         onSizingChange={(sizing, historyGroup) => update({ sizing }, historyGroup)}
       />
       <UIStyleSection asset={asset} element={element} />
-      <label className="mesh-field">
-        <span className="mesh-field__label">Accessible label</span>
-        <input
-          className="mesh-field__input"
-          value={element.accessibility.label ?? ''}
-          onChange={(event) =>
-            update({
-              accessibility: {
-                ...element.accessibility,
-                label: event.target.value || undefined,
-              },
-            })
-          }
-        />
-      </label>
+      <UIAccessibilitySection asset={asset} element={element} />
       <code>{element.id}</code>
     </div>
   )

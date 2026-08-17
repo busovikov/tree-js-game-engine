@@ -4,6 +4,7 @@ import {
   type UIElement,
   type UIElementId,
   type UIBound,
+  type UIAccessibility,
   type UILayout,
   type UIPlacement,
   type UISize,
@@ -37,6 +38,7 @@ export type UIVerticalConstraint = Extract<
 >['verticalConstraint']
 export type UIAbsoluteOffset = 'top' | 'right' | 'bottom' | 'left'
 export type UIStyleSection = 'typography' | 'image-fit'
+export type UIAccessibilityField = 'alt' | 'decorative' | 'label-reset'
 export type UICornerRadius = 'topLeft' | 'topRight' | 'bottomRight' | 'bottomLeft'
 
 const TYPOGRAPHY_ELEMENT_TYPES = new Set<UIElement['type']>([
@@ -50,6 +52,56 @@ const TYPOGRAPHY_ELEMENT_TYPES = new Set<UIElement['type']>([
   'select',
   'list',
 ])
+const REQUIRED_ACCESSIBLE_LABEL_TYPES = new Set<UIElement['type']>([
+  'text-input',
+  'text-area',
+  'select',
+  'slider',
+  'progress',
+])
+
+export function explainUIAccessibilityField(
+  element: UIElement,
+  field: UIAccessibilityField,
+): string | null {
+  if ((field === 'alt' || field === 'decorative') && element.type !== 'image') {
+    return 'Alternative text and decorative purpose are available only for Image elements.'
+  }
+  if (field === 'label-reset' && REQUIRED_ACCESSIBLE_LABEL_TYPES.has(element.type)) {
+    return 'An accessible label is required for this element type.'
+  }
+  return null
+}
+
+export function updateUIElementAccessibility(
+  asset: UIDocument,
+  id: UIElementId | string,
+  patch: Partial<UIAccessibility>,
+): UIDocument {
+  const element = asset.elements.find((candidate) => candidate.id === id)
+  if (!element) throw new Error(`Unknown UI element: ${id}`)
+  const accessibility: Record<string, unknown> = { ...element.accessibility }
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === undefined) delete accessibility[key]
+    else accessibility[key] = value
+  }
+  return updateUIElementStrict(asset, id, { accessibility })
+}
+
+export function updateUIImageAccessibility(
+  asset: UIDocument,
+  id: UIElementId | string,
+  patch: { readonly alt?: string; readonly decorative?: boolean },
+): UIDocument {
+  const element = asset.elements.find((candidate) => candidate.id === id)
+  if (!element) throw new Error(`Unknown UI element: ${id}`)
+  if (element.type !== 'image') throw new Error('Image accessibility is available only for Images.')
+  let alt = patch.alt ?? element.alt
+  let decorative = patch.decorative ?? element.decorative
+  if (patch.decorative === true) alt = ''
+  if (patch.alt !== undefined && patch.alt.trim() !== '') decorative = false
+  return updateUIElementStrict(asset, id, { alt, decorative })
+}
 
 export function explainUIStyleSection(element: UIElement, section: UIStyleSection): string | null {
   if (section === 'image-fit' && element.type !== 'image') {

@@ -37,6 +37,47 @@ import { uiAuthoringSession, uiCommandBus } from './ui/ui-editor-service.js'
 import { UIDocumentSchema } from '@haku/ui'
 
 const INITIAL_UI_ASSET = structuredClone(uiAuthoringSession.asset)!
+const INSPECTED_ID = '13000000-0000-4000-8000-000000000102'
+
+function inspectorAsset(
+  type: 'image' | 'text-input' | 'text-area' | 'select' | 'slider' | 'progress',
+) {
+  const current = INITIAL_UI_ASSET.elements[1]!
+  const fields =
+    type === 'image'
+      ? {
+          source: {
+            $ref: '13000000-0000-4000-8000-000000000120',
+            type: '13000000-0000-4000-8000-000000000121',
+          },
+          alt: 'Score image',
+        }
+      : type === 'select'
+        ? {
+            value: 'one',
+            options: [{ value: 'one', label: 'One' }],
+            accessibility: { label: 'Choice' },
+          }
+        : type === 'slider'
+          ? { min: 0, max: 10, step: 1, value: 5, accessibility: { label: 'Volume' } }
+          : type === 'progress'
+            ? { min: 0, max: 10, value: 5, accessibility: { label: 'Loading' } }
+            : { value: '', accessibility: { label: type === 'text-input' ? 'Name' : 'Notes' } }
+  return UIDocumentSchema.parse({
+    ...INITIAL_UI_ASSET,
+    elements: INITIAL_UI_ASSET.elements.map((element) =>
+      element.id === INSPECTED_ID
+        ? {
+            id: current.id,
+            type,
+            ...fields,
+            sizing: current.sizing,
+            placement: current.placement,
+          }
+        : element,
+    ),
+  })
+}
 
 afterEach(cleanup)
 beforeEach(() => {
@@ -506,6 +547,130 @@ describe('ViewportTabsShell UI workspace baseline', () => {
     expect(uiAuthoringSession.asset!.elements[1]!.style.objectFit).toBe('scale-down')
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
     expect(uiAuthoringSession.asset).toEqual(before)
+  })
+
+  it('exposes every optional accessibility field through local drafts and exact discrete Undo', () => {
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    fireEvent.click(
+      container.querySelector(`[data-haku-ui-tree-item="${INSPECTED_ID}"]`) as HTMLButtonElement,
+    )
+    const accessibility = screen.getByRole('region', { name: 'Accessibility' })
+
+    expect(within(accessibility).queryByLabelText('Alternative text')).toBeNull()
+    expect(screen.queryByLabelText('Alt text')).toBeNull()
+    const label = within(accessibility).getByLabelText('Accessible label')
+    const beforeLabel = structuredClone(uiAuthoringSession.asset)!
+    fireEvent.change(label, { target: { value: 'Score announcement' } })
+    expect(uiAuthoringSession.asset).toEqual(beforeLabel)
+    fireEvent.blur(label)
+    expect(uiAuthoringSession.asset!.elements[1]!.accessibility.label).toBe('Score announcement')
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(uiAuthoringSession.asset).toEqual(beforeLabel)
+    expect(uiCommandBus.canUndo()).toBe(false)
+
+    const description = within(accessibility).getByLabelText('Accessible description')
+    fireEvent.change(description, { target: { value: 'Updates when the score changes' } })
+    fireEvent.keyDown(description, { key: 'Escape' })
+    expect((description as HTMLInputElement).value).toBe('')
+    expect(uiAuthoringSession.asset).toEqual(beforeLabel)
+    fireEvent.change(description, { target: { value: 'Updates when the score changes' } })
+    fireEvent.blur(description)
+    expect(uiAuthoringSession.asset!.elements[1]!.accessibility.description).toBe(
+      'Updates when the score changes',
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(uiAuthoringSession.asset).toEqual(beforeLabel)
+    expect(uiCommandBus.canUndo()).toBe(false)
+
+    for (const [name, value, expected] of [
+      ['ARIA role', 'status', { role: 'status' }],
+      ['Live region', 'assertive', { live: 'assertive' }],
+      ['Tab order', '-1', { tabIndex: -1 }],
+    ] as const) {
+      const before = structuredClone(uiAuthoringSession.asset)!
+      fireEvent.change(within(accessibility).getByLabelText(name), { target: { value } })
+      expect(uiAuthoringSession.asset!.elements[1]!.accessibility).toMatchObject(expected)
+      expect(() => UIDocumentSchema.parse(uiAuthoringSession.asset)).not.toThrow()
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+      expect(uiAuthoringSession.asset).toEqual(before)
+      expect(uiCommandBus.canUndo()).toBe(false)
+    }
+  })
+
+  it.each(['text-input', 'text-area', 'select', 'slider', 'progress'] as const)(
+    'keeps the required accessible name for %s atomic when its local draft is invalid',
+    (type) => {
+      uiAuthoringSession.openAsset('builtin:m10b-runtime-hud.ui.json', inspectorAsset(type))
+      const { container } = render(<ViewportTabsShell />)
+      fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+      fireEvent.click(
+        container.querySelector(`[data-haku-ui-tree-item="${INSPECTED_ID}"]`) as HTMLButtonElement,
+      )
+      uiCommandBus.clear()
+      const accessibility = screen.getByRole('region', { name: 'Accessibility' })
+      const label = within(accessibility).getByLabelText('Accessible label')
+      const before = structuredClone(uiAuthoringSession.asset)!
+
+      expect(label.getAttribute('aria-required')).toBe('true')
+      expect(within(accessibility).getByText(/accessible label is required/i)).toBeTruthy()
+      fireEvent.change(label, { target: { value: '   ' } })
+      expect(uiAuthoringSession.asset).toEqual(before)
+      fireEvent.blur(label)
+      expect(within(accessibility).getByRole('alert').textContent).toMatch(/accessible label/i)
+      expect(uiAuthoringSession.asset).toEqual(before)
+      expect(uiCommandBus.canUndo()).toBe(false)
+    },
+  )
+
+  it('couples Image purpose and local alt drafts without duplicate or invalid surfaces', () => {
+    uiAuthoringSession.openAsset('builtin:m10b-runtime-hud.ui.json', inspectorAsset('image'))
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    fireEvent.click(
+      container.querySelector(`[data-haku-ui-tree-item="${INSPECTED_ID}"]`) as HTMLButtonElement,
+    )
+    uiCommandBus.clear()
+    const accessibility = screen.getByRole('region', { name: 'Accessibility' })
+    const before = structuredClone(uiAuthoringSession.asset)!
+
+    expect(screen.queryByLabelText('Alt text')).toBeNull()
+    expect(within(accessibility).getAllByLabelText('Alternative text')).toHaveLength(1)
+    const invalidAlt = within(accessibility).getByLabelText('Alternative text')
+    fireEvent.change(invalidAlt, { target: { value: '   ' } })
+    expect(uiAuthoringSession.asset).toEqual(before)
+    fireEvent.blur(invalidAlt)
+    expect(within(accessibility).getByRole('alert').textContent).toMatch(/meaningful alt text/i)
+    expect(uiAuthoringSession.asset).toEqual(before)
+    expect(uiCommandBus.canUndo()).toBe(false)
+    fireEvent.change(within(accessibility).getByLabelText('Image purpose'), {
+      target: { value: 'decorative' },
+    })
+    expect(uiAuthoringSession.asset!.elements[1]).toMatchObject({ decorative: true, alt: '' })
+    expect(() => UIDocumentSchema.parse(uiAuthoringSession.asset)).not.toThrow()
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(uiAuthoringSession.asset).toEqual(before)
+    expect(uiCommandBus.canUndo()).toBe(false)
+
+    fireEvent.change(within(accessibility).getByLabelText('Image purpose'), {
+      target: { value: 'decorative' },
+    })
+    uiCommandBus.clear()
+    const decorative = structuredClone(uiAuthoringSession.asset)!
+    expect(within(accessibility).getByText(/enter meaningful alternative text/i)).toBeTruthy()
+    const meaningfulOption = within(accessibility).getByRole('option', { name: 'Meaningful' })
+    expect((meaningfulOption as HTMLOptionElement).disabled).toBe(true)
+    const alt = within(accessibility).getByLabelText('Alternative text')
+    fireEvent.change(alt, { target: { value: 'A gold star beside the score' } })
+    expect(uiAuthoringSession.asset).toEqual(decorative)
+    fireEvent.blur(alt)
+    expect(uiAuthoringSession.asset!.elements[1]).toMatchObject({
+      decorative: false,
+      alt: 'A gold star beside the score',
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(uiAuthoringSession.asset).toEqual(decorative)
+    expect(uiCommandBus.canUndo()).toBe(false)
   })
 
   // M2 owns replacement of the fixed-scale baseline; M3 starts direct canvas interaction.
