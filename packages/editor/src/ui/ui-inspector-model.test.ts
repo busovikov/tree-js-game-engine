@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import { UIDocumentSchema, type UIDocument } from '@haku/ui'
 import {
+  convertUIPlacement,
   convertFrameLayout,
   convertUIFixedUnit,
   convertUISize,
+  explainUIConstraintEdit,
+  explainUIPlacementMode,
   explainUISizeMode,
   formatUISize,
   parseUISize,
+  updateUIAbsoluteOffset,
+  updateUIFreeConstraint,
   updateUISizingBound,
   updateUIElementStrict,
 } from './ui-inspector-model.js'
@@ -92,18 +97,16 @@ describe('UI Inspector field model', () => {
     const sizing = document().elements[1]!.sizing
 
     expect(() =>
-      updateUISizingBound(
-        { ...sizing, maxWidth: { value: 80, unit: 'px' } },
-        'minWidth',
-        { value: 120, unit: 'px' },
-      ),
+      updateUISizingBound({ ...sizing, maxWidth: { value: 80, unit: 'px' } }, 'minWidth', {
+        value: 120,
+        unit: 'px',
+      }),
     ).toThrow(/minWidth cannot exceed maxWidth/i)
     expect(
-      updateUISizingBound(
-        { ...sizing, maxWidth: { value: 80, unit: '%' } },
-        'minWidth',
-        { value: 120, unit: 'px' },
-      ),
+      updateUISizingBound({ ...sizing, maxWidth: { value: 80, unit: '%' } }, 'minWidth', {
+        value: 120,
+        unit: 'px',
+      }),
     ).toMatchObject({
       minWidth: { value: 120, unit: 'px' },
       maxWidth: { value: 80, unit: '%' },
@@ -162,10 +165,15 @@ describe('UI Inspector field model', () => {
 
   it('converts auto layout to free using measured visual bounds', () => {
     const asset = document('vertical')
-    const converted = convertFrameLayout(asset, ROOT, 'free', new Map([
-      [ROOT, { x: 100, y: 50, width: 400, height: 300 }],
-      [CHILD, { x: 140, y: 90, width: 180, height: 44 }],
-    ]))
+    const converted = convertFrameLayout(
+      asset,
+      ROOT,
+      'free',
+      new Map([
+        [ROOT, { x: 100, y: 50, width: 400, height: 300 }],
+        [CHILD, { x: 140, y: 90, width: 180, height: 44 }],
+      ]),
+    )
     const child = converted.elements.find((element) => element.id === CHILD)!
 
     expect(converted.elements[0]).toMatchObject({ layout: { mode: 'free' } })
@@ -193,6 +201,115 @@ describe('UI Inspector field model', () => {
     expect(converted.elements[0]).toMatchObject({ layout })
     expect(child.placement).toEqual({ positioning: 'flow' })
     expect(() => UIDocumentSchema.parse(converted)).not.toThrow()
+  })
+
+  it('edits both free-layout constraint axes from measured visual bounds', () => {
+    const asset = document('free')
+    const bounds = new Map([
+      [ROOT, { x: 100, y: 50, width: 480, height: 320 }],
+      [CHILD, { x: 145, y: 125, width: 180, height: 44 }],
+    ])
+
+    const horizontal = updateUIFreeConstraint(asset, CHILD, 'horizontal', 'right', bounds)
+    const vertical = updateUIFreeConstraint(horizontal, CHILD, 'vertical', 'top-bottom', bounds)
+    const child = vertical.elements.find((element) => element.id === CHILD)!
+
+    expect(child.placement).toEqual({
+      positioning: 'free',
+      x: 45,
+      y: 75,
+      horizontalConstraint: 'right',
+      verticalConstraint: 'top-bottom',
+      referenceWidth: 480,
+      referenceHeight: 320,
+    })
+    expect(() => UIDocumentSchema.parse(vertical)).not.toThrow()
+  })
+
+  it('explains unavailable constraint references and rejects non-finite bounds atomically', () => {
+    const asset = document('free')
+    const before = structuredClone(asset)
+
+    expect(explainUIConstraintEdit(asset, CHILD, 'horizontal', new Map())).toMatch(
+      /measured parent and element bounds/i,
+    )
+    expect(() =>
+      updateUIFreeConstraint(
+        asset,
+        CHILD,
+        'horizontal',
+        'scale',
+        new Map([
+          [ROOT, { x: 0, y: 0, width: Number.NaN, height: 300 }],
+          [CHILD, { x: 30, y: 40, width: 100, height: 40 }],
+        ]),
+      ),
+    ).toThrow(/finite positive measured parent width/i)
+    expect(asset).toEqual(before)
+  })
+
+  it('converts Flow and Absolute placement strictly with measured finite offsets', () => {
+    const asset = document('vertical')
+    const absolute = convertUIPlacement(
+      asset,
+      CHILD,
+      'absolute',
+      new Map([
+        [ROOT, { x: 100, y: 50, width: 400, height: 300 }],
+        [CHILD, { x: 148, y: 126, width: 180, height: 44 }],
+      ]),
+    )
+    expect(absolute.elements.find((element) => element.id === CHILD)?.placement).toEqual({
+      positioning: 'absolute',
+      left: 48,
+      top: 76,
+    })
+    expect(() => UIDocumentSchema.parse(absolute)).not.toThrow()
+
+    const flow = convertUIPlacement(absolute, CHILD, 'flow', new Map())
+    expect(flow.elements.find((element) => element.id === CHILD)?.placement).toEqual({
+      positioning: 'flow',
+    })
+    expect(() => UIDocumentSchema.parse(flow)).not.toThrow()
+  })
+
+  it('disables unavailable placement modes and rejects invalid offsets without mutation', () => {
+    const asset = document('vertical')
+    const before = structuredClone(asset)
+
+    expect(explainUIPlacementMode(asset, CHILD, 'absolute', new Map())).toMatch(
+      /measured parent and element bounds/i,
+    )
+    expect(() =>
+      convertUIPlacement(
+        asset,
+        CHILD,
+        'absolute',
+        new Map([
+          [ROOT, { x: 0, y: 0, width: 400, height: 300 }],
+          [CHILD, { x: Number.POSITIVE_INFINITY, y: 0, width: 100, height: 40 }],
+        ]),
+      ),
+    ).toThrow(/finite measured element bounds/i)
+    expect(asset).toEqual(before)
+
+    const absolute = convertUIPlacement(
+      asset,
+      CHILD,
+      'absolute',
+      new Map([
+        [ROOT, { x: 0, y: 0, width: 400, height: 300 }],
+        [CHILD, { x: 30, y: 40, width: 100, height: 40 }],
+      ]),
+    )
+    expect(() => updateUIAbsoluteOffset(absolute, CHILD, 'left', Number.NaN)).toThrow(
+      /finite offset/i,
+    )
+    expect(absolute.elements.find((element) => element.id === CHILD)?.placement).toEqual({
+      positioning: 'absolute',
+      left: 30,
+      top: 40,
+    })
   })
 
   it('rejects a whole-document invalid field update atomically', () => {

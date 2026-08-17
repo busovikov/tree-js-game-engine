@@ -123,31 +123,49 @@ describe('UIDocumentSchema version 2', () => {
       leaf(19, 'text', { text: 'Tail' }),
     ]
     const result = UIDocumentSchema.safeParse({ ...baseDocument(), elements })
-    if (!result.success) throw new Error(result.error.issues.map((issue) => issue.message).join('\n'))
+    if (!result.success)
+      throw new Error(result.error.issues.map((issue) => issue.message).join('\n'))
     expect(result.success).toBe(true)
   })
 
   it.each([
-    ['duplicate IDs', (value: ReturnType<typeof baseDocument>) => ({
-      ...value,
-      elements: [...value.elements, { ...value.elements[0] }],
-    }), /Duplicate UI element ID/],
-    ['unknown child', (value: ReturnType<typeof baseDocument>) => ({
-      ...value,
-      elements: [{ ...value.elements[0], children: [id(999)] }],
-    }), /Unknown UI child/],
-    ['unreachable element', (value: ReturnType<typeof baseDocument>) => ({
-      ...value,
-      elements: [...value.elements, leaf(2, 'text', { text: 'lost' })],
-    }), /unreachable/],
-    ['non-frame root', (value: ReturnType<typeof baseDocument>) => ({
-      ...value,
-      elements: [leaf(1, 'text', { text: 'root' })],
-    }), /root.*frame/i],
+    [
+      'duplicate IDs',
+      (value: ReturnType<typeof baseDocument>) => ({
+        ...value,
+        elements: [...value.elements, { ...value.elements[0] }],
+      }),
+      /Duplicate UI element ID/,
+    ],
+    [
+      'unknown child',
+      (value: ReturnType<typeof baseDocument>) => ({
+        ...value,
+        elements: [{ ...value.elements[0], children: [id(999)] }],
+      }),
+      /Unknown UI child/,
+    ],
+    [
+      'unreachable element',
+      (value: ReturnType<typeof baseDocument>) => ({
+        ...value,
+        elements: [...value.elements, leaf(2, 'text', { text: 'lost' })],
+      }),
+      /unreachable/,
+    ],
+    [
+      'non-frame root',
+      (value: ReturnType<typeof baseDocument>) => ({
+        ...value,
+        elements: [leaf(1, 'text', { text: 'root' })],
+      }),
+      /root.*frame/i,
+    ],
   ])('rejects %s', (_name, mutate, message) => {
     const result = UIDocumentSchema.safeParse(mutate(baseDocument()))
     expect(result.success).toBe(false)
-    if (!result.success) expect(result.error.issues.map((issue) => issue.message).join('\n')).toMatch(message)
+    if (!result.success)
+      expect(result.error.issues.map((issue) => issue.message).join('\n')).toMatch(message)
   })
 
   it('rejects invalid layout/sizing, widget ranges/options, bindings, and accessibility', () => {
@@ -157,7 +175,10 @@ describe('UIDocumentSchema version 2', () => {
       leaf(2, 'select', {
         value: 'missing',
         accessibility: { label: 'Bad select' },
-        options: [{ value: 'same', label: 'One' }, { value: 'same', label: 'Two' }],
+        options: [
+          { value: 'same', label: 'One' },
+          { value: 'same', label: 'Two' },
+        ],
       }),
       leaf(2, 'button', { text: 'No name', events: { activate: EVENT_STRING } }),
       leaf(2, 'image', { source: { $ref: id(91) }, alt: '' }),
@@ -185,6 +206,32 @@ describe('UIDocumentSchema version 2', () => {
     }
   })
 
+  it('rejects Fill sizing on absolute-positioned auto-layout children', () => {
+    const child = id(2)
+    const result = UIDocumentSchema.safeParse({
+      ...baseDocument(),
+      elements: [
+        {
+          ...baseDocument().elements[0],
+          children: [child],
+          layout: { mode: 'vertical' },
+        },
+        leaf(2, 'text', {
+          text: 'Overlay',
+          placement: { positioning: 'absolute', left: 12, top: 16 },
+          sizing: { width: { mode: 'fill' } },
+        }),
+      ],
+    })
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues.map((issue) => issue.message).join('\n')).toMatch(
+        /Fill sizing is invalid for absolute positioning/i,
+      )
+    }
+  })
+
   it('accepts nested acyclic component instances and rejects cycles and structural overrides', () => {
     const componentA = id(60)
     const componentB = id(61)
@@ -195,15 +242,32 @@ describe('UIDocumentSchema version 2', () => {
       ...baseDocument(),
       elements: [
         { ...baseDocument().elements[0], children: [instance] },
-        leaf(64, 'instance', { component: componentA, overrides: { [aRoot]: { name: 'Override' } } }),
+        leaf(64, 'instance', {
+          component: componentA,
+          overrides: { [aRoot]: { name: 'Override' } },
+        }),
       ],
       components: [
-        { id: componentA, name: 'A', root: aRoot, elements: [leaf(62, 'frame', { children: [bRoot], layout: { mode: 'vertical' } }), leaf(63, 'instance', { component: componentB })] },
-        { id: componentB, name: 'B', root: id(65), elements: [leaf(65, 'text', { text: 'Nested' })] },
+        {
+          id: componentA,
+          name: 'A',
+          root: aRoot,
+          elements: [
+            leaf(62, 'frame', { children: [bRoot], layout: { mode: 'vertical' } }),
+            leaf(63, 'instance', { component: componentB }),
+          ],
+        },
+        {
+          id: componentB,
+          name: 'B',
+          root: id(65),
+          elements: [leaf(65, 'text', { text: 'Nested' })],
+        },
       ],
     }
     const validResult = UIDocumentSchema.safeParse(valid)
-    if (!validResult.success) throw new Error(validResult.error.issues.map((issue) => issue.message).join('\n'))
+    if (!validResult.success)
+      throw new Error(validResult.error.issues.map((issue) => issue.message).join('\n'))
     expect(validResult.success).toBe(true)
 
     const cyclic = structuredClone(valid)
@@ -279,11 +343,17 @@ describe('UIDocumentSchema version 2', () => {
       components: [{ id: component, name: 'Controls', root: componentRoot, elements }],
     })
 
-    expect(UIDocumentSchema.safeParse(candidate({ [checkbox]: { visible: false } })).success).toBe(true)
-    expect(UIDocumentSchema.safeParse(candidate({
-      [radioA]: { value: 'b' },
-      [radioB]: { value: 'b' },
-    })).success).toBe(true)
+    expect(UIDocumentSchema.safeParse(candidate({ [checkbox]: { visible: false } })).success).toBe(
+      true,
+    )
+    expect(
+      UIDocumentSchema.safeParse(
+        candidate({
+          [radioA]: { value: 'b' },
+          [radioB]: { value: 'b' },
+        }),
+      ).success,
+    ).toBe(true)
 
     const invalidOverrides = [
       { [input]: { value: 'too long' } },
@@ -312,22 +382,39 @@ describe('UIDocumentSchema version 2', () => {
         { ...baseDocument().elements[0], children: [instance] },
         leaf(64, 'instance', { component, overrides }),
       ],
-      components: [{
-        id: component,
-        name: 'Actions',
-        root: componentRoot,
-        elements: [
-          leaf(61, 'frame', { children: [button, checkbox], layout: { mode: 'vertical' } }),
-          leaf(62, 'button', { text: 'Run' }),
-          leaf(63, 'checkbox', { value: false, label: 'Accept' }),
-        ],
-      }],
+      components: [
+        {
+          id: component,
+          name: 'Actions',
+          root: componentRoot,
+          elements: [
+            leaf(61, 'frame', { children: [button, checkbox], layout: { mode: 'vertical' } }),
+            leaf(62, 'button', { text: 'Run' }),
+            leaf(63, 'checkbox', { value: false, label: 'Accept' }),
+          ],
+        },
+      ],
     })
 
-    expect(UIDocumentSchema.safeParse(candidate({ [button]: { events: { activate: EVENT_NONE } } })).success).toBe(true)
-    expect(UIDocumentSchema.safeParse(candidate({ [button]: { events: { change: EVENT_NONE } } })).success).toBe(false)
-    expect(UIDocumentSchema.safeParse(candidate({ [button]: { events: { activate: EVENT_STRING } } })).success).toBe(false)
-    expect(UIDocumentSchema.safeParse(candidate({ [checkbox]: { events: { change: EVENT_STRING } } })).success).toBe(false)
-    expect(UIDocumentSchema.safeParse(candidate({ [checkbox]: { events: { change: id(999) } } })).success).toBe(false)
+    expect(
+      UIDocumentSchema.safeParse(candidate({ [button]: { events: { activate: EVENT_NONE } } }))
+        .success,
+    ).toBe(true)
+    expect(
+      UIDocumentSchema.safeParse(candidate({ [button]: { events: { change: EVENT_NONE } } }))
+        .success,
+    ).toBe(false)
+    expect(
+      UIDocumentSchema.safeParse(candidate({ [button]: { events: { activate: EVENT_STRING } } }))
+        .success,
+    ).toBe(false)
+    expect(
+      UIDocumentSchema.safeParse(candidate({ [checkbox]: { events: { change: EVENT_STRING } } }))
+        .success,
+    ).toBe(false)
+    expect(
+      UIDocumentSchema.safeParse(candidate({ [checkbox]: { events: { change: id(999) } } }))
+        .success,
+    ).toBe(false)
   })
 })

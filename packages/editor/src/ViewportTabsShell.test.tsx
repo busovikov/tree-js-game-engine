@@ -2,7 +2,7 @@
  * @vitest-environment happy-dom
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 
 vi.mock('./panels/ViewportPanel.js', () => ({
   ViewportPanel: () => <div>Viewport panel</div>,
@@ -174,11 +174,9 @@ describe('ViewportTabsShell UI workspace baseline', () => {
     expect(uiAuthoringSession.asset?.elements[0]).toMatchObject({
       layout: { mode: 'horizontal', wrap: false },
     })
-    expect(uiAuthoringSession.asset?.elements.slice(1).map((element) => element.placement)).toEqual([
-      { positioning: 'flow' },
-      { positioning: 'flow' },
-      { positioning: 'flow' },
-    ])
+    expect(uiAuthoringSession.asset?.elements.slice(1).map((element) => element.placement)).toEqual(
+      [{ positioning: 'flow' }, { positioning: 'flow' }, { positioning: 'flow' }],
+    )
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
     expect(uiAuthoringSession.asset).toEqual(before)
   })
@@ -216,6 +214,125 @@ describe('ViewportTabsShell UI workspace baseline', () => {
     expect(uiAuthoringSession.asset).toEqual(afterFirst)
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
     expect(uiAuthoringSession.asset).toEqual(before)
+  })
+
+  it('exposes visual horizontal and vertical constraints as strict one-step edits', () => {
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    fireEvent.click(
+      container.querySelector(
+        '[data-haku-ui-tree-item="13000000-0000-4000-8000-000000000102"]',
+      ) as HTMLButtonElement,
+    )
+    uiCommandBus.clear()
+    const before = structuredClone(uiAuthoringSession.asset)!
+    const placement = screen.getByRole('region', { name: 'Placement' })
+
+    expect(
+      container.querySelector('[data-haku-ui-constraint-anchor="horizontal-center"]'),
+    ).toBeTruthy()
+    expect(container.querySelector('[data-haku-ui-constraint-anchor="vertical-top"]')).toBeTruthy()
+    expect(
+      within(placement).getByRole('button', { name: 'Left' }).getAttribute('aria-pressed'),
+    ).toBe('false')
+    fireEvent.click(within(placement).getByRole('button', { name: 'Right' }))
+    const afterHorizontal = structuredClone(uiAuthoringSession.asset)!
+    expect(afterHorizontal.elements[1]!.placement).toMatchObject({
+      positioning: 'free',
+      horizontalConstraint: 'right',
+      referenceWidth: 1280,
+    })
+    expect(
+      container.querySelector('[data-haku-ui-constraint-anchor="horizontal-right"]'),
+    ).toBeTruthy()
+    expect(() => UIDocumentSchema.parse(afterHorizontal)).not.toThrow()
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(uiAuthoringSession.asset).toEqual(before)
+
+    fireEvent.click(within(placement).getByRole('button', { name: 'Bottom' }))
+    expect(uiAuthoringSession.asset!.elements[1]!.placement).toMatchObject({
+      positioning: 'free',
+      verticalConstraint: 'bottom',
+      referenceHeight: 720,
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(uiAuthoringSession.asset).toEqual(before)
+  })
+
+  it('converts auto-layout Flow and Absolute placement with exact undo and safe drafts', () => {
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    fireEvent.change(screen.getByLabelText('Layout mode'), { target: { value: 'vertical' } })
+    fireEvent.click(
+      container.querySelector(
+        '[data-haku-ui-tree-item="13000000-0000-4000-8000-000000000103"]',
+      ) as HTMLButtonElement,
+    )
+    uiCommandBus.clear()
+    const flow = structuredClone(uiAuthoringSession.asset)!
+    const placement = screen.getByRole('region', { name: 'Placement' })
+
+    fireEvent.click(within(placement).getByRole('button', { name: 'Absolute' }))
+    const absolute = structuredClone(uiAuthoringSession.asset)!
+    expect(absolute.elements[2]!.placement).toEqual({
+      positioning: 'absolute',
+      left: expect.any(Number),
+      top: expect.any(Number),
+    })
+    expect(Number.isFinite((absolute.elements[2]!.placement as { left: number }).left)).toBe(true)
+    expect(() => UIDocumentSchema.parse(absolute)).not.toThrow()
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(uiAuthoringSession.asset).toEqual(flow)
+
+    fireEvent.click(within(placement).getByRole('button', { name: 'Absolute' }))
+    uiCommandBus.clear()
+    const beforeInvalid = structuredClone(uiAuthoringSession.asset)!
+    const left = within(placement).getByLabelText('Left offset')
+    fireEvent.change(left, { target: { value: 'NaN' } })
+    fireEvent.blur(left)
+    expect(uiAuthoringSession.asset).toEqual(beforeInvalid)
+    expect(uiCommandBus.canUndo()).toBe(false)
+
+    fireEvent.click(within(placement).getByRole('button', { name: 'Flow' }))
+    expect(uiAuthoringSession.asset!.elements[2]!.placement).toEqual({ positioning: 'flow' })
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(uiAuthoringSession.asset).toEqual(beforeInvalid)
+  })
+
+  it('explains and blocks Absolute placement when Flow sizing uses Fill', () => {
+    const autoAsset = UIDocumentSchema.parse({
+      ...INITIAL_UI_ASSET,
+      elements: INITIAL_UI_ASSET.elements.map((element) =>
+        element.id === INITIAL_UI_ASSET.root
+          ? { ...element, layout: { mode: 'vertical' } }
+          : {
+              ...element,
+              placement: { positioning: 'flow' },
+              ...(element.id === '13000000-0000-4000-8000-000000000102'
+                ? { sizing: { ...element.sizing, width: { mode: 'fill' } } }
+                : {}),
+            },
+      ),
+    })
+    uiAuthoringSession.openAsset('builtin:m10b-runtime-hud.ui.json', autoAsset)
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    fireEvent.click(
+      container.querySelector(
+        '[data-haku-ui-tree-item="13000000-0000-4000-8000-000000000102"]',
+      ) as HTMLButtonElement,
+    )
+    uiCommandBus.clear()
+    const before = structuredClone(uiAuthoringSession.asset)!
+    const placement = screen.getByRole('region', { name: 'Placement' })
+    const absolute = within(placement).getByRole('button', { name: 'Absolute' })
+
+    expect((absolute as HTMLButtonElement).disabled).toBe(true)
+    expect(absolute.getAttribute('title')).toMatch(/either axis uses Fill/i)
+    expect(within(placement).getByText(/either axis uses Fill/i)).toBeTruthy()
+    fireEvent.click(absolute)
+    expect(uiAuthoringSession.asset).toEqual(before)
+    expect(uiCommandBus.canUndo()).toBe(false)
   })
 
   // M2 owns replacement of the fixed-scale baseline; M3 starts direct canvas interaction.

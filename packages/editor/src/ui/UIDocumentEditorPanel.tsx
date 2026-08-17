@@ -54,8 +54,13 @@ import {
 import {
   convertFrameLayout,
   convertUIFixedUnit,
+  convertUIPlacement,
   convertUISize,
+  explainUIConstraintEdit,
+  explainUIPlacementMode,
   explainUISizeMode,
+  updateUIAbsoluteOffset,
+  updateUIFreeConstraint,
   updateUISizingBound,
   type UISizingBoundKey,
   type UISizeContext,
@@ -458,14 +463,16 @@ function UIDimensionField({
     const label = `${kind} ${axis.toLowerCase()}`
     const changeUnit = (unit: '' | 'px' | '%') => {
       if (!unit) return setBound(key, undefined)
-      const measuredValue = unit === 'px' ? measured : reference > 0 ? (measured / reference) * 100 : 0
+      const measuredValue =
+        unit === 'px' ? measured : reference > 0 ? (measured / reference) * 100 : 0
       const otherKey = `${kind === 'Min' ? 'max' : 'min'}${axis}` as UISizingBoundKey
       const other = sizing[otherKey]
-      const value = other?.unit === unit
-        ? kind === 'Max'
-          ? Math.max(measuredValue, other.value)
-          : Math.min(measuredValue, other.value)
-        : measuredValue
+      const value =
+        other?.unit === unit
+          ? kind === 'Max'
+            ? Math.max(measuredValue, other.value)
+            : Math.min(measuredValue, other.value)
+          : measuredValue
       setBound(key, { value: Math.max(0, value), unit })
     }
     return (
@@ -480,7 +487,9 @@ function UIDimensionField({
           >
             <option value="">None</option>
             <option value="px">px</option>
-            <option value="%" disabled={context.isRoot}>%</option>
+            <option value="%" disabled={context.isRoot}>
+              %
+            </option>
           </select>
         </label>
         {bound && (
@@ -493,11 +502,7 @@ function UIDimensionField({
             onScrubStart={beginNumericGesture}
             onScrubEnd={endNumericGesture}
             onChange={(value) =>
-              setBound(
-                key,
-                { ...bound, value },
-                historyGroup.current ?? undefined,
-              )
+              setBound(key, { ...bound, value }, historyGroup.current ?? undefined)
             }
           />
         )}
@@ -516,7 +521,9 @@ function UIDimensionField({
           onChange={(event) => setMode(event.target.value as UISizeMode)}
         >
           <option value="hug">Hug</option>
-          <option value="fill" disabled={explainUISizeMode('fill', context) !== null}>Fill</option>
+          <option value="fill" disabled={explainUISizeMode('fill', context) !== null}>
+            Fill
+          </option>
           <option value="fixed">Fixed</option>
         </select>
       </label>
@@ -531,7 +538,9 @@ function UIDimensionField({
               onChange={(event) => setUnit(event.target.value as 'px' | '%')}
             >
               <option value="px">px</option>
-              <option value="%" disabled={context.isRoot}>%</option>
+              <option value="%" disabled={context.isRoot}>
+                %
+              </option>
             </select>
           </label>
           <NumberField
@@ -542,18 +551,11 @@ function UIDimensionField({
             step={1}
             onScrubStart={beginNumericGesture}
             onScrubEnd={endNumericGesture}
-            onChange={(value) =>
-              onChange(
-                { ...size, value },
-                historyGroup.current ?? undefined,
-              )
-            }
+            onChange={(value) => onChange({ ...size, value }, historyGroup.current ?? undefined)}
           />
         </>
       )}
-      {explainUISizeMode('fill', context) && (
-        <small>{explainUISizeMode('fill', context)}</small>
-      )}
+      {explainUISizeMode('fill', context) && <small>{explainUISizeMode('fill', context)}</small>}
       {boundControl('Min')}
       {boundControl('Max')}
       {error && <small role="alert">{error}</small>}
@@ -600,9 +602,10 @@ const UIFrameLayoutSection = memo(function UIFrameLayoutSection({
       setError(reason instanceof Error ? reason.message : String(reason))
     }
   }
-  const overflowOptions = element.type === 'scroll-container'
-    ? (['hidden', 'auto', 'scroll'] as const)
-    : (['visible', 'hidden', 'auto', 'scroll'] as const)
+  const overflowOptions =
+    element.type === 'scroll-container'
+      ? (['hidden', 'auto', 'scroll'] as const)
+      : (['visible', 'hidden', 'auto', 'scroll'] as const)
   const autoLayout = element.layout.mode === 'free' ? null : element.layout
   const flowLayout =
     element.layout.mode === 'horizontal' || element.layout.mode === 'vertical'
@@ -751,6 +754,160 @@ const UIFrameLayoutSection = memo(function UIFrameLayoutSection({
   )
 })
 
+const horizontalConstraints = [
+  ['left', 'Left'],
+  ['right', 'Right'],
+  ['left-right', 'Left + Right'],
+  ['center', 'Center'],
+  ['scale', 'Scale'],
+] as const
+const verticalConstraints = [
+  ['top', 'Top'],
+  ['bottom', 'Bottom'],
+  ['top-bottom', 'Top + Bottom'],
+  ['center', 'Center'],
+  ['scale', 'Scale'],
+] as const
+
+const UIPlacementSection = memo(function UIPlacementSection({
+  asset,
+  element,
+  bounds,
+}: {
+  asset: UIDocument
+  element: UIElement
+  bounds: ReadonlyMap<UIElementId, UIRect>
+}) {
+  const [error, setError] = useState<string | null>(null)
+  const historyGroup = useRef<string | null>(null)
+  const parent = asset.elements.find(
+    (candidate) => 'children' in candidate && candidate.children.includes(element.id),
+  )
+  if (!parent || !('layout' in parent)) return null
+
+  const commit = (candidate: UIDocument, group?: string) => {
+    uiAuthoringSession.replaceAsset(candidate, undefined, group ? { historyGroup: group } : {})
+    setError(null)
+  }
+  const run = (action: () => UIDocument, group?: string) => {
+    try {
+      commit(action(), group)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    }
+  }
+  const beginNumericGesture = () => {
+    historyGroup.current = `ui-placement-${crypto.randomUUID()}`
+  }
+  const endNumericGesture = () => {
+    historyGroup.current = null
+  }
+
+  const renderConstraintAxis = (
+    axis: 'horizontal' | 'vertical',
+    options: typeof horizontalConstraints | typeof verticalConstraints,
+  ) => {
+    const reason = explainUIConstraintEdit(asset, element.id, axis, bounds)
+    const current =
+      element.placement.positioning === 'free'
+        ? axis === 'horizontal'
+          ? element.placement.horizontalConstraint
+          : element.placement.verticalConstraint
+        : null
+    return (
+      <fieldset className="haku-ui-editor__constraint-field">
+        <legend>{axis === 'horizontal' ? 'Horizontal constraints' : 'Vertical constraints'}</legend>
+        <div className="haku-ui-editor__constraint-options">
+          {options.map(([value, label]) => (
+            <button
+              type="button"
+              key={value}
+              aria-pressed={current === value}
+              disabled={Boolean(reason)}
+              title={reason ?? label}
+              onClick={() =>
+                run(() =>
+                  axis === 'horizontal'
+                    ? updateUIFreeConstraint(asset, element.id, axis, value, bounds)
+                    : updateUIFreeConstraint(asset, element.id, axis, value, bounds),
+                )
+              }
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {reason && <small>{reason}</small>}
+      </fieldset>
+    )
+  }
+
+  const absoluteReason = explainUIPlacementMode(asset, element.id, 'absolute', bounds)
+  const flowReason = explainUIPlacementMode(asset, element.id, 'flow', bounds)
+  const autoLayout = parent.layout.mode !== 'free'
+  const absolutePlacement = element.placement.positioning === 'absolute' ? element.placement : null
+
+  return (
+    <section className="haku-ui-editor__inspector-section" aria-label="Placement" role="region">
+      <h4>Placement</h4>
+      {element.placement.positioning === 'free' && (
+        <>
+          {renderConstraintAxis('horizontal', horizontalConstraints)}
+          {renderConstraintAxis('vertical', verticalConstraints)}
+        </>
+      )}
+      {autoLayout && (
+        <>
+          <div className="haku-ui-editor__placement-modes" aria-label="Positioning mode">
+            {(['flow', 'absolute'] as const).map((mode) => {
+              const reason = mode === 'flow' ? flowReason : absoluteReason
+              return (
+                <button
+                  type="button"
+                  key={mode}
+                  aria-pressed={element.placement.positioning === mode}
+                  disabled={Boolean(reason)}
+                  title={reason ?? undefined}
+                  onClick={() => run(() => convertUIPlacement(asset, element.id, mode, bounds))}
+                >
+                  {mode === 'flow' ? 'Flow' : 'Absolute'}
+                </button>
+              )
+            })}
+          </div>
+          {absoluteReason && element.placement.positioning !== 'absolute' && (
+            <small>{absoluteReason}</small>
+          )}
+        </>
+      )}
+      {absolutePlacement &&
+        (['left', 'top', 'right', 'bottom'] as const).flatMap((side) => {
+          const value = absolutePlacement[side]
+          return value === undefined
+            ? []
+            : [
+                <NumberField
+                  key={side}
+                  label={`${side[0]!.toUpperCase()}${side.slice(1)} offset`}
+                  inputAriaLabel={`${side[0]!.toUpperCase()}${side.slice(1)} offset`}
+                  value={value}
+                  step={1}
+                  onScrubStart={beginNumericGesture}
+                  onScrubEnd={endNumericGesture}
+                  onChange={(next) =>
+                    run(
+                      () => updateUIAbsoluteOffset(asset, element.id, side, next),
+                      historyGroup.current ?? undefined,
+                    )
+                  }
+                />,
+              ]
+        })}
+      {error && <small role="alert">{error}</small>}
+    </section>
+  )
+})
+
 function UIInspector({
   asset,
   element,
@@ -802,6 +959,7 @@ function UIInspector({
       {'layout' in element && (
         <UIFrameLayoutSection asset={asset} element={element} bounds={bounds} />
       )}
+      {parent && <UIPlacementSection asset={asset} element={element} bounds={bounds} />}
       {(element.type === 'text' || element.type === 'button') && (
         <label className="mesh-field">
           <span className="mesh-field__label">Text</span>
@@ -984,6 +1142,22 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
   }, [])
 
   const hierarchyParents = useMemo(() => (asset ? elementParents(asset) : new Map()), [asset])
+  const constraintOverlay = useMemo(() => {
+    if (!asset || selectedIds.length !== 1) return null
+    const element = asset.elements.find((candidate) => candidate.id === selectedIds[0])
+    if (!element || element.placement.positioning !== 'free') return null
+    const placement = element.placement
+    const parentId = hierarchyParents.get(element.id)
+    const rect = elementBounds.get(element.id)
+    const parentRect = parentId ? elementBounds.get(parentId as UIElementId) : undefined
+    if (!rect || !parentRect) return null
+    return {
+      horizontalConstraint: placement.horizontalConstraint,
+      verticalConstraint: placement.verticalConstraint,
+      rect,
+      parentRect,
+    }
+  }, [asset, elementBounds, hierarchyParents, selectedIds])
 
   const focusLayer = useCallback((id: UIElementId) => {
     document.querySelector<HTMLElement>(`[data-haku-ui-tree-item="${id}"]`)?.focus()
@@ -2422,6 +2596,28 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
                           ),
                         )
                       })}
+                    {constraintOverlay && (
+                      <>
+                        <div
+                          className="haku-ui-editor__constraint-anchor haku-ui-editor__constraint-anchor--horizontal"
+                          data-haku-ui-constraint-anchor={`horizontal-${constraintOverlay.horizontalConstraint}`}
+                          style={{
+                            left: constraintOverlay.parentRect.x,
+                            top: constraintOverlay.rect.y + constraintOverlay.rect.height / 2,
+                            width: constraintOverlay.parentRect.width,
+                          }}
+                        />
+                        <div
+                          className="haku-ui-editor__constraint-anchor haku-ui-editor__constraint-anchor--vertical"
+                          data-haku-ui-constraint-anchor={`vertical-${constraintOverlay.verticalConstraint}`}
+                          style={{
+                            left: constraintOverlay.rect.x + constraintOverlay.rect.width / 2,
+                            top: constraintOverlay.parentRect.y,
+                            height: constraintOverlay.parentRect.height,
+                          }}
+                        />
+                      </>
+                    )}
                     {guides.map((guide, index) => (
                       <div
                         key={`${guide.axis}-${guide.guide}-${index}`}

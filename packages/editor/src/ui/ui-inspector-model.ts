@@ -5,6 +5,7 @@ import {
   type UIElementId,
   type UIBound,
   type UILayout,
+  type UIPlacement,
   type UISize,
   type UISizing,
 } from '@haku/ui'
@@ -22,6 +23,184 @@ export interface UISizeContext {
 export interface UISizeConversionContext extends UISizeContext {
   readonly measured: number
   readonly unit: 'px' | '%'
+}
+
+export type UIConstraintAxis = 'horizontal' | 'vertical'
+export type UIHorizontalConstraint = Extract<
+  UIPlacement,
+  { positioning: 'free' }
+>['horizontalConstraint']
+export type UIVerticalConstraint = Extract<
+  UIPlacement,
+  { positioning: 'free' }
+>['verticalConstraint']
+export type UIAbsoluteOffset = 'top' | 'right' | 'bottom' | 'left'
+
+function parentOf(asset: UIDocument, id: UIElementId | string): UIElement | undefined {
+  return asset.elements.find(
+    (candidate) => 'children' in candidate && candidate.children.includes(id as UIElementId),
+  )
+}
+
+function hasFiniteRect(rect: UIRect | undefined): rect is UIRect {
+  return Boolean(
+    rect &&
+    Number.isFinite(rect.x) &&
+    Number.isFinite(rect.y) &&
+    Number.isFinite(rect.width) &&
+    rect.width >= 0 &&
+    Number.isFinite(rect.height) &&
+    rect.height >= 0,
+  )
+}
+
+function measuredPlacementReason(
+  asset: UIDocument,
+  id: UIElementId | string,
+  bounds: ReadonlyMap<UIElementId | string, UIRect>,
+  axis?: UIConstraintAxis,
+): string | null {
+  const parent = parentOf(asset, id)
+  const parentRect = parent ? bounds.get(parent.id) : undefined
+  const elementRect = bounds.get(id)
+  if (!parentRect || !elementRect) return 'Placement requires measured parent and element bounds.'
+  if (!Number.isFinite(parentRect.x) || !Number.isFinite(parentRect.y)) {
+    return 'Placement requires finite measured parent bounds.'
+  }
+  if (axis === 'horizontal' && (!Number.isFinite(parentRect.width) || parentRect.width <= 0)) {
+    return 'Constraint editing requires a finite positive measured parent width.'
+  }
+  if (axis === 'vertical' && (!Number.isFinite(parentRect.height) || parentRect.height <= 0)) {
+    return 'Constraint editing requires a finite positive measured parent height.'
+  }
+  if (
+    !axis &&
+    (!Number.isFinite(parentRect.width) ||
+      parentRect.width <= 0 ||
+      !Number.isFinite(parentRect.height) ||
+      parentRect.height <= 0)
+  ) {
+    return 'Absolute positioning requires finite positive measured parent bounds.'
+  }
+  if (!hasFiniteRect(elementRect)) return 'Placement requires finite measured element bounds.'
+  return null
+}
+
+export function explainUIConstraintEdit(
+  asset: UIDocument,
+  id: UIElementId | string,
+  axis: UIConstraintAxis,
+  bounds: ReadonlyMap<UIElementId | string, UIRect>,
+): string | null {
+  const element = asset.elements.find((candidate) => candidate.id === id)
+  if (!element) return `Unknown UI element: ${id}`
+  const parent = parentOf(asset, id)
+  if (!parent || !('layout' in parent) || parent.layout.mode !== 'free') {
+    return 'Constraints are available only for a child of a Free layout Frame.'
+  }
+  if (element.placement.positioning !== 'free') {
+    return 'Constraints require free placement.'
+  }
+  return measuredPlacementReason(asset, id, bounds, axis)
+}
+
+export function updateUIFreeConstraint(
+  asset: UIDocument,
+  id: UIElementId | string,
+  axis: UIConstraintAxis,
+  constraint: UIHorizontalConstraint | UIVerticalConstraint,
+  bounds: ReadonlyMap<UIElementId | string, UIRect>,
+): UIDocument {
+  const reason = explainUIConstraintEdit(asset, id, axis, bounds)
+  if (reason) throw new Error(reason)
+  const element = asset.elements.find((candidate) => candidate.id === id)!
+  const parent = parentOf(asset, id)!
+  const elementRect = bounds.get(id)!
+  const parentRect = bounds.get(parent.id)!
+  const placement = element.placement as Extract<UIPlacement, { positioning: 'free' }>
+  const nextPlacement: Extract<UIPlacement, { positioning: 'free' }> = {
+    ...placement,
+    x: elementRect.x - parentRect.x,
+    y: elementRect.y - parentRect.y,
+    referenceWidth: parentRect.width,
+    referenceHeight: parentRect.height,
+    ...(axis === 'horizontal'
+      ? { horizontalConstraint: constraint as UIHorizontalConstraint }
+      : { verticalConstraint: constraint as UIVerticalConstraint }),
+  }
+  return updateUIElementStrict(asset, id, { placement: nextPlacement })
+}
+
+export function explainUIPlacementMode(
+  asset: UIDocument,
+  id: UIElementId | string,
+  mode: 'flow' | 'absolute',
+  bounds: ReadonlyMap<UIElementId | string, UIRect>,
+): string | null {
+  const element = asset.elements.find((candidate) => candidate.id === id)
+  if (!element) return `Unknown UI element: ${id}`
+  if (element.id === asset.root) return 'The root Frame does not have editable child placement.'
+  const parent = parentOf(asset, id)
+  if (!parent || !('layout' in parent)) return 'Placement requires a Frame parent.'
+  if (parent.layout.mode === 'free') {
+    return 'Flow and Absolute placement are available only inside Auto layout.'
+  }
+  if (element.placement.positioning === 'free') {
+    return 'Free placement is invalid inside Auto layout.'
+  }
+  if (
+    mode === 'absolute' &&
+    (element.sizing.width.mode === 'fill' || element.sizing.height.mode === 'fill')
+  ) {
+    return 'Absolute positioning is unavailable while either axis uses Fill.'
+  }
+  if (mode === 'absolute' && element.placement.positioning === 'flow') {
+    return measuredPlacementReason(asset, id, bounds)
+  }
+  return null
+}
+
+export function convertUIPlacement(
+  asset: UIDocument,
+  id: UIElementId | string,
+  mode: 'flow' | 'absolute',
+  bounds: ReadonlyMap<UIElementId | string, UIRect>,
+): UIDocument {
+  const reason = explainUIPlacementMode(asset, id, mode, bounds)
+  if (reason) throw new Error(reason)
+  const element = asset.elements.find((candidate) => candidate.id === id)!
+  if (element.placement.positioning === mode) {
+    return UIDocumentSchema.parse(structuredClone(asset))
+  }
+  if (mode === 'flow')
+    return updateUIElementStrict(asset, id, { placement: { positioning: 'flow' } })
+  const parent = parentOf(asset, id)!
+  const elementRect = bounds.get(id)!
+  const parentRect = bounds.get(parent.id)!
+  return updateUIElementStrict(asset, id, {
+    placement: {
+      positioning: 'absolute',
+      left: elementRect.x - parentRect.x,
+      top: elementRect.y - parentRect.y,
+    },
+  })
+}
+
+export function updateUIAbsoluteOffset(
+  asset: UIDocument,
+  id: UIElementId | string,
+  side: UIAbsoluteOffset,
+  value: number,
+): UIDocument {
+  if (!Number.isFinite(value)) throw new Error('Absolute placement requires a finite offset.')
+  const element = asset.elements.find((candidate) => candidate.id === id)
+  if (!element) throw new Error(`Unknown UI element: ${id}`)
+  if (element.placement.positioning !== 'absolute') {
+    throw new Error('Offsets are available only for absolute placement.')
+  }
+  return updateUIElementStrict(asset, id, {
+    placement: { ...element.placement, [side]: value },
+  })
 }
 
 export function convertUIFixedUnit(
@@ -82,16 +261,14 @@ export function parseUISize(input: string, context: UISizeContext): UISize {
   if (!Number.isFinite(numeric) || numeric < 0) {
     throw new Error('Size must be a non-negative finite number, percentage, auto, or fill.')
   }
-  if (percent && context.isRoot) throw new Error('Percentage sizing is unavailable on the root Frame.')
+  if (percent && context.isRoot)
+    throw new Error('Percentage sizing is unavailable on the root Frame.')
   return { mode: 'fixed', value: numeric, unit: percent ? '%' : 'px' }
 }
 
 export function explainUISizeMode(mode: UISizeMode, context: UISizeContext): string | null {
   if (mode === 'fill' && context.isRoot) return 'Fill is unavailable on the root Frame.'
-  if (
-    mode === 'fill' &&
-    (context.parentLayout === 'free' || context.positioning === 'free')
-  ) {
+  if (mode === 'fill' && (context.parentLayout === 'free' || context.positioning === 'free')) {
     return 'Fill is unavailable for an element positioned in free layout.'
   }
   return null
@@ -126,9 +303,7 @@ export function updateUIElementStrict(
   return UIDocumentSchema.parse({
     ...asset,
     elements: asset.elements.map((element) =>
-      element.id === id
-        ? { ...element, ...patch, id: element.id, type: element.type }
-        : element,
+      element.id === id ? { ...element, ...patch, id: element.id, type: element.type } : element,
     ),
   })
 }
@@ -148,8 +323,7 @@ function convertedLayout(current: UILayout, mode: UIContainerLayoutMode): UILayo
   return {
     ...shared,
     mode,
-    wrap:
-      current.mode === 'horizontal' || current.mode === 'vertical' ? current.wrap : false,
+    wrap: current.mode === 'horizontal' || current.mode === 'vertical' ? current.wrap : false,
   }
 }
 
@@ -177,7 +351,8 @@ export function convertFrameLayout(
     }
     if (!frameBounds) throw new Error('Layout conversion requires measured Frame bounds')
     const childBounds = bounds.get(element.id)
-    if (!childBounds) throw new Error(`Layout conversion requires measured bounds for ${element.id}`)
+    if (!childBounds)
+      throw new Error(`Layout conversion requires measured bounds for ${element.id}`)
     return {
       ...element,
       placement: {
@@ -197,7 +372,11 @@ export function convertFrameLayout(
             : element.sizing.width,
         height:
           element.sizing.height.mode === 'fill'
-            ? { mode: 'fixed' as const, value: Math.max(0, childBounds.height), unit: 'px' as const }
+            ? {
+                mode: 'fixed' as const,
+                value: Math.max(0, childBounds.height),
+                unit: 'px' as const,
+              }
             : element.sizing.height,
       },
     }

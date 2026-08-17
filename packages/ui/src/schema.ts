@@ -19,7 +19,11 @@ export type UIEventId = string & { readonly [UIEventIdBrand]: true }
 export declare const UIThemeIdBrand: unique symbol
 export type UIThemeId = string & { readonly [UIThemeIdBrand]: true }
 
-const brandedUuid = <T>() => z.string().uuid().transform((value) => value as T)
+const brandedUuid = <T>() =>
+  z
+    .string()
+    .uuid()
+    .transform((value) => value as T)
 export const UIElementIdSchema = brandedUuid<UIElementId>()
 export const UIComponentIdSchema = brandedUuid<UIComponentId>()
 export const UIEventIdSchema = brandedUuid<UIEventId>()
@@ -575,7 +579,11 @@ function validateTree(
   const visiting = new Set<UIElementId>()
   const visit = (id: UIElementId): void => {
     if (visiting.has(id)) {
-      context.addIssue({ code: z.ZodIssueCode.custom, path, message: `UI hierarchy cycle at ${id}` })
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path,
+        message: `UI hierarchy cycle at ${id}`,
+      })
       return
     }
     if (visited.has(id)) return
@@ -623,16 +631,33 @@ function validateTree(
           path: [...path, index, 'children'],
           message: `Free placement is invalid in auto layout for ${child.id}`,
         })
+      } else if (
+        child.placement.positioning === 'absolute' &&
+        (child.sizing.width.mode === 'fill' || child.sizing.height.mode === 'fill')
+      ) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [...path, index, 'children'],
+          message: `Fill sizing is invalid for absolute positioning on ${child.id}`,
+        })
       }
     }
   }
   return elements
 }
 
-const EVENT_PAYLOADS: Partial<Record<UIElement['type'], Partial<Record<string, UIEventDefinition['payload']>>>> = {
+const EVENT_PAYLOADS: Partial<
+  Record<UIElement['type'], Partial<Record<string, UIEventDefinition['payload']>>>
+> = {
   frame: { focus: 'none', blur: 'none' },
   button: { activate: 'none' },
-  'text-input': { input: 'string', change: 'string', submit: 'string', focus: 'none', blur: 'none' },
+  'text-input': {
+    input: 'string',
+    change: 'string',
+    submit: 'string',
+    focus: 'none',
+    blur: 'none',
+  },
   'text-area': { input: 'string', change: 'string', focus: 'none', blur: 'none' },
   checkbox: { change: 'boolean' },
   radio: { change: 'string' },
@@ -653,11 +678,23 @@ function validateEventBindings(
     const expectedPayload = EVENT_PAYLOADS[type]?.[slot]
     const definition = events.get(binding)
     if (expectedPayload === undefined) {
-      context.addIssue({ code: z.ZodIssueCode.custom, path: [...path, slot], message: `UI event slot ${type}.${slot} is invalid` })
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [...path, slot],
+        message: `UI event slot ${type}.${slot} is invalid`,
+      })
     } else if (!definition) {
-      context.addIssue({ code: z.ZodIssueCode.custom, path: [...path, slot], message: `Unknown UI event: ${binding}` })
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [...path, slot],
+        message: `Unknown UI event: ${binding}`,
+      })
     } else if (expectedPayload !== definition.payload) {
-      context.addIssue({ code: z.ZodIssueCode.custom, path: [...path, slot], message: `UI event ${binding} has incompatible payload for ${type}.${slot}` })
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [...path, slot],
+        message: `UI event ${binding} has incompatible payload for ${type}.${slot}`,
+      })
     }
   }
 }
@@ -707,7 +744,11 @@ function validateElementSemantics(
       })
     }
   }
-  if (element.type === 'progress' && (element.min >= element.max || (element.value !== null && (element.value < element.min || element.value > element.max)))) {
+  if (
+    element.type === 'progress' &&
+    (element.min >= element.max ||
+      (element.value !== null && (element.value < element.min || element.value > element.max)))
+  ) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
       path: indexPath,
@@ -745,21 +786,48 @@ function validateOverrideValue(
 ): void {
   let valid = false
   if (source.type === 'text-input' || source.type === 'text-area') {
-    valid = typeof value === 'string' && (source.maxLength === undefined || value.length <= source.maxLength)
+    valid =
+      typeof value === 'string' &&
+      (source.maxLength === undefined || value.length <= source.maxLength)
   } else if (source.type === 'checkbox' || source.type === 'switch') {
     valid = typeof value === 'boolean'
   } else if (source.type === 'radio') {
-    valid = value === null || (typeof value === 'string' && sourceElements.some((candidate) =>
-      candidate.type === 'radio' && candidate.group === source.group && candidate.optionValue === value))
+    valid =
+      value === null ||
+      (typeof value === 'string' &&
+        sourceElements.some(
+          (candidate) =>
+            candidate.type === 'radio' &&
+            candidate.group === source.group &&
+            candidate.optionValue === value,
+        ))
   } else if (source.type === 'select') {
-    valid = value === null || (typeof value === 'string' && source.options.some((option) => option.value === value))
+    valid =
+      value === null ||
+      (typeof value === 'string' && source.options.some((option) => option.value === value))
   } else if (source.type === 'slider') {
-    valid = typeof value === 'number' && Number.isFinite(value) && value >= source.min && value <= source.max &&
-      Math.abs((value - source.min) / source.step - Math.round((value - source.min) / source.step)) < 1e-9
+    valid =
+      typeof value === 'number' &&
+      Number.isFinite(value) &&
+      value >= source.min &&
+      value <= source.max &&
+      Math.abs(
+        (value - source.min) / source.step - Math.round((value - source.min) / source.step),
+      ) < 1e-9
   } else if (source.type === 'progress') {
-    valid = value === null || (typeof value === 'number' && Number.isFinite(value) && value >= source.min && value <= source.max)
+    valid =
+      value === null ||
+      (typeof value === 'number' &&
+        Number.isFinite(value) &&
+        value >= source.min &&
+        value <= source.max)
   }
-  if (!valid) context.addIssue({ code: z.ZodIssueCode.custom, path, message: `Value override is invalid for ${source.type}` })
+  if (!valid)
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path,
+      message: `Value override is invalid for ${source.type}`,
+    })
 }
 
 function validateRadioGroups(
@@ -790,7 +858,11 @@ function validateRadioGroups(
     groups.set(element.group, group)
   }
   for (const [name, group] of groups) {
-    if (group.initial !== null && group.initial !== undefined && !group.options.has(group.initial)) {
+    if (
+      group.initial !== null &&
+      group.initial !== undefined &&
+      !group.options.has(group.initial)
+    ) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path,
@@ -805,7 +877,11 @@ export const UIDocumentSchema: z.ZodType<UIDocument, z.ZodTypeDef, unknown> =
     const eventMap = new Map<UIEventId, UIEventDefinition>()
     for (const [index, event] of value.events.entries()) {
       if (eventMap.has(event.id)) {
-        context.addIssue({ code: z.ZodIssueCode.custom, path: ['events', index, 'id'], message: `Duplicate UI event ID: ${event.id}` })
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['events', index, 'id'],
+          message: `Duplicate UI event ID: ${event.id}`,
+        })
       }
       eventMap.set(event.id, event)
     }
@@ -813,50 +889,94 @@ export const UIDocumentSchema: z.ZodType<UIDocument, z.ZodTypeDef, unknown> =
     const allElementIds = new Set<UIElementId>()
     for (const [index, component] of value.components.entries()) {
       if (componentMap.has(component.id)) {
-        context.addIssue({ code: z.ZodIssueCode.custom, path: ['components', index, 'id'], message: `Duplicate UI component ID: ${component.id}` })
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['components', index, 'id'],
+          message: `Duplicate UI component ID: ${component.id}`,
+        })
       }
       componentMap.set(component.id, component)
     }
 
     const documentElements = validateTree(value.root, value.elements, ['elements'], context, true)
     const root = documentElements.get(value.root)
-    if (root?.sizing.width.mode === 'fill' || root?.sizing.height.mode === 'fill' ||
+    if (
+      root?.sizing.width.mode === 'fill' ||
+      root?.sizing.height.mode === 'fill' ||
       (root?.sizing.width.mode === 'fixed' && root.sizing.width.unit === '%') ||
-      (root?.sizing.height.mode === 'fixed' && root.sizing.height.unit === '%')) {
-      context.addIssue({ code: z.ZodIssueCode.custom, path: ['elements', 0, 'sizing'], message: 'UI root requires host-independent sizing' })
+      (root?.sizing.height.mode === 'fixed' && root.sizing.height.unit === '%')
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['elements', 0, 'sizing'],
+        message: 'UI root requires host-independent sizing',
+      })
     }
     const scopes: Array<{ elements: readonly UIElement[]; path: (string | number)[] }> = [
       { elements: value.elements, path: ['elements'] },
     ]
     for (const [componentIndex, component] of value.components.entries()) {
-      validateTree(component.root, component.elements, ['components', componentIndex, 'elements'], context, false)
-      scopes.push({ elements: component.elements, path: ['components', componentIndex, 'elements'] })
+      validateTree(
+        component.root,
+        component.elements,
+        ['components', componentIndex, 'elements'],
+        context,
+        false,
+      )
+      scopes.push({
+        elements: component.elements,
+        path: ['components', componentIndex, 'elements'],
+      })
     }
     for (const scope of scopes) {
       for (const [index, element] of scope.elements.entries()) {
         if (allElementIds.has(element.id)) {
-          context.addIssue({ code: z.ZodIssueCode.custom, path: [...scope.path, index, 'id'], message: `Duplicate global UI element ID: ${element.id}` })
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [...scope.path, index, 'id'],
+            message: `Duplicate global UI element ID: ${element.id}`,
+          })
         }
         allElementIds.add(element.id)
         validateElementSemantics(element, [...scope.path, index], eventMap, context)
         if (element.type === 'instance') {
           const component = componentMap.get(element.component)
           if (!component) {
-            context.addIssue({ code: z.ZodIssueCode.custom, path: [...scope.path, index, 'component'], message: `Unknown UI component: ${element.component}` })
+            context.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: [...scope.path, index, 'component'],
+              message: `Unknown UI component: ${element.component}`,
+            })
           } else {
             const sourceIds = new Map(component.elements.map((source) => [source.id, source]))
             for (const [sourceId, override] of Object.entries(element.overrides)) {
               if (!override) continue
               const source = sourceIds.get(sourceId as UIElementId)
               if (!source) {
-                context.addIssue({ code: z.ZodIssueCode.custom, path: [...scope.path, index, 'overrides', sourceId], message: `Unknown overridden UI element: ${sourceId}` })
+                context.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  path: [...scope.path, index, 'overrides', sourceId],
+                  message: `Unknown overridden UI element: ${sourceId}`,
+                })
                 continue
               }
-              if (override.text !== undefined && source.type !== 'text' && source.type !== 'button') {
-                context.addIssue({ code: z.ZodIssueCode.custom, path: [...scope.path, index, 'overrides', sourceId, 'text'], message: `Text override is invalid for ${source.type}` })
+              if (
+                override.text !== undefined &&
+                source.type !== 'text' &&
+                source.type !== 'button'
+              ) {
+                context.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  path: [...scope.path, index, 'overrides', sourceId, 'text'],
+                  message: `Text override is invalid for ${source.type}`,
+                })
               }
               if (override.value !== undefined && !VALUE_TYPES.has(source.type)) {
-                context.addIssue({ code: z.ZodIssueCode.custom, path: [...scope.path, index, 'overrides', sourceId, 'value'], message: `Value override is invalid for ${source.type}` })
+                context.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  path: [...scope.path, index, 'overrides', sourceId, 'value'],
+                  message: `Value override is invalid for ${source.type}`,
+                })
               } else if (override.value !== undefined) {
                 validateOverrideValue(
                   source,
@@ -893,14 +1013,19 @@ export const UIDocumentSchema: z.ZodType<UIDocument, z.ZodTypeDef, unknown> =
     const visited = new Set<UIComponentId>()
     const visitComponent = (componentId: UIComponentId): void => {
       if (visiting.has(componentId)) {
-        context.addIssue({ code: z.ZodIssueCode.custom, path: ['components'], message: `UI component instance cycle at ${componentId}` })
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['components'],
+          message: `UI component instance cycle at ${componentId}`,
+        })
         return
       }
       if (visited.has(componentId)) return
       visiting.add(componentId)
       const component = componentMap.get(componentId)
       if (component) {
-        for (const element of component.elements) if (element.type === 'instance') visitComponent(element.component)
+        for (const element of component.elements)
+          if (element.type === 'instance') visitComponent(element.component)
       }
       visiting.delete(componentId)
       visited.add(componentId)
@@ -910,17 +1035,29 @@ export const UIDocumentSchema: z.ZodType<UIDocument, z.ZodTypeDef, unknown> =
     const themeIds = new Set<UIThemeId>()
     for (const [themeIndex, theme] of value.themes.entries()) {
       if (themeIds.has(theme.id)) {
-        context.addIssue({ code: z.ZodIssueCode.custom, path: ['themes', themeIndex, 'id'], message: `Duplicate UI theme ID: ${theme.id}` })
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['themes', themeIndex, 'id'],
+          message: `Duplicate UI theme ID: ${theme.id}`,
+        })
       }
       themeIds.add(theme.id)
       for (const elementId of Object.keys(theme.styles)) {
         if (!allElementIds.has(elementId as UIElementId)) {
-          context.addIssue({ code: z.ZodIssueCode.custom, path: ['themes', themeIndex, 'styles', elementId], message: `Unknown themed UI element: ${elementId}` })
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['themes', themeIndex, 'styles', elementId],
+            message: `Unknown themed UI element: ${elementId}`,
+          })
         }
       }
     }
     if (value.defaultTheme && !themeIds.has(value.defaultTheme)) {
-      context.addIssue({ code: z.ZodIssueCode.custom, path: ['defaultTheme'], message: `Unknown UI theme: ${value.defaultTheme}` })
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['defaultTheme'],
+        message: `Unknown UI theme: ${value.defaultTheme}`,
+      })
     }
   }) as unknown as z.ZodType<UIDocument, z.ZodTypeDef, unknown>
 
@@ -940,7 +1077,9 @@ export const UI_DOCUMENT_ASSET_DESCRIPTOR = {
   dependencies: (value) => collectAssetReferences(value),
 } satisfies AssetTypeDescriptor<UIDocument>
 
-export function registerUIAssetTypes(registry: { register<T>(descriptor: AssetTypeDescriptor<T>): void }): void {
+export function registerUIAssetTypes(registry: {
+  register<T>(descriptor: AssetTypeDescriptor<T>): void
+}): void {
   registry.register(UI_DOCUMENT_ASSET_DESCRIPTOR)
 }
 
