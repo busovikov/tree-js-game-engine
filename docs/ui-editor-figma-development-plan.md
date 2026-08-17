@@ -565,6 +565,28 @@ Evidence:
 - Browser: recorded pointer flows for select/move/resize/cancel/undo, zoom under cursor, fit, and
   Edit↔Preview native widget interaction.
 
+**Status (2026-08-17): complete.**
+
+- TDD RED→GREEN covers renderer hit ordering, shared selection and replacement reconciliation,
+  bounded transform math, cursor anchoring, gesture preview/commit/cancel, snap priority,
+  constraints, clamping, and deliberate-axis sizing intent. The two M5 Inspector sizing
+  `it.fails` cases remain unchanged.
+- Edit mode provides renderer-backed hit targets, multi-selection, selection bounds and resize
+  handles, live free/absolute move and resize, one-command commit, Escape restoration, arrow
+  nudge, snapping guides, middle/Space pan routing, ordinary wheel/trackpad zoom, and exact
+  100%/Fit root/Fit selection. Preview removes editing overlays and preserves native input.
+- `@haku/editor` passes 50 files / 178 tests plus typecheck/build and affected-file lint. The
+  focused M3 matrix passes 5 files / 39 tests.
+- User Chrome verified direct selection, move/resize plus Undo, nudge plus Undo, all fit shortcuts,
+  Edit↔Preview native widget input, wide/narrow layout, and zero console warnings/errors. A fresh
+  ordinary wheel check changed scale from `0.7715576171875` to `0.942382601712301` while the
+  document point under cursor drifted by only `-0.0000048916 px` horizontally and
+  `0.0000597322 px` vertically; Preview wheel left the editor transform unchanged.
+- Chrome could not preserve Space through its synthetic held-key drag, so active Space/middle pan
+  remains covered by the pure transform test and existing React component routing rather than a
+  new browser claim. Exact evidence, prior screenshots, commits, and the limitation are recorded
+  in [`handoffs/UI-M3-01.md`](./handoffs/UI-M3-01.md).
+
 ### Milestone 4 — Layers DnD, palette, and context-aware creation
 
 **Prerequisite:** Milestone 3 accepted.
