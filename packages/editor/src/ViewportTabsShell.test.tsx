@@ -88,8 +88,8 @@ describe('ViewportTabsShell UI workspace baseline', () => {
       'builtin:m10b-runtime-hud.ui.json',
     )
     expect(treeItems).toHaveLength(4)
-    expect(preview?.getAttribute('data-haku-ui-preview-scale')).toBe('0.5')
-    expect(preview?.getAttribute('data-haku-ui-preview-origin')).toBe('top-left')
+    expect(preview?.getAttribute('data-haku-ui-preview-scale')).toBe('fit')
+    expect(preview?.getAttribute('data-haku-ui-preview-origin')).toBe('center')
 
     const continueItem = container.querySelector(
       '[data-haku-ui-tree-item="13000000-0000-4000-8000-000000000103"]',
@@ -115,13 +115,35 @@ describe('ViewportTabsShell UI workspace baseline', () => {
     expect((screen.getByLabelText('Width (px)') as HTMLInputElement).value).toBe(expected)
   })
 
-  // M3 removes `fails` when preview navigation owns a centered fit scale.
-  it.fails('fits and centers the preview instead of using the fixed 0.5 top-left transform', () => {
+  // M2 owns replacement of the fixed-scale baseline; M3 starts direct canvas interaction.
+  it('fits and centers the preview instead of using the fixed 0.5 top-left transform', () => {
     const { container } = render(<ViewportTabsShell />)
     fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
     const preview = container.querySelector('[data-haku-ui-preview]')
 
     expect(preview?.getAttribute('data-haku-ui-preview-scale')).toBe('fit')
     expect(preview?.getAttribute('data-haku-ui-preview-origin')).toBe('center')
+  })
+
+  it('exposes coherent authoring, preview, zoom, and compact asset controls', () => {
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+
+    expect(screen.getByRole('button', { name: 'New' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Open' })).toBeTruthy()
+    expect((screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Redo' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Preview' })).toBeTruthy()
+    expect(screen.getByRole('spinbutton', { name: 'Canvas zoom' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '100%' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Fit root' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Browse UI assets' })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: '100%' }))
+    expect(
+      container.querySelector('[data-haku-ui-preview]')?.getAttribute('data-haku-ui-preview-scale'),
+    ).toBe('1')
   })
 })

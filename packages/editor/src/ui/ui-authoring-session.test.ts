@@ -49,14 +49,52 @@ describe('UIAuthoringSession', () => {
       { readText: async () => '', writeText: async () => undefined },
       ids(),
     )
-    session.openAsset(
-      'assets/ui/hud.ui.json',
-      createEmptyUIDocument('HUD', DOCUMENT, ROOT),
-    )
+    session.openAsset('assets/ui/hud.ui.json', createEmptyUIDocument('HUD', DOCUMENT, ROOT))
 
     session.setViewport('desktop-1920x1080')
 
     expect(session.viewport).toEqual(UI_DESKTOP_VIEWPORTS['desktop-1920x1080'])
+  })
+
+  it('keeps custom preview size and edit mode outside the serialized UI document', async () => {
+    let saved = ''
+    const session = new UIAuthoringSession(
+      new CommandBus(),
+      {
+        readText: async () => saved,
+        writeText: async (_path, value) => {
+          saved = value
+        },
+      },
+      ids(),
+    )
+    session.openAsset('assets/ui/hud.ui.json', createEmptyUIDocument('HUD', DOCUMENT, ROOT))
+
+    session.setCustomViewport(900, 700)
+    session.setPreviewMode('preview')
+    await session.save()
+
+    expect(session.viewport).toEqual({
+      id: 'custom',
+      label: 'Custom 900 × 700',
+      width: 900,
+      height: 700,
+    })
+    expect(session.previewMode).toBe('preview')
+    expect(JSON.parse(saved)).not.toHaveProperty('viewport')
+    expect(JSON.parse(saved)).not.toHaveProperty('previewMode')
+  })
+
+  it('rejects invalid custom preview sizes without changing editor view state', () => {
+    const session = new UIAuthoringSession(
+      new CommandBus(),
+      { readText: async () => '', writeText: async () => undefined },
+      ids(),
+    )
+    session.openAsset('assets/ui/hud.ui.json', createEmptyUIDocument('HUD', DOCUMENT, ROOT))
+
+    expect(() => session.setCustomViewport(0, 720)).toThrow('positive finite')
+    expect(session.viewport).toEqual(UI_DESKTOP_VIEWPORTS['desktop-1280x720'])
   })
 
   it('saves and reloads through project storage without editor state in the asset', async () => {
@@ -68,10 +106,7 @@ describe('UIAuthoringSession', () => {
       },
     }
     const session = new UIAuthoringSession(new CommandBus(), storage, ids())
-    session.openAsset(
-      'assets/ui/hud.ui.json',
-      createEmptyUIDocument('HUD', DOCUMENT, ROOT),
-    )
+    session.openAsset('assets/ui/hud.ui.json', createEmptyUIDocument('HUD', DOCUMENT, ROOT))
     session.addElement(ROOT, 'text')
 
     await session.save()
@@ -90,10 +125,7 @@ describe('UIAuthoringSession', () => {
       { readText: async () => '', writeText: async () => undefined },
       ids(),
     )
-    session.openAsset(
-      'assets/ui/hud.ui.json',
-      createEmptyUIDocument('HUD', DOCUMENT, ROOT),
-    )
+    session.openAsset('assets/ui/hud.ui.json', createEmptyUIDocument('HUD', DOCUMENT, ROOT))
 
     session.select('13000000-0000-4000-8000-000000000099')
 
@@ -134,13 +166,10 @@ describe('UIAuthoringSession', () => {
       { readText: async () => '', writeText },
       ids(),
     )
-    session.openAsset(
-      'assets/ui/hud.ui.json',
-      createEmptyUIDocument('HUD', DOCUMENT, ROOT),
-    )
+    session.openAsset('assets/ui/hud.ui.json', createEmptyUIDocument('HUD', DOCUMENT, ROOT))
     const root = session.asset!.elements[0]!
     if (root.type !== 'frame') throw new Error('Expected root frame fixture')
-    root.children.push(TEXT as typeof root.children[number])
+    root.children.push(TEXT as (typeof root.children)[number])
 
     await expect(session.save()).rejects.toThrow('Unknown UI child')
     expect(writeText).not.toHaveBeenCalled()
@@ -158,10 +187,7 @@ describe('UIAuthoringSession', () => {
       },
       ids(),
     )
-    session.openAsset(
-      'assets/ui/hud.ui.json',
-      createEmptyUIDocument('HUD', DOCUMENT, ROOT),
-    )
+    session.openAsset('assets/ui/hud.ui.json', createEmptyUIDocument('HUD', DOCUMENT, ROOT))
     session.updateElement(ROOT, { name: 'Changed root' })
 
     await expect(session.save()).rejects.toThrow('Read-only project')

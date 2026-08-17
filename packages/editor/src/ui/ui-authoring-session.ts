@@ -1,20 +1,39 @@
-import {
-  UIDocumentSchema,
-  type UIDocument,
-  type UIElement,
-  type UIElementId,
-} from '@haku/ui'
+import { UIDocumentSchema, type UIDocument, type UIElement, type UIElementId } from '@haku/ui'
 import { assetId, type AssetRef } from '@haku/schema'
 import type { Command, CommandBus } from '../commands/command-bus.js'
 
 export const UI_DESKTOP_VIEWPORTS = {
-  'desktop-1280x720': { id: 'desktop-1280x720', label: 'Desktop 1280 × 720', width: 1280, height: 720 },
-  'desktop-1440x900': { id: 'desktop-1440x900', label: 'Desktop 1440 × 900', width: 1440, height: 900 },
-  'desktop-1920x1080': { id: 'desktop-1920x1080', label: 'Desktop 1920 × 1080', width: 1920, height: 1080 },
+  'desktop-1280x720': {
+    id: 'desktop-1280x720',
+    label: 'Desktop 1280 × 720',
+    width: 1280,
+    height: 720,
+  },
+  'desktop-1440x900': {
+    id: 'desktop-1440x900',
+    label: 'Desktop 1440 × 900',
+    width: 1440,
+    height: 900,
+  },
+  'desktop-1920x1080': {
+    id: 'desktop-1920x1080',
+    label: 'Desktop 1920 × 1080',
+    width: 1920,
+    height: 1080,
+  },
 } as const
 
 export type UIDesktopViewportId = keyof typeof UI_DESKTOP_VIEWPORTS
 export type UIDesktopViewport = (typeof UI_DESKTOP_VIEWPORTS)[UIDesktopViewportId]
+export type UIPreviewMode = 'edit' | 'preview'
+export type UIPreviewViewport =
+  | UIDesktopViewport
+  | {
+      readonly id: 'custom'
+      readonly label: string
+      readonly width: number
+      readonly height: number
+    }
 
 export interface UIAssetStorage {
   readText(path: string): Promise<string>
@@ -87,7 +106,14 @@ export class UIAuthoringSession {
   private savedAssetJson: string | null = null
   private selectedId: UIElementId | null = null
   private listeners = new Set<UIListener>()
-  private viewportId: UIDesktopViewportId = 'desktop-1280x720'
+  private viewportId: UIDesktopViewportId | 'custom' = 'desktop-1280x720'
+  private customViewport: UIPreviewViewport = {
+    id: 'custom',
+    label: 'Custom 1280 × 720',
+    width: 1280,
+    height: 720,
+  }
+  private currentPreviewMode: UIPreviewMode = 'edit'
 
   constructor(
     private readonly commands: CommandBus,
@@ -111,8 +137,14 @@ export class UIAuthoringSession {
     return this.selectedId
   }
 
-  get viewport(): UIDesktopViewport {
-    return UI_DESKTOP_VIEWPORTS[this.viewportId]
+  get viewport(): UIPreviewViewport {
+    return this.viewportId === 'custom'
+      ? this.customViewport
+      : UI_DESKTOP_VIEWPORTS[this.viewportId]
+  }
+
+  get previewMode(): UIPreviewMode {
+    return this.currentPreviewMode
   }
 
   subscribe(listener: UIListener): () => void {
@@ -122,9 +154,7 @@ export class UIAuthoringSession {
 
   create(path: string, name: string): UIDocument {
     const asset = createEmptyUIDocument(name, this.uuid(), this.uuid())
-    this.commands.execute(
-      new ReplaceUIDocumentCommand(this, this.currentAsset, asset, path),
-    )
+    this.commands.execute(new ReplaceUIDocumentCommand(this, this.currentAsset, asset, path))
     this.select(asset.root)
     return asset
   }
@@ -172,17 +202,30 @@ export class UIAuthoringSession {
       if (!options.source) throw new Error('Image elements require a texture asset reference')
       element = { ...common, source: options.source, alt: 'Image' }
     } else if (type === 'rectangle' || type === 'spacer') element = common
-    else if (type === 'text-input') element = { ...common, value: '', accessibility: { label: name } }
-    else if (type === 'text-area') element = { ...common, value: '', accessibility: { label: name } }
+    else if (type === 'text-input')
+      element = { ...common, value: '', accessibility: { label: name } }
+    else if (type === 'text-area')
+      element = { ...common, value: '', accessibility: { label: name } }
     else if (type === 'checkbox') element = { ...common, value: false, label: name }
-    else if (type === 'radio') element = { ...common, group: 'group', optionValue: id, value: null, label: name }
+    else if (type === 'radio')
+      element = { ...common, group: 'group', optionValue: id, value: null, label: name }
     else if (type === 'switch') element = { ...common, value: false, label: name }
-    else if (type === 'select') element = { ...common, value: null, options: [{ value: 'option', label: 'Option' }], accessibility: { label: name } }
-    else if (type === 'slider') element = { ...common, min: 0, max: 100, step: 1, value: 0, accessibility: { label: name } }
-    else if (type === 'progress') element = { ...common, min: 0, max: 100, value: null, accessibility: { label: name } }
+    else if (type === 'select')
+      element = {
+        ...common,
+        value: null,
+        options: [{ value: 'option', label: 'Option' }],
+        accessibility: { label: name },
+      }
+    else if (type === 'slider')
+      element = { ...common, min: 0, max: 100, step: 1, value: 0, accessibility: { label: name } }
+    else if (type === 'progress')
+      element = { ...common, min: 0, max: 100, value: null, accessibility: { label: name } }
     else if (type === 'divider') element = { ...common, orientation: 'horizontal', thickness: 1 }
-    else if (type === 'scroll-container') element = { ...common, children: [], layout: { mode: 'vertical' } }
-    else if (type === 'list') element = { ...common, children: [], ordered: false, layout: { mode: 'vertical' } }
+    else if (type === 'scroll-container')
+      element = { ...common, children: [], layout: { mode: 'vertical' } }
+    else if (type === 'list')
+      element = { ...common, children: [], ordered: false, layout: { mode: 'vertical' } }
     else throw new Error('Component instances require a component authoring command')
     this.replaceAsset({
       ...asset,
@@ -250,8 +293,27 @@ export class UIAuthoringSession {
     this.notify()
   }
 
-  setViewport(id: UIDesktopViewportId): void {
+  setViewport(id: UIDesktopViewportId | 'custom'): void {
     this.viewportId = id
+    this.notify()
+  }
+
+  setCustomViewport(width: number, height: number): void {
+    if (!Number.isFinite(width) || width <= 0 || !Number.isFinite(height) || height <= 0) {
+      throw new Error('Custom preview dimensions must be positive finite numbers')
+    }
+    this.customViewport = {
+      id: 'custom',
+      label: `Custom ${width} × ${height}`,
+      width,
+      height,
+    }
+    this.viewportId = 'custom'
+    this.notify()
+  }
+
+  setPreviewMode(mode: UIPreviewMode): void {
+    this.currentPreviewMode = mode
     this.notify()
   }
 

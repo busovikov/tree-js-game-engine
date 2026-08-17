@@ -4,6 +4,7 @@ import { UIDocumentInstance, type UIElement, type UIElementId, type UIThemeId } 
 import { assetId, assetRef, projectPathToUrl } from '@haku/schema'
 import { NumberField } from '../components/NumberField.js'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
+import { AssetBrowserPanel } from '../panels/AssetBrowserPanel.js'
 import { projectService } from '../services/project-service.js'
 import {
   UI_DESKTOP_VIEWPORTS,
@@ -11,6 +12,13 @@ import {
   type UIDesktopViewportId,
 } from './ui-authoring-session.js'
 import { uiAuthoringSession, uiCommandBus } from './ui-editor-service.js'
+import {
+  fitCanvasView,
+  resizeCanvasView,
+  setCanvasZoom,
+  type UICanvasSize,
+  type UICanvasView,
+} from './ui-canvas-transform.js'
 import './ui-document-editor-panel.css'
 import { subscribeBuildDiagnosticNavigation } from '../build/build-diagnostic-navigation.js'
 
@@ -185,8 +193,17 @@ function UIInspector({ element }: { element: UIElement }) {
 export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
   const [, refresh] = useReducer((value) => value + 1, 0)
   const previewHost = useRef<HTMLDivElement>(null)
+  const canvasHost = useRef<HTMLDivElement>(null)
+  const canvasSize = useRef<UICanvasSize>({ width: 0, height: 0 })
   const [status, setStatus] = useState('Ready')
   const [previewTheme, setPreviewTheme] = useState<string>('')
+  const [assetPickerOpen, setAssetPickerOpen] = useState(false)
+  const [canvasView, setCanvasView] = useState<UICanvasView & { mode: 'fit' | 'manual' }>({
+    mode: 'fit',
+    scale: 1,
+    x: 0,
+    y: 0,
+  })
 
   useEffect(() => uiAuthoringSession.subscribe(refresh), [])
   useEffect(() => uiCommandBus.subscribe(refresh), [])
@@ -219,6 +236,66 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
   )
   const hierarchy = asset ? uiAuthoringSession.hierarchy() : []
   const viewport = uiAuthoringSession.viewport
+  const previewMode = uiAuthoringSession.previewMode
+
+  const fitRoot = useCallback(() => {
+    const size = canvasSize.current
+    if (size.width <= 0 || size.height <= 0) {
+      setCanvasView((current) => ({ ...current, mode: 'fit' }))
+      return
+    }
+    setCanvasView({
+      mode: 'fit',
+      ...fitCanvasView(size, { width: viewport.width, height: viewport.height }),
+    })
+  }, [viewport.height, viewport.width])
+
+  const setZoom = useCallback((scale: number) => {
+    const size = canvasSize.current
+    setCanvasView((current) => ({
+      mode: 'manual',
+      ...setCanvasZoom(current, scale, { x: size.width / 2, y: size.height / 2 }),
+    }))
+  }, [])
+
+  useEffect(() => {
+    const host = canvasHost.current
+    if (!host) return
+    let previous = canvasSize.current
+    const updateSize = (next: UICanvasSize) => {
+      if (next.width <= 0 || next.height <= 0) return
+      canvasSize.current = next
+      setCanvasView((current) => ({
+        mode: current.mode,
+        ...(current.mode === 'fit'
+          ? fitCanvasView(next, { width: viewport.width, height: viewport.height })
+          : resizeCanvasView(current, previous, next)),
+      }))
+      previous = next
+    }
+    const measure = () => updateSize({ width: host.clientWidth, height: host.clientHeight })
+    measure()
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', measure)
+      return () => window.removeEventListener('resize', measure)
+    }
+    const observer = new ResizeObserver((entries) => {
+      const rect = entries[0]?.contentRect
+      if (rect) updateSize({ width: rect.width, height: rect.height })
+    })
+    observer.observe(host)
+    return () => observer.disconnect()
+  }, [viewport.height, viewport.width])
+
+  useEffect(() => fitRoot(), [fitRoot])
+  useEffect(() => {
+    if (previewMode !== 'preview') return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') uiAuthoringSession.setPreviewMode('edit')
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [previewMode])
 
   useEffect(() => {
     const host = previewHost.current
@@ -240,7 +317,7 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
       const selectedNode = uiAuthoringSession.selectedElementId
         ? instance.getElement(uiAuthoringSession.selectedElementId)
         : null
-      if (selectedNode) selectedNode.dataset.hakuUiSelected = 'true'
+      if (selectedNode && previewMode === 'edit') selectedNode.dataset.hakuUiSelected = 'true'
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Preview failed')
     }
@@ -248,7 +325,7 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
       unsubscribe()
       instance.destroy()
     }
-  }, [asset, previewTheme, uiAuthoringSession.selectedElementId])
+  }, [asset, previewMode, previewTheme, uiAuthoringSession.selectedElementId])
 
   const createDocument = useCallback(async () => {
     if (!confirmDiscard()) return
@@ -348,21 +425,108 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
           Redo
         </button>
         <label>
-          Preview
+          Size
           <select
             aria-label="UI preview viewport"
             value={viewport.id}
-            onChange={(event) =>
-              uiAuthoringSession.setViewport(event.target.value as UIDesktopViewportId)
-            }
+            onChange={(event) => {
+              const id = event.target.value
+              uiAuthoringSession.setViewport(
+                id === 'custom' ? 'custom' : (id as UIDesktopViewportId),
+              )
+            }}
           >
             {Object.values(UI_DESKTOP_VIEWPORTS).map((candidate) => (
               <option key={candidate.id} value={candidate.id}>
                 {candidate.label}
               </option>
             ))}
+            <option value="custom">Custom</option>
           </select>
         </label>
+        {viewport.id === 'custom' && (
+          <div className="haku-ui-editor__custom-size">
+            <label>
+              W
+              <input
+                type="number"
+                min={1}
+                aria-label="Custom preview width"
+                value={viewport.width}
+                onChange={(event) => {
+                  const width = event.target.valueAsNumber
+                  if (Number.isFinite(width) && width > 0) {
+                    uiAuthoringSession.setCustomViewport(width, viewport.height)
+                  }
+                }}
+              />
+            </label>
+            <span aria-hidden="true">×</span>
+            <label>
+              H
+              <input
+                type="number"
+                min={1}
+                aria-label="Custom preview height"
+                value={viewport.height}
+                onChange={(event) => {
+                  const height = event.target.valueAsNumber
+                  if (Number.isFinite(height) && height > 0) {
+                    uiAuthoringSession.setCustomViewport(viewport.width, height)
+                  }
+                }}
+              />
+            </label>
+          </div>
+        )}
+        <div className="haku-ui-editor__mode" aria-label="Canvas mode">
+          <button
+            type="button"
+            aria-pressed={previewMode === 'edit'}
+            onClick={() => uiAuthoringSession.setPreviewMode('edit')}
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            aria-pressed={previewMode === 'preview'}
+            onClick={() => uiAuthoringSession.setPreviewMode('preview')}
+          >
+            Preview
+          </button>
+        </div>
+        <label>
+          Zoom
+          <input
+            className="haku-ui-editor__zoom"
+            type="number"
+            min={10}
+            max={800}
+            step={10}
+            aria-label="Canvas zoom"
+            value={Math.round(canvasView.scale * 100)}
+            onChange={(event) => {
+              if (Number.isFinite(event.target.valueAsNumber)) {
+                setZoom(event.target.valueAsNumber / 100)
+              }
+            }}
+          />
+          %
+        </label>
+        <button type="button" onClick={() => setZoom(1)}>
+          100%
+        </button>
+        <button type="button" onClick={fitRoot}>
+          Fit root
+        </button>
+        <button
+          type="button"
+          aria-label="Browse UI assets"
+          aria-expanded={assetPickerOpen}
+          onClick={() => setAssetPickerOpen((open) => !open)}
+        >
+          Assets…
+        </button>
         <label>
           Theme
           <select
@@ -378,11 +542,26 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
             ))}
           </select>
         </label>
-        <span>
+        <span className="haku-ui-editor__path">
           {uiAuthoringSession.path}
           {uiAuthoringSession.isDirty ? ' *' : ''}
         </span>
       </div>
+      {assetPickerOpen && (
+        <div className="haku-ui-editor__asset-picker" role="dialog" aria-label="UI asset picker">
+          <div className="haku-ui-editor__asset-picker-header">
+            <strong>Project assets</strong>
+            <button
+              type="button"
+              onClick={() => setAssetPickerOpen(false)}
+              aria-label="Close assets"
+            >
+              ×
+            </button>
+          </div>
+          <AssetBrowserPanel />
+        </div>
+      )}
       <PanelGroup
         direction="horizontal"
         autoSaveId="haku-ui-editor-panels-h"
@@ -421,14 +600,22 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
         <Panel defaultSize={56} minSize={32}>
           <main className="haku-ui-editor__preview" aria-label="UI Canvas">
             <div className="haku-ui-editor__viewport-label">{viewport.label}</div>
-            <div className="haku-ui-editor__viewport-scroll">
+            <div ref={canvasHost} className="haku-ui-editor__viewport-scroll">
               <div
                 ref={previewHost}
                 className="haku-ui-editor__viewport"
                 data-haku-ui-preview="true"
-                data-haku-ui-preview-scale="0.5"
-                data-haku-ui-preview-origin="top-left"
-                style={{ width: viewport.width, height: viewport.height }}
+                data-haku-ui-preview-scale={
+                  canvasView.mode === 'fit' ? 'fit' : String(canvasView.scale)
+                }
+                data-haku-ui-preview-effective-scale={canvasView.scale}
+                data-haku-ui-preview-origin="center"
+                data-haku-ui-preview-mode={previewMode}
+                style={{
+                  width: viewport.width,
+                  height: viewport.height,
+                  transform: `translate(${canvasView.x}px, ${canvasView.y}px) scale(${canvasView.scale})`,
+                }}
               />
             </div>
             <output aria-live="polite" data-haku-ui-status="true">
