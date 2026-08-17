@@ -763,8 +763,9 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
             bounds: elementBounds,
           },
         )
-      } catch {
+      } catch (error) {
         valid = false
+        setStatus(error instanceof Error ? error.message : String(error))
       }
       event.dataTransfer.dropEffect = valid ? 'move' : 'none'
       setDropIndicator({ targetId, position, valid })

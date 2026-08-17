@@ -347,8 +347,8 @@ describe('ViewportTabsShell UI workspace baseline', () => {
     const transfer = { setData: vi.fn(), getData: vi.fn(() => root.dataset.hakuUiTreeItem ?? '') }
     fireEvent.dragStart(root, { dataTransfer: transfer })
     fireEvent.dragOver(scoreRow, { dataTransfer: transfer, clientY: 1 })
-    fireEvent.drop(scoreRow, { dataTransfer: transfer, clientY: 1 })
     expect(screen.getByRole('status').textContent).toMatch(/root|container/i)
+    expect((screen.getByRole('button', { name: 'Undo' }) as HTMLButtonElement).disabled).toBe(true)
   })
 
   it('reparents a layer into an empty Frame through its center drop zone', () => {
