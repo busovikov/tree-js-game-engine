@@ -32,6 +32,7 @@ vi.mock('./panels/AssetBrowserPanel.js', () => ({
 import { EditorLayout } from './EditorLayout.js'
 import { ViewportTabsShell } from './ViewportTabsShell.js'
 import { useEditorStore } from './store/editor-store.js'
+import { projectService } from './services/project-service.js'
 
 afterEach(cleanup)
 beforeEach(() => useEditorStore.setState({ activeWorkspace: 'viewport' }))
@@ -189,9 +190,7 @@ describe('ViewportTabsShell UI workspace baseline', () => {
     expect(preview?.getAttribute('data-haku-ui-preview-scale')).toBe('1')
     const content = container.querySelector('.haku-ui-editor__canvas-content') as HTMLElement
     const pointUnderCursor = (transform: string) => {
-      const match = transform.match(
-        /translate\(([-\d.]+)px, ([-\d.]+)px\) scale\(([-\d.]+)\)/,
-      )
+      const match = transform.match(/translate\(([-\d.]+)px, ([-\d.]+)px\) scale\(([-\d.]+)\)/)
       expect(match, transform).toBeTruthy()
       const [, x, y, scale] = match!.map(Number)
       return { x: (120 - x!) / scale!, y: (100 - y!) / scale! }
@@ -266,5 +265,116 @@ describe('ViewportTabsShell UI workspace baseline', () => {
         .querySelector('[data-haku-ui-id="13000000-0000-4000-8000-000000000103"]')
         ?.getAttribute('style'),
     ).toBe(before)
+  })
+
+  it('searches the complete non-instance element palette', () => {
+    render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+
+    const palette = screen.getByRole('region', { name: 'Element palette' })
+    expect(palette.querySelectorAll('[data-haku-ui-palette-kind]')).toHaveLength(17)
+    fireEvent.change(screen.getByLabelText('Search UI elements'), { target: { value: 'text' } })
+    expect(palette.querySelectorAll('[data-haku-ui-palette-kind]')).toHaveLength(3)
+    expect(screen.getByRole('button', { name: 'Add Text Area' })).toBeTruthy()
+  })
+
+  it('renames, hides, locks, duplicates, and deletes a layer with exact undo', () => {
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    const scoreId = '13000000-0000-4000-8000-000000000102'
+    fireEvent.click(
+      container.querySelector(`[data-haku-ui-tree-item="${scoreId}"]`) as HTMLButtonElement,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Rename Score' }))
+    const rename = screen.getByRole('textbox', { name: 'Rename Score' })
+    fireEvent.change(rename, { target: { value: 'Scoreboard' } })
+    fireEvent.keyDown(rename, { key: 'Enter' })
+    expect(screen.getByText('Scoreboard')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hide Score' }))
+    expect(container.querySelector(`[data-haku-ui-id="${scoreId}"]`)?.hasAttribute('hidden')).toBe(
+      true,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Lock Score' }))
+    expect(
+      container
+        .querySelector(`[data-haku-ui-tree-row="${scoreId}"]`)
+        ?.getAttribute('data-haku-ui-locked'),
+    ).toBe('true')
+    fireEvent.click(screen.getByRole('button', { name: 'Unlock Score' }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Duplicate Score' }))
+    expect(container.querySelectorAll('[data-haku-ui-tree-item]')).toHaveLength(5)
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(container.querySelectorAll('[data-haku-ui-tree-item]')).toHaveLength(4)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Score' }))
+    expect(container.querySelectorAll('[data-haku-ui-tree-item]')).toHaveLength(3)
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(container.querySelectorAll('[data-haku-ui-tree-item]')).toHaveLength(4)
+  })
+
+  it('provides keyboard reorder and pointer DnD validation feedback', () => {
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    const continueItem = container.querySelector(
+      '[data-haku-ui-tree-item="13000000-0000-4000-8000-000000000103"]',
+    ) as HTMLButtonElement
+    fireEvent.click(continueItem)
+    continueItem.focus()
+    fireEvent.keyDown(continueItem, { key: 'ArrowUp', altKey: true })
+
+    const ordered = [...container.querySelectorAll('[data-haku-ui-tree-item]')].map((node) =>
+      node.getAttribute('data-haku-ui-tree-item'),
+    )
+    expect(ordered.slice(1)).toEqual([
+      '13000000-0000-4000-8000-000000000103',
+      '13000000-0000-4000-8000-000000000102',
+      '13000000-0000-4000-8000-000000000104',
+    ])
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+
+    const root = container.querySelector(
+      '[data-haku-ui-tree-item="13000000-0000-4000-8000-000000000101"]',
+    ) as HTMLButtonElement
+    const scoreRow = container.querySelector(
+      '[data-haku-ui-tree-row="13000000-0000-4000-8000-000000000102"]',
+    ) as HTMLElement
+    const transfer = { setData: vi.fn(), getData: vi.fn(() => root.dataset.hakuUiTreeItem ?? '') }
+    fireEvent.dragStart(root, { dataTransfer: transfer })
+    fireEvent.dragOver(scoreRow, { dataTransfer: transfer, clientY: 1 })
+    fireEvent.drop(scoreRow, { dataTransfer: transfer, clientY: 1 })
+    expect(screen.getByRole('status').textContent).toMatch(/root|container/i)
+  })
+
+  it('creates an Image through a project texture chooser without a UUID prompt', () => {
+    const textureId = '10000000-0000-4000-8000-000000000099'
+    const textures = vi.spyOn(projectService, 'listTextureAssets').mockReturnValue([
+      {
+        name: 'logo.png',
+        path: 'textures/logo.png',
+        reference: {
+          $ref: textureId as never,
+          type: '20000000-0000-4000-8000-000000000003' as never,
+        },
+      },
+    ])
+    const prompt = vi.spyOn(window, 'prompt')
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Image' }))
+    expect(screen.getByRole('dialog', { name: 'Choose texture' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Use logo.png' }))
+
+    expect(container.querySelectorAll('[data-haku-ui-tree-item]')).toHaveLength(5)
+    expect(prompt).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    textures.mockRestore()
+    prompt.mockRestore()
   })
 })

@@ -1,6 +1,9 @@
 import { memo, useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
-import type { PointerEvent as ReactPointerEvent } from 'react'
-import { TEXTURE_ASSET_TYPE } from '@haku/assets'
+import type {
+  DragEvent as ReactDragEvent,
+  KeyboardEvent as ReactKeyboardEvent,
+  PointerEvent as ReactPointerEvent,
+} from 'react'
 import {
   UIDocumentInstance,
   type UIDocument,
@@ -8,7 +11,7 @@ import {
   type UIElementId,
   type UIThemeId,
 } from '@haku/ui'
-import { assetId, assetRef, projectPathToUrl } from '@haku/schema'
+import { projectPathToUrl } from '@haku/schema'
 import { NumberField } from '../components/NumberField.js'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { AssetBrowserPanel } from '../panels/AssetBrowserPanel.js'
@@ -39,6 +42,11 @@ import {
 } from './ui-gesture-transaction.js'
 import './ui-document-editor-panel.css'
 import { subscribeBuildDiagnosticNavigation } from '../build/build-diagnostic-navigation.js'
+import {
+  moveUIElements,
+  resolveUICreationTarget,
+  type UIHierarchyDropPosition,
+} from './ui-hierarchy-commands.js'
 
 function confirmDiscard(): boolean {
   return !uiAuthoringSession.isDirty || window.confirm('Discard unsaved UI changes?')
@@ -90,8 +98,10 @@ function fallbackElementBounds(
     const element = byId.get(id)
     if (!element) return
     const placement = element.placement
-    const x = id === asset.root ? 0 : parent.x + (placement.positioning === 'free' ? placement.x : 0)
-    const y = id === asset.root ? 0 : parent.y + (placement.positioning === 'free' ? placement.y : 0)
+    const x =
+      id === asset.root ? 0 : parent.x + (placement.positioning === 'free' ? placement.x : 0)
+    const y =
+      id === asset.root ? 0 : parent.y + (placement.positioning === 'free' ? placement.y : 0)
     const width =
       id === asset.root
         ? rootSize.width
@@ -127,8 +137,16 @@ function resizeRect(before: UIRect, handle: UIResizeHandle, dx: number, dy: numb
 
 function resizeHandlePoint(rect: UIRect, handle: UIResizeHandle) {
   return {
-    left: handle.includes('w') ? rect.x : handle.includes('e') ? rect.x + rect.width : rect.x + rect.width / 2,
-    top: handle.includes('n') ? rect.y : handle.includes('s') ? rect.y + rect.height : rect.y + rect.height / 2,
+    left: handle.includes('w')
+      ? rect.x
+      : handle.includes('e')
+        ? rect.x + rect.width
+        : rect.x + rect.width / 2,
+    top: handle.includes('n')
+      ? rect.y
+      : handle.includes('s')
+        ? rect.y + rect.height
+        : rect.y + rect.height / 2,
   }
 }
 
@@ -137,40 +155,225 @@ function restoreInlineStyle(node: HTMLElement, style: string): void {
   else node.removeAttribute('style')
 }
 
+type UICreatableType = Exclude<UIElement['type'], 'instance'>
+
+const UI_PALETTE: readonly {
+  readonly type: UICreatableType
+  readonly label: string
+  readonly icon: string
+}[] = [
+  { type: 'frame', label: 'Frame', icon: '▣' },
+  { type: 'text', label: 'Text', icon: 'T' },
+  { type: 'image', label: 'Image', icon: '▧' },
+  { type: 'button', label: 'Button', icon: '◉' },
+  { type: 'rectangle', label: 'Rectangle', icon: '□' },
+  { type: 'text-input', label: 'Text Input', icon: '⌨' },
+  { type: 'text-area', label: 'Text Area', icon: '¶' },
+  { type: 'checkbox', label: 'Checkbox', icon: '☑' },
+  { type: 'radio', label: 'Radio', icon: '◉' },
+  { type: 'switch', label: 'Switch', icon: '◐' },
+  { type: 'select', label: 'Select', icon: '▾' },
+  { type: 'slider', label: 'Slider', icon: '↔' },
+  { type: 'progress', label: 'Progress', icon: '▰' },
+  { type: 'divider', label: 'Divider', icon: '—' },
+  { type: 'spacer', label: 'Spacer', icon: '↕' },
+  { type: 'scroll-container', label: 'Scroll Container', icon: '▤' },
+  { type: 'list', label: 'List', icon: '☷' },
+]
+
+function layerIcon(type: UIElement['type']): string {
+  return UI_PALETTE.find((entry) => entry.type === type)?.icon ?? '◇'
+}
+
+interface UIDropIndicator {
+  readonly targetId: UIElementId
+  readonly position: UIHierarchyDropPosition
+  readonly valid: boolean
+}
+
+function flattenHierarchy(
+  items: readonly UIHierarchyItem[],
+  expanded: ReadonlySet<UIElementId>,
+): readonly UIHierarchyItem[] {
+  const result: UIHierarchyItem[] = []
+  const visit = (item: UIHierarchyItem): void => {
+    result.push(item)
+    if (expanded.has(item.id)) for (const child of item.children) visit(child)
+  }
+  for (const item of items) visit(item)
+  return result
+}
+
 function HierarchyNode({
   item,
+  rootId,
+  elements,
   selected,
+  expanded,
+  renamingId,
+  dropIndicator,
   onSelect,
+  onToggle,
+  onBeginRename,
+  onCommitRename,
+  onCancelRename,
+  onVisible,
+  onLock,
+  onDuplicate,
+  onDelete,
+  onKeyDown,
+  onDragStart,
+  onDragOver,
+  onDrop,
 }: {
   item: UIHierarchyItem
+  rootId: UIElementId
+  elements: ReadonlyMap<UIElementId, UIElement>
   selected: readonly UIElementId[]
+  expanded: ReadonlySet<UIElementId>
+  renamingId: UIElementId | null
+  dropIndicator: UIDropIndicator | null
   onSelect: (id: UIElementId, modified: boolean) => void
+  onToggle: (id: UIElementId) => void
+  onBeginRename: (id: UIElementId) => void
+  onCommitRename: (id: UIElementId, name: string) => void
+  onCancelRename: () => void
+  onVisible: (id: UIElementId, visible: boolean) => void
+  onLock: (id: UIElementId, locked: boolean) => void
+  onDuplicate: (id: UIElementId) => void
+  onDelete: (id: UIElementId) => void
+  onKeyDown: (event: ReactKeyboardEvent<HTMLButtonElement>, item: UIHierarchyItem) => void
+  onDragStart: (event: ReactDragEvent<HTMLButtonElement>, id: UIElementId) => void
+  onDragOver: (event: ReactDragEvent<HTMLDivElement>, id: UIElementId) => void
+  onDrop: (event: ReactDragEvent<HTMLDivElement>, id: UIElementId) => void
 }) {
   const isSelected = selected.includes(item.id)
+  const isExpanded = expanded.has(item.id)
+  const element = elements.get(item.id)!
+  const locked = uiAuthoringSession.isEditorLocked(item.id)
+  const marker = dropIndicator?.targetId === item.id ? dropIndicator : null
   return (
-    <li>
-      <button
-        type="button"
-        data-haku-ui-tree-item={item.id}
-        data-haku-ui-selected={isSelected ? 'true' : 'false'}
-        className={isSelected ? 'haku-ui-editor__tree-item--selected' : undefined}
-        onClick={(event) => onSelect(item.id, event.shiftKey)}
+    <li role="none">
+      <div
+        className={`haku-ui-editor__tree-row${marker?.valid ? ' haku-ui-editor__tree-row--drop-valid' : ''}`}
+        data-haku-ui-tree-row={item.id}
+        data-haku-ui-locked={locked ? 'true' : 'false'}
+        data-haku-ui-drop-position={marker?.position}
+        onDragOver={(event) => onDragOver(event, item.id)}
+        onDrop={(event) => onDrop(event, item.id)}
       >
-        <span aria-hidden="true">
-          {item.type === 'frame'
-            ? '▣'
-            : item.type === 'text'
-              ? 'T'
-              : item.type === 'button'
-                ? '◉'
-                : '▧'}
+        {item.children.length > 0 ? (
+          <button
+            type="button"
+            className="haku-ui-editor__tree-disclosure"
+            aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${item.name}`}
+            aria-expanded={isExpanded}
+            onClick={() => onToggle(item.id)}
+          >
+            {isExpanded ? '▾' : '▸'}
+          </button>
+        ) : (
+          <span className="haku-ui-editor__tree-disclosure" aria-hidden="true" />
+        )}
+        <span className="haku-ui-editor__tree-icon" aria-hidden="true">
+          {layerIcon(item.type)}
         </span>
-        {item.name}
-      </button>
-      {item.children.length > 0 && (
-        <ul>
+        {renamingId === item.id ? (
+          <input
+            autoFocus
+            className="haku-ui-editor__tree-rename"
+            aria-label={`Rename ${item.name}`}
+            defaultValue={item.name}
+            onBlur={(event) => onCommitRename(item.id, event.currentTarget.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') onCommitRename(item.id, event.currentTarget.value)
+              if (event.key === 'Escape') onCancelRename()
+            }}
+          />
+        ) : (
+          <button
+            type="button"
+            role="treeitem"
+            draggable={item.id !== rootId && !locked}
+            aria-selected={isSelected}
+            aria-expanded={item.children.length > 0 ? isExpanded : undefined}
+            data-haku-ui-tree-item={item.id}
+            data-haku-ui-selected={isSelected ? 'true' : 'false'}
+            className={`haku-ui-editor__tree-item${isSelected ? ' haku-ui-editor__tree-item--selected' : ''}`}
+            onClick={(event) => onSelect(item.id, event.shiftKey)}
+            onDoubleClick={() => onBeginRename(item.id)}
+            onKeyDown={(event) => onKeyDown(event, item)}
+            onDragStart={(event) => onDragStart(event, item.id)}
+          >
+            <span>{item.name}</span>
+          </button>
+        )}
+        <div className="haku-ui-editor__tree-actions">
+          <button
+            type="button"
+            aria-label={`Rename ${item.name}`}
+            onClick={() => onBeginRename(item.id)}
+          >
+            ✎
+          </button>
+          <button
+            type="button"
+            aria-label={`${element.visible ? 'Hide' : 'Show'} ${item.name}`}
+            onClick={() => onVisible(item.id, !element.visible)}
+          >
+            {element.visible ? '◉' : '○'}
+          </button>
+          <button
+            type="button"
+            aria-label={`${locked ? 'Unlock' : 'Lock'} ${item.name}`}
+            onClick={() => onLock(item.id, !locked)}
+          >
+            {locked ? '▣' : '□'}
+          </button>
+          <button
+            type="button"
+            aria-label={`Duplicate ${item.name}`}
+            disabled={item.id === rootId || locked}
+            onClick={() => onDuplicate(item.id)}
+          >
+            ⧉
+          </button>
+          <button
+            type="button"
+            aria-label={`Delete ${item.name}`}
+            disabled={item.id === rootId || locked}
+            onClick={() => onDelete(item.id)}
+          >
+            ×
+          </button>
+        </div>
+      </div>
+      {item.children.length > 0 && isExpanded && (
+        <ul role="group">
           {item.children.map((child) => (
-            <HierarchyNode key={child.id} item={child} selected={selected} onSelect={onSelect} />
+            <HierarchyNode
+              key={child.id}
+              item={child}
+              rootId={rootId}
+              elements={elements}
+              selected={selected}
+              expanded={expanded}
+              renamingId={renamingId}
+              dropIndicator={dropIndicator}
+              onSelect={onSelect}
+              onToggle={onToggle}
+              onBeginRename={onBeginRename}
+              onCommitRename={onCommitRename}
+              onCancelRename={onCancelRename}
+              onVisible={onVisible}
+              onLock={onLock}
+              onDuplicate={onDuplicate}
+              onDelete={onDelete}
+              onKeyDown={onKeyDown}
+              onDragStart={onDragStart}
+              onDragOver={onDragOver}
+              onDrop={onDrop}
+            />
           ))}
         </ul>
       )}
@@ -310,6 +513,8 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
   const canvasSize = useRef<UICanvasSize>({ width: 0, height: 0 })
   const canvasViewRef = useRef<UICanvasView>({ scale: 1, x: 0, y: 0 })
   const gestureRef = useRef<UIGesture | null>(null)
+  const hierarchyDragRef = useRef<readonly UIElementId[]>([])
+  const paletteDragRef = useRef<UICreatableType | null>(null)
   const spacePressed = useRef(false)
   const [status, setStatus] = useState('Ready')
   const [previewTheme, setPreviewTheme] = useState<string>('')
@@ -318,6 +523,23 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
   const [gestureRects, setGestureRects] = useState<ReadonlyMap<UIElementId, UIRect>>(new Map())
   const [guides, setGuides] = useState<readonly UISnapCandidate[]>([])
   const [canvasCursor, setCanvasCursor] = useState('default')
+  const [expandedLayers, setExpandedLayers] = useState<Set<UIElementId>>(
+    () =>
+      new Set(
+        uiAuthoringSession.asset?.elements
+          .filter((element) => 'children' in element)
+          .map((element) => element.id) ?? [],
+      ),
+  )
+  const [renamingId, setRenamingId] = useState<UIElementId | null>(null)
+  const [dropIndicator, setDropIndicator] = useState<UIDropIndicator | null>(null)
+  const [paletteQuery, setPaletteQuery] = useState('')
+  const [texturePickerOpen, setTexturePickerOpen] = useState(false)
+  const [pendingImageCreation, setPendingImageCreation] = useState<{
+    readonly pointerFrameId?: UIElementId
+    readonly insertionIndex?: number
+    readonly point?: { readonly x: number; readonly y: number }
+  } | null>(null)
   const [canvasView, setCanvasView] = useState<UICanvasView & { mode: 'fit' | 'manual' }>({
     mode: 'fit',
     scale: 1,
@@ -355,9 +577,215 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
     [asset, uiAuthoringSession.selectedElementId],
   )
   const hierarchy = asset ? uiAuthoringSession.hierarchy() : []
+  const elements = useMemo(
+    () => new Map(asset?.elements.map((element) => [element.id, element]) ?? []),
+    [asset],
+  )
   const selectedIds = uiAuthoringSession.selectedElementIds
   const viewport = uiAuthoringSession.viewport
   const previewMode = uiAuthoringSession.previewMode
+  const textures = projectService.listTextureAssets()
+  const palette = UI_PALETTE.filter((entry) =>
+    `${entry.label} ${entry.type}`.toLowerCase().includes(paletteQuery.trim().toLowerCase()),
+  )
+
+  const runHierarchyAction = useCallback((action: () => void, success: string) => {
+    try {
+      action()
+      setStatus(success)
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error))
+    }
+  }, [])
+
+  const hierarchyParents = useMemo(() => (asset ? elementParents(asset) : new Map()), [asset])
+
+  const focusLayer = useCallback((id: UIElementId) => {
+    document.querySelector<HTMLElement>(`[data-haku-ui-tree-item="${id}"]`)?.focus()
+  }, [])
+
+  const handleLayerKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLButtonElement>, item: UIHierarchyItem) => {
+      if (!asset) return
+      const visible = flattenHierarchy(hierarchy, expandedLayers)
+      const index = visible.findIndex((candidate) => candidate.id === item.id)
+      if (event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+        event.preventDefault()
+        const parentId = hierarchyParents.get(item.id)
+        const parent = parentId ? elements.get(parentId as UIElementId) : undefined
+        if (!parent || !('children' in parent)) return
+        const siblingIndex = parent.children.indexOf(item.id)
+        const targetIndex = siblingIndex + (event.key === 'ArrowUp' ? -1 : 1)
+        const targetId = parent.children[targetIndex]
+        if (!targetId) {
+          setStatus('Layer is already at the hierarchy boundary')
+          return
+        }
+        runHierarchyAction(
+          () =>
+            uiAuthoringSession.moveElements(
+              uiAuthoringSession.selectedElementIds.includes(item.id)
+                ? uiAuthoringSession.selectedElementIds
+                : [item.id],
+              {
+                targetId,
+                position: event.key === 'ArrowUp' ? 'before' : 'after',
+              },
+              elementBounds,
+            ),
+          `Moved ${item.name}`,
+        )
+        requestAnimationFrame(() => focusLayer(item.id))
+        return
+      }
+      if (event.altKey && event.key === 'ArrowRight') {
+        event.preventDefault()
+        const parentId = hierarchyParents.get(item.id)
+        const parent = parentId ? elements.get(parentId as UIElementId) : undefined
+        const indexInParent = parent && 'children' in parent ? parent.children.indexOf(item.id) : -1
+        const previousId =
+          parent && 'children' in parent ? parent.children[indexInParent - 1] : undefined
+        if (!previousId) {
+          setStatus('No previous container is available for nesting')
+          return
+        }
+        runHierarchyAction(
+          () =>
+            uiAuthoringSession.moveElements(
+              [item.id],
+              { targetId: previousId, position: 'inside' },
+              elementBounds,
+            ),
+          `Nested ${item.name}`,
+        )
+        return
+      }
+      if (event.altKey && event.key === 'ArrowLeft') {
+        event.preventDefault()
+        const parentId = hierarchyParents.get(item.id)
+        if (!parentId || parentId === asset.root) {
+          setStatus('Layer cannot be moved outside the root')
+          return
+        }
+        runHierarchyAction(
+          () =>
+            uiAuthoringSession.moveElements(
+              [item.id],
+              { targetId: parentId as UIElementId, position: 'after' },
+              elementBounds,
+            ),
+          `Moved ${item.name} out one level`,
+        )
+        return
+      }
+      if (event.key === 'ArrowDown' && visible[index + 1]) {
+        event.preventDefault()
+        focusLayer(visible[index + 1]!.id)
+      } else if (event.key === 'ArrowUp' && visible[index - 1]) {
+        event.preventDefault()
+        focusLayer(visible[index - 1]!.id)
+      } else if (event.key === 'ArrowRight' && item.children.length > 0) {
+        event.preventDefault()
+        if (!expandedLayers.has(item.id)) {
+          setExpandedLayers((current) => new Set(current).add(item.id))
+        } else {
+          requestAnimationFrame(() => focusLayer(item.children[0]!.id))
+        }
+      } else if (event.key === 'ArrowLeft') {
+        event.preventDefault()
+        if (expandedLayers.has(item.id) && item.children.length > 0) {
+          setExpandedLayers((current) => {
+            const next = new Set(current)
+            next.delete(item.id)
+            return next
+          })
+        } else {
+          const parentId = hierarchyParents.get(item.id)
+          if (parentId) focusLayer(parentId as UIElementId)
+        }
+      } else if (event.key === 'F2') {
+        event.preventDefault()
+        setRenamingId(item.id)
+      } else if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'd') {
+        event.preventDefault()
+        runHierarchyAction(
+          () => uiAuthoringSession.duplicateElements([item.id]),
+          `Duplicated ${item.name}`,
+        )
+      } else if (event.key === 'Delete' || event.key === 'Backspace') {
+        event.preventDefault()
+        runHierarchyAction(
+          () => uiAuthoringSession.removeElements([item.id]),
+          `Deleted ${item.name}`,
+        )
+      }
+    },
+    [
+      asset,
+      elementBounds,
+      elements,
+      expandedLayers,
+      focusLayer,
+      hierarchy,
+      hierarchyParents,
+      runHierarchyAction,
+    ],
+  )
+
+  const dropPosition = (event: ReactDragEvent<HTMLElement>, item: UIHierarchyItem) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    const ratio =
+      rect.height > 0 ? (event.clientY - rect.top) / rect.height : event.clientY <= rect.top ? 0 : 1
+    if (ratio < 0.3) return 'before' as const
+    if (ratio > 0.7) return 'after' as const
+    return item.children.length > 0 ? ('inside' as const) : ('after' as const)
+  }
+
+  const handleLayerDragOver = useCallback(
+    (event: ReactDragEvent<HTMLDivElement>, targetId: UIElementId) => {
+      const ids = hierarchyDragRef.current
+      if (!asset || ids.length === 0) return
+      event.preventDefault()
+      const item = flattenHierarchy(
+        hierarchy,
+        new Set(asset.elements.map((element) => element.id)),
+      ).find((candidate) => candidate.id === targetId)
+      if (!item) return
+      const position = dropPosition(event, item)
+      let valid = true
+      try {
+        moveUIElements(
+          asset,
+          ids,
+          { targetId, position },
+          {
+            lockedIds: uiAuthoringSession.editorLockedElementIds,
+            bounds: elementBounds,
+          },
+        )
+      } catch {
+        valid = false
+      }
+      event.dataTransfer.dropEffect = valid ? 'move' : 'none'
+      setDropIndicator({ targetId, position, valid })
+    },
+    [asset, elementBounds, hierarchy],
+  )
+
+  const handleLayerDrop = useCallback(
+    (event: ReactDragEvent<HTMLDivElement>, targetId: UIElementId) => {
+      event.preventDefault()
+      const ids = hierarchyDragRef.current
+      const position = dropIndicator?.targetId === targetId ? dropIndicator.position : 'inside'
+      runHierarchyAction(
+        () => uiAuthoringSession.moveElements(ids, { targetId, position }, elementBounds),
+        `Moved ${ids.length} layer${ids.length === 1 ? '' : 's'}`,
+      )
+      hierarchyDragRef.current = []
+      setDropIndicator(null)
+    },
+    [dropIndicator, elementBounds, runHierarchyAction],
+  )
 
   canvasViewRef.current = canvasView
 
@@ -375,13 +803,16 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
     })
   }, [viewport.height, viewport.width])
 
-  const setZoom = useCallback((scale: number, anchor?: { readonly x: number; readonly y: number }) => {
-    const size = canvasSize.current
-    setCanvasView((current) => ({
-      mode: 'manual',
-      ...setCanvasZoom(current, scale, anchor ?? { x: size.width / 2, y: size.height / 2 }),
-    }))
-  }, [])
+  const setZoom = useCallback(
+    (scale: number, anchor?: { readonly x: number; readonly y: number }) => {
+      const size = canvasSize.current
+      setCanvasView((current) => ({
+        mode: 'manual',
+        ...setCanvasZoom(current, scale, anchor ?? { x: size.width / 2, y: size.height / 2 }),
+      }))
+    },
+    [],
+  )
 
   const fitSelection = useCallback(() => {
     const bounds = unionRects(
@@ -621,15 +1052,13 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
         },
         {
           axis: 'x',
-          delta:
-            parentRect.x + parentRect.width / 2 - (rect.x + rect.width / 2),
+          delta: parentRect.x + parentRect.width / 2 - (rect.x + rect.width / 2),
           kind: 'center',
           guide: parentRect.x + parentRect.width / 2,
         },
         {
           axis: 'y',
-          delta:
-            parentRect.y + parentRect.height / 2 - (rect.y + rect.height / 2),
+          delta: parentRect.y + parentRect.height / 2 - (rect.y + rect.height / 2),
           kind: 'center',
           guide: parentRect.y + parentRect.height / 2,
         },
@@ -737,16 +1166,18 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
     event.preventDefault()
     const hits = hitIdsAt(event.clientX, event.clientY, targetId)
     const cycle = event.altKey || event.metaKey || event.ctrlKey
-    const id = (cycle ? cycleCanvasHit(hits, uiAuthoringSession.selectedElementId) : targetId ?? hits[0]) as
-      | UIElementId
-      | null
+    const id = (
+      cycle ? cycleCanvasHit(hits, uiAuthoringSession.selectedElementId) : (targetId ?? hits[0])
+    ) as UIElementId | null
     if (!id) return
     if (event.shiftKey) uiAuthoringSession.toggleSelection(id)
     else if (!handle && !selectedIds.includes(id)) uiAuthoringSession.select(id)
     const ids = handle ? selectedIds : event.shiftKey ? uiAuthoringSession.selectedElementIds : [id]
     const editableIds = ids.filter((selectedId) => {
       const element = asset.elements.find((candidate) => candidate.id === selectedId)
-      return element?.placement.positioning === 'free' || element?.placement.positioning === 'absolute'
+      return (
+        element?.placement.positioning === 'free' || element?.placement.positioning === 'absolute'
+      )
     })
     if (editableIds.length === 0 || event.shiftKey) return
     const before = new Map<UIElementId, UIRect>()
@@ -773,9 +1204,8 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
 
   const enterNestedFrame = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (previewMode !== 'edit' || !asset) return
-    const targetId = (event.target as HTMLElement).closest<HTMLElement>(
-      '[data-haku-ui-hit-target]',
-    )?.dataset.hakuUiHitTarget
+    const targetId = (event.target as HTMLElement).closest<HTMLElement>('[data-haku-ui-hit-target]')
+      ?.dataset.hakuUiHitTarget
     if (!targetId) return
     const target = asset.elements.find((element) => element.id === targetId)
     if (!target || !('children' in target)) return
@@ -853,9 +1283,7 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
       const before = gesture.before.get(id)
       if (!before) continue
       const rect =
-        id === primaryId
-          ? primary
-          : { ...before, x: before.x + actualDx, y: before.y + actualDy }
+        id === primaryId ? primary : { ...before, x: before.x + actualDx, y: before.y + actualDy }
       next.set(id, rect)
       const node = instanceRef.current?.getElement(id)
       if (!node) continue
@@ -965,7 +1393,12 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
         fitSelection()
         return
       }
-      if (!asset || !event.key.startsWith('Arrow')) return
+      if (
+        !asset ||
+        !event.key.startsWith('Arrow') ||
+        (target instanceof Element && target.closest('[data-haku-ui-tree-item]'))
+      )
+        return
       const delta = event.shiftKey ? 10 : 1
       const movement = {
         x: event.key === 'ArrowLeft' ? -delta : event.key === 'ArrowRight' ? delta : 0,
@@ -1022,22 +1455,103 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
     return <div className="haku-ui-editor haku-ui-editor--empty">No UI document open</div>
   }
 
-  const parent = selected && 'children' in selected ? selected.id : uiAuthoringSession.asset?.root
+  const createElement = (
+    type: UICreatableType,
+    options: {
+      readonly pointerFrameId?: UIElementId
+      readonly insertionIndex?: number
+      readonly point?: { readonly x: number; readonly y: number }
+    } = {},
+  ) => {
+    if (type === 'image') {
+      setPendingImageCreation(options)
+      setTexturePickerOpen(true)
+      setStatus(
+        textures.length === 0
+          ? 'No project texture assets are available'
+          : 'Choose a project texture',
+      )
+      return
+    }
+    runHierarchyAction(
+      () => uiAuthoringSession.createElement(type, options),
+      `Created ${UI_PALETTE.find((entry) => entry.type === type)?.label ?? type}`,
+    )
+  }
 
-  const add = (type: UIElement['type']) => {
-    if (!parent) return
+  const canvasCreationContext = (clientX: number, clientY: number) => {
+    const canvasRect = canvasHost.current?.getBoundingClientRect()
+    const point = canvasPointToDocument(
+      { x: clientX - (canvasRect?.left ?? 0), y: clientY - (canvasRect?.top ?? 0) },
+      canvasViewRef.current,
+    )
+    const pointerFrameId = hitIdsAt(clientX, clientY).find((id) => {
+      const element = elements.get(id as UIElementId)
+      return element?.type === 'frame' && !uiAuthoringSession.isEditorLocked(element.id)
+    }) as UIElementId | undefined
+    const target = resolveUICreationTarget(asset, {
+      ...(pointerFrameId ? { pointerFrameId } : {}),
+      selectedId: uiAuthoringSession.selectedElementId,
+      lockedIds: uiAuthoringSession.editorLockedElementIds,
+    })
+    const parent = elements.get(target.parentId)
+    const parentBounds = elementBounds.get(target.parentId)
+    let insertionIndex = target.index
+    if (parent && 'children' in parent && parent.layout.mode !== 'free') {
+      const axis = parent.layout.mode === 'horizontal' ? 'x' : 'y'
+      insertionIndex = parent.children.findIndex((child) => {
+        const bounds = elementBounds.get(child)
+        if (!bounds) return false
+        const midpoint = bounds[axis] + (axis === 'x' ? bounds.width : bounds.height) / 2
+        return point[axis] < midpoint
+      })
+      if (insertionIndex < 0) insertionIndex = parent.children.length
+    }
+    return {
+      parentId: target.parentId,
+      ...(pointerFrameId ? { pointerFrameId } : {}),
+      insertionIndex,
+      point: {
+        x: point.x - (parentBounds?.x ?? 0),
+        y: point.y - (parentBounds?.y ?? 0),
+      },
+    }
+  }
+
+  const handleCanvasDragOver = (event: ReactDragEvent<HTMLDivElement>) => {
+    if (paletteDragRef.current || hierarchyDragRef.current.length > 0) {
+      event.preventDefault()
+      event.dataTransfer.dropEffect = paletteDragRef.current ? 'copy' : 'move'
+    }
+  }
+
+  const handleCanvasDrop = (event: ReactDragEvent<HTMLDivElement>) => {
+    event.preventDefault()
     try {
-      if (type === 'image') {
-        const textureId = window.prompt('Texture asset UUID')?.trim()
-        if (!textureId) return
-        uiAuthoringSession.addElement(parent, type, {
-          source: assetRef(assetId(textureId), TEXTURE_ASSET_TYPE),
-        })
-      } else {
-        uiAuthoringSession.addElement(parent, type)
+      const context = canvasCreationContext(event.clientX, event.clientY)
+      if (paletteDragRef.current) {
+        createElement(paletteDragRef.current, context)
+      } else if (hierarchyDragRef.current.length > 0) {
+        const parent = elements.get(context.parentId)
+        const targetId =
+          parent && 'children' in parent ? parent.children[context.insertionIndex] : undefined
+        uiAuthoringSession.moveElements(
+          hierarchyDragRef.current,
+          targetId
+            ? { targetId, position: 'before' }
+            : { targetId: context.parentId, position: 'inside' },
+          elementBounds,
+        )
+        setStatus(
+          `Moved ${hierarchyDragRef.current.length} layer${hierarchyDragRef.current.length === 1 ? '' : 's'} on canvas`,
+        )
       }
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : 'Add failed')
+      setStatus(error instanceof Error ? error.message : String(error))
+    } finally {
+      paletteDragRef.current = null
+      hierarchyDragRef.current = []
+      setDropIndicator(null)
     }
   }
 
@@ -1225,40 +1739,206 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
           <AssetBrowserPanel />
         </div>
       )}
+      {texturePickerOpen && (
+        <div className="haku-ui-editor__texture-picker" role="dialog" aria-label="Choose texture">
+          <div className="haku-ui-editor__asset-picker-header">
+            <strong>Project textures</strong>
+            <button
+              type="button"
+              aria-label="Close texture chooser"
+              onClick={() => {
+                setTexturePickerOpen(false)
+                setPendingImageCreation(null)
+              }}
+            >
+              ×
+            </button>
+          </div>
+          {textures.length === 0 ? (
+            <div className="haku-ui-editor__texture-empty">
+              <p>No texture assets in the project manifest.</p>
+              <button type="button" disabled>
+                No textures available
+              </button>
+            </div>
+          ) : (
+            <ul>
+              {textures.map((texture) => (
+                <li key={`${texture.reference.$ref}:${texture.path}`}>
+                  <button
+                    type="button"
+                    aria-label={`Use ${texture.name}`}
+                    onClick={() => {
+                      runHierarchyAction(
+                        () =>
+                          uiAuthoringSession.createElement('image', {
+                            ...(pendingImageCreation ?? {}),
+                            source: texture.reference,
+                          }),
+                        `Created Image from ${texture.path}`,
+                      )
+                      setTexturePickerOpen(false)
+                      setPendingImageCreation(null)
+                    }}
+                  >
+                    <span>{texture.name}</span>
+                    <small>{texture.path}</small>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
       <PanelGroup
         direction="horizontal"
         autoSaveId="haku-ui-editor-panels-h"
         className="haku-ui-editor__workspace"
       >
         <Panel defaultSize={20} minSize={14} maxSize={34}>
-          <aside className="haku-ui-editor__hierarchy" aria-label="UI Layers">
+          <aside
+            className="haku-ui-editor__hierarchy"
+            aria-label="UI Layers"
+            onDragOver={(event) => {
+              const rect = event.currentTarget.getBoundingClientRect()
+              if (event.clientY - rect.top < 32) event.currentTarget.scrollTop -= 24
+              else if (rect.bottom - event.clientY < 32) event.currentTarget.scrollTop += 24
+            }}
+          >
             <h3>Layers</h3>
-            <div className="haku-ui-editor__palette">
-              {(['frame', 'text', 'button', 'image'] as const).map((type) => (
-                <button key={type} type="button" onClick={() => add(type)}>
-                  + {type}
-                </button>
-              ))}
+            <div className="haku-ui-editor__palette" role="region" aria-label="Element palette">
+              <input
+                type="search"
+                aria-label="Search UI elements"
+                placeholder="Search elements"
+                value={paletteQuery}
+                onChange={(event) => setPaletteQuery(event.target.value)}
+              />
+              <div className="haku-ui-editor__palette-grid">
+                {palette.map((entry) => (
+                  <button
+                    key={entry.type}
+                    type="button"
+                    draggable
+                    aria-label={`Add ${entry.label}`}
+                    data-haku-ui-palette-kind={entry.type}
+                    onClick={() => createElement(entry.type)}
+                    onDragStart={(event) => {
+                      paletteDragRef.current = entry.type
+                      event.dataTransfer.effectAllowed = 'copy'
+                      event.dataTransfer.setData('application/x-haku-ui-kind', entry.type)
+                    }}
+                    onDragEnd={() => {
+                      paletteDragRef.current = null
+                    }}
+                  >
+                    <span aria-hidden="true">{entry.icon}</span>
+                    {entry.label}
+                  </button>
+                ))}
+              </div>
+              {palette.length === 0 && <p>No element types match “{paletteQuery}”.</p>}
             </div>
-            <ul>
+            <ul role="tree" aria-label="UI layer tree">
               {hierarchy.map((item) => (
                 <HierarchyNode
                   key={item.id}
                   item={item}
+                  rootId={asset.root}
+                  elements={elements}
                   selected={selectedIds}
+                  expanded={expandedLayers}
+                  renamingId={renamingId}
+                  dropIndicator={dropIndicator}
                   onSelect={(id, modified) =>
-                    modified ? uiAuthoringSession.toggleSelection(id) : uiAuthoringSession.select(id)
+                    modified
+                      ? uiAuthoringSession.toggleSelection(id)
+                      : uiAuthoringSession.select(id)
                   }
+                  onToggle={(id) =>
+                    setExpandedLayers((current) => {
+                      const next = new Set(current)
+                      if (next.has(id)) next.delete(id)
+                      else next.add(id)
+                      return next
+                    })
+                  }
+                  onBeginRename={setRenamingId}
+                  onCommitRename={(id, name) => {
+                    runHierarchyAction(
+                      () => uiAuthoringSession.renameElement(id, name),
+                      `Renamed layer to ${name.trim()}`,
+                    )
+                    setRenamingId(null)
+                  }}
+                  onCancelRename={() => setRenamingId(null)}
+                  onVisible={(id, visible) =>
+                    runHierarchyAction(
+                      () => uiAuthoringSession.setElementVisible(id, visible),
+                      visible ? 'Layer shown' : 'Layer hidden',
+                    )
+                  }
+                  onLock={(id, locked) => {
+                    uiAuthoringSession.setEditorLocked(id, locked)
+                    setStatus(locked ? 'Layer locked' : 'Layer unlocked')
+                  }}
+                  onDuplicate={(id) =>
+                    runHierarchyAction(
+                      () =>
+                        uiAuthoringSession.duplicateElements(
+                          selectedIds.includes(id) ? selectedIds : [id],
+                        ),
+                      'Duplicated layer selection',
+                    )
+                  }
+                  onDelete={(id) =>
+                    runHierarchyAction(
+                      () =>
+                        uiAuthoringSession.removeElements(
+                          selectedIds.includes(id) ? selectedIds : [id],
+                        ),
+                      'Deleted layer selection',
+                    )
+                  }
+                  onKeyDown={handleLayerKeyDown}
+                  onDragStart={(event, id) => {
+                    const ids = selectedIds.includes(id) ? selectedIds : [id]
+                    if (!selectedIds.includes(id)) uiAuthoringSession.select(id)
+                    hierarchyDragRef.current = ids
+                    event.dataTransfer.effectAllowed = 'move'
+                    event.dataTransfer.setData('application/x-haku-ui-layers', ids.join(','))
+                  }}
+                  onDragOver={handleLayerDragOver}
+                  onDrop={handleLayerDrop}
                 />
               ))}
             </ul>
-            <button
-              type="button"
-              disabled={!selected || selected.id === asset.root}
-              onClick={() => selected && uiAuthoringSession.removeElement(selected.id)}
-            >
-              Delete selected
-            </button>
+            <div className="haku-ui-editor__hierarchy-footer">
+              <button
+                type="button"
+                disabled={selectedIds.length === 0 || selectedIds.includes(asset.root)}
+                onClick={() =>
+                  runHierarchyAction(
+                    () => uiAuthoringSession.duplicateElements(selectedIds),
+                    'Duplicated layer selection',
+                  )
+                }
+              >
+                Duplicate selected
+              </button>
+              <button
+                type="button"
+                disabled={selectedIds.length === 0 || selectedIds.includes(asset.root)}
+                onClick={() =>
+                  runHierarchyAction(
+                    () => uiAuthoringSession.removeElements(selectedIds),
+                    'Deleted layer selection',
+                  )
+                }
+              >
+                Delete selected
+              </button>
+            </div>
           </aside>
         </Panel>
         <PanelResizeHandle className="haku-resize-handle haku-resize-handle--horizontal" />
@@ -1274,6 +1954,8 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
               onPointerUp={commitPointerGesture}
               onPointerCancel={cancelGesture}
               onDoubleClick={enterNestedFrame}
+              onDragOver={handleCanvasDragOver}
+              onDrop={handleCanvasDrop}
               style={{ cursor: canvasCursor }}
             >
               <div
@@ -1300,7 +1982,11 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
                   <div className="haku-ui-editor__overlay" aria-hidden="true">
                     {asset.elements.map((element, index) => {
                       const rect = gestureRects.get(element.id) ?? elementBounds.get(element.id)
-                      if (!rect || !element.visible || uiAuthoringSession.isEditorLocked(element.id))
+                      if (
+                        !rect ||
+                        !element.visible ||
+                        uiAuthoringSession.isEditorLocked(element.id)
+                      )
                         return null
                       return (
                         <div
@@ -1324,7 +2010,12 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
                           key={id}
                           className="haku-ui-editor__selection-bounds"
                           data-haku-ui-selection-bounds={id}
-                          style={{ left: rect.x, top: rect.y, width: rect.width, height: rect.height }}
+                          style={{
+                            left: rect.x,
+                            top: rect.y,
+                            width: rect.width,
+                            height: rect.height,
+                          }}
                         />
                       ) : null
                     })}
