@@ -679,6 +679,17 @@ Evidence:
 - Browser: build the responsive-workflow example entirely through Inspector, then compare wide,
   desktop, and narrow viewport screenshots plus computed bounds.
 
+**Status (2026-08-18): complete.**
+
+- Inspector now exposes the complete M5 Frame layout, sizing, bounds, placement, style,
+  accessibility, widget, and event-binding surface with strict validation and undoable edits.
+- Canvas overlays cover padding, measured gaps, resolved insertion positions, overflow axes, and
+  free-child constraints in Edit only; the user-Chrome workflow verified Fit and 100% geometry,
+  exact drag indices, cancel/drop history, Preview gating, and a clean console.
+- An Inspector-only responsive example verified Grid plus nested wrap, Hug/Fill/Fixed, min/max,
+  constraints, and overflow with stable document-space bounds at 1280 × 720, 1440 × 900, and
+  custom 480 × 720. Evidence is recorded in [`handoffs/UI-M5-01.md`](./handoffs/UI-M5-01.md).
+
 ### Milestone 6 — Component masters and instances authoring
 
 **Prerequisite:** Milestone 5 accepted.
