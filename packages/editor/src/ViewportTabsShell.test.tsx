@@ -179,7 +179,7 @@ describe('ViewportTabsShell UI workspace baseline', () => {
     )
   })
 
-  it('routes shortcuts and wheel navigation only through Edit mode', async () => {
+  it('routes shortcuts and cursor-anchored wheel zoom only through Edit mode', async () => {
     const { container } = render(<ViewportTabsShell />)
     fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
     const canvas = container.querySelector('[data-haku-ui-canvas-cursor]') as HTMLElement
@@ -187,45 +187,56 @@ describe('ViewportTabsShell UI workspace baseline', () => {
 
     fireEvent.keyDown(window, { key: '1' })
     expect(preview?.getAttribute('data-haku-ui-preview-scale')).toBe('1')
+    const content = container.querySelector('.haku-ui-editor__canvas-content') as HTMLElement
+    const pointUnderCursor = (transform: string) => {
+      const match = transform.match(
+        /translate\(([-\d.]+)px, ([-\d.]+)px\) scale\(([-\d.]+)\)/,
+      )
+      expect(match, transform).toBeTruthy()
+      const [, x, y, scale] = match!.map(Number)
+      return { x: (120 - x!) / scale!, y: (100 - y!) / scale! }
+    }
+    const anchoredBefore = pointUnderCursor(content.style.transform)
     const editWheel = new WheelEvent('wheel', {
-        bubbles: true,
-        cancelable: true,
-        ctrlKey: true,
-        deltaY: -100,
-        clientX: 120,
-        clientY: 100,
-      })
-    Object.defineProperty(editWheel, 'ctrlKey', { value: true })
+      bubbles: true,
+      cancelable: true,
+      deltaY: -100,
+      clientX: 120,
+      clientY: 100,
+    })
+    Object.defineProperties(editWheel, {
+      clientX: { value: 120 },
+      clientY: { value: 100 },
+    })
     fireEvent(canvas, editWheel)
     expect(editWheel.defaultPrevented).toBe(true)
     expect(editWheel.deltaY).toBe(-100)
-    expect(editWheel.ctrlKey).toBe(true)
     await waitFor(() =>
       expect((screen.getByLabelText('Canvas zoom') as HTMLInputElement).value).toBe('122'),
     )
-    expect(
-      Number(container.querySelector('[data-haku-ui-preview]')?.getAttribute('data-haku-ui-preview-effective-scale')),
-    ).toBeGreaterThan(1)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Preview' }))
-    const scaleBeforePreviewWheel = container
-      .querySelector('[data-haku-ui-preview]')
-      ?.getAttribute('data-haku-ui-preview-effective-scale')
-    const previewWheel = new WheelEvent('wheel', {
-        bubbles: true,
-        cancelable: true,
-        ctrlKey: true,
-        deltaY: -100,
-        clientX: 120,
-        clientY: 100,
-      })
-    Object.defineProperty(previewWheel, 'ctrlKey', { value: true })
-    fireEvent(canvas, previewWheel)
-    expect(
+    const editScale = Number(
       container
         .querySelector('[data-haku-ui-preview]')
         ?.getAttribute('data-haku-ui-preview-effective-scale'),
-    ).toBe(scaleBeforePreviewWheel)
+    )
+    expect(editScale).toBeGreaterThan(1)
+    expect(editScale).toBeLessThanOrEqual(8)
+    const anchoredAfter = pointUnderCursor(content.style.transform)
+    expect(anchoredAfter.x).toBeCloseTo(anchoredBefore.x, 8)
+    expect(anchoredAfter.y).toBeCloseTo(anchoredBefore.y, 8)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Preview' }))
+    const transformBeforePreviewWheel = content.style.transform
+    const previewWheel = new WheelEvent('wheel', {
+      bubbles: true,
+      cancelable: true,
+      deltaY: -100,
+      clientX: 120,
+      clientY: 100,
+    })
+    fireEvent(canvas, previewWheel)
+    expect(previewWheel.defaultPrevented).toBe(false)
+    expect(content.style.transform).toBe(transformBeforePreviewWheel)
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(screen.getByRole('button', { name: 'Edit' }).getAttribute('aria-pressed')).toBe('true')
   })

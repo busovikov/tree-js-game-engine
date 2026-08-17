@@ -926,16 +926,9 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
     const wheel = (event: WheelEvent) => {
       if (previewMode !== 'edit') return
       event.preventDefault()
-      if (event.ctrlKey || event.metaKey) {
-        const rect = host.getBoundingClientRect()
-        const anchor = { x: event.clientX - rect.left, y: event.clientY - rect.top }
-        setZoom(canvasViewRef.current.scale * Math.exp(-event.deltaY * 0.002), anchor)
-      } else {
-        setCanvasView({
-          mode: 'manual',
-          ...panCanvasView(canvasViewRef.current, { x: -event.deltaX, y: -event.deltaY }),
-        })
-      }
+      const rect = host.getBoundingClientRect()
+      const anchor = { x: event.clientX - rect.left, y: event.clientY - rect.top }
+      setZoom(canvasViewRef.current.scale * Math.exp(-event.deltaY * 0.002), anchor)
     }
     host.addEventListener('wheel', wheel, { passive: false })
     return () => host.removeEventListener('wheel', wheel)
