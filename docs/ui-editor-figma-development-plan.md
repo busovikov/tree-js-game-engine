@@ -620,6 +620,31 @@ Evidence:
 - Browser: Layers and canvas recordings for reorder, nested reparent, auto-scroll, invalid cycle,
   image creation, undo, and keyboard alternative.
 
+**Status (2026-08-17): complete.**
+
+- Strict hierarchy commands cover reorder/reparent, stable multi-move order, coordinate and layout
+  conversion, root/cycle/lock rejection, duplicate/delete, deterministic creation targets, and
+  typed project texture choices. Layers exposes expansion, keyboard navigation, inline rename,
+  visibility, editor-only lock, selection parity, contextual actions, DnD markers, and searchable
+  creation for all 17 palette kinds.
+- TDD passes the focused hierarchy/session/project-service/panel matrix at 4 files / 57 tests and
+  the full `@haku/editor` suite at 51 files / 198 tests. Editor and editor-app typecheck/build plus
+  affected-file lint pass; the two M5 Inspector sizing `it.fails` rows remain unchanged.
+- User Chrome verified pointer sibling reorder, nested reparent, auto-layout reorder, empty-Frame
+  center drop, keyboard navigation and Alt reorder/reparent, F2/duplicate/delete, all 16 non-Image
+  creations, searchable palette, pointer-context canvas creation plus Undo, explicit Image empty
+  state, root/cycle/locked rejection with no invalid history, and the 900 × 700 layout. Console
+  warning/error output was empty.
+- Invalid native DnD now reports validation during `dragOver`: Chrome suppresses `drop` after
+  `dropEffect = none`, so waiting for `drop` previously left stale status. The focused RED→GREEN
+  test and Chrome cycle/locked checks cover the corrected contract.
+- Evidence is recorded in [`handoffs/UI-M4-01.md`](./handoffs/UI-M4-01.md) with
+  [`UI-M4-wide-dnd.jpg`](./handoffs/evidence/UI-M4-wide-dnd.jpg),
+  [`UI-M4-image-empty.jpg`](./handoffs/evidence/UI-M4-image-empty.jpg), and
+  [`UI-M4-final.jpg`](./handoffs/evidence/UI-M4-final.jpg). The synthetic Chrome edge-drag did not
+  advance the scroll surface, so the handoff records that auto-scroll limitation without making a
+  false browser claim.
+
 ### Milestone 5 — Complete layout, sizing, constraints, and styling Inspector
 
 **Prerequisite:** Milestone 4 accepted.
