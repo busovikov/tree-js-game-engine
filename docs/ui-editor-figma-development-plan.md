@@ -410,6 +410,21 @@ Evidence:
   defects.
 - Browser: screenshot and interaction log for open/select/save plus current 0.5 top-left preview.
 
+**Status (2026-08-17): complete.**
+
+- TDD RED: `pnpm exec vitest run packages/editor/src/ViewportTabsShell.test.tsx -t
+  'round-trips|fits and centers'` reproduced `0` instead of `100%`, `0` instead of `auto`, and
+  `0.5` instead of the desired fit scale. The three cases remain in the green suite as
+  milestone-owned `it.fails` tests (M5 for sizing, M3 for preview navigation).
+- TDD GREEN: focused `@haku/ui` and `@haku/editor` package runs cover strict-tree rejection,
+  layout-to-DOM translation, selection, atomic full-asset undo, save validation/I/O failure,
+  the four-element fixture, and stable workspace selectors.
+- Chrome: the real editor workspace opened `builtin:m10b-runtime-hud.ui.json`; default,
+  1920 × 1080 preview-preset, and 900 × 700 narrow evidence confirms four elements, shared
+  selection, disabled built-in Save, and the current `matrix(0.5)` / `0px 0px` transform with
+  no console errors. Screenshots and the interaction log are recorded in
+  [`handoffs/UI-M0-01.md`](./handoffs/UI-M0-01.md).
+
 ### Milestone 1 — Version 2 model, required elements, and React-free runtime
 
 **Prerequisite:** Milestone 0 accepted.
