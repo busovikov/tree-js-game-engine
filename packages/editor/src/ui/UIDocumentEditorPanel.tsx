@@ -9,12 +9,14 @@ import {
   type UIDocument,
   type UIElement,
   type UIElementId,
+  type UILayout,
   type UISize,
   type UIThemeId,
 } from '@haku/ui'
 import { projectPathToUrl } from '@haku/schema'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { AssetBrowserPanel } from '../panels/AssetBrowserPanel.js'
+import { NumberField } from '../components/NumberField.js'
 import { projectService } from '../services/project-service.js'
 import {
   UI_DESKTOP_VIEWPORTS,
@@ -48,6 +50,7 @@ import {
   type UIHierarchyDropPosition,
 } from './ui-hierarchy-commands.js'
 import {
+  convertFrameLayout,
   convertUISize,
   explainUISizeMode,
   formatUISize,
@@ -470,6 +473,177 @@ function UIDimensionField({
   )
 }
 
+type UILayoutOwner = Extract<UIElement, { layout: UILayout }>
+
+const UIFrameLayoutSection = memo(function UIFrameLayoutSection({
+  asset,
+  element,
+  bounds,
+}: {
+  asset: UIDocument
+  element: UILayoutOwner
+  bounds: ReadonlyMap<UIElementId, UIRect>
+}) {
+  const [error, setError] = useState<string | null>(null)
+  const updateLayout = (layout: UILayout) => {
+    try {
+      uiAuthoringSession.updateElement(element.id, { layout })
+      setError(null)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    }
+  }
+  const setLayoutMode = (mode: UILayout['mode']) => {
+    try {
+      uiAuthoringSession.replaceAsset(convertFrameLayout(asset, element.id, mode, bounds))
+      setError(null)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    }
+  }
+  const overflowOptions = element.type === 'scroll-container'
+    ? (['hidden', 'auto', 'scroll'] as const)
+    : (['visible', 'hidden', 'auto', 'scroll'] as const)
+  const autoLayout = element.layout.mode === 'free' ? null : element.layout
+  const flowLayout =
+    element.layout.mode === 'horizontal' || element.layout.mode === 'vertical'
+      ? element.layout
+      : null
+  const gridLayout = element.layout.mode === 'grid' ? element.layout : null
+
+  return (
+    <section className="haku-ui-editor__inspector-section" aria-label="Frame layout">
+      <h4>Frame layout</h4>
+      <label className="mesh-field">
+        <span className="mesh-field__label">Layout mode</span>
+        <select
+          className="mesh-field__input"
+          aria-label="Layout mode"
+          value={element.layout.mode}
+          onChange={(event) => setLayoutMode(event.target.value as UILayout['mode'])}
+        >
+          <option value="free">Free</option>
+          <option value="horizontal">Horizontal</option>
+          <option value="vertical">Vertical</option>
+          <option value="grid">Grid</option>
+        </select>
+      </label>
+      {(['top', 'right', 'bottom', 'left'] as const).map((side) => (
+        <NumberField
+          key={side}
+          label={`Padding ${side}`}
+          value={element.layout.padding[side]}
+          min={0}
+          step={1}
+          onChange={(value) =>
+            updateLayout({
+              ...element.layout,
+              padding: { ...element.layout.padding, [side]: value },
+            })
+          }
+        />
+      ))}
+      {autoLayout && (
+        <>
+          <NumberField
+            label="Row gap"
+            value={autoLayout.rowGap}
+            min={0}
+            step={1}
+            onChange={(rowGap) => updateLayout({ ...autoLayout, rowGap })}
+          />
+          <NumberField
+            label="Column gap"
+            value={autoLayout.columnGap}
+            min={0}
+            step={1}
+            onChange={(columnGap) => updateLayout({ ...autoLayout, columnGap })}
+          />
+          <label className="mesh-field">
+            <span className="mesh-field__label">Distribution</span>
+            <select
+              className="mesh-field__input"
+              value={autoLayout.distribution}
+              onChange={(event) =>
+                updateLayout({
+                  ...autoLayout,
+                  distribution: event.target.value as typeof autoLayout.distribution,
+                })
+              }
+            >
+              <option value="start">Start</option>
+              <option value="center">Center</option>
+              <option value="end">End</option>
+              <option value="space-between">Space between</option>
+              <option value="space-around">Space around</option>
+              <option value="space-evenly">Space evenly</option>
+            </select>
+          </label>
+          <label className="mesh-field">
+            <span className="mesh-field__label">Alignment</span>
+            <select
+              className="mesh-field__input"
+              value={autoLayout.alignment}
+              onChange={(event) =>
+                updateLayout({
+                  ...autoLayout,
+                  alignment: event.target.value as typeof autoLayout.alignment,
+                })
+              }
+            >
+              <option value="start">Start</option>
+              <option value="center">Center</option>
+              <option value="end">End</option>
+              <option value="stretch">Stretch</option>
+            </select>
+          </label>
+        </>
+      )}
+      {flowLayout && (
+        <label className="haku-ui-editor__checkbox">
+          <input
+            type="checkbox"
+            checked={flowLayout.wrap}
+            onChange={(event) => updateLayout({ ...flowLayout, wrap: event.target.checked })}
+          />
+          Wrap
+        </label>
+      )}
+      {gridLayout && (
+        <NumberField
+          label="Columns"
+          value={gridLayout.columns}
+          min={1}
+          step={1}
+          onChange={(columns) => updateLayout({ ...gridLayout, columns })}
+        />
+      )}
+      {(['X', 'Y'] as const).map((axis) => {
+        const key = `overflow${axis}` as 'overflowX' | 'overflowY'
+        return (
+          <label className="mesh-field" key={key}>
+            <span className="mesh-field__label">Overflow {axis}</span>
+            <select
+              className="mesh-field__input"
+              value={element[key]}
+              onChange={(event) =>
+                uiAuthoringSession.updateElement(element.id, { [key]: event.target.value })
+              }
+            >
+              {overflowOptions.map((value) => (
+                <option value={value} key={value}>
+                  {value === 'hidden' ? 'Clip' : value[0]!.toUpperCase() + value.slice(1)}
+                </option>
+              ))}
+            </select>
+          </label>
+        )
+      })}
+      {error && <small role="alert">{error}</small>}
+    </section>
+  )
+})
+
 function UIInspector({
   asset,
   element,
@@ -517,6 +691,9 @@ function UIInspector({
         />
         Enabled
       </label>
+      {'layout' in element && (
+        <UIFrameLayoutSection asset={asset} element={element} bounds={bounds} />
+      )}
       {(element.type === 'text' || element.type === 'button') && (
         <label className="mesh-field">
           <span className="mesh-field__label">Text</span>

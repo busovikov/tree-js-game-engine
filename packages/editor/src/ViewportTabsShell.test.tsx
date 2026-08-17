@@ -33,6 +33,7 @@ import { EditorLayout } from './EditorLayout.js'
 import { ViewportTabsShell } from './ViewportTabsShell.js'
 import { useEditorStore } from './store/editor-store.js'
 import { projectService } from './services/project-service.js'
+import { uiAuthoringSession } from './ui/ui-editor-service.js'
 
 afterEach(cleanup)
 beforeEach(() => useEditorStore.setState({ activeWorkspace: 'viewport' }))
@@ -113,6 +114,25 @@ describe('ViewportTabsShell UI workspace baseline', () => {
     fireEvent.click(treeItem)
 
     expect((screen.getByLabelText('Width (px)') as HTMLInputElement).value).toBe(expected)
+  })
+
+  it('converts HUD Root from Free to Horizontal as one exact undoable document edit', () => {
+    render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    const before = structuredClone(uiAuthoringSession.asset)
+
+    fireEvent.change(screen.getByLabelText('Layout mode'), { target: { value: 'horizontal' } })
+
+    expect(uiAuthoringSession.asset?.elements[0]).toMatchObject({
+      layout: { mode: 'horizontal', wrap: false },
+    })
+    expect(uiAuthoringSession.asset?.elements.slice(1).map((element) => element.placement)).toEqual([
+      { positioning: 'flow' },
+      { positioning: 'flow' },
+      { positioning: 'flow' },
+    ])
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(uiAuthoringSession.asset).toEqual(before)
   })
 
   // M2 owns replacement of the fixed-scale baseline; M3 starts direct canvas interaction.

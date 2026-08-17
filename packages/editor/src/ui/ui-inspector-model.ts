@@ -3,8 +3,10 @@ import {
   type UIDocument,
   type UIElement,
   type UIElementId,
+  type UIBound,
   type UILayout,
   type UISize,
+  type UISizing,
 } from '@haku/ui'
 import type { UIRect } from './ui-gesture-transaction.js'
 
@@ -20,6 +22,26 @@ export interface UISizeContext {
 export interface UISizeConversionContext extends UISizeContext {
   readonly measured: number
   readonly unit: 'px' | '%'
+}
+
+export type UISizingBoundKey = 'minWidth' | 'maxWidth' | 'minHeight' | 'maxHeight'
+
+export function updateUISizingBound(
+  sizing: UISizing,
+  key: UISizingBoundKey,
+  bound: UIBound | undefined,
+): UISizing {
+  if (bound && (!Number.isFinite(bound.value) || bound.value < 0)) {
+    throw new Error(`${key} must be a finite non-negative number.`)
+  }
+  const next = { ...sizing, [key]: bound }
+  const axis = key.endsWith('Width') ? 'Width' : 'Height'
+  const min = next[`min${axis}`]
+  const max = next[`max${axis}`]
+  if (min && max && min.unit === max.unit && min.value > max.value) {
+    throw new Error(`min${axis} cannot exceed max${axis} when both use ${min.unit}.`)
+  }
+  return next
 }
 
 export function formatUISize(size: UISize): string {

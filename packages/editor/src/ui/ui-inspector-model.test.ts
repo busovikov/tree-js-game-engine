@@ -6,6 +6,7 @@ import {
   explainUISizeMode,
   formatUISize,
   parseUISize,
+  updateUISizingBound,
   updateUIElementStrict,
 } from './ui-inspector-model.js'
 
@@ -55,6 +56,31 @@ function document(layout: 'free' | 'vertical' = 'free'): UIDocument {
 }
 
 describe('UI Inspector field model', () => {
+  it('rejects inverted comparable min/max bounds without comparing unlike units', () => {
+    const sizing = document().elements[1]!.sizing
+
+    expect(() =>
+      updateUISizingBound(
+        { ...sizing, maxWidth: { value: 80, unit: 'px' } },
+        'minWidth',
+        { value: 120, unit: 'px' },
+      ),
+    ).toThrow(/minWidth cannot exceed maxWidth/i)
+    expect(
+      updateUISizingBound(
+        { ...sizing, maxWidth: { value: 80, unit: '%' } },
+        'minWidth',
+        { value: 120, unit: 'px' },
+      ),
+    ).toMatchObject({
+      minWidth: { value: 120, unit: 'px' },
+      maxWidth: { value: 80, unit: '%' },
+    })
+    expect(() =>
+      updateUISizingBound(sizing, 'maxHeight', { value: Number.NaN, unit: 'px' }),
+    ).toThrow(/finite non-negative/i)
+  })
+
   it('formats every dimension mode without pixel coercion', () => {
     expect(formatUISize({ mode: 'fixed', value: 100, unit: '%' })).toBe('100%')
     expect(formatUISize({ mode: 'fixed', value: 320, unit: 'px' })).toBe('320')
@@ -121,6 +147,19 @@ describe('UI Inspector field model', () => {
       referenceHeight: 300,
     })
     expect(child.sizing).toMatchObject({ width: { mode: 'fixed', value: 50, unit: '%' } })
+    expect(() => UIDocumentSchema.parse(converted)).not.toThrow()
+  })
+
+  it.each([
+    ['horizontal', { mode: 'horizontal', wrap: false }],
+    ['vertical', { mode: 'vertical', wrap: false }],
+    ['grid', { mode: 'grid', columns: 1 }],
+  ] as const)('converts free layout to %s with strict flow placement', (mode, layout) => {
+    const converted = convertFrameLayout(document('free'), ROOT, mode, new Map())
+    const child = converted.elements.find((element) => element.id === CHILD)!
+
+    expect(converted.elements[0]).toMatchObject({ layout })
+    expect(child.placement).toEqual({ positioning: 'flow' })
     expect(() => UIDocumentSchema.parse(converted)).not.toThrow()
   })
 
