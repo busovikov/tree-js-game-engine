@@ -1,15 +1,17 @@
 import type { AssetId } from '@haku/schema'
 import {
   UIDocumentInstance,
-  type UIActivationEvent,
   type UIDocumentInstanceOptions,
   type UIEventListener,
+  type UIRuntimeEvent,
+  type UIRuntimeTarget,
+  type UIValue,
 } from './ui-document-instance.js'
-import { UIDocumentSchema, type UIDocument, type UIElementId } from './schema.js'
+import { UIDocumentSchema, type UIDocument, type UIThemeId } from './schema.js'
 
 export interface UIElementTarget {
   readonly document: AssetId
-  readonly element: UIElementId | string
+  readonly element: UIRuntimeTarget
 }
 
 export class UIService {
@@ -69,7 +71,19 @@ export class UIService {
     this.require(target.document).setEnabled(target.element, enabled)
   }
 
-  setTheme(documentId: AssetId, theme: UIElementId | string | undefined): void {
+  getValue(target: UIElementTarget): UIValue {
+    return this.require(target.document).getValue(target.element)
+  }
+
+  setValue(target: UIElementTarget, value: UIValue): void {
+    this.require(target.document).setValue(target.element, value)
+  }
+
+  resetValue(target: UIElementTarget): void {
+    this.require(target.document).resetValue(target.element)
+  }
+
+  setTheme(documentId: AssetId, theme: UIThemeId | string | undefined): void {
     this.require(documentId).setTheme(theme)
   }
 
@@ -90,7 +104,7 @@ export class UIService {
     this.listeners.clear()
   }
 
-  private emit(event: UIActivationEvent): void {
+  private emit(event: UIRuntimeEvent): void {
     for (const listener of this.listeners) listener(event)
   }
 }

@@ -75,12 +75,21 @@ function mountedService(): UIService {
   const service = new UIService()
   service.register(
     UIDocumentSchema.parse({
-      schemaVersion: 1,
+      schemaVersion: 2,
       id: DOCUMENT,
       name: 'Graph UI',
       root: ROOT,
       elements: [
-        { id: ROOT, type: 'container', children: [TEXT] },
+        {
+          id: ROOT,
+          type: 'frame',
+          children: [TEXT],
+          layout: { mode: 'vertical' },
+          sizing: {
+            width: { mode: 'fixed', value: 320, unit: 'px' },
+            height: { mode: 'fixed', value: 200, unit: 'px' },
+          },
+        },
         { id: TEXT, type: 'text', text: 'Old' },
       ],
     }),

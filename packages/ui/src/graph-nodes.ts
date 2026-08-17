@@ -14,7 +14,7 @@ import {
 } from '@haku/graph-runtime'
 import { AssetIdSchema } from '@haku/schema'
 import { z } from 'zod'
-import { UIElementIdSchema } from './schema.js'
+import { UIElementIdSchema, UIThemeIdSchema } from './schema.js'
 import type { UIService } from './ui-service.js'
 
 const id = (value: number): string =>
@@ -49,7 +49,7 @@ const UIElementProperties = z
 const UIThemeProperties = z
   .object({
     documentId: AssetIdSchema,
-    themeId: UIElementIdSchema,
+    themeId: UIThemeIdSchema,
   })
   .strict()
 
