@@ -239,11 +239,13 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
   const previewMode = uiAuthoringSession.previewMode
 
   const fitRoot = useCallback(() => {
-    const size = canvasSize.current
+    const host = canvasHost.current
+    const size = host ? { width: host.clientWidth, height: host.clientHeight } : canvasSize.current
     if (size.width <= 0 || size.height <= 0) {
       setCanvasView((current) => ({ ...current, mode: 'fit' }))
       return
     }
+    canvasSize.current = size
     setCanvasView({
       mode: 'fit',
       ...fitCanvasView(size, { width: viewport.width, height: viewport.height }),
@@ -275,16 +277,24 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
     }
     const measure = () => updateSize({ width: host.clientWidth, height: host.clientHeight })
     measure()
+    window.addEventListener('resize', measure)
+    window.visualViewport?.addEventListener('resize', measure)
     if (typeof ResizeObserver === 'undefined') {
-      window.addEventListener('resize', measure)
-      return () => window.removeEventListener('resize', measure)
+      return () => {
+        window.removeEventListener('resize', measure)
+        window.visualViewport?.removeEventListener('resize', measure)
+      }
     }
     const observer = new ResizeObserver((entries) => {
       const rect = entries[0]?.contentRect
       if (rect) updateSize({ width: rect.width, height: rect.height })
     })
     observer.observe(host)
-    return () => observer.disconnect()
+    return () => {
+      window.removeEventListener('resize', measure)
+      window.visualViewport?.removeEventListener('resize', measure)
+      observer.disconnect()
+    }
   }, [viewport.height, viewport.width])
 
   useEffect(() => fitRoot(), [fitRoot])
@@ -614,7 +624,7 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
                 style={{
                   width: viewport.width,
                   height: viewport.height,
-                  transform: `translate(${canvasView.x}px, ${canvasView.y}px) scale(${canvasView.scale})`,
+                  transform: `scale(${canvasView.scale}) translate(-50%, -50%)`,
                 }}
               />
             </div>

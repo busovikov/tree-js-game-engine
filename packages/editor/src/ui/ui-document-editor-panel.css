@@ -137,6 +137,7 @@
 
 .haku-ui-editor__preview {
   display: flex;
+  height: 100%;
   min-width: 0;
   min-height: 0;
   flex-direction: column;
@@ -164,7 +165,8 @@
 
 .haku-ui-editor__viewport {
   position: absolute;
-  inset: 0 auto auto 0;
+  top: 50%;
+  left: 50%;
   overflow: hidden;
   transform-origin: top left;
   background: #101018;
