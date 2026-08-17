@@ -38,9 +38,17 @@ import { UIDocumentSchema } from '@haku/ui'
 
 const INITIAL_UI_ASSET = structuredClone(uiAuthoringSession.asset)!
 const INSPECTED_ID = '13000000-0000-4000-8000-000000000102'
+const NONE_EVENT = '13000000-0000-4000-8000-000000000130'
+const SECOND_NONE_EVENT = '13000000-0000-4000-8000-000000000131'
+const STRING_EVENT = '13000000-0000-4000-8000-000000000132'
+const NUMBER_EVENT = '13000000-0000-4000-8000-000000000133'
+const BOOLEAN_EVENT = '13000000-0000-4000-8000-000000000134'
+const UNKNOWN_EVENT = '13000000-0000-4000-8000-000000000199'
 
 function inspectorAsset(
   type:
+    | 'button'
+    | 'frame'
     | 'image'
     | 'text-input'
     | 'text-area'
@@ -55,54 +63,58 @@ function inspectorAsset(
 ) {
   const current = INITIAL_UI_ASSET.elements[1]!
   const fields =
-    type === 'image'
-      ? {
-          source: {
-            $ref: '13000000-0000-4000-8000-000000000120',
-            type: '13000000-0000-4000-8000-000000000121',
-          },
-          alt: 'Score image',
-        }
-      : type === 'select'
-        ? {
-            value: 'one',
-            placeholder: 'Choose',
-            options: [
-              { value: 'one', label: 'One' },
-              { value: 'two', label: 'Two' },
-            ],
-            accessibility: { label: 'Choice' },
-          }
-        : type === 'slider'
-          ? { min: 0, max: 10, step: 1, value: 5, accessibility: { label: 'Volume' } }
-          : type === 'progress'
-            ? { min: 0, max: 10, value: 5, accessibility: { label: 'Loading' } }
-            : type === 'text-input'
-              ? {
-                  value: 'Ada',
-                  placeholder: 'Name',
-                  maxLength: 12,
-                  inputMode: 'text',
-                  accessibility: { label: 'Name' },
-                }
-              : type === 'text-area'
-                ? {
-                    value: 'Notes',
-                    rows: 4,
-                    resize: 'vertical',
-                    accessibility: { label: 'Notes' },
-                  }
-                : type === 'checkbox'
-                  ? { value: false, label: 'Accept' }
-                  : type === 'radio'
-                    ? { group: 'mode', optionValue: 'easy', value: 'easy', label: 'Easy' }
-                    : type === 'switch'
-                      ? { value: true, label: 'Music' }
-                      : type === 'divider'
-                        ? { orientation: 'horizontal', thickness: 1 }
-                        : type === 'list'
-                          ? { children: [], ordered: false, layout: { mode: 'vertical' } }
-                          : {}
+    type === 'frame'
+      ? { children: [], layout: { mode: 'free' as const } }
+      : type === 'button'
+        ? { text: 'Submit' }
+        : type === 'image'
+          ? {
+              source: {
+                $ref: '13000000-0000-4000-8000-000000000120',
+                type: '13000000-0000-4000-8000-000000000121',
+              },
+              alt: 'Score image',
+            }
+          : type === 'select'
+            ? {
+                value: 'one',
+                placeholder: 'Choose',
+                options: [
+                  { value: 'one', label: 'One' },
+                  { value: 'two', label: 'Two' },
+                ],
+                accessibility: { label: 'Choice' },
+              }
+            : type === 'slider'
+              ? { min: 0, max: 10, step: 1, value: 5, accessibility: { label: 'Volume' } }
+              : type === 'progress'
+                ? { min: 0, max: 10, value: 5, accessibility: { label: 'Loading' } }
+                : type === 'text-input'
+                  ? {
+                      value: 'Ada',
+                      placeholder: 'Name',
+                      maxLength: 12,
+                      inputMode: 'text',
+                      accessibility: { label: 'Name' },
+                    }
+                  : type === 'text-area'
+                    ? {
+                        value: 'Notes',
+                        rows: 4,
+                        resize: 'vertical',
+                        accessibility: { label: 'Notes' },
+                      }
+                    : type === 'checkbox'
+                      ? { value: false, label: 'Accept' }
+                      : type === 'radio'
+                        ? { group: 'mode', optionValue: 'easy', value: 'easy', label: 'Easy' }
+                        : type === 'switch'
+                          ? { value: true, label: 'Music' }
+                          : type === 'divider'
+                            ? { orientation: 'horizontal', thickness: 1 }
+                            : type === 'list'
+                              ? { children: [], ordered: false, layout: { mode: 'vertical' } }
+                              : {}
   return UIDocumentSchema.parse({
     ...INITIAL_UI_ASSET,
     elements: INITIAL_UI_ASSET.elements.map((element) =>
@@ -114,6 +126,32 @@ function inspectorAsset(
             sizing: current.sizing,
             placement: current.placement,
           }
+        : element,
+    ),
+  })
+}
+
+function inspectorEventAsset(
+  type: Parameters<typeof inspectorAsset>[0],
+  options: { bind?: string; declarations?: 'all' | 'string-only' } = {},
+) {
+  const asset = inspectorAsset(type)
+  const declarations =
+    options.declarations === 'string-only'
+      ? [{ id: STRING_EVENT, name: 'Text value', payload: 'string' as const }]
+      : [
+          { id: NONE_EVENT, name: 'No value', payload: 'none' as const },
+          { id: SECOND_NONE_EVENT, name: 'Also no value', payload: 'none' as const },
+          { id: STRING_EVENT, name: 'Text value', payload: 'string' as const },
+          { id: NUMBER_EVENT, name: 'Numeric value', payload: 'number' as const },
+          { id: BOOLEAN_EVENT, name: 'Boolean value', payload: 'boolean' as const },
+        ]
+  return UIDocumentSchema.parse({
+    ...asset,
+    events: declarations,
+    elements: asset.elements.map((element) =>
+      element.id === INSPECTED_ID && options.bind
+        ? { ...element, events: { ...element.events, activate: options.bind } }
         : element,
     ),
   })
@@ -994,6 +1032,168 @@ describe('ViewportTabsShell UI workspace baseline', () => {
       expect(uiCommandBus.canUndo()).toBe(false)
       unmount()
     }
+  })
+
+  it.each([
+    ['frame', ['Focus event', 'Blur event']],
+    ['button', ['Activate event']],
+    ['text-input', ['Input event', 'Change event', 'Submit event', 'Focus event', 'Blur event']],
+    ['text-area', ['Input event', 'Change event', 'Focus event', 'Blur event']],
+    ['checkbox', ['Change event']],
+    ['radio', ['Change event']],
+    ['switch', ['Change event']],
+    ['select', ['Change event']],
+    ['slider', ['Input event', 'Change event']],
+  ] as const)('shows only the compatible Events slots for %s', (type, labels) => {
+    uiAuthoringSession.openAsset('builtin:m10b-runtime-hud.ui.json', inspectorEventAsset(type))
+    const { container, unmount } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    fireEvent.click(
+      container.querySelector(`[data-haku-ui-tree-item="${INSPECTED_ID}"]`) as HTMLButtonElement,
+    )
+    const events = screen.getByRole('region', { name: 'Events' })
+
+    expect(
+      within(events)
+        .getAllByRole('combobox')
+        .map((control) => control.getAttribute('aria-label')),
+    ).toEqual(labels)
+    for (const label of labels) {
+      const payload =
+        label === 'Activate event' || label === 'Focus event' || label === 'Blur event'
+          ? 'none'
+          : type === 'checkbox' || type === 'switch'
+            ? 'boolean'
+            : type === 'slider'
+              ? 'number'
+              : 'string'
+      const eventId =
+        payload === 'none'
+          ? NONE_EVENT
+          : payload === 'string'
+            ? STRING_EVENT
+            : payload === 'number'
+              ? NUMBER_EVENT
+              : BOOLEAN_EVENT
+      const select = within(events).getByLabelText(label) as HTMLSelectElement
+      expect(Array.from(select.options).map((option) => option.value)).toEqual([
+        '',
+        eventId,
+        ...(payload === 'none' ? [SECOND_NONE_EVENT] : []),
+      ])
+
+      const slot = label.split(' ')[0]!.toLowerCase()
+      uiCommandBus.clear()
+      const before = structuredClone(uiAuthoringSession.asset)!
+      fireEvent.change(select, { target: { value: eventId } })
+      expect((uiAuthoringSession.asset!.elements[1]!.events as Record<string, string>)[slot]).toBe(
+        eventId,
+      )
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+      expect(uiAuthoringSession.asset).toEqual(before)
+      expect(uiCommandBus.canUndo()).toBe(false)
+
+      fireEvent.change(select, { target: { value: eventId } })
+      const bound = structuredClone(uiAuthoringSession.asset)!
+      uiCommandBus.clear()
+      fireEvent.change(select, { target: { value: '' } })
+      expect(slot in uiAuthoringSession.asset!.elements[1]!.events).toBe(false)
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+      expect(uiAuthoringSession.asset).toEqual(bound)
+      expect(uiCommandBus.canUndo()).toBe(false)
+    }
+    unmount()
+  })
+
+  it.each(['image', 'progress', 'divider', 'list'] as const)(
+    'does not render an empty Events section for %s',
+    (type) => {
+      uiAuthoringSession.openAsset('builtin:m10b-runtime-hud.ui.json', inspectorEventAsset(type))
+      const { container, unmount } = render(<ViewportTabsShell />)
+      fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+      fireEvent.click(
+        container.querySelector(`[data-haku-ui-tree-item="${INSPECTED_ID}"]`) as HTMLButtonElement,
+      )
+      expect(screen.queryByRole('region', { name: 'Events' })).toBeNull()
+      unmount()
+    },
+  )
+
+  it('preserves exact event IDs and restores binding and clearing with one Undo each', () => {
+    uiAuthoringSession.openAsset(
+      'builtin:m10b-runtime-hud.ui.json',
+      inspectorEventAsset('button', { bind: NONE_EVENT }),
+    )
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    fireEvent.click(
+      container.querySelector(`[data-haku-ui-tree-item="${INSPECTED_ID}"]`) as HTMLButtonElement,
+    )
+    uiCommandBus.clear()
+    const events = screen.getByRole('region', { name: 'Events' })
+    const binding = within(events).getByLabelText('Activate event')
+
+    const before = structuredClone(uiAuthoringSession.asset)!
+    fireEvent.change(binding, { target: { value: SECOND_NONE_EVENT } })
+    expect(uiAuthoringSession.asset!.elements[1]!.events).toEqual({
+      activate: SECOND_NONE_EVENT,
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(uiAuthoringSession.asset).toEqual(before)
+    expect(uiCommandBus.canUndo()).toBe(false)
+
+    fireEvent.change(binding, { target: { value: '' } })
+    expect(uiAuthoringSession.asset!.elements[1]!.events).toEqual({})
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(uiAuthoringSession.asset).toEqual(before)
+    expect(uiCommandBus.canUndo()).toBe(false)
+  })
+
+  it('explains and disables slots with no compatible declaration', () => {
+    uiAuthoringSession.openAsset(
+      'builtin:m10b-runtime-hud.ui.json',
+      inspectorEventAsset('button', { declarations: 'string-only' }),
+    )
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    fireEvent.click(
+      container.querySelector(`[data-haku-ui-tree-item="${INSPECTED_ID}"]`) as HTMLButtonElement,
+    )
+    const events = screen.getByRole('region', { name: 'Events' })
+
+    expect((within(events).getByLabelText('Activate event') as HTMLSelectElement).disabled).toBe(
+      true,
+    )
+    expect(within(events).getByText(/no compatible none-payload events are declared/i)).toBeTruthy()
+  })
+
+  it('rejects hidden unknown and incompatible event candidates without mutation or history', () => {
+    uiAuthoringSession.openAsset('builtin:m10b-runtime-hud.ui.json', inspectorEventAsset('button'))
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    fireEvent.click(
+      container.querySelector(`[data-haku-ui-tree-item="${INSPECTED_ID}"]`) as HTMLButtonElement,
+    )
+    uiCommandBus.clear()
+    const events = screen.getByRole('region', { name: 'Events' })
+    const binding = within(events).getByLabelText('Activate event')
+    const before = structuredClone(uiAuthoringSession.asset)!
+
+    const unknownOption = document.createElement('option')
+    unknownOption.value = UNKNOWN_EVENT
+    binding.append(unknownOption)
+    fireEvent.change(binding, { target: { value: UNKNOWN_EVENT } })
+    expect(uiAuthoringSession.asset).toEqual(before)
+    expect(uiCommandBus.canUndo()).toBe(false)
+    expect(within(events).getByRole('alert').textContent).toMatch(/unknown UI event/i)
+
+    const incompatibleOption = document.createElement('option')
+    incompatibleOption.value = STRING_EVENT
+    binding.append(incompatibleOption)
+    fireEvent.change(binding, { target: { value: STRING_EVENT } })
+    expect(uiAuthoringSession.asset).toEqual(before)
+    expect(uiCommandBus.canUndo()).toBe(false)
+    expect(within(events).getByRole('alert').textContent).toMatch(/incompatible payload/i)
   })
 
   // M2 owns replacement of the fixed-scale baseline; M3 starts direct canvas interaction.

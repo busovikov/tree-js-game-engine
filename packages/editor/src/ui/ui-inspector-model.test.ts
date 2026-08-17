@@ -17,8 +17,10 @@ import {
   updateUISizingBound,
   updateUICornerRadius,
   updateUIElementAccessibility,
+  getUIEventBindingSlots,
   updateUIElementStrict,
   updateUIElementStyle,
+  updateUIElementEventBinding,
   updateUIImageAccessibility,
   updateUIElementWidget,
 } from './ui-inspector-model.js'
@@ -26,6 +28,12 @@ import {
 const DOCUMENT = '15000000-0000-4000-8000-000000000001'
 const ROOT = '15000000-0000-4000-8000-000000000002'
 const CHILD = '15000000-0000-4000-8000-000000000003'
+const NONE_EVENT = '15000000-0000-4000-8000-000000000010'
+const SECOND_NONE_EVENT = '15000000-0000-4000-8000-000000000011'
+const STRING_EVENT = '15000000-0000-4000-8000-000000000012'
+const NUMBER_EVENT = '15000000-0000-4000-8000-000000000013'
+const BOOLEAN_EVENT = '15000000-0000-4000-8000-000000000014'
+const UNKNOWN_EVENT = '15000000-0000-4000-8000-000000000099'
 
 function document(layout: 'free' | 'vertical' = 'free'): UIDocument {
   return UIDocumentSchema.parse({
@@ -153,6 +161,20 @@ function widgetDocument(type: UIElement['type']): UIDocument {
         ? { id: element.id, type, ...fields, sizing: current.sizing, placement: current.placement }
         : element,
     ),
+  })
+}
+
+function eventDocument(type: UIElement['type']): UIDocument {
+  const asset = type === 'frame' ? document('vertical') : widgetDocument(type)
+  return UIDocumentSchema.parse({
+    ...asset,
+    events: [
+      { id: NONE_EVENT, name: 'No value', payload: 'none' },
+      { id: SECOND_NONE_EVENT, name: 'Also no value', payload: 'none' },
+      { id: STRING_EVENT, name: 'Text value', payload: 'string' },
+      { id: NUMBER_EVENT, name: 'Numeric value', payload: 'number' },
+      { id: BOOLEAN_EVENT, name: 'Boolean value', payload: 'boolean' },
+    ],
   })
 }
 
@@ -697,5 +719,110 @@ describe('UI Inspector field model', () => {
       { optionValue: 'normal', value: 'normal' },
       { optionValue: 'hard', value: 'normal' },
     ])
+  })
+
+  it.each([
+    [
+      'frame',
+      [
+        ['focus', 'none'],
+        ['blur', 'none'],
+      ],
+    ],
+    ['button', [['activate', 'none']]],
+    [
+      'text-input',
+      [
+        ['input', 'string'],
+        ['change', 'string'],
+        ['submit', 'string'],
+        ['focus', 'none'],
+        ['blur', 'none'],
+      ],
+    ],
+    [
+      'text-area',
+      [
+        ['input', 'string'],
+        ['change', 'string'],
+        ['focus', 'none'],
+        ['blur', 'none'],
+      ],
+    ],
+    ['checkbox', [['change', 'boolean']]],
+    ['radio', [['change', 'string']]],
+    ['switch', [['change', 'boolean']]],
+    ['select', [['change', 'string']]],
+    [
+      'slider',
+      [
+        ['input', 'number'],
+        ['change', 'number'],
+      ],
+    ],
+  ] as const)(
+    'derives only strict %s event slots and compatible declarations',
+    (type, expected) => {
+      const asset = eventDocument(type)
+      const element = type === 'frame' ? asset.elements[0]! : asset.elements[1]!
+      const slots = getUIEventBindingSlots(asset, element)
+
+      expect(slots.map(({ slot, payload }) => [slot, payload])).toEqual(expected)
+      for (const candidate of slots) {
+        const compatibleIds = candidate.compatibleEvents.map((event) => event.id)
+        expect(compatibleIds).toEqual(
+          candidate.payload === 'none'
+            ? [NONE_EVENT, SECOND_NONE_EVENT]
+            : candidate.payload === 'string'
+              ? [STRING_EVENT]
+              : candidate.payload === 'number'
+                ? [NUMBER_EVENT]
+                : [BOOLEAN_EVENT],
+        )
+      }
+    },
+  )
+
+  it.each([
+    'text',
+    'image',
+    'rectangle',
+    'progress',
+    'divider',
+    'spacer',
+    'scroll-container',
+    'list',
+    'instance',
+  ] as const)('derives no event slots for %s', (type) => {
+    expect(
+      getUIEventBindingSlots(eventDocument('button'), { type, events: {} } as UIElement),
+    ).toEqual([])
+  })
+
+  it('binds and clears exact event IDs through a complete strict document candidate', () => {
+    const asset = eventDocument('button')
+    const bound = updateUIElementEventBinding(asset, CHILD, 'activate', SECOND_NONE_EVENT)
+    expect(bound.elements[1]!.events).toEqual({ activate: SECOND_NONE_EVENT })
+    expect(() => UIDocumentSchema.parse(bound)).not.toThrow()
+
+    const cleared = updateUIElementEventBinding(bound, CHILD, 'activate', undefined)
+    expect(cleared.elements[1]!.events).toEqual({})
+    expect(() => UIDocumentSchema.parse(cleared)).not.toThrow()
+  })
+
+  it('rejects unknown, incompatible, and unsupported event bindings atomically', () => {
+    const asset = eventDocument('button')
+    const before = structuredClone(asset)
+
+    expect(() => updateUIElementEventBinding(asset, CHILD, 'activate', UNKNOWN_EVENT)).toThrow(
+      /unknown UI event/i,
+    )
+    expect(() => updateUIElementEventBinding(asset, CHILD, 'activate', STRING_EVENT)).toThrow(
+      /incompatible payload/i,
+    )
+    expect(() => updateUIElementEventBinding(asset, CHILD, 'change', NONE_EVENT)).toThrow(
+      /unavailable/i,
+    )
+    expect(asset).toEqual(before)
   })
 })

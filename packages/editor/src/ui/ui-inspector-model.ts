@@ -3,6 +3,8 @@ import {
   type UIDocument,
   type UIElement,
   type UIElementId,
+  type UIEventDefinition,
+  type UIEventId,
   type UIBound,
   type UIAccessibility,
   type UILayout,
@@ -40,6 +42,79 @@ export type UIAbsoluteOffset = 'top' | 'right' | 'bottom' | 'left'
 export type UIStyleSection = 'typography' | 'image-fit'
 export type UIAccessibilityField = 'alt' | 'decorative' | 'label-reset'
 export type UICornerRadius = 'topLeft' | 'topRight' | 'bottomRight' | 'bottomLeft'
+export type UIEventBindingSlotName = 'activate' | 'input' | 'change' | 'submit' | 'focus' | 'blur'
+
+export interface UIEventBindingSlot {
+  readonly slot: UIEventBindingSlotName
+  readonly payload: UIEventDefinition['payload']
+  readonly bindingId?: UIEventId
+  readonly compatibleEvents: readonly UIEventDefinition[]
+}
+
+const UI_EVENT_SLOTS = {
+  frame: [
+    ['focus', 'none'],
+    ['blur', 'none'],
+  ],
+  button: [['activate', 'none']],
+  'text-input': [
+    ['input', 'string'],
+    ['change', 'string'],
+    ['submit', 'string'],
+    ['focus', 'none'],
+    ['blur', 'none'],
+  ],
+  'text-area': [
+    ['input', 'string'],
+    ['change', 'string'],
+    ['focus', 'none'],
+    ['blur', 'none'],
+  ],
+  checkbox: [['change', 'boolean']],
+  radio: [['change', 'string']],
+  switch: [['change', 'boolean']],
+  select: [['change', 'string']],
+  slider: [
+    ['input', 'number'],
+    ['change', 'number'],
+  ],
+} as const satisfies Partial<
+  Record<
+    UIElement['type'],
+    readonly (readonly [UIEventBindingSlotName, UIEventDefinition['payload']])[]
+  >
+>
+
+export function getUIEventBindingSlots(
+  asset: UIDocument,
+  element: UIElement,
+): readonly UIEventBindingSlot[] {
+  const definitions = UI_EVENT_SLOTS[element.type as keyof typeof UI_EVENT_SLOTS] ?? []
+  const bindings = element.events as Partial<Record<UIEventBindingSlotName, UIEventId>>
+  return definitions.map(([slot, payload]) => ({
+    slot,
+    payload,
+    bindingId: bindings[slot],
+    compatibleEvents: asset.events.filter((event) => event.payload === payload),
+  }))
+}
+
+export function updateUIElementEventBinding(
+  asset: UIDocument,
+  id: UIElementId | string,
+  slot: UIEventBindingSlotName,
+  bindingId: UIEventId | string | undefined,
+): UIDocument {
+  const element = asset.elements.find((candidate) => candidate.id === id)
+  if (!element) throw new Error(`Unknown UI element: ${id}`)
+  if (!getUIEventBindingSlots(asset, element).some((candidate) => candidate.slot === slot)) {
+    throw new Error(`Event slot ${element.type}.${slot} is unavailable.`)
+  }
+  const events: Record<string, UIEventId | string> = { ...element.events }
+  if (bindingId === undefined) delete events[slot]
+  else events[slot] = bindingId
+  return updateUIElementStrict(asset, id, { events })
+}
 
 const TYPOGRAPHY_ELEMENT_TYPES = new Set<UIElement['type']>([
   'text',

@@ -64,9 +64,11 @@ import {
   explainUIPlacementMode,
   explainUIStyleSection,
   explainUISizeMode,
+  getUIEventBindingSlots,
   updateUIAbsoluteOffset,
   updateUICornerRadius,
   updateUIElementAccessibility,
+  updateUIElementEventBinding,
   updateUIElementStyle,
   updateUIElementWidget,
   updateUIFreeConstraint,
@@ -1955,6 +1957,63 @@ const UIAccessibilitySection = memo(function UIAccessibilitySection({
   )
 })
 
+const UIEventsSection = memo(function UIEventsSection({
+  asset,
+  element,
+}: {
+  asset: UIDocument
+  element: UIElement
+}) {
+  const [error, setError] = useState<string | null>(null)
+  const slots = getUIEventBindingSlots(asset, element)
+  const updateBinding = (slot: (typeof slots)[number]['slot'], bindingId: string | undefined) => {
+    try {
+      uiAuthoringSession.replaceAsset(
+        updateUIElementEventBinding(asset, element.id, slot, bindingId),
+      )
+      setError(null)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    }
+  }
+
+  if (slots.length === 0) return null
+  return (
+    <section className="haku-ui-editor__inspector-section" aria-label="Events" role="region">
+      <h4>Events</h4>
+      {slots.map((candidate) => {
+        const label = `${candidate.slot[0]!.toUpperCase()}${candidate.slot.slice(1)} event`
+        const unavailable = candidate.compatibleEvents.length === 0
+        return (
+          <div key={candidate.slot}>
+            <label className="mesh-field">
+              <span className="mesh-field__label">{label}</span>
+              <select
+                className="mesh-field__input"
+                aria-label={label}
+                value={candidate.bindingId ?? ''}
+                disabled={unavailable}
+                onChange={(event) => updateBinding(candidate.slot, event.target.value || undefined)}
+              >
+                <option value="">None</option>
+                {candidate.compatibleEvents.map((definition) => (
+                  <option value={definition.id} key={definition.id}>
+                    {definition.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {unavailable && (
+              <small>No compatible {candidate.payload}-payload events are declared.</small>
+            )}
+          </div>
+        )
+      })}
+      {error && <small role="alert">{error}</small>}
+    </section>
+  )
+})
+
 function UIInspector({
   asset,
   element,
@@ -2042,6 +2101,7 @@ function UIInspector({
         onSizingChange={(sizing, historyGroup) => update({ sizing }, historyGroup)}
       />
       {isWidgetInspectorElement(element) && <UIWidgetSection asset={asset} element={element} />}
+      <UIEventsSection asset={asset} element={element} />
       <UIStyleSection asset={asset} element={element} />
       <UIAccessibilitySection asset={asset} element={element} />
       <code>{element.id}</code>
