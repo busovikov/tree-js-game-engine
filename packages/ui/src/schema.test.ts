@@ -234,6 +234,28 @@ describe('UIDocumentSchema version 2', () => {
     },
   )
 
+  it.each(['text-input', 'text-area'] as const)(
+    'rejects a %s initial value longer than maxLength',
+    (type) => {
+      const result = UIDocumentSchema.safeParse({
+        ...baseDocument(),
+        elements: [
+          { ...baseDocument().elements[0], children: [id(2)] },
+          leaf(2, type, {
+            value: 'too long',
+            maxLength: 3,
+            accessibility: { label: 'Limited value' },
+          }),
+        ],
+      })
+
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        expect(result.error.issues.map((issue) => issue.message).join('\n')).toMatch(/maxLength/i)
+      }
+    },
+  )
+
   it('rejects Fill sizing on absolute-positioned auto-layout children', () => {
     const child = id(2)
     const result = UIDocumentSchema.safeParse({

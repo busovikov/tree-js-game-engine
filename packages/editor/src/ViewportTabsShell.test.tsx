@@ -40,7 +40,18 @@ const INITIAL_UI_ASSET = structuredClone(uiAuthoringSession.asset)!
 const INSPECTED_ID = '13000000-0000-4000-8000-000000000102'
 
 function inspectorAsset(
-  type: 'image' | 'text-input' | 'text-area' | 'select' | 'slider' | 'progress',
+  type:
+    | 'image'
+    | 'text-input'
+    | 'text-area'
+    | 'checkbox'
+    | 'radio'
+    | 'switch'
+    | 'select'
+    | 'slider'
+    | 'progress'
+    | 'divider'
+    | 'list',
 ) {
   const current = INITIAL_UI_ASSET.elements[1]!
   const fields =
@@ -55,14 +66,43 @@ function inspectorAsset(
       : type === 'select'
         ? {
             value: 'one',
-            options: [{ value: 'one', label: 'One' }],
+            placeholder: 'Choose',
+            options: [
+              { value: 'one', label: 'One' },
+              { value: 'two', label: 'Two' },
+            ],
             accessibility: { label: 'Choice' },
           }
         : type === 'slider'
           ? { min: 0, max: 10, step: 1, value: 5, accessibility: { label: 'Volume' } }
           : type === 'progress'
             ? { min: 0, max: 10, value: 5, accessibility: { label: 'Loading' } }
-            : { value: '', accessibility: { label: type === 'text-input' ? 'Name' : 'Notes' } }
+            : type === 'text-input'
+              ? {
+                  value: 'Ada',
+                  placeholder: 'Name',
+                  maxLength: 12,
+                  inputMode: 'text',
+                  accessibility: { label: 'Name' },
+                }
+              : type === 'text-area'
+                ? {
+                    value: 'Notes',
+                    rows: 4,
+                    resize: 'vertical',
+                    accessibility: { label: 'Notes' },
+                  }
+                : type === 'checkbox'
+                  ? { value: false, label: 'Accept' }
+                  : type === 'radio'
+                    ? { group: 'mode', optionValue: 'easy', value: 'easy', label: 'Easy' }
+                    : type === 'switch'
+                      ? { value: true, label: 'Music' }
+                      : type === 'divider'
+                        ? { orientation: 'horizontal', thickness: 1 }
+                        : type === 'list'
+                          ? { children: [], ordered: false, layout: { mode: 'vertical' } }
+                          : {}
   return UIDocumentSchema.parse({
     ...INITIAL_UI_ASSET,
     elements: INITIAL_UI_ASSET.elements.map((element) =>
@@ -671,6 +711,289 @@ describe('ViewportTabsShell UI workspace baseline', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
     expect(uiAuthoringSession.asset).toEqual(decorative)
     expect(uiCommandBus.canUndo()).toBe(false)
+  })
+
+  it.each([
+    ['text-input', 'Ada'],
+    ['text-area', 'Notes'],
+  ] as const)(
+    'edits %s value/options through local drafts and strict Undo',
+    (type, initialValue) => {
+      uiAuthoringSession.openAsset('builtin:m10b-runtime-hud.ui.json', inspectorAsset(type))
+      const { container } = render(<ViewportTabsShell />)
+      fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+      fireEvent.click(
+        container.querySelector(`[data-haku-ui-tree-item="${INSPECTED_ID}"]`) as HTMLButtonElement,
+      )
+      uiCommandBus.clear()
+      const widget = screen.getByRole('region', { name: 'Widget' })
+      const value = within(widget).getByLabelText('Value')
+      const before = structuredClone(uiAuthoringSession.asset)!
+
+      fireEvent.change(value, { target: { value: 'Updated value' } })
+      expect(uiAuthoringSession.asset).toEqual(before)
+      fireEvent.keyDown(value, { key: 'Escape' })
+      expect((value as HTMLInputElement).value).toBe(initialValue)
+      fireEvent.change(value, { target: { value: 'Updated' } })
+      fireEvent.blur(value)
+      expect(uiAuthoringSession.asset!.elements[1]).toMatchObject({ value: 'Updated' })
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+      expect(uiAuthoringSession.asset).toEqual(before)
+
+      if (type === 'text-input') {
+        const inputModes = Array.from(
+          (within(widget).getByLabelText('Input mode') as HTMLSelectElement).options,
+        ).map((option) => option.value)
+        expect(inputModes).toEqual([
+          'none',
+          'text',
+          'decimal',
+          'numeric',
+          'tel',
+          'search',
+          'email',
+          'url',
+        ])
+        fireEvent.change(within(widget).getByLabelText('Input mode'), {
+          target: { value: 'email' },
+        })
+        expect(uiAuthoringSession.asset!.elements[1]).toMatchObject({ inputMode: 'email' })
+        fireEvent.click(within(widget).getByLabelText('Required'))
+        fireEvent.click(within(widget).getByLabelText('Read only'))
+        expect(uiAuthoringSession.asset!.elements[1]).toMatchObject({
+          required: true,
+          readOnly: true,
+        })
+      } else {
+        fireEvent.change(within(widget).getByLabelText('Rows'), { target: { value: '6' } })
+        fireEvent.blur(within(widget).getByLabelText('Rows'))
+        fireEvent.change(within(widget).getByLabelText('Resize'), { target: { value: 'both' } })
+        expect(uiAuthoringSession.asset!.elements[1]).toMatchObject({ rows: 6, resize: 'both' })
+      }
+      const placeholder = within(widget).getByLabelText('Placeholder')
+      fireEvent.change(placeholder, { target: { value: 'Updated placeholder' } })
+      fireEvent.blur(placeholder)
+      expect(uiAuthoringSession.asset!.elements[1]).toMatchObject({
+        placeholder: 'Updated placeholder',
+      })
+      expect(() => UIDocumentSchema.parse(uiAuthoringSession.asset)).not.toThrow()
+    },
+  )
+
+  it('rejects an overlong Text Input draft without mutation or history', () => {
+    uiAuthoringSession.openAsset('builtin:m10b-runtime-hud.ui.json', inspectorAsset('text-input'))
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    fireEvent.click(
+      container.querySelector(`[data-haku-ui-tree-item="${INSPECTED_ID}"]`) as HTMLButtonElement,
+    )
+    uiCommandBus.clear()
+    const widget = screen.getByRole('region', { name: 'Widget' })
+    const before = structuredClone(uiAuthoringSession.asset)!
+    const value = within(widget).getByLabelText('Value')
+
+    fireEvent.change(value, { target: { value: 'This exceeds twelve' } })
+    fireEvent.blur(value)
+    expect(within(widget).getByRole('alert').textContent).toMatch(/maxLength/i)
+    expect(uiAuthoringSession.asset).toEqual(before)
+    expect(uiCommandBus.canUndo()).toBe(false)
+  })
+
+  it.each([
+    ['checkbox', false],
+    ['switch', true],
+  ] as const)('edits %s value and nonempty label with one Undo each', (type, initialValue) => {
+    uiAuthoringSession.openAsset('builtin:m10b-runtime-hud.ui.json', inspectorAsset(type))
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    fireEvent.click(
+      container.querySelector(`[data-haku-ui-tree-item="${INSPECTED_ID}"]`) as HTMLButtonElement,
+    )
+    uiCommandBus.clear()
+    const widget = screen.getByRole('region', { name: 'Widget' })
+    const before = structuredClone(uiAuthoringSession.asset)!
+
+    fireEvent.click(within(widget).getByLabelText('Value'))
+    expect(uiAuthoringSession.asset!.elements[1]).toMatchObject({ value: !initialValue })
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(uiAuthoringSession.asset).toEqual(before)
+    const label = within(widget).getByLabelText('Label')
+    fireEvent.change(label, { target: { value: '' } })
+    fireEvent.blur(label)
+    expect(uiAuthoringSession.asset).toEqual(before)
+    expect(within(widget).getByRole('alert').textContent).toMatch(/label/i)
+  })
+
+  it('edits Radio group, option, nullable value, and label as strict discrete commands', () => {
+    uiAuthoringSession.openAsset('builtin:m10b-runtime-hud.ui.json', inspectorAsset('radio'))
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    fireEvent.click(
+      container.querySelector(`[data-haku-ui-tree-item="${INSPECTED_ID}"]`) as HTMLButtonElement,
+    )
+    const widget = screen.getByRole('region', { name: 'Widget' })
+
+    for (const [label, value, expected] of [
+      ['Group', 'difficulty', { group: 'difficulty' }],
+      ['Option value', 'normal', { optionValue: 'normal', value: 'normal' }],
+      ['Label', 'Normal', { label: 'Normal' }],
+    ] as const) {
+      uiCommandBus.clear()
+      const before = structuredClone(uiAuthoringSession.asset)!
+      const field = within(widget).getByLabelText(label)
+      fireEvent.change(field, { target: { value } })
+      fireEvent.blur(field)
+      expect(uiAuthoringSession.asset!.elements[1]).toMatchObject(expected)
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+      expect(uiAuthoringSession.asset).toEqual(before)
+    }
+    fireEvent.change(within(widget).getByLabelText('Selected value'), { target: { value: '' } })
+    expect(uiAuthoringSession.asset!.elements[1]).toMatchObject({ value: null })
+  })
+
+  it('preserves Select option order and rejects duplicate or selected-option removal', () => {
+    uiAuthoringSession.openAsset('builtin:m10b-runtime-hud.ui.json', inspectorAsset('select'))
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    fireEvent.click(
+      container.querySelector(`[data-haku-ui-tree-item="${INSPECTED_ID}"]`) as HTMLButtonElement,
+    )
+    uiCommandBus.clear()
+    const widget = screen.getByRole('region', { name: 'Widget' })
+    const before = structuredClone(uiAuthoringSession.asset)!
+
+    expect((within(widget).getByLabelText('Option 1 value') as HTMLInputElement).disabled).toBe(
+      true,
+    )
+    expect(within(widget).getByText(/selected option value cannot be renamed/i)).toBeTruthy()
+    const optionValues = within(widget).getAllByLabelText(/Option \d+ value/)
+    fireEvent.change(optionValues[1]!, { target: { value: 'one' } })
+    fireEvent.blur(optionValues[1]!)
+    expect(uiAuthoringSession.asset).toEqual(before)
+    expect(uiCommandBus.canUndo()).toBe(false)
+    expect(within(widget).getByRole('alert').textContent).toMatch(/duplicate/i)
+    expect(
+      (within(widget).getByRole('button', { name: 'Remove option 1' }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true)
+    expect(within(widget).getByText(/selected option cannot be removed/i)).toBeTruthy()
+
+    fireEvent.click(within(widget).getByRole('button', { name: 'Move option 2 up' }))
+    const moved = uiAuthoringSession.asset!.elements[1]!
+    expect(moved.type).toBe('select')
+    expect(moved.type === 'select' && moved.options.map((option) => option.value)).toEqual([
+      'two',
+      'one',
+    ])
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(uiAuthoringSession.asset).toEqual(before)
+
+    const placeholder = within(widget).getByLabelText('Placeholder')
+    fireEvent.change(placeholder, { target: { value: 'Pick one' } })
+    fireEvent.blur(placeholder)
+    const secondLabel = within(widget).getByLabelText('Option 2 label')
+    fireEvent.change(secondLabel, { target: { value: 'Second' } })
+    fireEvent.blur(secondLabel)
+    fireEvent.click(within(widget).getByLabelText('Option 2 disabled'))
+    expect(uiAuthoringSession.asset!.elements[1]).toMatchObject({
+      placeholder: 'Pick one',
+      options: [
+        { value: 'one', label: 'One', disabled: false },
+        { value: 'two', label: 'Second', disabled: true },
+      ],
+    })
+    fireEvent.click(within(widget).getByRole('button', { name: 'Add option' }))
+    expect(uiAuthoringSession.asset!.elements[1]).toMatchObject({
+      options: [
+        { value: 'one' },
+        { value: 'two' },
+        { value: 'option-3', label: 'Option 3', disabled: false },
+      ],
+    })
+  })
+
+  it.each(['slider', 'progress', 'divider', 'list'] as const)(
+    'shows only applicable strict controls for %s',
+    (type) => {
+      uiAuthoringSession.openAsset('builtin:m10b-runtime-hud.ui.json', inspectorAsset(type))
+      const { container } = render(<ViewportTabsShell />)
+      fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+      fireEvent.click(
+        container.querySelector(`[data-haku-ui-tree-item="${INSPECTED_ID}"]`) as HTMLButtonElement,
+      )
+      const widget = screen.getByRole('region', { name: 'Widget' })
+      expect(
+        within(widget).getByLabelText(
+          type === 'divider' ? 'Thickness' : type === 'list' ? 'Ordered' : 'Minimum',
+        ),
+      ).toBeTruthy()
+      expect(within(widget).queryByLabelText('Input mode')).toBeNull()
+    },
+  )
+
+  it('keeps invalid Slider drafts atomic and groups a numeric scrub into one Undo', () => {
+    uiAuthoringSession.openAsset('builtin:m10b-runtime-hud.ui.json', inspectorAsset('slider'))
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    fireEvent.click(
+      container.querySelector(`[data-haku-ui-tree-item="${INSPECTED_ID}"]`) as HTMLButtonElement,
+    )
+    uiCommandBus.clear()
+    const widget = screen.getByRole('region', { name: 'Widget' })
+    const before = structuredClone(uiAuthoringSession.asset)!
+    const minimum = within(widget).getByLabelText('Minimum')
+    fireEvent.change(minimum, { target: { value: '12' } })
+    fireEvent.blur(minimum)
+    expect(uiAuthoringSession.asset).toEqual(before)
+    expect(uiCommandBus.canUndo()).toBe(false)
+    expect(within(widget).getByRole('alert').textContent).toMatch(/range/i)
+
+    const valueLabel = within(widget).getByText('Value') as HTMLElement
+    Object.assign(valueLabel, {
+      setPointerCapture: vi.fn(),
+      hasPointerCapture: vi.fn(() => false),
+      releasePointerCapture: vi.fn(),
+    })
+    fireEvent.pointerDown(valueLabel, { button: 0, pointerId: 41, clientX: 0 })
+    fireEvent.pointerMove(valueLabel, { pointerId: 41, clientX: 20 })
+    fireEvent.pointerMove(valueLabel, { pointerId: 41, clientX: 40 })
+    fireEvent.pointerUp(valueLabel, { pointerId: 41, clientX: 40 })
+    expect(uiAuthoringSession.asset!.elements[1]).toMatchObject({ value: 7 })
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(uiAuthoringSession.asset).toEqual(before)
+    expect(uiCommandBus.canUndo()).toBe(false)
+  })
+
+  it('edits Progress indeterminate value, Divider fields, and List ordering with exact Undo', () => {
+    for (const type of ['progress', 'divider', 'list'] as const) {
+      uiAuthoringSession.openAsset('builtin:m10b-runtime-hud.ui.json', inspectorAsset(type))
+      const { container, unmount } = render(<ViewportTabsShell />)
+      fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+      fireEvent.click(
+        container.querySelector(`[data-haku-ui-tree-item="${INSPECTED_ID}"]`) as HTMLButtonElement,
+      )
+      uiCommandBus.clear()
+      const widget = screen.getByRole('region', { name: 'Widget' })
+      const before = structuredClone(uiAuthoringSession.asset)!
+      if (type === 'progress') {
+        fireEvent.change(within(widget).getByLabelText('Progress mode'), {
+          target: { value: 'indeterminate' },
+        })
+        expect(uiAuthoringSession.asset!.elements[1]).toMatchObject({ value: null })
+      } else if (type === 'divider') {
+        fireEvent.change(within(widget).getByLabelText('Orientation'), {
+          target: { value: 'vertical' },
+        })
+        expect(uiAuthoringSession.asset!.elements[1]).toMatchObject({ orientation: 'vertical' })
+      } else {
+        fireEvent.click(within(widget).getByLabelText('Ordered'))
+        expect(uiAuthoringSession.asset!.elements[1]).toMatchObject({ ordered: true })
+      }
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+      expect(uiAuthoringSession.asset).toEqual(before)
+      expect(uiCommandBus.canUndo()).toBe(false)
+      unmount()
+    }
   })
 
   // M2 owns replacement of the fixed-scale baseline; M3 starts direct canvas interaction.

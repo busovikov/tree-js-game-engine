@@ -421,6 +421,59 @@ export function updateUIElementStrict(
   })
 }
 
+const WIDGET_INSPECTOR_TYPES = new Set<UIElement['type']>([
+  'text-input',
+  'text-area',
+  'checkbox',
+  'radio',
+  'switch',
+  'select',
+  'slider',
+  'progress',
+  'divider',
+  'list',
+])
+
+export function updateUIElementWidget(
+  asset: UIDocument,
+  id: UIElementId | string,
+  patch: Record<string, unknown>,
+): UIDocument {
+  const element = asset.elements.find((candidate) => candidate.id === id)
+  if (!element) throw new Error(`Unknown UI element: ${id}`)
+  if (!WIDGET_INSPECTOR_TYPES.has(element.type)) {
+    throw new Error(`Widget fields are unavailable for ${element.type} elements.`)
+  }
+
+  let elements: readonly UIElement[] = asset.elements.map((candidate) =>
+    candidate.id === id
+      ? ({ ...candidate, ...patch, id: candidate.id, type: candidate.type } as UIElement)
+      : candidate,
+  )
+  if (element.type === 'radio') {
+    if (
+      'optionValue' in patch &&
+      patch.optionValue !== element.optionValue &&
+      element.value === element.optionValue
+    ) {
+      elements = elements.map((candidate) =>
+        candidate.type === 'radio' && candidate.group === element.group
+          ? { ...candidate, value: patch.optionValue as string }
+          : candidate,
+      )
+    }
+    if ('value' in patch) {
+      elements = elements.map((candidate) =>
+        candidate.type === 'radio' && candidate.group === element.group
+          ? { ...candidate, value: patch.value as string | null }
+          : candidate,
+      )
+    }
+  }
+
+  return UIDocumentSchema.parse({ ...asset, elements })
+}
+
 function convertedLayout(current: UILayout, mode: UIContainerLayoutMode): UILayout {
   if (mode === 'free') return { mode, padding: current.padding }
   const shared = {

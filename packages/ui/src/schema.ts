@@ -731,6 +731,17 @@ function validateElementSemantics(
       message: `Interactive UI element ${element.id} requires an accessible label`,
     })
   }
+  if (
+    (element.type === 'text-input' || element.type === 'text-area') &&
+    element.maxLength !== undefined &&
+    element.value.length > element.maxLength
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: [...indexPath, 'value'],
+      message: `UI ${element.type} value exceeds maxLength for ${element.id}`,
+    })
+  }
   if (element.type === 'slider') {
     if (element.min >= element.max || element.value < element.min || element.value > element.max) {
       context.addIssue({

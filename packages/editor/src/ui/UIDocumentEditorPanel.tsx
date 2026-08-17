@@ -3,6 +3,7 @@ import type {
   DragEvent as ReactDragEvent,
   KeyboardEvent as ReactKeyboardEvent,
   PointerEvent as ReactPointerEvent,
+  ReactNode,
 } from 'react'
 import {
   UIDocumentInstance,
@@ -67,6 +68,7 @@ import {
   updateUICornerRadius,
   updateUIElementAccessibility,
   updateUIElementStyle,
+  updateUIElementWidget,
   updateUIFreeConstraint,
   updateUIImageAccessibility,
   updateUISizingBound,
@@ -1299,6 +1301,511 @@ const UIStyleSection = memo(function UIStyleSection({
   )
 })
 
+const UIRequiredTextField = memo(function UIRequiredTextField({
+  label,
+  value,
+  multiline = false,
+  disabled = false,
+  onCommit,
+}: {
+  label: string
+  value: string
+  multiline?: boolean
+  disabled?: boolean
+  onCommit: (value: string) => void
+}) {
+  const [draft, setDraft] = useState(value)
+  useEffect(() => setDraft(value), [value])
+  const commit = () => {
+    if (draft !== value) onCommit(draft)
+  }
+  const keyDown = (event: ReactKeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    if (event.key === 'Enter' && !multiline) event.currentTarget.blur()
+    if (event.key === 'Escape') {
+      setDraft(value)
+      event.preventDefault()
+    }
+  }
+
+  return (
+    <label className="mesh-field">
+      <span className="mesh-field__label">{label}</span>
+      {multiline ? (
+        <textarea
+          className="mesh-field__input"
+          aria-label={label}
+          aria-required="true"
+          value={draft}
+          disabled={disabled}
+          onChange={(event) => setDraft(event.target.value)}
+          onBlur={commit}
+          onKeyDown={keyDown}
+        />
+      ) : (
+        <input
+          className="mesh-field__input"
+          aria-label={label}
+          aria-required="true"
+          value={draft}
+          disabled={disabled}
+          onChange={(event) => setDraft(event.target.value)}
+          onBlur={commit}
+          onKeyDown={keyDown}
+        />
+      )}
+    </label>
+  )
+})
+
+type UIWidgetInspectorElement = Extract<
+  UIElement,
+  {
+    type:
+      | 'text-input'
+      | 'text-area'
+      | 'checkbox'
+      | 'radio'
+      | 'switch'
+      | 'select'
+      | 'slider'
+      | 'progress'
+      | 'divider'
+      | 'list'
+  }
+>
+
+function isWidgetInspectorElement(element: UIElement): element is UIWidgetInspectorElement {
+  return [
+    'text-input',
+    'text-area',
+    'checkbox',
+    'radio',
+    'switch',
+    'select',
+    'slider',
+    'progress',
+    'divider',
+    'list',
+  ].includes(element.type)
+}
+
+const UIWidgetSection = memo(function UIWidgetSection({
+  asset,
+  element,
+}: {
+  asset: UIDocument
+  element: UIWidgetInspectorElement
+}) {
+  const [error, setError] = useState<string | null>(null)
+  const historyGroup = useRef<string | null>(null)
+  const run = (patch: Record<string, unknown>, group?: string) => {
+    try {
+      uiAuthoringSession.replaceAsset(
+        updateUIElementWidget(asset, element.id, patch),
+        undefined,
+        group ? { historyGroup: group } : {},
+      )
+      setError(null)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    }
+  }
+  const beginNumericGesture = () => {
+    historyGroup.current = `ui-widget-${crypto.randomUUID()}`
+  }
+  const endNumericGesture = () => {
+    historyGroup.current = null
+  }
+  const numeric = (
+    label: string,
+    value: number,
+    patch: (value: number) => Record<string, unknown>,
+    options: { min?: number; max?: number; step?: number } = {},
+  ) => (
+    <NumberField
+      label={label}
+      inputAriaLabel={label}
+      value={value}
+      min={options.min}
+      max={options.max}
+      step={options.step ?? 1}
+      clampOnBlur={false}
+      onScrubStart={beginNumericGesture}
+      onScrubEnd={endNumericGesture}
+      onChange={(next) => run(patch(next), historyGroup.current ?? undefined)}
+    />
+  )
+
+  let controls: ReactNode
+  if (element.type === 'text-input' || element.type === 'text-area') {
+    controls = (
+      <>
+        <UIRequiredTextField
+          label="Value"
+          value={element.value}
+          multiline={element.type === 'text-area'}
+          onCommit={(value) => run({ value })}
+        />
+        <UIOptionalTextField
+          label="Placeholder"
+          value={element.placeholder}
+          placeholder="None"
+          onCommit={(placeholder) => run({ placeholder })}
+        />
+        <label className="haku-ui-editor__checkbox">
+          <input
+            type="checkbox"
+            checked={element.required}
+            onChange={(event) => run({ required: event.target.checked })}
+          />
+          Required
+        </label>
+        <label className="haku-ui-editor__checkbox">
+          <input
+            type="checkbox"
+            checked={element.readOnly}
+            onChange={(event) => run({ readOnly: event.target.checked })}
+          />
+          Read only
+        </label>
+        <label className="mesh-field">
+          <span className="mesh-field__label">Max length source</span>
+          <select
+            className="mesh-field__input"
+            aria-label="Max length source"
+            value={element.maxLength === undefined ? 'none' : 'custom'}
+            onChange={(event) =>
+              run({
+                maxLength:
+                  event.target.value === 'none' ? undefined : Math.max(1, element.value.length),
+              })
+            }
+          >
+            <option value="none">None</option>
+            <option value="custom">Custom</option>
+          </select>
+        </label>
+        {element.maxLength !== undefined &&
+          numeric('Max length', element.maxLength, (maxLength) => ({ maxLength }), {
+            min: 1,
+            step: 1,
+          })}
+        {element.type === 'text-input' ? (
+          <label className="mesh-field">
+            <span className="mesh-field__label">Input mode</span>
+            <select
+              className="mesh-field__input"
+              aria-label="Input mode"
+              value={element.inputMode}
+              onChange={(event) => run({ inputMode: event.target.value })}
+            >
+              {['none', 'text', 'decimal', 'numeric', 'tel', 'search', 'email', 'url'].map(
+                (mode) => (
+                  <option value={mode} key={mode}>
+                    {mode}
+                  </option>
+                ),
+              )}
+            </select>
+          </label>
+        ) : (
+          <>
+            {numeric('Rows', element.rows, (rows) => ({ rows }), { min: 1, step: 1 })}
+            <label className="mesh-field">
+              <span className="mesh-field__label">Resize</span>
+              <select
+                className="mesh-field__input"
+                aria-label="Resize"
+                value={element.resize}
+                onChange={(event) => run({ resize: event.target.value })}
+              >
+                {['none', 'both', 'horizontal', 'vertical'].map((resize) => (
+                  <option value={resize} key={resize}>
+                    {resize}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
+        )}
+      </>
+    )
+  } else if (element.type === 'checkbox' || element.type === 'switch') {
+    controls = (
+      <>
+        <label className="haku-ui-editor__checkbox">
+          <input
+            aria-label="Value"
+            type="checkbox"
+            checked={element.value}
+            onChange={(event) => run({ value: event.target.checked })}
+          />
+          Value
+        </label>
+        <UIRequiredTextField
+          label="Label"
+          value={element.label}
+          onCommit={(label) => run({ label })}
+        />
+      </>
+    )
+  } else if (element.type === 'radio') {
+    const options = asset.elements.filter(
+      (candidate): candidate is Extract<UIElement, { type: 'radio' }> =>
+        candidate.type === 'radio' && candidate.group === element.group,
+    )
+    controls = (
+      <>
+        <UIRequiredTextField
+          label="Group"
+          value={element.group}
+          onCommit={(group) => run({ group })}
+        />
+        <UIRequiredTextField
+          label="Option value"
+          value={element.optionValue}
+          onCommit={(optionValue) => run({ optionValue })}
+        />
+        <label className="mesh-field">
+          <span className="mesh-field__label">Selected value</span>
+          <select
+            className="mesh-field__input"
+            aria-label="Selected value"
+            value={element.value ?? ''}
+            onChange={(event) => run({ value: event.target.value || null })}
+          >
+            <option value="">None</option>
+            {options.map((option) => (
+              <option value={option.optionValue} key={option.id}>
+                {option.optionValue}
+              </option>
+            ))}
+          </select>
+        </label>
+        <UIRequiredTextField
+          label="Label"
+          value={element.label}
+          onCommit={(label) => run({ label })}
+        />
+      </>
+    )
+  } else if (element.type === 'select') {
+    const updateOptions = (options: typeof element.options) => run({ options })
+    controls = (
+      <>
+        <label className="mesh-field">
+          <span className="mesh-field__label">Selected value</span>
+          <select
+            className="mesh-field__input"
+            aria-label="Selected value"
+            value={element.value ?? ''}
+            onChange={(event) => run({ value: event.target.value || null })}
+          >
+            <option value="">None</option>
+            {element.options.map((option) => (
+              <option value={option.value} key={option.value} disabled={option.disabled}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <UIOptionalTextField
+          label="Placeholder"
+          value={element.placeholder}
+          placeholder="None"
+          onCommit={(placeholder) => run({ placeholder })}
+        />
+        {element.options.map((option, index) => {
+          const selected = element.value === option.value
+          const only = element.options.length === 1
+          return (
+            <fieldset key={`${index}-${option.value}`}>
+              <legend>Option {index + 1}</legend>
+              <UIRequiredTextField
+                label={`Option ${index + 1} value`}
+                value={option.value}
+                disabled={selected}
+                onCommit={(value) =>
+                  updateOptions(
+                    element.options.map((candidate, candidateIndex) =>
+                      candidateIndex === index ? { ...candidate, value } : candidate,
+                    ),
+                  )
+                }
+              />
+              {selected && (
+                <small>Selected option value cannot be renamed; choose another value first.</small>
+              )}
+              <UIRequiredTextField
+                label={`Option ${index + 1} label`}
+                value={option.label}
+                onCommit={(label) =>
+                  updateOptions(
+                    element.options.map((candidate, candidateIndex) =>
+                      candidateIndex === index ? { ...candidate, label } : candidate,
+                    ),
+                  )
+                }
+              />
+              <label className="haku-ui-editor__checkbox">
+                <input
+                  aria-label={`Option ${index + 1} disabled`}
+                  type="checkbox"
+                  checked={option.disabled}
+                  onChange={(event) =>
+                    updateOptions(
+                      element.options.map((candidate, candidateIndex) =>
+                        candidateIndex === index
+                          ? { ...candidate, disabled: event.target.checked }
+                          : candidate,
+                      ),
+                    )
+                  }
+                />
+                Disabled
+              </label>
+              <button
+                type="button"
+                aria-label={`Move option ${index + 1} up`}
+                disabled={index === 0}
+                onClick={() => {
+                  const options = [...element.options]
+                  ;[options[index - 1], options[index]] = [options[index]!, options[index - 1]!]
+                  updateOptions(options)
+                }}
+              >
+                Up
+              </button>
+              <button
+                type="button"
+                aria-label={`Move option ${index + 1} down`}
+                disabled={index === element.options.length - 1}
+                onClick={() => {
+                  const options = [...element.options]
+                  ;[options[index], options[index + 1]] = [options[index + 1]!, options[index]!]
+                  updateOptions(options)
+                }}
+              >
+                Down
+              </button>
+              <button
+                type="button"
+                aria-label={`Remove option ${index + 1}`}
+                disabled={selected || only}
+                onClick={() =>
+                  updateOptions(element.options.filter((_, optionIndex) => optionIndex !== index))
+                }
+              >
+                Remove
+              </button>
+              {selected && (
+                <small>Selected option cannot be removed; choose another value first.</small>
+              )}
+              {only && !selected && <small>Select requires at least one option.</small>}
+            </fieldset>
+          )
+        })}
+        <button
+          type="button"
+          onClick={() => {
+            const values = new Set(element.options.map((option) => option.value))
+            let number = element.options.length + 1
+            while (values.has(`option-${number}`)) number += 1
+            updateOptions([
+              ...element.options,
+              { value: `option-${number}`, label: `Option ${number}`, disabled: false },
+            ])
+          }}
+        >
+          Add option
+        </button>
+      </>
+    )
+  } else if (element.type === 'slider') {
+    controls = (
+      <>
+        {numeric('Minimum', element.min, (min) => ({ min }))}
+        {numeric('Maximum', element.max, (max) => ({ max }))}
+        {numeric('Step', element.step, (step) => ({ step }), { min: Number.MIN_VALUE })}
+        {numeric('Value', element.value, (value) => ({ value }), {
+          min: element.min,
+          max: element.max,
+          step: element.step,
+        })}
+        <small>Value must stay in range and align to Step from Minimum.</small>
+      </>
+    )
+  } else if (element.type === 'progress') {
+    controls = (
+      <>
+        {numeric('Minimum', element.min, (min) => ({ min }))}
+        {numeric('Maximum', element.max, (max) => ({ max }))}
+        <label className="mesh-field">
+          <span className="mesh-field__label">Progress mode</span>
+          <select
+            className="mesh-field__input"
+            aria-label="Progress mode"
+            value={element.value === null ? 'indeterminate' : 'determinate'}
+            onChange={(event) =>
+              run({ value: event.target.value === 'indeterminate' ? null : element.min })
+            }
+          >
+            <option value="indeterminate">Indeterminate</option>
+            <option value="determinate">Determinate</option>
+          </select>
+        </label>
+        {element.value !== null &&
+          numeric('Value', element.value, (value) => ({ value }), {
+            min: element.min,
+            max: element.max,
+          })}
+        <small>Determinate value must stay between Minimum and Maximum.</small>
+      </>
+    )
+  } else if (element.type === 'divider') {
+    controls = (
+      <>
+        <label className="mesh-field">
+          <span className="mesh-field__label">Orientation</span>
+          <select
+            className="mesh-field__input"
+            aria-label="Orientation"
+            value={element.orientation}
+            onChange={(event) => run({ orientation: event.target.value })}
+          >
+            <option value="horizontal">Horizontal</option>
+            <option value="vertical">Vertical</option>
+          </select>
+        </label>
+        {numeric('Thickness', element.thickness, (thickness) => ({ thickness }), {
+          min: Number.MIN_VALUE,
+          step: 0.25,
+        })}
+      </>
+    )
+  } else {
+    controls = (
+      <label className="haku-ui-editor__checkbox">
+        <input
+          aria-label="Ordered"
+          type="checkbox"
+          checked={element.ordered}
+          onChange={(event) => run({ ordered: event.target.checked })}
+        />
+        Ordered
+      </label>
+    )
+  }
+
+  return (
+    <section className="haku-ui-editor__inspector-section" aria-label="Widget" role="region">
+      <h4>Widget</h4>
+      {controls}
+      {error && <small role="alert">{error}</small>}
+    </section>
+  )
+})
+
 const UIAccessibilitySection = memo(function UIAccessibilitySection({
   asset,
   element,
@@ -1534,6 +2041,7 @@ function UIInspector({
         }
         onSizingChange={(sizing, historyGroup) => update({ sizing }, historyGroup)}
       />
+      {isWidgetInspectorElement(element) && <UIWidgetSection asset={asset} element={element} />}
       <UIStyleSection asset={asset} element={element} />
       <UIAccessibilitySection asset={asset} element={element} />
       <code>{element.id}</code>

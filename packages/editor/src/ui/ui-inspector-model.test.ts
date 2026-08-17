@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { UIDocumentSchema, type UIDocument } from '@haku/ui'
+import { UIDocumentSchema, type UIDocument, type UIElement } from '@haku/ui'
 import {
   convertUIPlacement,
   convertFrameLayout,
@@ -20,6 +20,7 @@ import {
   updateUIElementStrict,
   updateUIElementStyle,
   updateUIImageAccessibility,
+  updateUIElementWidget,
 } from './ui-inspector-model.js'
 
 const DOCUMENT = '15000000-0000-4000-8000-000000000001'
@@ -104,6 +105,52 @@ function elementDocument(
             sizing: current.sizing,
             placement: current.placement,
           }
+        : element,
+    ),
+  })
+}
+
+function widgetDocument(type: UIElement['type']): UIDocument {
+  const asset = document('vertical')
+  const current = asset.elements[1]!
+  const fields: Record<string, unknown> =
+    type === 'text-input'
+      ? {
+          value: 'Ada',
+          placeholder: 'Name',
+          maxLength: 12,
+          inputMode: 'text',
+          accessibility: { label: 'Name' },
+        }
+      : type === 'text-area'
+        ? { value: 'Notes', rows: 4, resize: 'both', accessibility: { label: 'Notes' } }
+        : type === 'checkbox'
+          ? { value: false, label: 'Accept' }
+          : type === 'radio'
+            ? { group: 'mode', optionValue: 'easy', value: 'easy', label: 'Easy' }
+            : type === 'switch'
+              ? { value: true, label: 'Music' }
+              : type === 'select'
+                ? {
+                    value: 'one',
+                    placeholder: 'Choose',
+                    options: [{ value: 'one', label: 'One', disabled: false }],
+                    accessibility: { label: 'Choice' },
+                  }
+                : type === 'slider'
+                  ? { min: 0, max: 10, step: 2, value: 4, accessibility: { label: 'Volume' } }
+                  : type === 'progress'
+                    ? { min: 0, max: 100, value: 50, accessibility: { label: 'Loading' } }
+                    : type === 'divider'
+                      ? { orientation: 'horizontal', thickness: 1 }
+                      : type === 'list'
+                        ? { children: [], ordered: false, layout: { mode: 'vertical' } }
+                        : {}
+  return UIDocumentSchema.parse({
+    ...asset,
+    elements: asset.elements.map((element) =>
+      element.id === CHILD
+        ? { id: element.id, type, ...fields, sizing: current.sizing, placement: current.placement }
         : element,
     ),
   })
@@ -553,5 +600,102 @@ describe('UI Inspector field model', () => {
     expect(explainUIAccessibilityField(image, 'alt')).toBeNull()
     expect(explainUIAccessibilityField(text, 'label-reset')).toBeNull()
     expect(explainUIAccessibilityField(input, 'label-reset')).toMatch(/required/i)
+  })
+
+  it.each([
+    [
+      'text-input',
+      {
+        value: 'Grace',
+        placeholder: 'Full name',
+        required: true,
+        readOnly: true,
+        maxLength: 20,
+        inputMode: 'email',
+      },
+    ],
+    [
+      'text-area',
+      {
+        value: 'Long notes',
+        placeholder: 'Notes',
+        required: true,
+        readOnly: true,
+        maxLength: 40,
+        rows: 6,
+        resize: 'horizontal',
+      },
+    ],
+    ['checkbox', { value: true, label: 'Accepted' }],
+    ['radio', { group: 'difficulty', optionValue: 'hard', value: 'hard', label: 'Hard' }],
+    ['switch', { value: false, label: 'Sound' }],
+    [
+      'select',
+      {
+        value: 'two',
+        placeholder: 'Pick',
+        options: [
+          { value: 'one', label: 'One', disabled: true },
+          { value: 'two', label: 'Two', disabled: false },
+        ],
+      },
+    ],
+    ['slider', { min: -2, max: 10, step: 2, value: 6 }],
+    ['progress', { min: -10, max: 10, value: null }],
+    ['divider', { orientation: 'vertical', thickness: 2.5 }],
+    ['list', { ordered: true }],
+  ] as const)('strictly edits every serialized %s widget field', (type, patch) => {
+    const updated = updateUIElementWidget(widgetDocument(type), CHILD, patch)
+    expect(updated.elements[1]).toMatchObject(patch)
+    expect(() => UIDocumentSchema.parse(updated)).not.toThrow()
+  })
+
+  it('rejects invalid coupled widget candidates atomically', () => {
+    const cases = [
+      [widgetDocument('text-input'), { maxLength: 2 }],
+      [widgetDocument('checkbox'), { label: '' }],
+      [widgetDocument('radio'), { optionValue: '' }],
+      [widgetDocument('switch'), { label: '' }],
+      [
+        widgetDocument('select'),
+        {
+          options: [
+            { value: 'one', label: 'One' },
+            { value: 'one', label: 'Duplicate' },
+          ],
+        },
+      ],
+      [widgetDocument('select'), { value: 'missing' }],
+      [widgetDocument('slider'), { value: 5 }],
+      [widgetDocument('slider'), { step: 0 }],
+      [widgetDocument('progress'), { min: 100 }],
+      [widgetDocument('divider'), { thickness: 0 }],
+    ] as const
+
+    for (const [asset, patch] of cases) {
+      const before = structuredClone(asset)
+      expect(() => updateUIElementWidget(asset, CHILD, patch)).toThrow()
+      expect(asset).toEqual(before)
+    }
+  })
+
+  it('updates a selected Radio option across its group in one strict candidate', () => {
+    const asset = widgetDocument('radio')
+    const second = {
+      ...asset.elements[1],
+      id: '15000000-0000-4000-8000-000000000006',
+      optionValue: 'hard',
+      label: 'Hard',
+    }
+    const grouped = UIDocumentSchema.parse({
+      ...asset,
+      elements: [{ ...asset.elements[0], children: [CHILD, second.id] }, asset.elements[1], second],
+    })
+
+    const renamed = updateUIElementWidget(grouped, CHILD, { optionValue: 'normal' })
+    expect(renamed.elements.slice(1)).toMatchObject([
+      { optionValue: 'normal', value: 'normal' },
+      { optionValue: 'hard', value: 'normal' },
+    ])
   })
 })
