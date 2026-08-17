@@ -2,7 +2,7 @@
  * @vitest-environment happy-dom
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 
 vi.mock('./panels/ViewportPanel.js', () => ({
   ViewportPanel: () => <div>Viewport panel</div>,
@@ -145,5 +145,115 @@ describe('ViewportTabsShell UI workspace baseline', () => {
     expect(
       container.querySelector('[data-haku-ui-preview]')?.getAttribute('data-haku-ui-preview-scale'),
     ).toBe('1')
+  })
+
+  it('shares direct canvas and modified Layers selection', () => {
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+
+    const scoreHit = container.querySelector(
+      '[data-haku-ui-hit-target="13000000-0000-4000-8000-000000000102"]',
+    ) as HTMLElement
+    fireEvent.pointerDown(scoreHit, { button: 0, pointerId: 1, clientX: 200, clientY: 200 })
+    fireEvent.pointerUp(scoreHit, { button: 0, pointerId: 1, clientX: 200, clientY: 200 })
+
+    const workspace = container.querySelector('[data-haku-ui-workspace]')
+    expect(workspace?.getAttribute('data-haku-ui-selected-id')).toBe(
+      '13000000-0000-4000-8000-000000000102',
+    )
+    expect(
+      container
+        .querySelector('[data-haku-ui-tree-item="13000000-0000-4000-8000-000000000102"]')
+        ?.getAttribute('data-haku-ui-selected'),
+    ).toBe('true')
+
+    const continueLayer = container.querySelector(
+      '[data-haku-ui-tree-item="13000000-0000-4000-8000-000000000103"]',
+    ) as HTMLElement
+    fireEvent.click(continueLayer, { shiftKey: true })
+    expect(workspace?.getAttribute('data-haku-ui-selected-ids')).toContain(
+      '13000000-0000-4000-8000-000000000102',
+    )
+    expect(workspace?.getAttribute('data-haku-ui-selected-ids')).toContain(
+      '13000000-0000-4000-8000-000000000103',
+    )
+  })
+
+  it('routes shortcuts and wheel navigation only through Edit mode', async () => {
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    const canvas = container.querySelector('[data-haku-ui-canvas-cursor]') as HTMLElement
+    const preview = container.querySelector('[data-haku-ui-preview]')
+
+    fireEvent.keyDown(window, { key: '1' })
+    expect(preview?.getAttribute('data-haku-ui-preview-scale')).toBe('1')
+    const editWheel = new WheelEvent('wheel', {
+        bubbles: true,
+        cancelable: true,
+        ctrlKey: true,
+        deltaY: -100,
+        clientX: 120,
+        clientY: 100,
+      })
+    Object.defineProperty(editWheel, 'ctrlKey', { value: true })
+    fireEvent(canvas, editWheel)
+    expect(editWheel.defaultPrevented).toBe(true)
+    expect(editWheel.deltaY).toBe(-100)
+    expect(editWheel.ctrlKey).toBe(true)
+    await waitFor(() =>
+      expect((screen.getByLabelText('Canvas zoom') as HTMLInputElement).value).toBe('122'),
+    )
+    expect(
+      Number(container.querySelector('[data-haku-ui-preview]')?.getAttribute('data-haku-ui-preview-effective-scale')),
+    ).toBeGreaterThan(1)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Preview' }))
+    const scaleBeforePreviewWheel = container
+      .querySelector('[data-haku-ui-preview]')
+      ?.getAttribute('data-haku-ui-preview-effective-scale')
+    const previewWheel = new WheelEvent('wheel', {
+        bubbles: true,
+        cancelable: true,
+        ctrlKey: true,
+        deltaY: -100,
+        clientX: 120,
+        clientY: 100,
+      })
+    Object.defineProperty(previewWheel, 'ctrlKey', { value: true })
+    fireEvent(canvas, previewWheel)
+    expect(
+      container
+        .querySelector('[data-haku-ui-preview]')
+        ?.getAttribute('data-haku-ui-preview-effective-scale'),
+    ).toBe(scaleBeforePreviewWheel)
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.getByRole('button', { name: 'Edit' }).getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('nudges a free selection as one undoable command', () => {
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    const continueHit = container.querySelector(
+      '[data-haku-ui-hit-target="13000000-0000-4000-8000-000000000103"]',
+    ) as HTMLElement
+    fireEvent.pointerDown(continueHit, { button: 0, pointerId: 2, clientX: 300, clientY: 300 })
+    fireEvent.pointerUp(continueHit, { button: 0, pointerId: 2, clientX: 300, clientY: 300 })
+
+    const before = container
+      .querySelector('[data-haku-ui-id="13000000-0000-4000-8000-000000000103"]')
+      ?.getAttribute('style')
+    fireEvent.keyDown(window, { key: 'ArrowRight', shiftKey: true })
+    const after = container
+      .querySelector('[data-haku-ui-id="13000000-0000-4000-8000-000000000103"]')
+      ?.getAttribute('style')
+    expect(after).not.toBe(before)
+    expect((screen.getByRole('button', { name: 'Undo' }) as HTMLButtonElement).disabled).toBe(false)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(
+      container
+        .querySelector('[data-haku-ui-id="13000000-0000-4000-8000-000000000103"]')
+        ?.getAttribute('style'),
+    ).toBe(before)
   })
 })

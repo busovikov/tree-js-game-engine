@@ -161,14 +161,20 @@
     linear-gradient(45deg, #20202a 25%, transparent 25%),
     linear-gradient(-45deg, #20202a 25%, transparent 25%), #181820;
   background-size: 16px 16px;
+  touch-action: none;
+}
+
+.haku-ui-editor__canvas-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
 }
 
 .haku-ui-editor__viewport {
   position: absolute;
-  top: 50%;
-  left: 50%;
+  inset: 0;
   overflow: hidden;
-  transform-origin: top left;
   background: #101018;
   box-shadow: 0 0 0 2px #555;
 }
@@ -176,6 +182,77 @@
 .haku-ui-editor__viewport [data-haku-ui-selected='true'] {
   outline: 4px solid #45a3ff;
   outline-offset: 2px;
+}
+
+.haku-ui-editor__overlay {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.haku-ui-editor__hit-target {
+  position: absolute;
+  pointer-events: auto;
+}
+
+.haku-ui-editor__selection-bounds {
+  position: absolute;
+  z-index: 10000;
+  box-sizing: border-box;
+  border: 2px solid #45a3ff;
+  pointer-events: none;
+}
+
+.haku-ui-editor__resize-handle {
+  position: absolute;
+  z-index: 10002;
+  width: 10px;
+  height: 10px;
+  border: 2px solid #45a3ff;
+  border-radius: 2px;
+  background: #fff;
+  pointer-events: auto;
+  transform: translate(-50%, -50%);
+}
+
+.haku-ui-editor__resize-handle--n,
+.haku-ui-editor__resize-handle--s {
+  cursor: ns-resize;
+}
+
+.haku-ui-editor__resize-handle--e,
+.haku-ui-editor__resize-handle--w {
+  cursor: ew-resize;
+}
+
+.haku-ui-editor__resize-handle--ne,
+.haku-ui-editor__resize-handle--sw {
+  cursor: nesw-resize;
+}
+
+.haku-ui-editor__resize-handle--nw,
+.haku-ui-editor__resize-handle--se {
+  cursor: nwse-resize;
+}
+
+.haku-ui-editor__guide {
+  position: absolute;
+  z-index: 10001;
+  background: #ff4fd8;
+  pointer-events: none;
+}
+
+.haku-ui-editor__guide--x {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+.haku-ui-editor__guide--y {
+  right: 0;
+  left: 0;
+  height: 1px;
 }
 
 .haku-ui-editor__inspector-fields {
