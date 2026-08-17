@@ -738,7 +738,7 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
       rect.height > 0 ? (event.clientY - rect.top) / rect.height : event.clientY <= rect.top ? 0 : 1
     if (ratio < 0.3) return 'before' as const
     if (ratio > 0.7) return 'after' as const
-    return item.children.length > 0 ? ('inside' as const) : ('after' as const)
+    return item.type === 'frame' ? ('inside' as const) : ('after' as const)
   }
 
   const handleLayerDragOver = useCallback(

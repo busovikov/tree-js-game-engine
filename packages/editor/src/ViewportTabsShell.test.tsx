@@ -351,6 +351,40 @@ describe('ViewportTabsShell UI workspace baseline', () => {
     expect(screen.getByRole('status').textContent).toMatch(/root|container/i)
   })
 
+  it('reparents a layer into an empty Frame through its center drop zone', () => {
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add Frame' }))
+
+    const score = container.querySelector(
+      '[data-haku-ui-tree-item="13000000-0000-4000-8000-000000000102"]',
+    ) as HTMLButtonElement
+    const frameRow = screen
+      .getByRole('treeitem', { name: 'Frame' })
+      .closest('[data-haku-ui-tree-row]') as HTMLElement
+    vi.spyOn(frameRow, 'getBoundingClientRect').mockReturnValue({
+      top: 0,
+      bottom: 30,
+      left: 0,
+      right: 200,
+      x: 0,
+      y: 0,
+      width: 200,
+      height: 30,
+      toJSON: () => ({}),
+    })
+    const transfer = { setData: vi.fn(), getData: vi.fn() }
+
+    fireEvent.dragStart(score, { dataTransfer: transfer })
+    fireEvent.dragOver(frameRow, { dataTransfer: transfer, clientY: 15 })
+    fireEvent.drop(frameRow, { dataTransfer: transfer, clientY: 15 })
+
+    expect(screen.getByRole('button', { name: 'Expand Frame' })).toBeTruthy()
+    expect(screen.getByRole('status').textContent).toBe('Moved 1 layer')
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+  })
+
   it('creates an Image through a project texture chooser without a UUID prompt', () => {
     const textureId = '10000000-0000-4000-8000-000000000099'
     const textures = vi.spyOn(projectService, 'listTextureAssets').mockReturnValue([
