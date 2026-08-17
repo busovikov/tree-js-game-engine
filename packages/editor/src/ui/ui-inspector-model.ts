@@ -8,6 +8,7 @@ import {
   type UIPlacement,
   type UISize,
   type UISizing,
+  type UIStyle,
 } from '@haku/ui'
 import type { UIRect } from './ui-gesture-transaction.js'
 
@@ -35,6 +36,66 @@ export type UIVerticalConstraint = Extract<
   { positioning: 'free' }
 >['verticalConstraint']
 export type UIAbsoluteOffset = 'top' | 'right' | 'bottom' | 'left'
+export type UIStyleSection = 'typography' | 'image-fit'
+export type UICornerRadius = 'topLeft' | 'topRight' | 'bottomRight' | 'bottomLeft'
+
+const TYPOGRAPHY_ELEMENT_TYPES = new Set<UIElement['type']>([
+  'text',
+  'button',
+  'text-input',
+  'text-area',
+  'checkbox',
+  'radio',
+  'switch',
+  'select',
+  'list',
+])
+
+export function explainUIStyleSection(element: UIElement, section: UIStyleSection): string | null {
+  if (section === 'image-fit' && element.type !== 'image') {
+    return 'Image fit is available only for Image elements.'
+  }
+  if (section === 'typography' && !TYPOGRAPHY_ELEMENT_TYPES.has(element.type)) {
+    return 'Typography is available only for elements with text content.'
+  }
+  return null
+}
+
+export function updateUIElementStyle(
+  asset: UIDocument,
+  id: UIElementId | string,
+  patch: Partial<UIStyle>,
+): UIDocument {
+  const element = asset.elements.find((candidate) => candidate.id === id)
+  if (!element) throw new Error(`Unknown UI element: ${id}`)
+  const style: Record<string, unknown> = { ...element.style }
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === undefined) delete style[key]
+    else style[key] = value
+  }
+  return updateUIElementStrict(asset, id, { style })
+}
+
+export function updateUICornerRadius(
+  asset: UIDocument,
+  id: UIElementId | string,
+  corner: UICornerRadius,
+  value: number,
+): UIDocument {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error('Corner radius must be a finite non-negative number.')
+  }
+  const element = asset.elements.find((candidate) => candidate.id === id)
+  if (!element) throw new Error(`Unknown UI element: ${id}`)
+  const current = element.style.borderRadius
+  const radii =
+    typeof current === 'number'
+      ? { topLeft: current, topRight: current, bottomRight: current, bottomLeft: current }
+      : { topLeft: 0, topRight: 0, bottomRight: 0, bottomLeft: 0, ...current }
+  return updateUIElementStyle(asset, id, {
+    borderRadius: { ...radii, [corner]: value },
+  })
+}
 
 function parentOf(asset: UIDocument, id: UIElementId | string): UIElement | undefined {
   return asset.elements.find(

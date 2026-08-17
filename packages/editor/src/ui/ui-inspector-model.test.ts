@@ -7,13 +7,16 @@ import {
   convertUISize,
   explainUIConstraintEdit,
   explainUIPlacementMode,
+  explainUIStyleSection,
   explainUISizeMode,
   formatUISize,
   parseUISize,
   updateUIAbsoluteOffset,
   updateUIFreeConstraint,
   updateUISizingBound,
+  updateUICornerRadius,
   updateUIElementStrict,
+  updateUIElementStyle,
 } from './ui-inspector-model.js'
 
 const DOCUMENT = '15000000-0000-4000-8000-000000000001'
@@ -39,7 +42,8 @@ function document(layout: 'free' | 'vertical' = 'free'): UIDocument {
       },
       {
         id: CHILD,
-        type: 'rectangle',
+        type: 'text',
+        text: 'Styled child',
         sizing: {
           width: { mode: 'fixed', value: 50, unit: '%' },
           height: { mode: 'hug' },
@@ -323,5 +327,111 @@ describe('UI Inspector field model', () => {
       }),
     ).toThrow(/Fill sizing is invalid in free layout/)
     expect(asset.elements[1]!.sizing.width).toEqual({ mode: 'fixed', value: 50, unit: '%' })
+  })
+
+  it('updates typography, fill, stroke, opacity, and image fit without coercing style values', () => {
+    const asset = document()
+    const styled = updateUIElementStyle(asset, CHILD, {
+      color: '#123456',
+      backgroundColor: 'color(display-p3 0.1 0.2 0.3)',
+      fontFamily: '"IBM Plex Sans", sans-serif',
+      fontSize: 17.5,
+      fontWeight: 575,
+      fontStyle: 'italic',
+      lineHeight: 25.25,
+      letterSpacing: -0.75,
+      textAlign: 'justify',
+      borderColor: 'oklch(70% 0.2 30)',
+      borderWidth: 1.5,
+      opacity: 0.625,
+    })
+
+    expect(styled.elements[1]!.style).toEqual({
+      color: '#123456',
+      backgroundColor: 'color(display-p3 0.1 0.2 0.3)',
+      fontFamily: '"IBM Plex Sans", sans-serif',
+      fontSize: 17.5,
+      fontWeight: 575,
+      fontStyle: 'italic',
+      lineHeight: 25.25,
+      letterSpacing: -0.75,
+      textAlign: 'justify',
+      borderColor: 'oklch(70% 0.2 30)',
+      borderWidth: 1.5,
+      opacity: 0.625,
+    })
+    expect(() => UIDocumentSchema.parse(styled)).not.toThrow()
+
+    const imageAsset = UIDocumentSchema.parse({
+      ...asset,
+      elements: asset.elements.map((element) =>
+        element.id === CHILD
+          ? {
+              id: element.id,
+              type: 'image',
+              source: {
+                $ref: '15000000-0000-4000-8000-000000000004',
+                type: '15000000-0000-4000-8000-000000000005',
+              },
+              alt: 'Preview',
+              sizing: element.sizing,
+              placement: element.placement,
+              style: element.style,
+              accessibility: element.accessibility,
+            }
+          : element,
+      ),
+    })
+    expect(
+      updateUIElementStyle(imageAsset, CHILD, { objectFit: 'scale-down' }).elements[1]!.style,
+    ).toMatchObject({ objectFit: 'scale-down' })
+  })
+
+  it('expands scalar radius losslessly and rejects invalid numeric styles atomically', () => {
+    const asset = updateUIElementStyle(document(), CHILD, { borderRadius: 8 })
+    const rounded = updateUICornerRadius(asset, CHILD, 'topLeft', 12.5)
+
+    expect(rounded.elements[1]!.style.borderRadius).toEqual({
+      topLeft: 12.5,
+      topRight: 8,
+      bottomRight: 8,
+      bottomLeft: 8,
+    })
+    expect(() => UIDocumentSchema.parse(rounded)).not.toThrow()
+
+    for (const patch of [
+      { fontSize: Number.NaN },
+      { fontSize: 0 },
+      { fontWeight: 450.5 },
+      { lineHeight: Number.POSITIVE_INFINITY },
+      { letterSpacing: Number.NaN },
+      { borderWidth: -1 },
+      { opacity: 1.01 },
+    ]) {
+      expect(() => updateUIElementStyle(asset, CHILD, patch)).toThrow()
+      expect(asset.elements[1]!.style).toEqual({ borderRadius: 8 })
+    }
+    expect(() => updateUICornerRadius(asset, CHILD, 'bottomRight', Number.NaN)).toThrow(
+      /finite non-negative/i,
+    )
+    expect(asset.elements[1]!.style).toEqual({ borderRadius: 8 })
+  })
+
+  it('removes optional style values intentionally and explains type-specific sections', () => {
+    const asset = updateUIElementStyle(document(), CHILD, {
+      fontFamily: 'Inter',
+      opacity: 0.5,
+    })
+    const reset = updateUIElementStyle(asset, CHILD, {
+      fontFamily: undefined,
+      opacity: undefined,
+    })
+    const text = reset.elements[1]!
+    const frame = reset.elements[0]!
+
+    expect(text.style).toEqual({})
+    expect(explainUIStyleSection(text, 'typography')).toBeNull()
+    expect(explainUIStyleSection(text, 'image-fit')).toMatch(/Image/i)
+    expect(explainUIStyleSection(frame, 'typography')).toMatch(/text content/i)
   })
 })

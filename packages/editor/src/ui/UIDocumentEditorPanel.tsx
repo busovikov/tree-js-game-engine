@@ -13,6 +13,7 @@ import {
   type UILayout,
   type UISize,
   type UISizing,
+  type UIStyle,
   type UIThemeId,
 } from '@haku/ui'
 import { projectPathToUrl } from '@haku/schema'
@@ -58,8 +59,11 @@ import {
   convertUISize,
   explainUIConstraintEdit,
   explainUIPlacementMode,
+  explainUIStyleSection,
   explainUISizeMode,
   updateUIAbsoluteOffset,
+  updateUICornerRadius,
+  updateUIElementStyle,
   updateUIFreeConstraint,
   updateUISizingBound,
   type UISizingBoundKey,
@@ -908,6 +912,386 @@ const UIPlacementSection = memo(function UIPlacementSection({
   )
 })
 
+const UIOptionalTextStyleField = memo(function UIOptionalTextStyleField({
+  label,
+  value,
+  placeholder,
+  onCommit,
+}: {
+  label: string
+  value: string | undefined
+  placeholder: string
+  onCommit: (value: string | undefined) => void
+}) {
+  const [draft, setDraft] = useState(value ?? '')
+  useEffect(() => setDraft(value ?? ''), [value])
+
+  const commit = () => {
+    const next = draft === '' ? undefined : draft
+    if (next !== value) onCommit(next)
+  }
+
+  return (
+    <label className="mesh-field">
+      <span className="mesh-field__label">{label}</span>
+      <input
+        className="mesh-field__input"
+        aria-label={label}
+        value={draft}
+        placeholder={placeholder}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') event.currentTarget.blur()
+          if (event.key === 'Escape') {
+            setDraft(value ?? '')
+            event.currentTarget.blur()
+          }
+        }}
+      />
+    </label>
+  )
+})
+
+const UIOptionalNumberStyleField = memo(function UIOptionalNumberStyleField({
+  label,
+  value,
+  defaultValue,
+  min,
+  max,
+  step,
+  onChange,
+  onScrubStart,
+  onScrubEnd,
+}: {
+  label: string
+  value: number | undefined
+  defaultValue: number
+  min?: number
+  max?: number
+  step: number
+  onChange: (value: number | undefined) => void
+  onScrubStart: () => void
+  onScrubEnd: () => void
+}) {
+  return (
+    <>
+      <label className="mesh-field">
+        <span className="mesh-field__label">{label} source</span>
+        <select
+          className="mesh-field__input"
+          aria-label={`${label} source`}
+          value={value === undefined ? 'default' : 'custom'}
+          onChange={(event) => onChange(event.target.value === 'custom' ? defaultValue : undefined)}
+        >
+          <option value="default">Default</option>
+          <option value="custom">Custom</option>
+        </select>
+      </label>
+      {value !== undefined && (
+        <NumberField
+          label={label}
+          inputAriaLabel={label}
+          value={value}
+          min={min}
+          max={max}
+          step={step}
+          clampOnBlur={false}
+          onScrubStart={onScrubStart}
+          onScrubEnd={onScrubEnd}
+          onChange={onChange}
+        />
+      )}
+    </>
+  )
+})
+
+const UIStyleSection = memo(function UIStyleSection({
+  asset,
+  element,
+}: {
+  asset: UIDocument
+  element: UIElement
+}) {
+  const [error, setError] = useState<string | null>(null)
+  const historyGroup = useRef<string | null>(null)
+  const typography = explainUIStyleSection(element, 'typography') === null
+  const imageFit = explainUIStyleSection(element, 'image-fit') === null
+  const updateStyle = (patch: Partial<UIStyle>, group?: string) => {
+    try {
+      uiAuthoringSession.replaceAsset(
+        updateUIElementStyle(asset, element.id, patch),
+        undefined,
+        group ? { historyGroup: group } : {},
+      )
+      setError(null)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    }
+  }
+  const beginNumericGesture = () => {
+    historyGroup.current = `ui-style-${crypto.randomUUID()}`
+  }
+  const endNumericGesture = () => {
+    historyGroup.current = null
+  }
+  const updateNumber = <Key extends keyof UIStyle>(key: Key, value: UIStyle[Key]) => {
+    updateStyle({ [key]: value }, historyGroup.current ?? undefined)
+  }
+  const borderRadius = element.style.borderRadius
+  const radii =
+    typeof borderRadius === 'number'
+      ? {
+          topLeft: borderRadius,
+          topRight: borderRadius,
+          bottomRight: borderRadius,
+          bottomLeft: borderRadius,
+        }
+      : { topLeft: 0, topRight: 0, bottomRight: 0, bottomLeft: 0, ...borderRadius }
+
+  return (
+    <section className="haku-ui-editor__inspector-section" aria-label="Style" role="region">
+      <h4>Style</h4>
+      {typography && (
+        <>
+          <UIOptionalTextStyleField
+            label="Font family"
+            value={element.style.fontFamily}
+            placeholder="Default (sans-serif)"
+            onCommit={(fontFamily) => updateStyle({ fontFamily })}
+          />
+          <UIOptionalNumberStyleField
+            label="Font size"
+            value={element.style.fontSize}
+            defaultValue={16}
+            min={Number.MIN_VALUE}
+            step={0.25}
+            onScrubStart={beginNumericGesture}
+            onScrubEnd={endNumericGesture}
+            onChange={(fontSize) => updateNumber('fontSize', fontSize)}
+          />
+          <label className="mesh-field">
+            <span className="mesh-field__label">Font weight</span>
+            <select
+              className="mesh-field__input"
+              aria-label="Font weight"
+              value={
+                typeof element.style.fontWeight === 'number'
+                  ? 'custom'
+                  : (element.style.fontWeight ?? 'default')
+              }
+              onChange={(event) => {
+                const value = event.target.value
+                updateStyle({
+                  fontWeight:
+                    value === 'default'
+                      ? undefined
+                      : value === 'custom'
+                        ? 400
+                        : (value as 'normal' | 'bold'),
+                })
+              }}
+            >
+              <option value="default">Default</option>
+              <option value="normal">Normal</option>
+              <option value="bold">Bold</option>
+              <option value="custom">Custom</option>
+            </select>
+          </label>
+          {typeof element.style.fontWeight === 'number' && (
+            <NumberField
+              label="Custom font weight"
+              inputAriaLabel="Custom font weight"
+              value={element.style.fontWeight}
+              min={1}
+              max={1000}
+              step={1}
+              clampOnBlur={false}
+              onScrubStart={beginNumericGesture}
+              onScrubEnd={endNumericGesture}
+              onChange={(fontWeight) => updateNumber('fontWeight', fontWeight)}
+            />
+          )}
+          <label className="mesh-field">
+            <span className="mesh-field__label">Font style</span>
+            <select
+              className="mesh-field__input"
+              aria-label="Font style"
+              value={element.style.fontStyle ?? 'default'}
+              onChange={(event) =>
+                updateStyle({
+                  fontStyle:
+                    event.target.value === 'default'
+                      ? undefined
+                      : (event.target.value as 'normal' | 'italic'),
+                })
+              }
+            >
+              <option value="default">Default</option>
+              <option value="normal">Normal</option>
+              <option value="italic">Italic</option>
+            </select>
+          </label>
+          <UIOptionalNumberStyleField
+            label="Line height"
+            value={element.style.lineHeight}
+            defaultValue={Math.round((element.style.fontSize ?? 16) * 1.2 * 100) / 100}
+            min={Number.MIN_VALUE}
+            step={0.25}
+            onScrubStart={beginNumericGesture}
+            onScrubEnd={endNumericGesture}
+            onChange={(lineHeight) => updateNumber('lineHeight', lineHeight)}
+          />
+          <UIOptionalNumberStyleField
+            label="Letter spacing"
+            value={element.style.letterSpacing}
+            defaultValue={0}
+            step={0.25}
+            onScrubStart={beginNumericGesture}
+            onScrubEnd={endNumericGesture}
+            onChange={(letterSpacing) => updateNumber('letterSpacing', letterSpacing)}
+          />
+          <label className="mesh-field">
+            <span className="mesh-field__label">Text align</span>
+            <select
+              className="mesh-field__input"
+              aria-label="Text align"
+              value={element.style.textAlign ?? 'default'}
+              onChange={(event) =>
+                updateStyle({
+                  textAlign:
+                    event.target.value === 'default'
+                      ? undefined
+                      : (event.target.value as UIStyle['textAlign']),
+                })
+              }
+            >
+              <option value="default">Default</option>
+              <option value="left">Left</option>
+              <option value="center">Center</option>
+              <option value="right">Right</option>
+              <option value="justify">Justify</option>
+            </select>
+          </label>
+          <UIOptionalTextStyleField
+            label="Text color"
+            value={element.style.color}
+            placeholder="Default"
+            onCommit={(color) => updateStyle({ color })}
+          />
+        </>
+      )}
+      <UIOptionalTextStyleField
+        label="Fill"
+        value={element.style.backgroundColor}
+        placeholder="None"
+        onCommit={(backgroundColor) => updateStyle({ backgroundColor })}
+      />
+      <UIOptionalTextStyleField
+        label="Stroke color"
+        value={element.style.borderColor}
+        placeholder="None"
+        onCommit={(borderColor) => updateStyle({ borderColor })}
+      />
+      <UIOptionalNumberStyleField
+        label="Stroke width"
+        value={element.style.borderWidth}
+        defaultValue={1}
+        min={0}
+        step={0.25}
+        onScrubStart={beginNumericGesture}
+        onScrubEnd={endNumericGesture}
+        onChange={(borderWidth) => updateNumber('borderWidth', borderWidth)}
+      />
+      <label className="mesh-field">
+        <span className="mesh-field__label">Corner radius source</span>
+        <select
+          className="mesh-field__input"
+          aria-label="Corner radius source"
+          value={borderRadius === undefined ? 'none' : 'per-corner'}
+          onChange={(event) =>
+            updateStyle({
+              borderRadius:
+                event.target.value === 'per-corner'
+                  ? { topLeft: 0, topRight: 0, bottomRight: 0, bottomLeft: 0 }
+                  : undefined,
+            })
+          }
+        >
+          <option value="none">None</option>
+          <option value="per-corner">Per corner</option>
+        </select>
+      </label>
+      {borderRadius !== undefined &&
+        (['topLeft', 'topRight', 'bottomRight', 'bottomLeft'] as const).map((corner) => {
+          const words = corner.replace(/([A-Z])/g, ' $1').toLowerCase()
+          return (
+            <NumberField
+              key={corner}
+              label={`Radius ${words}`}
+              inputAriaLabel={`Radius ${words}`}
+              value={radii[corner]}
+              min={0}
+              step={0.25}
+              clampOnBlur={false}
+              onScrubStart={beginNumericGesture}
+              onScrubEnd={endNumericGesture}
+              onChange={(value) => {
+                try {
+                  uiAuthoringSession.replaceAsset(
+                    updateUICornerRadius(asset, element.id, corner, value),
+                    undefined,
+                    historyGroup.current ? { historyGroup: historyGroup.current } : {},
+                  )
+                  setError(null)
+                } catch (reason) {
+                  setError(reason instanceof Error ? reason.message : String(reason))
+                }
+              }}
+            />
+          )
+        })}
+      <UIOptionalNumberStyleField
+        label="Opacity"
+        value={element.style.opacity}
+        defaultValue={1}
+        min={0}
+        max={1}
+        step={0.01}
+        onScrubStart={beginNumericGesture}
+        onScrubEnd={endNumericGesture}
+        onChange={(opacity) => updateNumber('opacity', opacity)}
+      />
+      {imageFit && (
+        <label className="mesh-field">
+          <span className="mesh-field__label">Image fit</span>
+          <select
+            className="mesh-field__input"
+            aria-label="Image fit"
+            value={element.style.objectFit ?? 'default'}
+            onChange={(event) =>
+              updateStyle({
+                objectFit:
+                  event.target.value === 'default'
+                    ? undefined
+                    : (event.target.value as UIStyle['objectFit']),
+              })
+            }
+          >
+            <option value="default">Default</option>
+            <option value="contain">Contain</option>
+            <option value="cover">Cover</option>
+            <option value="fill">Fill</option>
+            <option value="none">None</option>
+            <option value="scale-down">Scale down</option>
+          </select>
+        </label>
+      )}
+      {error && <small role="alert">{error}</small>}
+    </section>
+  )
+})
+
 function UIInspector({
   asset,
   element,
@@ -1004,30 +1388,7 @@ function UIInspector({
         }
         onSizingChange={(sizing, historyGroup) => update({ sizing }, historyGroup)}
       />
-      <label className="mesh-field">
-        <span className="mesh-field__label">Text color</span>
-        <input
-          className="mesh-field__input"
-          value={element.style.color ?? ''}
-          placeholder="#ffffff"
-          onChange={(event) =>
-            update({ style: { ...element.style, color: event.target.value || undefined } })
-          }
-        />
-      </label>
-      <label className="mesh-field">
-        <span className="mesh-field__label">Background</span>
-        <input
-          className="mesh-field__input"
-          value={element.style.backgroundColor ?? ''}
-          placeholder="#000000"
-          onChange={(event) =>
-            update({
-              style: { ...element.style, backgroundColor: event.target.value || undefined },
-            })
-          }
-        />
-      </label>
+      <UIStyleSection asset={asset} element={element} />
       <label className="mesh-field">
         <span className="mesh-field__label">Accessible label</span>
         <input

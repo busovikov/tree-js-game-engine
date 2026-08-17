@@ -335,6 +335,179 @@ describe('ViewportTabsShell UI workspace baseline', () => {
     expect(uiCommandBus.canUndo()).toBe(false)
   })
 
+  it('exposes lossless typography, fill, stroke, corner radius, and opacity controls', () => {
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    fireEvent.click(
+      container.querySelector(
+        '[data-haku-ui-tree-item="13000000-0000-4000-8000-000000000102"]',
+      ) as HTMLButtonElement,
+    )
+    const style = screen.getByRole('region', { name: 'Style' })
+
+    expect(within(style).queryByLabelText('Image fit')).toBeNull()
+    fireEvent.change(within(style).getByLabelText('Font family'), {
+      target: { value: '"IBM Plex Sans", sans-serif' },
+    })
+    fireEvent.blur(within(style).getByLabelText('Font family'))
+    fireEvent.change(within(style).getByLabelText('Font size'), { target: { value: '17.5' } })
+    fireEvent.blur(within(style).getByLabelText('Font size'))
+    fireEvent.change(within(style).getByLabelText('Font weight'), { target: { value: 'custom' } })
+    fireEvent.change(within(style).getByLabelText('Custom font weight'), {
+      target: { value: '575' },
+    })
+    fireEvent.blur(within(style).getByLabelText('Custom font weight'))
+    fireEvent.change(within(style).getByLabelText('Font style'), { target: { value: 'italic' } })
+    fireEvent.change(within(style).getByLabelText('Line height source'), {
+      target: { value: 'custom' },
+    })
+    fireEvent.change(within(style).getByLabelText('Line height'), { target: { value: '25.25' } })
+    fireEvent.blur(within(style).getByLabelText('Line height'))
+    fireEvent.change(within(style).getByLabelText('Letter spacing source'), {
+      target: { value: 'custom' },
+    })
+    fireEvent.change(within(style).getByLabelText('Letter spacing'), {
+      target: { value: '-0.75' },
+    })
+    fireEvent.blur(within(style).getByLabelText('Letter spacing'))
+    fireEvent.change(within(style).getByLabelText('Text align'), { target: { value: 'justify' } })
+    fireEvent.change(within(style).getByLabelText('Text color'), { target: { value: '#123456' } })
+    fireEvent.blur(within(style).getByLabelText('Text color'))
+    fireEvent.change(within(style).getByLabelText('Fill'), {
+      target: { value: 'color(display-p3 0.1 0.2 0.3)' },
+    })
+    fireEvent.blur(within(style).getByLabelText('Fill'))
+    fireEvent.change(within(style).getByLabelText('Stroke color'), {
+      target: { value: 'oklch(70% 0.2 30)' },
+    })
+    fireEvent.blur(within(style).getByLabelText('Stroke color'))
+    fireEvent.change(within(style).getByLabelText('Stroke width source'), {
+      target: { value: 'custom' },
+    })
+    fireEvent.change(within(style).getByLabelText('Stroke width'), { target: { value: '1.5' } })
+    fireEvent.blur(within(style).getByLabelText('Stroke width'))
+    fireEvent.change(within(style).getByLabelText('Corner radius source'), {
+      target: { value: 'per-corner' },
+    })
+    fireEvent.change(within(style).getByLabelText('Radius top left'), {
+      target: { value: '12.5' },
+    })
+    fireEvent.blur(within(style).getByLabelText('Radius top left'))
+    fireEvent.change(within(style).getByLabelText('Opacity source'), {
+      target: { value: 'custom' },
+    })
+    fireEvent.change(within(style).getByLabelText('Opacity'), { target: { value: '0.625' } })
+    fireEvent.blur(within(style).getByLabelText('Opacity'))
+
+    expect(uiAuthoringSession.asset!.elements[1]!.style).toEqual({
+      color: '#123456',
+      backgroundColor: 'color(display-p3 0.1 0.2 0.3)',
+      fontFamily: '"IBM Plex Sans", sans-serif',
+      fontSize: 17.5,
+      fontWeight: 575,
+      fontStyle: 'italic',
+      lineHeight: 25.25,
+      letterSpacing: -0.75,
+      textAlign: 'justify',
+      borderColor: 'oklch(70% 0.2 30)',
+      borderWidth: 1.5,
+      borderRadius: { topLeft: 12.5, topRight: 0, bottomRight: 0, bottomLeft: 0 },
+      opacity: 0.625,
+    })
+    expect(() => UIDocumentSchema.parse(uiAuthoringSession.asset)).not.toThrow()
+  })
+
+  it('keeps invalid style drafts atomic and gives discrete edits and scrubs exact undo', () => {
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    fireEvent.click(
+      container.querySelector(
+        '[data-haku-ui-tree-item="13000000-0000-4000-8000-000000000102"]',
+      ) as HTMLButtonElement,
+    )
+    const style = screen.getByRole('region', { name: 'Style' })
+    uiCommandBus.clear()
+    const beforeInvalid = structuredClone(uiAuthoringSession.asset)!
+    const fontSize = within(style).getByLabelText('Font size')
+    fireEvent.change(fontSize, { target: { value: 'NaN' } })
+    fireEvent.blur(fontSize)
+    expect(uiAuthoringSession.asset).toEqual(beforeInvalid)
+    expect(uiCommandBus.canUndo()).toBe(false)
+    fireEvent.change(fontSize, { target: { value: '0' } })
+    fireEvent.blur(fontSize)
+    expect(uiAuthoringSession.asset).toEqual(beforeInvalid)
+    expect(uiCommandBus.canUndo()).toBe(false)
+
+    fireEvent.change(within(style).getByLabelText('Font style'), { target: { value: 'italic' } })
+    expect(uiAuthoringSession.asset!.elements[1]!.style.fontStyle).toBe('italic')
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(uiAuthoringSession.asset).toEqual(beforeInvalid)
+
+    fireEvent.change(within(style).getByLabelText('Opacity source'), {
+      target: { value: 'custom' },
+    })
+    uiCommandBus.clear()
+    const beforeScrub = structuredClone(uiAuthoringSession.asset)!
+    const opacityLabel = within(style).getByText('Opacity') as HTMLElement
+    Object.assign(opacityLabel, {
+      setPointerCapture: vi.fn(),
+      hasPointerCapture: vi.fn(() => false),
+      releasePointerCapture: vi.fn(),
+    })
+    fireEvent.pointerDown(opacityLabel, { button: 0, pointerId: 31, clientX: 0 })
+    fireEvent.pointerMove(opacityLabel, { pointerId: 31, clientX: -20 })
+    fireEvent.pointerMove(opacityLabel, { pointerId: 31, clientX: -40 })
+    fireEvent.pointerUp(opacityLabel, { pointerId: 31, clientX: -40 })
+    const afterScrub = structuredClone(uiAuthoringSession.asset)!
+    expect(afterScrub).not.toEqual(beforeScrub)
+    expect(() => UIDocumentSchema.parse(afterScrub)).not.toThrow()
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(uiAuthoringSession.asset).toEqual(beforeScrub)
+    expect(uiCommandBus.canUndo()).toBe(false)
+  })
+
+  it('shows Image fit only for Images and restores its discrete edit with one Undo', () => {
+    const imageId = '13000000-0000-4000-8000-000000000102'
+    const current = INITIAL_UI_ASSET.elements[1]!
+    const imageAsset = UIDocumentSchema.parse({
+      ...INITIAL_UI_ASSET,
+      elements: INITIAL_UI_ASSET.elements.map((element) =>
+        element.id === imageId
+          ? {
+              id: current.id,
+              type: 'image',
+              source: {
+                $ref: '13000000-0000-4000-8000-000000000120',
+                type: '13000000-0000-4000-8000-000000000121',
+              },
+              alt: 'Score image',
+              sizing: current.sizing,
+              placement: current.placement,
+              style: { objectFit: 'contain' },
+              accessibility: current.accessibility,
+            }
+          : element,
+      ),
+    })
+    uiAuthoringSession.openAsset('builtin:m10b-runtime-hud.ui.json', imageAsset)
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    fireEvent.click(
+      container.querySelector(`[data-haku-ui-tree-item="${imageId}"]`) as HTMLButtonElement,
+    )
+    uiCommandBus.clear()
+    const before = structuredClone(uiAuthoringSession.asset)!
+    const style = screen.getByRole('region', { name: 'Style' })
+
+    expect(within(style).queryByLabelText('Font family')).toBeNull()
+    fireEvent.change(within(style).getByLabelText('Image fit'), {
+      target: { value: 'scale-down' },
+    })
+    expect(uiAuthoringSession.asset!.elements[1]!.style.objectFit).toBe('scale-down')
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(uiAuthoringSession.asset).toEqual(before)
+  })
+
   // M2 owns replacement of the fixed-scale baseline; M3 starts direct canvas interaction.
   it('fits and centers the preview instead of using the fixed 0.5 top-left transform', () => {
     const { container } = render(<ViewportTabsShell />)

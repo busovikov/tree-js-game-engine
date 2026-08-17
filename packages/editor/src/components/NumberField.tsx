@@ -17,6 +17,7 @@ export const NumberField = memo(function NumberField({
   onScrubStart,
   onScrubEnd,
   inputAriaLabel,
+  clampOnBlur = true,
 }: {
   label: string
   value: number
@@ -32,6 +33,7 @@ export const NumberField = memo(function NumberField({
   onScrubStart?: () => void
   onScrubEnd?: () => void
   inputAriaLabel?: string
+  clampOnBlur?: boolean
 }) {
   const isMixed = mixed === null
   const isDisabled = disabled || isMixed
@@ -49,7 +51,11 @@ export const NumberField = memo(function NumberField({
       (max !== undefined && parsedDraft > max))
 
   const commitDraft = () => {
-    if (!Number.isFinite(parsedDraft)) {
+    if (
+      !Number.isFinite(parsedDraft) ||
+      (!clampOnBlur &&
+        ((min !== undefined && parsedDraft < min) || (max !== undefined && parsedDraft > max)))
+    ) {
       setDraft(String(value))
       return
     }
