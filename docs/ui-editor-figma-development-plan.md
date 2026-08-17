@@ -462,6 +462,24 @@ Evidence:
 - Browser: standalone runtime fixture exercises every widget by pointer and keyboard and displays
   its event/value log at wide and narrow host sizes.
 
+**Status (2026-08-17): complete.**
+
+- TDD RED→GREEN covers exact component-instance override value kind/range/options, legal event
+  slots and payloads, native label/control association, and representative Hug, Fill, min/max,
+  center, and scale layout behavior. `@haku/ui` passes 4 files / 25 tests plus typecheck/build.
+- Every required kind renders through the public React-free runtime. Checkbox, Radio, and Switch
+  use explicit native labels while runtime element and instance locators continue to resolve the
+  associated control deterministically.
+- The standalone playground acceptance entrypoint is excluded from the normal production bundle
+  and disables `publicDir`. User Chrome at 1440 × 1000 and 760 × 900 verified pointer and keyboard
+  value/event behavior with visible telemetry, responsive stacking, and no console warnings or
+  errors. Evidence is recorded in
+  [`handoffs/UI-M1-01.md`](./handoffs/UI-M1-01.md).
+- The final consumer audit found no unprotected UI version 1 producer or reader. Remaining
+  `schemaVersion: 1` matches are unrelated project, scene, graph, storage, or custom-component
+  contracts plus the deliberate UI version 1 rejection test. Dependency-cruiser reports no new
+  violations, and `@haku/ui` has no React or editor production dependency/import.
+
 ### Milestone 2 — Dedicated UI workspace shell
 
 **Prerequisite:** Milestone 1 accepted.
