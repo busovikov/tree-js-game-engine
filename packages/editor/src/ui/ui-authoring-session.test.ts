@@ -64,6 +64,118 @@ describe('UIAuthoringSession', () => {
     expect(commands.canUndo()).toBe(true)
   })
 
+  it('creates, places, and detaches components as atomic undoable commands', () => {
+    const commands = new CommandBus()
+    const generated = [
+      '13000000-0000-4000-8000-000000000010',
+      '13000000-0000-4000-8000-000000000011',
+      '13000000-0000-4000-8000-000000000012',
+      '13000000-0000-4000-8000-000000000013',
+    ]
+    const session = new UIAuthoringSession(
+      commands,
+      { readText: async () => '', writeText: async () => undefined },
+      () => generated.shift() ?? crypto.randomUUID(),
+    )
+    const base = createEmptyUIDocument('HUD', DOCUMENT, ROOT)
+    session.openAsset('assets/ui/hud.ui.json', {
+      ...base,
+      elements: [
+        { ...base.elements[0], layout: { mode: 'vertical' }, children: [TEXT] },
+        { id: TEXT, type: 'text', name: 'Label', text: 'Ready' },
+      ],
+    })
+    const beforeCreate = structuredClone(session.asset)
+
+    const created = session.createComponent(TEXT, 'Status label')
+    expect(created).toEqual({
+      componentId: '13000000-0000-4000-8000-000000000010',
+      instanceId: '13000000-0000-4000-8000-000000000011',
+    })
+    expect(session.selectedElementId).toBe(created.instanceId)
+    commands.undo()
+    expect(session.asset).toEqual(beforeCreate)
+    commands.redo()
+
+    const placed = session.placeComponent(created.componentId, { selectedId: ROOT })
+    expect(placed).toBe('13000000-0000-4000-8000-000000000012')
+    expect(session.selectedElementId).toBe(placed)
+
+    const detached = session.detachComponentInstance(placed)
+    expect(detached).toBe('13000000-0000-4000-8000-000000000013')
+    expect(session.selectedElementId).toBe(detached)
+    expect(session.asset?.elements.find((element) => element.id === detached)).toMatchObject({
+      type: 'text',
+      text: 'Ready',
+    })
+    commands.undo()
+    expect(session.asset?.elements.find((element) => element.id === placed)).toMatchObject({
+      type: 'instance',
+    })
+  })
+
+  it('rejects an invalid instance override before it enters history', () => {
+    const commands = new CommandBus()
+    const generated = [
+      '13000000-0000-4000-8000-000000000010',
+      '13000000-0000-4000-8000-000000000011',
+    ]
+    const session = new UIAuthoringSession(
+      commands,
+      { readText: async () => '', writeText: async () => undefined },
+      () => generated.shift() ?? crypto.randomUUID(),
+    )
+    const base = createEmptyUIDocument('HUD', DOCUMENT, ROOT)
+    session.openAsset('assets/ui/hud.ui.json', {
+      ...base,
+      elements: [
+        { ...base.elements[0], layout: { mode: 'vertical' }, children: [TEXT] },
+        { id: TEXT, type: 'text', text: 'Ready' },
+      ],
+    })
+    const created = session.createComponent(TEXT, 'Status label')
+    const before = structuredClone(session.asset)
+    const state = commands.getStateId()
+
+    expect(() => session.setInstanceOverride(created.instanceId, TEXT, { value: true })).toThrow(
+      'Value override is invalid for text',
+    )
+    expect(commands.getStateId()).toBe(state)
+    expect(session.asset).toEqual(before)
+  })
+
+  it('resets an instance override atomically and restores it on undo', () => {
+    const commands = new CommandBus()
+    const generated = [
+      '13000000-0000-4000-8000-000000000010',
+      '13000000-0000-4000-8000-000000000011',
+    ]
+    const session = new UIAuthoringSession(
+      commands,
+      { readText: async () => '', writeText: async () => undefined },
+      () => generated.shift() ?? crypto.randomUUID(),
+    )
+    const base = createEmptyUIDocument('HUD', DOCUMENT, ROOT)
+    session.openAsset('assets/ui/hud.ui.json', {
+      ...base,
+      elements: [
+        { ...base.elements[0], layout: { mode: 'vertical' }, children: [TEXT] },
+        { id: TEXT, type: 'text', text: 'Ready' },
+      ],
+    })
+    const created = session.createComponent(TEXT, 'Status label')
+    session.setInstanceOverride(created.instanceId, TEXT, { text: 'Retry' })
+
+    session.resetInstanceOverride(created.instanceId, TEXT)
+    expect(
+      session.asset?.elements.find((element) => element.id === created.instanceId),
+    ).toMatchObject({ overrides: {} })
+    commands.undo()
+    expect(
+      session.asset?.elements.find((element) => element.id === created.instanceId),
+    ).toMatchObject({ overrides: { [TEXT]: { text: 'Retry' } } })
+  })
+
   it('supports explicit desktop preview sizes', () => {
     const session = new UIAuthoringSession(
       new CommandBus(),

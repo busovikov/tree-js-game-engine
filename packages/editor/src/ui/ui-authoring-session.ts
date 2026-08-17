@@ -1,7 +1,21 @@
-import { UIDocumentSchema, type UIDocument, type UIElement, type UIElementId } from '@haku/ui'
+import {
+  UIDocumentSchema,
+  type UIComponentId,
+  type UIDocument,
+  type UIElement,
+  type UIElementId,
+  type UIInstanceOverride,
+} from '@haku/ui'
 import { assetId, type AssetRef } from '@haku/schema'
 import type { Command, CommandBus } from '../commands/command-bus.js'
 import { reduceUISelection } from './ui-canvas-selection.js'
+import {
+  detachUIComponentInstance,
+  extractUIComponent,
+  placeUIComponentInstance,
+  resetUIInstanceOverride,
+  setUIInstanceOverride,
+} from './ui-component-authoring.js'
 import {
   duplicateUISubtrees,
   moveUIElements,
@@ -368,6 +382,77 @@ export class UIAuthoringSession {
       ...(options.source ? { source: options.source } : {}),
       ...(options.point ? { point: options.point } : {}),
     })
+  }
+
+  createComponent(
+    rootId: UIElementId | string,
+    name: string,
+  ): { readonly componentId: UIComponentId; readonly instanceId: UIElementId } {
+    const result = extractUIComponent(this.requireAsset(), rootId as UIElementId, name, this.uuid)
+    this.replaceAsset(result.asset, [result.instanceId])
+    return { componentId: result.componentId, instanceId: result.instanceId }
+  }
+
+  placeComponent(
+    componentId: UIComponentId | string,
+    options: UICreationTargetOptions & {
+      readonly point?: { readonly x: number; readonly y: number }
+    } = {},
+  ): UIElementId {
+    const asset = this.requireAsset()
+    const target = resolveUICreationTarget(asset, {
+      ...options,
+      selectedId: options.selectedId ?? this.selectedElementId,
+      lockedIds: this.editorLockedIds,
+    })
+    const result = placeUIComponentInstance(
+      asset,
+      componentId,
+      target.parentId,
+      {
+        index: target.index,
+        ...(options.point ? { point: options.point } : {}),
+      },
+      this.uuid,
+    )
+    this.replaceAsset(result.asset, [result.instanceId])
+    return result.instanceId
+  }
+
+  detachComponentInstance(instanceId: UIElementId | string): UIElementId {
+    const result = detachUIComponentInstance(
+      this.requireAsset(),
+      instanceId as UIElementId,
+      this.uuid,
+    )
+    this.replaceAsset(result.asset, [result.rootId])
+    return result.rootId
+  }
+
+  setInstanceOverride(
+    instanceId: UIElementId | string,
+    sourceElementId: UIElementId | string,
+    override: UIInstanceOverride,
+  ): void {
+    const candidate = setUIInstanceOverride(
+      this.requireAsset(),
+      instanceId as UIElementId,
+      sourceElementId as UIElementId,
+      override,
+    )
+    this.replaceAsset(candidate, [instanceId])
+  }
+
+  resetInstanceOverride(
+    instanceId: UIElementId | string,
+    sourceElementId: UIElementId | string,
+  ): void {
+    const candidate = resetUIInstanceOverride(
+      this.requireAsset(),
+      instanceId as UIElementId,
+      sourceElementId as UIElementId,
+    )
+    this.replaceAsset(candidate, [instanceId])
   }
 
   moveElements(

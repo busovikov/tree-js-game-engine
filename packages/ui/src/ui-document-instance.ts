@@ -1,11 +1,11 @@
 import type { AssetRef } from '@haku/schema'
+import { applyUIInstanceOverride, uiInstanceLocatorKey } from './component-instance.js'
 import {
   UIDocumentSchema,
   type UIDocument,
   type UIElement,
   type UIElementId,
   type UIEventId,
-  type UIInstanceOverride,
   type UIPlacement,
   type UISize,
   type UISizing,
@@ -125,7 +125,7 @@ export class UIDocumentInstance {
   }
 
   getInstanceElement(locator: UIInstanceLocator): HTMLElement | null {
-    return this.instanceNodes.get(locatorKey(locator.instancePath, locator.sourceElementId)) ?? null
+    return this.instanceNodes.get(uiInstanceLocatorKey(locator)) ?? null
   }
 
   subscribe(listener: UIEventListener): () => void {
@@ -227,14 +227,14 @@ export class UIDocumentInstance {
       const source = byId.get(sourceId)
       if (!source) throw new Error(`Unknown UI component element: ${sourceId}`)
       const override = instance.overrides[source.id]
-      const effective = applyOverride(source, override)
+      const effective = applyUIInstanceOverride(source, override)
       if (effective.type === 'instance') {
         return this.renderInstance(ownerDocument, effective, [...path, effective.id], topLevelId, instanceNodes, entries)
       }
       const node = this.renderElement(
         ownerDocument,
         effective,
-        locatorKey(path, source.id),
+        uiInstanceLocatorKey({ instancePath: path, sourceElementId: source.id }),
         topLevelId,
         path,
         source.id,
@@ -278,7 +278,7 @@ export class UIDocumentInstance {
       ...(radioGroupKey ? { radioGroupKey } : {}),
     }
     entries.set(key, entry)
-    if (sourceElementId && instancePath) instanceNodes.set(locatorKey(instancePath, sourceElementId), node)
+    if (sourceElementId && instancePath) instanceNodes.set(uiInstanceLocatorKey({ instancePath, sourceElementId }), node)
     else nodes?.set(element.id, node)
     if (radioGroupKey && !this.radioValues.has(radioGroupKey)) {
       this.radioValues.set(radioGroupKey, element.type === 'radio' ? element.value : null)
@@ -447,7 +447,7 @@ export class UIDocumentInstance {
 
   private requireEntry(target: UIRuntimeTarget): RuntimeEntry {
     const key = typeof target === 'object'
-      ? locatorKey(target.instancePath, target.sourceElementId)
+      ? uiInstanceLocatorKey(target)
       : target
     const entry = this.entries.get(key)
     if (!entry) throw new Error(`Unknown UI element: ${typeof target === 'string' ? target : key}`)
@@ -464,28 +464,8 @@ function copyMap<K, V>(source: Map<K, V>, target: Map<K, V>): void {
   for (const [key, value] of source) target.set(key, value)
 }
 
-function locatorKey(path: readonly UIElementId[], sourceElementId: UIElementId): string {
-  return `${path.join('/')}:${sourceElementId}`
-}
-
 function isContainer(element: UIElement): element is Extract<UIElement, { type: 'frame' | 'scroll-container' | 'list' }> {
   return element.type === 'frame' || element.type === 'scroll-container' || element.type === 'list'
-}
-
-function applyOverride(element: UIElement, override: UIInstanceOverride | undefined): UIElement {
-  if (!override) return element
-  const merged: Record<string, unknown> = {
-    ...element,
-    ...(override.name !== undefined ? { name: override.name } : {}),
-    ...(override.text !== undefined ? { text: override.text } : {}),
-    ...(override.value !== undefined ? { value: override.value } : {}),
-    ...(override.visible !== undefined ? { visible: override.visible } : {}),
-    ...(override.enabled !== undefined ? { enabled: override.enabled } : {}),
-    ...(override.style ? { style: { ...element.style, ...override.style } } : {}),
-    ...(override.accessibility ? { accessibility: { ...element.accessibility, ...override.accessibility } } : {}),
-    ...(override.events ? { events: { ...element.events, ...override.events } } : {}),
-  }
-  return merged as UIElement
 }
 
 function valueOf(element: UIElement): UIValue | undefined {
