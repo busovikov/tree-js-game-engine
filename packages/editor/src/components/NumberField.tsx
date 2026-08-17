@@ -14,6 +14,9 @@ export const NumberField = memo(function NumberField({
   hint,
   labelClassName = 'mesh-field__label',
   inputClassName = 'mesh-field__input',
+  onScrubStart,
+  onScrubEnd,
+  inputAriaLabel,
 }: {
   label: string
   value: number
@@ -26,6 +29,9 @@ export const NumberField = memo(function NumberField({
   hint?: string
   labelClassName?: string
   inputClassName?: string
+  onScrubStart?: () => void
+  onScrubEnd?: () => void
+  inputAriaLabel?: string
 }) {
   const isMixed = mixed === null
   const isDisabled = disabled || isMixed
@@ -64,11 +70,14 @@ export const NumberField = memo(function NumberField({
         max={max}
         disabled={isDisabled}
         hint={hint}
+        onScrubStart={onScrubStart}
+        onScrubEnd={onScrubEnd}
       >
         {label}
       </DraggableNumberLabel>
       <input
         type="number"
+        aria-label={inputAriaLabel}
         className={`${inputClassName}${isMixed ? ` ${inputClassName}--mixed` : ''}`}
         value={draft}
         placeholder={isMixed ? '—' : undefined}

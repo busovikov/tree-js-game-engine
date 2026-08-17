@@ -23,6 +23,8 @@ export function useNumberScrub({
   min,
   max,
   disabled,
+  onScrubStart,
+  onScrubEnd,
 }: {
   value: number
   onChange: (value: number) => void
@@ -31,6 +33,8 @@ export function useNumberScrub({
   min?: number
   max?: number
   disabled?: boolean
+  onScrubStart?: () => void
+  onScrubEnd?: () => void
 }) {
   const startRef = useRef<{ x: number; value: number } | null>(null)
 
@@ -40,10 +44,11 @@ export function useNumberScrub({
       event.preventDefault()
       event.stopPropagation()
       startRef.current = { x: event.clientX, value }
+      onScrubStart?.()
       event.currentTarget.setPointerCapture(event.pointerId)
       document.body.style.cursor = 'ew-resize'
     },
-    [disabled, value],
+    [disabled, onScrubStart, value],
   )
 
   const onPointerMove = useCallback(
@@ -66,7 +71,8 @@ export function useNumberScrub({
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId)
     }
-  }, [])
+    onScrubEnd?.()
+  }, [onScrubEnd])
 
   return {
     onPointerDown,

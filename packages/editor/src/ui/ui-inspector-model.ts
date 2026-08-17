@@ -24,6 +24,25 @@ export interface UISizeConversionContext extends UISizeContext {
   readonly unit: 'px' | '%'
 }
 
+export function convertUIFixedUnit(
+  current: Extract<UISize, { mode: 'fixed' }>,
+  unit: 'px' | '%',
+  context: { readonly isRoot: boolean; readonly measured: number; readonly reference: number },
+): Extract<UISize, { mode: 'fixed' }> {
+  if (current.unit === unit) return current
+  if (!Number.isFinite(context.measured) || context.measured < 0) {
+    throw new Error('Fixed unit conversion requires a finite measured element size.')
+  }
+  if (unit === '%') {
+    if (context.isRoot) throw new Error('Percentage sizing is unavailable on the root Frame.')
+    if (!Number.isFinite(context.reference) || context.reference <= 0) {
+      throw new Error('Percentage conversion requires a positive measured parent size.')
+    }
+    return { mode: 'fixed', value: (context.measured / context.reference) * 100, unit }
+  }
+  return { mode: 'fixed', value: context.measured, unit }
+}
+
 export type UISizingBoundKey = 'minWidth' | 'maxWidth' | 'minHeight' | 'maxHeight'
 
 export function updateUISizingBound(

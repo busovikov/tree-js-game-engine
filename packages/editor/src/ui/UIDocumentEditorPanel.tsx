@@ -7,10 +7,12 @@ import type {
 import {
   UIDocumentInstance,
   type UIDocument,
+  type UIBound,
   type UIElement,
   type UIElementId,
   type UILayout,
   type UISize,
+  type UISizing,
   type UIThemeId,
 } from '@haku/ui'
 import { projectPathToUrl } from '@haku/schema'
@@ -51,10 +53,11 @@ import {
 } from './ui-hierarchy-commands.js'
 import {
   convertFrameLayout,
+  convertUIFixedUnit,
   convertUISize,
   explainUISizeMode,
-  formatUISize,
-  parseUISize,
+  updateUISizingBound,
+  type UISizingBoundKey,
   type UISizeContext,
   type UISizeMode,
 } from './ui-inspector-model.js'
@@ -395,30 +398,29 @@ function HierarchyNode({
 function UIDimensionField({
   axis,
   size,
+  sizing,
   measured,
+  reference,
   context,
   onChange,
+  onSizingChange,
 }: {
   axis: 'Width' | 'Height'
   size: UISize
+  sizing: UISizing
   measured: number
+  reference: number
   context: UISizeContext
-  onChange: (size: UISize) => void
+  onChange: (size: UISize, historyGroup?: string) => void
+  onSizingChange: (sizing: UISizing, historyGroup?: string) => void
 }) {
-  const [draft, setDraft] = useState(() => formatUISize(size))
   const [error, setError] = useState<string | null>(null)
-  useEffect(() => setDraft(formatUISize(size)), [size])
-
-  const commit = () => {
-    try {
-      const next = parseUISize(draft, context)
-      setError(null)
-      setDraft(formatUISize(next))
-      if (JSON.stringify(next) !== JSON.stringify(size)) onChange(next)
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason))
-      setDraft(formatUISize(size))
-    }
+  const historyGroup = useRef<string | null>(null)
+  const beginNumericGesture = () => {
+    historyGroup.current = `ui-sizing-${crypto.randomUUID()}`
+  }
+  const endNumericGesture = () => {
+    historyGroup.current = null
   }
   const setMode = (mode: UISizeMode) => {
     try {
@@ -432,6 +434,75 @@ function UIDimensionField({
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason))
     }
+  }
+  const setUnit = (unit: 'px' | '%') => {
+    if (size.mode !== 'fixed') return
+    try {
+      onChange(convertUIFixedUnit(size, unit, { isRoot: context.isRoot, measured, reference }))
+      setError(null)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    }
+  }
+  const setBound = (key: UISizingBoundKey, bound: UIBound | undefined, group?: string) => {
+    try {
+      onSizingChange(updateUISizingBound(sizing, key, bound), group)
+      setError(null)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    }
+  }
+  const boundControl = (kind: 'Min' | 'Max') => {
+    const key = `${kind.toLowerCase()}${axis}` as UISizingBoundKey
+    const bound = sizing[key]
+    const label = `${kind} ${axis.toLowerCase()}`
+    const changeUnit = (unit: '' | 'px' | '%') => {
+      if (!unit) return setBound(key, undefined)
+      const measuredValue = unit === 'px' ? measured : reference > 0 ? (measured / reference) * 100 : 0
+      const otherKey = `${kind === 'Min' ? 'max' : 'min'}${axis}` as UISizingBoundKey
+      const other = sizing[otherKey]
+      const value = other?.unit === unit
+        ? kind === 'Max'
+          ? Math.max(measuredValue, other.value)
+          : Math.min(measuredValue, other.value)
+        : measuredValue
+      setBound(key, { value: Math.max(0, value), unit })
+    }
+    return (
+      <div className="haku-ui-editor__bound-field" key={key}>
+        <label className="mesh-field">
+          <span className="mesh-field__label">{label} unit</span>
+          <select
+            className="mesh-field__input"
+            aria-label={`${label} unit`}
+            value={bound?.unit ?? ''}
+            onChange={(event) => changeUnit(event.target.value as '' | 'px' | '%')}
+          >
+            <option value="">None</option>
+            <option value="px">px</option>
+            <option value="%" disabled={context.isRoot}>%</option>
+          </select>
+        </label>
+        {bound && (
+          <NumberField
+            label={label}
+            inputAriaLabel={label}
+            value={bound.value}
+            min={0}
+            step={1}
+            onScrubStart={beginNumericGesture}
+            onScrubEnd={endNumericGesture}
+            onChange={(value) =>
+              setBound(
+                key,
+                { ...bound, value },
+                historyGroup.current ?? undefined,
+              )
+            }
+          />
+        )}
+      </div>
+    )
   }
 
   return (
@@ -449,25 +520,42 @@ function UIDimensionField({
           <option value="fixed">Fixed</option>
         </select>
       </label>
-      <label className="mesh-field">
-        <span className="mesh-field__label">{axis} value</span>
-        <input
-          className="mesh-field__input"
-          aria-label={`${axis} (px)`}
-          value={draft}
-          aria-invalid={error ? true : undefined}
-          onChange={(event) => setDraft(event.target.value)}
-          onBlur={commit}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') event.currentTarget.blur()
-            if (event.key === 'Escape') {
-              setError(null)
-              setDraft(formatUISize(size))
-              event.currentTarget.blur()
+      {size.mode === 'fixed' && (
+        <>
+          <label className="mesh-field">
+            <span className="mesh-field__label">{axis} unit</span>
+            <select
+              className="mesh-field__input"
+              aria-label={`${axis} unit`}
+              value={size.unit}
+              onChange={(event) => setUnit(event.target.value as 'px' | '%')}
+            >
+              <option value="px">px</option>
+              <option value="%" disabled={context.isRoot}>%</option>
+            </select>
+          </label>
+          <NumberField
+            label={`${axis} value`}
+            inputAriaLabel={`${axis} value`}
+            value={size.value}
+            min={0}
+            step={1}
+            onScrubStart={beginNumericGesture}
+            onScrubEnd={endNumericGesture}
+            onChange={(value) =>
+              onChange(
+                { ...size, value },
+                historyGroup.current ?? undefined,
+              )
             }
-          }}
-        />
-      </label>
+          />
+        </>
+      )}
+      {explainUISizeMode('fill', context) && (
+        <small>{explainUISizeMode('fill', context)}</small>
+      )}
+      {boundControl('Min')}
+      {boundControl('Max')}
       {error && <small role="alert">{error}</small>}
     </fieldset>
   )
@@ -485,9 +573,20 @@ const UIFrameLayoutSection = memo(function UIFrameLayoutSection({
   bounds: ReadonlyMap<UIElementId, UIRect>
 }) {
   const [error, setError] = useState<string | null>(null)
+  const historyGroup = useRef<string | null>(null)
+  const beginNumericGesture = () => {
+    historyGroup.current = `ui-layout-${crypto.randomUUID()}`
+  }
+  const endNumericGesture = () => {
+    historyGroup.current = null
+  }
   const updateLayout = (layout: UILayout) => {
     try {
-      uiAuthoringSession.updateElement(element.id, { layout })
+      uiAuthoringSession.updateElement(
+        element.id,
+        { layout },
+        historyGroup.current ? { historyGroup: historyGroup.current } : {},
+      )
       setError(null)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason))
@@ -535,6 +634,8 @@ const UIFrameLayoutSection = memo(function UIFrameLayoutSection({
           value={element.layout.padding[side]}
           min={0}
           step={1}
+          onScrubStart={beginNumericGesture}
+          onScrubEnd={endNumericGesture}
           onChange={(value) =>
             updateLayout({
               ...element.layout,
@@ -550,6 +651,8 @@ const UIFrameLayoutSection = memo(function UIFrameLayoutSection({
             value={autoLayout.rowGap}
             min={0}
             step={1}
+            onScrubStart={beginNumericGesture}
+            onScrubEnd={endNumericGesture}
             onChange={(rowGap) => updateLayout({ ...autoLayout, rowGap })}
           />
           <NumberField
@@ -557,6 +660,8 @@ const UIFrameLayoutSection = memo(function UIFrameLayoutSection({
             value={autoLayout.columnGap}
             min={0}
             step={1}
+            onScrubStart={beginNumericGesture}
+            onScrubEnd={endNumericGesture}
             onChange={(columnGap) => updateLayout({ ...autoLayout, columnGap })}
           />
           <label className="mesh-field">
@@ -615,6 +720,8 @@ const UIFrameLayoutSection = memo(function UIFrameLayoutSection({
           value={gridLayout.columns}
           min={1}
           step={1}
+          onScrubStart={beginNumericGesture}
+          onScrubEnd={endNumericGesture}
           onChange={(columns) => updateLayout({ ...gridLayout, columns })}
         />
       )}
@@ -653,8 +760,8 @@ function UIInspector({
   element: UIElement
   bounds: ReadonlyMap<UIElementId, UIRect>
 }) {
-  const update = (patch: Record<string, unknown>) =>
-    uiAuthoringSession.updateElement(element.id, patch)
+  const update = (patch: Record<string, unknown>, historyGroup?: string) =>
+    uiAuthoringSession.updateElement(element.id, patch, historyGroup ? { historyGroup } : {})
   const parent = asset.elements.find(
     (candidate) => 'children' in candidate && candidate.children.includes(element.id),
   )
@@ -664,6 +771,7 @@ function UIInspector({
     positioning: element.placement.positioning,
   }
   const rect = bounds.get(element.id)
+  const parentRect = parent ? bounds.get(parent.id) : undefined
 
   return (
     <div className="haku-ui-editor__inspector-fields">
@@ -717,16 +825,26 @@ function UIInspector({
       <UIDimensionField
         axis="Width"
         size={element.sizing.width}
+        sizing={element.sizing}
         measured={rect?.width ?? 0}
+        reference={parentRect?.width ?? 0}
         context={sizeContext}
-        onChange={(width) => update({ sizing: { ...element.sizing, width } })}
+        onChange={(width, historyGroup) =>
+          update({ sizing: { ...element.sizing, width } }, historyGroup)
+        }
+        onSizingChange={(sizing, historyGroup) => update({ sizing }, historyGroup)}
       />
       <UIDimensionField
         axis="Height"
         size={element.sizing.height}
+        sizing={element.sizing}
         measured={rect?.height ?? 0}
+        reference={parentRect?.height ?? 0}
         context={sizeContext}
-        onChange={(height) => update({ sizing: { ...element.sizing, height } })}
+        onChange={(height, historyGroup) =>
+          update({ sizing: { ...element.sizing, height } }, historyGroup)
+        }
+        onSizingChange={(sizing, historyGroup) => update({ sizing }, historyGroup)}
       />
       <label className="mesh-field">
         <span className="mesh-field__label">Text color</span>

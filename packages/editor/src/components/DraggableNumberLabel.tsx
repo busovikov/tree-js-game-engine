@@ -13,6 +13,8 @@ export const DraggableNumberLabel = memo(function DraggableNumberLabel({
   disabled,
   hint,
   className,
+  onScrubStart,
+  onScrubEnd,
 }: {
   children: ReactNode
   value: number
@@ -24,8 +26,20 @@ export const DraggableNumberLabel = memo(function DraggableNumberLabel({
   disabled?: boolean
   hint?: string
   className?: string
+  onScrubStart?: () => void
+  onScrubEnd?: () => void
 }) {
-  const scrub = useNumberScrub({ value, onChange, step, scrubMultiplier, min, max, disabled })
+  const scrub = useNumberScrub({
+    value,
+    onChange,
+    step,
+    scrubMultiplier,
+    min,
+    max,
+    disabled,
+    onScrubStart,
+    onScrubEnd,
+  })
 
   return (
     <span

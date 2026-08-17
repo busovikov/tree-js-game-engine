@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { UIDocumentSchema, type UIDocument } from '@haku/ui'
 import {
   convertFrameLayout,
+  convertUIFixedUnit,
   convertUISize,
   explainUISizeMode,
   formatUISize,
@@ -56,6 +57,37 @@ function document(layout: 'free' | 'vertical' = 'free'): UIDocument {
 }
 
 describe('UI Inspector field model', () => {
+  it('converts Fixed px and percent units from measured bounds without guessing', () => {
+    expect(
+      convertUIFixedUnit({ mode: 'fixed', value: 50, unit: '%' }, 'px', {
+        isRoot: false,
+        measured: 200,
+        reference: 400,
+      }),
+    ).toEqual({ mode: 'fixed', value: 200, unit: 'px' })
+    expect(
+      convertUIFixedUnit({ mode: 'fixed', value: 200, unit: 'px' }, '%', {
+        isRoot: false,
+        measured: 200,
+        reference: 400,
+      }),
+    ).toEqual({ mode: 'fixed', value: 50, unit: '%' })
+    expect(() =>
+      convertUIFixedUnit({ mode: 'fixed', value: 200, unit: 'px' }, '%', {
+        isRoot: true,
+        measured: 200,
+        reference: 400,
+      }),
+    ).toThrow(/root/i)
+    expect(() =>
+      convertUIFixedUnit({ mode: 'fixed', value: 200, unit: 'px' }, '%', {
+        isRoot: false,
+        measured: 200,
+        reference: 0,
+      }),
+    ).toThrow(/measured parent/i)
+  })
+
   it('rejects inverted comparable min/max bounds without comparing unlike units', () => {
     const sizing = document().elements[1]!.sizing
 

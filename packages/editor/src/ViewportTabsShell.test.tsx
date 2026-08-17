@@ -33,10 +33,17 @@ import { EditorLayout } from './EditorLayout.js'
 import { ViewportTabsShell } from './ViewportTabsShell.js'
 import { useEditorStore } from './store/editor-store.js'
 import { projectService } from './services/project-service.js'
-import { uiAuthoringSession } from './ui/ui-editor-service.js'
+import { uiAuthoringSession, uiCommandBus } from './ui/ui-editor-service.js'
+import { UIDocumentSchema } from '@haku/ui'
+
+const INITIAL_UI_ASSET = structuredClone(uiAuthoringSession.asset)!
 
 afterEach(cleanup)
-beforeEach(() => useEditorStore.setState({ activeWorkspace: 'viewport' }))
+beforeEach(() => {
+  useEditorStore.setState({ activeWorkspace: 'viewport' })
+  uiAuthoringSession.openAsset('builtin:m10b-runtime-hud.ui.json', INITIAL_UI_ASSET)
+  uiCommandBus.clear()
+})
 
 describe('ViewportTabsShell Code workspace', () => {
   it('opens the project code workflow from a user-visible Code tab', () => {
@@ -103,9 +110,9 @@ describe('ViewportTabsShell UI workspace baseline', () => {
   })
 
   it.each([
-    ['13000000-0000-4000-8000-000000000102', '100%'],
-    ['13000000-0000-4000-8000-000000000104', 'auto'],
-  ])('round-trips the %s element width as %s in the Inspector', (elementId, expected) => {
+    ['13000000-0000-4000-8000-000000000102', 'fixed', '100', '%'],
+    ['13000000-0000-4000-8000-000000000104', 'hug', null, null],
+  ])('round-trips the %s element width without unit coercion', (elementId, mode, value, unit) => {
     const { container } = render(<ViewportTabsShell />)
     fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
     const treeItem = container.querySelector(
@@ -113,7 +120,48 @@ describe('ViewportTabsShell UI workspace baseline', () => {
     ) as HTMLButtonElement
     fireEvent.click(treeItem)
 
-    expect((screen.getByLabelText('Width (px)') as HTMLInputElement).value).toBe(expected)
+    expect((screen.getByLabelText('Width mode') as HTMLSelectElement).value).toBe(mode)
+    if (value === null) {
+      expect(screen.queryByLabelText('Width value')).toBeNull()
+    } else {
+      expect((screen.getByLabelText('Width value') as HTMLInputElement).value).toBe(value)
+      expect((screen.getByLabelText('Width unit') as HTMLSelectElement).value).toBe(unit)
+    }
+  })
+
+  it('converts Fixed units explicitly and rejects an inverted comparable bound atomically', () => {
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    fireEvent.click(
+      container.querySelector(
+        '[data-haku-ui-tree-item="13000000-0000-4000-8000-000000000102"]',
+      ) as HTMLButtonElement,
+    )
+    uiCommandBus.clear()
+    const before = structuredClone(uiAuthoringSession.asset)!
+
+    fireEvent.change(screen.getByLabelText('Width unit'), { target: { value: 'px' } })
+    const score = uiAuthoringSession.asset!.elements[1]!
+    expect(score.sizing.width).toMatchObject({ mode: 'fixed', unit: 'px' })
+    expect(score.sizing.width.mode === 'fixed' && Number.isFinite(score.sizing.width.value)).toBe(
+      true,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(uiAuthoringSession.asset).toEqual(before)
+
+    fireEvent.change(screen.getByLabelText('Min width unit'), { target: { value: 'px' } })
+    const minWidth = screen.getByLabelText('Min width')
+    fireEvent.change(minWidth, { target: { value: '200' } })
+    fireEvent.blur(minWidth)
+    fireEvent.change(screen.getByLabelText('Max width unit'), { target: { value: 'px' } })
+    const beforeInvalid = structuredClone(uiAuthoringSession.asset)!
+    const maxWidth = screen.getByLabelText('Max width')
+    fireEvent.change(maxWidth, { target: { value: '100' } })
+    fireEvent.blur(maxWidth)
+
+    expect(screen.getByRole('alert').textContent).toMatch(/minWidth cannot exceed maxWidth/i)
+    expect(uiAuthoringSession.asset).toEqual(beforeInvalid)
+    expect(() => UIDocumentSchema.parse(uiAuthoringSession.asset)).not.toThrow()
   })
 
   it('converts HUD Root from Free to Horizontal as one exact undoable document edit', () => {
@@ -131,6 +179,41 @@ describe('ViewportTabsShell UI workspace baseline', () => {
       { positioning: 'flow' },
       { positioning: 'flow' },
     ])
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(uiAuthoringSession.asset).toEqual(before)
+  })
+
+  it('groups each numeric scrub gesture into its own exact undo without invalid assets', () => {
+    render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    uiCommandBus.clear()
+    const before = structuredClone(uiAuthoringSession.asset)!
+    const label = screen.getByText('Padding top') as HTMLElement
+    Object.assign(label, {
+      setPointerCapture: vi.fn(),
+      hasPointerCapture: vi.fn(() => false),
+      releasePointerCapture: vi.fn(),
+    })
+
+    fireEvent.pointerDown(label, { button: 0, pointerId: 7, clientX: 0 })
+    fireEvent.pointerMove(label, { pointerId: 7, clientX: 20 })
+    fireEvent.pointerMove(label, { pointerId: 7, clientX: 40 })
+    fireEvent.pointerMove(label, { pointerId: 7, clientX: 60 })
+    fireEvent.pointerUp(label, { pointerId: 7, clientX: 60 })
+    const afterFirst = structuredClone(uiAuthoringSession.asset)!
+    expect(afterFirst.elements[0]).toMatchObject({ layout: { padding: { top: 27 } } })
+    expect(() => UIDocumentSchema.parse(afterFirst)).not.toThrow()
+
+    fireEvent.pointerDown(label, { button: 0, pointerId: 8, clientX: 0 })
+    fireEvent.pointerMove(label, { pointerId: 8, clientX: 40 })
+    fireEvent.pointerUp(label, { pointerId: 8, clientX: 40 })
+    expect(uiAuthoringSession.asset?.elements[0]).toMatchObject({
+      layout: { padding: { top: 29 } },
+    })
+    expect(() => UIDocumentSchema.parse(uiAuthoringSession.asset)).not.toThrow()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(uiAuthoringSession.asset).toEqual(afterFirst)
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
     expect(uiAuthoringSession.asset).toEqual(before)
   })
