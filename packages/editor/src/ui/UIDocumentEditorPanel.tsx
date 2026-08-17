@@ -9,10 +9,10 @@ import {
   type UIDocument,
   type UIElement,
   type UIElementId,
+  type UISize,
   type UIThemeId,
 } from '@haku/ui'
 import { projectPathToUrl } from '@haku/schema'
-import { NumberField } from '../components/NumberField.js'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { AssetBrowserPanel } from '../panels/AssetBrowserPanel.js'
 import { projectService } from '../services/project-service.js'
@@ -47,6 +47,14 @@ import {
   resolveUICreationTarget,
   type UIHierarchyDropPosition,
 } from './ui-hierarchy-commands.js'
+import {
+  convertUISize,
+  explainUISizeMode,
+  formatUISize,
+  parseUISize,
+  type UISizeContext,
+  type UISizeMode,
+} from './ui-inspector-model.js'
 
 function confirmDiscard(): boolean {
   return !uiAuthoringSession.isDirty || window.confirm('Discard unsaved UI changes?')
@@ -381,17 +389,107 @@ function HierarchyNode({
   )
 }
 
-function UIInspector({ element }: { element: UIElement }) {
+function UIDimensionField({
+  axis,
+  size,
+  measured,
+  context,
+  onChange,
+}: {
+  axis: 'Width' | 'Height'
+  size: UISize
+  measured: number
+  context: UISizeContext
+  onChange: (size: UISize) => void
+}) {
+  const [draft, setDraft] = useState(() => formatUISize(size))
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => setDraft(formatUISize(size)), [size])
+
+  const commit = () => {
+    try {
+      const next = parseUISize(draft, context)
+      setError(null)
+      setDraft(formatUISize(next))
+      if (JSON.stringify(next) !== JSON.stringify(size)) onChange(next)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+      setDraft(formatUISize(size))
+    }
+  }
+  const setMode = (mode: UISizeMode) => {
+    try {
+      const next = convertUISize(size, mode, {
+        ...context,
+        measured,
+        unit: size.mode === 'fixed' ? size.unit : 'px',
+      })
+      setError(null)
+      onChange(next)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    }
+  }
+
+  return (
+    <fieldset className="haku-ui-editor__dimension-field">
+      <legend>{axis}</legend>
+      <label className="mesh-field">
+        <span className="mesh-field__label">{axis} mode</span>
+        <select
+          className="mesh-field__input"
+          value={size.mode}
+          onChange={(event) => setMode(event.target.value as UISizeMode)}
+        >
+          <option value="hug">Hug</option>
+          <option value="fill" disabled={explainUISizeMode('fill', context) !== null}>Fill</option>
+          <option value="fixed">Fixed</option>
+        </select>
+      </label>
+      <label className="mesh-field">
+        <span className="mesh-field__label">{axis} value</span>
+        <input
+          className="mesh-field__input"
+          aria-label={`${axis} (px)`}
+          value={draft}
+          aria-invalid={error ? true : undefined}
+          onChange={(event) => setDraft(event.target.value)}
+          onBlur={commit}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') event.currentTarget.blur()
+            if (event.key === 'Escape') {
+              setError(null)
+              setDraft(formatUISize(size))
+              event.currentTarget.blur()
+            }
+          }}
+        />
+      </label>
+      {error && <small role="alert">{error}</small>}
+    </fieldset>
+  )
+}
+
+function UIInspector({
+  asset,
+  element,
+  bounds,
+}: {
+  asset: UIDocument
+  element: UIElement
+  bounds: ReadonlyMap<UIElementId, UIRect>
+}) {
   const update = (patch: Record<string, unknown>) =>
     uiAuthoringSession.updateElement(element.id, patch)
-  const numericWidth =
-    element.sizing.width.mode === 'fixed' && element.sizing.width.unit === 'px'
-      ? element.sizing.width.value
-      : 0
-  const numericHeight =
-    element.sizing.height.mode === 'fixed' && element.sizing.height.unit === 'px'
-      ? element.sizing.height.value
-      : 0
+  const parent = asset.elements.find(
+    (candidate) => 'children' in candidate && candidate.children.includes(element.id),
+  )
+  const sizeContext: UISizeContext = {
+    isRoot: element.id === asset.root,
+    parentLayout: parent && 'layout' in parent ? parent.layout.mode : null,
+    positioning: element.placement.positioning,
+  }
+  const rect = bounds.get(element.id)
 
   return (
     <div className="haku-ui-editor__inspector-fields">
@@ -439,27 +537,19 @@ function UIInspector({ element }: { element: UIElement }) {
           />
         </label>
       )}
-      <NumberField
-        label="Width (px)"
-        value={numericWidth}
-        min={0}
-        step={1}
-        onChange={(width) =>
-          update({
-            sizing: { ...element.sizing, width: { mode: 'fixed', value: width, unit: 'px' } },
-          })
-        }
+      <UIDimensionField
+        axis="Width"
+        size={element.sizing.width}
+        measured={rect?.width ?? 0}
+        context={sizeContext}
+        onChange={(width) => update({ sizing: { ...element.sizing, width } })}
       />
-      <NumberField
-        label="Height (px)"
-        value={numericHeight}
-        min={0}
-        step={1}
-        onChange={(height) =>
-          update({
-            sizing: { ...element.sizing, height: { mode: 'fixed', value: height, unit: 'px' } },
-          })
-        }
+      <UIDimensionField
+        axis="Height"
+        size={element.sizing.height}
+        measured={rect?.height ?? 0}
+        context={sizeContext}
+        onChange={(height) => update({ sizing: { ...element.sizing, height } })}
       />
       <label className="mesh-field">
         <span className="mesh-field__label">Text color</span>
@@ -2058,7 +2148,11 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
         <Panel defaultSize={24} minSize={16} maxSize={40}>
           <aside className="haku-ui-editor__inspector" aria-label="UI Inspector">
             <h3>UI Inspector</h3>
-            {selected ? <UIInspector element={selected} /> : <p>Select a UI element</p>}
+            {selected && asset ? (
+              <UIInspector asset={asset} element={selected} bounds={elementBounds} />
+            ) : (
+              <p>Select a UI element</p>
+            )}
           </aside>
         </Panel>
       </PanelGroup>

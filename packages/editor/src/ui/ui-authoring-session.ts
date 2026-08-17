@@ -10,6 +10,7 @@ import {
   type UIHierarchyBounds,
   type UIHierarchyDropTarget,
 } from './ui-hierarchy-commands.js'
+import { updateUIElementStrict } from './ui-inspector-model.js'
 
 export const UI_DESKTOP_VIEWPORTS = {
   'desktop-1280x720': {
@@ -100,6 +101,7 @@ class ReplaceUIDocumentCommand implements Command {
     private readonly after: UIDocument,
     private readonly afterSelection: readonly UIElementId[],
     private readonly path: string,
+    private readonly historyGroup?: string,
   ) {}
 
   execute(): void {
@@ -108,6 +110,27 @@ class ReplaceUIDocumentCommand implements Command {
 
   undo(): void {
     this.session.apply(this.before, this.path, this.beforeSelection)
+  }
+
+  merge(other: Command): Command | null {
+    if (
+      !this.historyGroup ||
+      !(other instanceof ReplaceUIDocumentCommand) ||
+      other.session !== this.session ||
+      other.path !== this.path ||
+      other.historyGroup !== this.historyGroup
+    ) {
+      return null
+    }
+    return new ReplaceUIDocumentCommand(
+      this.session,
+      this.before,
+      this.beforeSelection,
+      other.after,
+      other.afterSelection,
+      this.path,
+      this.historyGroup,
+    )
   }
 }
 
@@ -202,7 +225,11 @@ export class UIAuthoringSession {
     return asset
   }
 
-  replaceAsset(input: unknown, selectionOverride?: readonly (UIElementId | string)[]): void {
+  replaceAsset(
+    input: unknown,
+    selectionOverride?: readonly (UIElementId | string)[],
+    options: { readonly historyGroup?: string } = {},
+  ): void {
     const asset = this.requireAsset()
     const path = this.requirePath()
     const next = UIDocumentSchema.parse(input)
@@ -213,7 +240,15 @@ export class UIAuthoringSession {
       parentMap(next),
     ) as UIElementId[]
     this.commands.execute(
-      new ReplaceUIDocumentCommand(this, asset, this.selection, next, nextSelection, path),
+      new ReplaceUIDocumentCommand(
+        this,
+        asset,
+        this.selection,
+        next,
+        nextSelection,
+        path,
+        options.historyGroup,
+      ),
     )
   }
 
@@ -371,17 +406,13 @@ export class UIAuthoringSession {
     this.updateElement(id, { visible })
   }
 
-  updateElement(id: UIElementId | string, patch: Record<string, unknown>): void {
+  updateElement(
+    id: UIElementId | string,
+    patch: Record<string, unknown>,
+    options: { readonly historyGroup?: string } = {},
+  ): void {
     const asset = this.requireAsset()
-    if (!asset.elements.some((element) => element.id === id)) {
-      throw new Error(`Unknown UI element: ${id}`)
-    }
-    this.replaceAsset({
-      ...asset,
-      elements: asset.elements.map((element) =>
-        element.id === id ? { ...element, ...patch, id: element.id, type: element.type } : element,
-      ),
-    })
+    this.replaceAsset(updateUIElementStrict(asset, id, patch), undefined, options)
   }
 
   removeElement(id: UIElementId | string): void {

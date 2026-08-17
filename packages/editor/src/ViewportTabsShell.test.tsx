@@ -101,9 +101,8 @@ describe('ViewportTabsShell UI workspace baseline', () => {
     )
   })
 
-  // M5 removes `fails` when the Inspector preserves non-pixel sizing values.
-  it.fails.each([
-    ['13000000-0000-4000-8000-000000000101', '100%'],
+  it.each([
+    ['13000000-0000-4000-8000-000000000102', '100%'],
     ['13000000-0000-4000-8000-000000000104', 'auto'],
   ])('round-trips the %s element width as %s in the Inspector', (elementId, expected) => {
     const { container } = render(<ViewportTabsShell />)

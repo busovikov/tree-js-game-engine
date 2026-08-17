@@ -43,6 +43,27 @@ describe('UIAuthoringSession', () => {
     expect(session.asset!.elements).toHaveLength(1)
   })
 
+  it('groups one continuous Inspector edit into one undo command', () => {
+    const commands = new CommandBus()
+    const session = new UIAuthoringSession(
+      commands,
+      { readText: async () => '', writeText: async () => undefined },
+      ids(),
+    )
+    session.create('assets/ui/hud.ui.json', 'HUD')
+    const root = session.asset!.root
+    const before = structuredClone(session.asset)
+
+    session.updateElement(root, { style: { opacity: 0.9 } }, { historyGroup: 'opacity-drag' })
+    session.updateElement(root, { style: { opacity: 0.8 } }, { historyGroup: 'opacity-drag' })
+    session.updateElement(root, { style: { opacity: 0.7 } }, { historyGroup: 'opacity-drag' })
+
+    expect(session.asset!.elements[0]).toMatchObject({ style: { opacity: 0.7 } })
+    commands.undo()
+    expect(session.asset).toEqual(before)
+    expect(commands.canUndo()).toBe(true)
+  })
+
   it('supports explicit desktop preview sizes', () => {
     const session = new UIAuthoringSession(
       new CommandBus(),

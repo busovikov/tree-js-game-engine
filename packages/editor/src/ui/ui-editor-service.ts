@@ -46,6 +46,7 @@ uiAuthoringSession.openAsset(
         type: 'text',
         name: 'Score',
         text: 'SCORE 001250',
+        sizing: { width: { mode: 'fixed', value: 100, unit: '%' } },
         placement: {
           positioning: 'free',
           x: 500,
