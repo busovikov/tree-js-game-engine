@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:ui-m1": "vite --config vite.ui-m1.config.ts",
     "build": "tsc && vite build",
+    "build:ui-m1": "vite build --config vite.ui-m1.config.ts",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"
   },
