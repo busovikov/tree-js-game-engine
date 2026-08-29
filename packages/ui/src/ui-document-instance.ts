@@ -76,26 +76,30 @@ export interface UIDocumentInstanceOptions {
 const NATIVE_CONTROL_TAGS = new Set(['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'])
 
 export class UIDocumentInstance {
-  readonly document: UIDocument
+  private currentDocument: UIDocument
   private host: HTMLElement | null = null
   private readonly nodes = new Map<UIElementId, HTMLElement>()
   private readonly instanceNodes = new Map<string, HTMLElement>()
   private readonly entries = new Map<string, RuntimeEntry>()
   private readonly listeners = new Set<UIEventListener>()
-  private readonly state = new Map<string, UIElementState>()
-  private readonly radioValues = new Map<string, string | null>()
+  private state = new Map<string, UIElementState>()
+  private radioValues = new Map<string, string | null>()
   private activeTheme: UIThemeId | undefined
 
   constructor(
     input: UIDocument,
     private readonly options: UIDocumentInstanceOptions = {},
   ) {
-    this.document = UIDocumentSchema.parse(input)
+    this.currentDocument = UIDocumentSchema.parse(input)
     const theme = options.theme ?? this.document.defaultTheme
     if (theme !== undefined && !this.document.themes.some((candidate) => candidate.id === theme)) {
       throw new Error(`Unknown UI theme: ${theme}`)
     }
     this.activeTheme = theme as UIThemeId | undefined
+  }
+
+  get document(): UIDocument {
+    return this.currentDocument
   }
 
   mount(host: HTMLElement): void {
@@ -128,6 +132,73 @@ export class UIDocumentInstance {
     this.radioValues.clear()
     this.host = null
     this.activeTheme = (this.options.theme ?? this.document.defaultTheme) as UIThemeId | undefined
+  }
+
+  updateDocument(input: UIDocument): void {
+    const candidate = UIDocumentSchema.parse(input)
+    const configuredTheme = this.options.theme
+    if (configuredTheme !== undefined && !candidate.themes.some((theme) => theme.id === configuredTheme)) {
+      throw new Error(`Unknown UI theme: ${configuredTheme}`)
+    }
+    const nextTheme = candidate.themes.some((theme) => theme.id === this.activeTheme)
+      ? this.activeTheme
+      : (configuredTheme ?? candidate.defaultTheme) as UIThemeId | undefined
+
+    if (!this.host) {
+      this.currentDocument = candidate
+      this.activeTheme = nextTheme
+      this.state.clear()
+      this.radioValues.clear()
+      return
+    }
+
+    const ownerDocument = this.host.ownerDocument
+    const focusedNode = ownerDocument.activeElement
+    const focusedKey = [...this.entries.values()].find(
+      (entry) => entry.node === focusedNode && entry.element.type !== 'instance',
+    )?.key
+    const previousDocument = this.currentDocument
+    const previousTheme = this.activeTheme
+    const previousState = this.state
+    const previousRadioValues = this.radioValues
+    const previousEntries = this.entries
+    const stagedNodes = new Map<UIElementId, HTMLElement>()
+    const stagedInstanceNodes = new Map<string, HTMLElement>()
+    const stagedEntries = new Map<string, RuntimeEntry>()
+    const stagedState = new Map<string, UIElementState>()
+    const stagedRadioValues = new Map<string, string | null>()
+    let root: HTMLElement
+
+    this.currentDocument = candidate
+    this.activeTheme = nextTheme
+    this.state = stagedState
+    this.radioValues = stagedRadioValues
+    try {
+      root = this.renderDocument(ownerDocument, stagedNodes, stagedInstanceNodes, stagedEntries)
+      for (const [key, previousEntry] of previousEntries) {
+        const nextEntry = stagedEntries.get(key)
+        if (!nextEntry || previousEntry.element.type !== nextEntry.element.type || valueOf(nextEntry.element) === undefined) continue
+        const previousValue = previousEntry.radioGroupKey
+          ? previousRadioValues.get(previousEntry.radioGroupKey)
+          : previousState.get(key)?.value
+        if (previousValue === undefined || !isValidValue(nextEntry, previousValue, stagedEntries)) continue
+        if (nextEntry.radioGroupKey) stagedRadioValues.set(nextEntry.radioGroupKey, previousValue as string | null)
+        else stagedState.set(key, { ...stagedState.get(key), value: previousValue })
+      }
+      for (const entry of stagedEntries.values()) this.syncNodeValue(entry)
+    } catch (error) {
+      this.currentDocument = previousDocument
+      this.activeTheme = previousTheme
+      this.state = previousState
+      this.radioValues = previousRadioValues
+      throw error
+    }
+
+    this.host.replaceChildren(root)
+    copyMap(stagedNodes, this.nodes)
+    copyMap(stagedInstanceNodes, this.instanceNodes)
+    copyMap(stagedEntries, this.entries)
+    if (focusedKey) stagedEntries.get(focusedKey)?.node.focus()
   }
 
   getElement(id: UIElementId | string): HTMLElement | null {
@@ -500,21 +571,7 @@ export class UIDocumentInstance {
   }
 
   private validateValue(entry: RuntimeEntry, value: UIValue): void {
-    const element = entry.element
-    let valid = false
-    if (element.type === 'text-input' || element.type === 'text-area') {
-      valid = typeof value === 'string' && (element.maxLength === undefined || value.length <= element.maxLength)
-    } else if (element.type === 'checkbox' || element.type === 'switch') valid = typeof value === 'boolean'
-    else if (element.type === 'radio') {
-      valid = value === null || (typeof value === 'string' && [...this.entries.values()].some((candidate) => candidate.radioGroupKey === entry.radioGroupKey && candidate.element.type === 'radio' && candidate.element.optionValue === value))
-    } else if (element.type === 'select') {
-      valid = value === null || (typeof value === 'string' && element.options.some((option) => option.value === value && !option.disabled))
-    } else if (element.type === 'slider') {
-      valid = typeof value === 'number' && Number.isFinite(value) && value >= element.min && value <= element.max && Math.abs((value - element.min) / element.step - Math.round((value - element.min) / element.step)) < 1e-9
-    } else if (element.type === 'progress') {
-      valid = value === null || (typeof value === 'number' && Number.isFinite(value) && value >= element.min && value <= element.max)
-    }
-    if (!valid) throw new Error(`Invalid UI value for ${element.id}`)
+    if (!isValidValue(entry, value, this.entries)) throw new Error(`Invalid UI value for ${entry.element.id}`)
   }
 
   private requireValueEntry(target: UIRuntimeTarget): RuntimeEntry {
@@ -560,6 +617,27 @@ function valueOf(element: UIElement): UIValue | undefined {
     element.type === 'progress'
   ) return element.value
   return undefined
+}
+
+function isValidValue(entry: RuntimeEntry, value: UIValue, entries: ReadonlyMap<string, RuntimeEntry>): boolean {
+  const element = entry.element
+  if (element.type === 'text-input' || element.type === 'text-area') {
+    return typeof value === 'string' && (element.maxLength === undefined || value.length <= element.maxLength)
+  }
+  if (element.type === 'checkbox' || element.type === 'switch') return typeof value === 'boolean'
+  if (element.type === 'radio') {
+    return value === null || (typeof value === 'string' && [...entries.values()].some((candidate) => candidate.radioGroupKey === entry.radioGroupKey && candidate.element.type === 'radio' && candidate.element.optionValue === value))
+  }
+  if (element.type === 'select') {
+    return value === null || (typeof value === 'string' && element.options.some((option) => option.value === value && !option.disabled))
+  }
+  if (element.type === 'slider') {
+    return typeof value === 'number' && Number.isFinite(value) && value >= element.min && value <= element.max && Math.abs((value - element.min) / element.step - Math.round((value - element.min) / element.step)) < 1e-9
+  }
+  if (element.type === 'progress') {
+    return value === null || (typeof value === 'number' && Number.isFinite(value) && value >= element.min && value <= element.max)
+  }
+  return false
 }
 
 function createNativeNode(

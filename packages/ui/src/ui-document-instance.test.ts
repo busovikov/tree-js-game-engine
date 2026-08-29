@@ -364,6 +364,60 @@ describe('UIDocumentInstance v2', () => {
     expect(nestedText?.textContent).toBe('Nested')
   })
 
+  it('refreshes a mounted document in place while preserving compatible instance values and focus', () => {
+    const original = documentAsset()
+    const instance = new UIDocumentInstance(original, { assets: { resolve: () => '/star.png' } })
+    const host = document.createElement('div')
+    document.body.append(host)
+    const locator = { instancePath: [INSTANCE], sourceElementId: COMPONENT_INPUT } as const
+    instance.mount(host)
+    instance.setValue(locator, 'runtime draft')
+    const input = instance.getInstanceElement(locator) as HTMLInputElement
+    input.focus()
+
+    const refreshed = UIDocumentSchema.parse({
+      ...original,
+      components: original.components.map((component) =>
+        component.id === COMPONENT
+          ? {
+              ...component,
+              elements: component.elements.map((element) =>
+                element.id === COMPONENT_INPUT ? { ...element, name: 'Renamed field' } : element,
+              ),
+            }
+          : component,
+      ),
+    })
+    instance.updateDocument(refreshed)
+
+    const refreshedInput = instance.getInstanceElement(locator) as HTMLInputElement
+    expect(instance.document).toEqual(refreshed)
+    expect(instance.getValue(locator)).toBe('runtime draft')
+    expect(refreshedInput.value).toBe('runtime draft')
+    expect(refreshedInput.dataset.hakuUiInstancePath).toBe(INSTANCE)
+    expect(refreshedInput.dataset.hakuUiSourceId).toBe(COMPONENT_INPUT)
+    expect(document.activeElement).toBe(refreshedInput)
+
+    const invalid = {
+      ...refreshed,
+      components: refreshed.components.map((component) =>
+        component.id === COMPONENT
+          ? {
+              ...component,
+              elements: component.elements.map((element) =>
+                element.id === COMPONENT_INPUT ? { ...element, maxLength: 2 } : element,
+              ),
+            }
+          : component,
+      ),
+    }
+    expect(() => instance.updateDocument(invalid as never)).toThrow(/Value override is invalid/)
+    expect(instance.document).toEqual(refreshed)
+    expect(instance.getValue(locator)).toBe('runtime draft')
+    expect(instance.getInstanceElement(locator)).toBe(refreshedInput)
+    expect(document.activeElement).toBe(refreshedInput)
+  })
+
   it('renders an extracted card instance as the concrete root without an appearance wrapper', () => {
     const concrete = new UIDocumentInstance(cardDocument(false))
     const componentized = new UIDocumentInstance(cardDocument(true))
