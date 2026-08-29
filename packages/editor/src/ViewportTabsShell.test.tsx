@@ -484,6 +484,84 @@ describe('ViewportTabsShell UI workspace baseline', () => {
     save.mockRestore()
   })
 
+  it('inspects and resets sparse source overrides and detaches the selected document instance atomically', () => {
+    uiAuthoringSession.openAsset('assets/ui/component-overrides.ui.json', componentPanelAsset())
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    fireEvent.click(
+      container.querySelector(
+        `[data-haku-ui-tree-item="${COMPONENT_PANEL_INSTANCE}"]`,
+      ) as HTMLButtonElement,
+    )
+
+    const overrides = screen.getByRole('region', { name: 'Instance overrides' })
+    expect(within(overrides).getByText(/Structure is inherited from Profile card/)).toBeTruthy()
+    expect(within(overrides).queryByLabelText('Override width')).toBeNull()
+    fireEvent.click(within(overrides).getByRole('button', { name: 'Inspect Profile name' }))
+
+    const locator = screen.getByTestId('ui-instance-inspection-locator')
+    expect(locator.getAttribute('data-haku-ui-instance-path')).toBe(COMPONENT_PANEL_INSTANCE)
+    expect(locator.getAttribute('data-haku-ui-source-id')).toBe(COMPONENT_PANEL_INPUT)
+    expect(within(overrides).getByText('Value')).toBeTruthy()
+
+    const fill = within(overrides).getByLabelText('Override fill')
+    fireEvent.change(fill, {
+      target: { value: '#ff0000' },
+    })
+    fireEvent.blur(fill)
+    expect(uiAuthoringSession.asset?.elements[1]).toMatchObject({
+      type: 'instance',
+      overrides: {
+        [COMPONENT_PANEL_INPUT]: {
+          value: 'Instance profile name',
+          style: { backgroundColor: '#ff0000' },
+        },
+      },
+    })
+
+    fireEvent.click(within(overrides).getByRole('button', { name: 'Reset Value' }))
+    expect(uiAuthoringSession.asset?.elements[1]).toMatchObject({
+      overrides: { [COMPONENT_PANEL_INPUT]: { style: { backgroundColor: '#ff0000' } } },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(uiAuthoringSession.asset?.elements[1]).toMatchObject({
+      overrides: {
+        [COMPONENT_PANEL_INPUT]: {
+          value: 'Instance profile name',
+          style: { backgroundColor: '#ff0000' },
+        },
+      },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Redo' }))
+
+    fireEvent.click(within(overrides).getByRole('button', { name: 'Reset all overrides' }))
+    expect(uiAuthoringSession.asset?.elements[1]).toMatchObject({ overrides: {} })
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(uiAuthoringSession.asset?.elements[1]).toMatchObject({
+      overrides: { [COMPONENT_PANEL_INPUT]: { style: { backgroundColor: '#ff0000' } } },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Redo' }))
+
+    fireEvent.click(within(overrides).getByRole('button', { name: 'Detach instance' }))
+    const detachedRoot = uiAuthoringSession.selectedElementId
+    expect(detachedRoot).not.toBe(COMPONENT_PANEL_INSTANCE)
+    expect(
+      uiAuthoringSession.asset?.elements.find((element) => element.id === detachedRoot),
+    ).toMatchObject({
+      type: 'frame',
+      children: [expect.not.stringMatching(COMPONENT_PANEL_INPUT)],
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(uiAuthoringSession.selectedElementId).toBe(COMPONENT_PANEL_INSTANCE)
+    expect(
+      uiAuthoringSession.asset?.elements.find((element) => element.id === COMPONENT_PANEL_INSTANCE),
+    ).toMatchObject({
+      type: 'instance',
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Redo' }))
+    expect(uiAuthoringSession.selectedElementId).toBe(detachedRoot)
+  })
+
   it('preserves a focused instance widget value when a type-valid master edit refreshes preview', async () => {
     uiAuthoringSession.openAsset('assets/ui/component-preview.ui.json', componentPanelAsset())
     const { container } = render(<ViewportTabsShell />)

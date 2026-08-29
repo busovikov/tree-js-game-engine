@@ -7,6 +7,7 @@ import type {
 } from 'react'
 import {
   UIDocumentInstance,
+  applyUIInstanceOverride,
   type UIDocument,
   type UIAccessibility,
   type UIBound,
@@ -18,6 +19,7 @@ import {
   type UISizing,
   type UIStyle,
   type UIThemeId,
+  type UIInstanceOverride,
 } from '@haku/ui'
 import { projectPathToUrl } from '@haku/schema'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
@@ -2050,6 +2052,275 @@ const UIEventsSection = memo(function UIEventsSection({
   )
 })
 
+type UIInstanceElement = Extract<UIElement, { type: 'instance' }>
+type UIOverrideField = keyof UIInstanceOverride
+
+const OVERRIDE_FIELD_LABELS: Record<UIOverrideField, string> = {
+  name: 'Name',
+  text: 'Text',
+  value: 'Value',
+  visible: 'Visible',
+  enabled: 'Enabled',
+  style: 'Style',
+  accessibility: 'Accessibility',
+  events: 'Events',
+}
+
+function UIInstanceOverridesInspector({
+  asset,
+  instance,
+}: {
+  asset: UIDocument
+  instance: UIInstanceElement
+}) {
+  const component = asset.components.find((candidate) => candidate.id === instance.component)
+  const [sourceId, setSourceId] = useState<UIElementId | null>(component?.root ?? null)
+  const [error, setError] = useState<string | null>(null)
+  useEffect(
+    () => setSourceId(component?.root ?? null),
+    [component?.id, component?.root, instance.id],
+  )
+  if (!component) return <p role="alert">Unknown component master: {instance.component}</p>
+  const source =
+    component.elements.find((element) => element.id === sourceId) ?? component.elements[0]
+  if (!source) return <p role="alert">Component master has no source elements.</p>
+  const override = instance.overrides[source.id]
+  const effective = applyUIInstanceOverride(source, override)
+  const overriddenFields = Object.keys(override ?? {}) as UIOverrideField[]
+  const run = (action: () => void) => {
+    try {
+      action()
+      setError(null)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    }
+  }
+  const setOverride = (patch: UIInstanceOverride) =>
+    run(() => uiAuthoringSession.setInstanceOverride(instance.id, source.id, patch))
+  const resetField = (field: UIOverrideField) =>
+    run(() => uiAuthoringSession.resetInstanceOverrideField(instance.id, source.id, field))
+  const eventSlots = getUIEventBindingSlots(asset, effective)
+
+  return (
+    <section
+      className="haku-ui-editor__inspector-section haku-ui-editor__instance-overrides"
+      aria-label="Instance overrides"
+      role="region"
+    >
+      <div className="haku-ui-editor__override-heading">
+        <h4>Instance overrides</h4>
+        <span className="haku-ui-editor__instance-badge">Instance</span>
+      </div>
+      <p>
+        Structure is inherited from {component.name}. Children, layout, sizing, and placement are
+        not instance overrides; edit the master to change structure.
+      </p>
+      <div className="haku-ui-editor__override-actions">
+        <button
+          type="button"
+          disabled={Object.keys(instance.overrides).length === 0}
+          onClick={() => run(() => uiAuthoringSession.resetAllInstanceOverrides(instance.id))}
+        >
+          Reset all overrides
+        </button>
+        <button
+          type="button"
+          onClick={() => run(() => uiAuthoringSession.detachComponentInstance(instance.id))}
+        >
+          Detach instance
+        </button>
+      </div>
+      <div
+        className="haku-ui-editor__override-sources"
+        role="navigation"
+        aria-label="Instance sources"
+      >
+        {component.elements.map((candidate) => (
+          <button
+            type="button"
+            key={candidate.id}
+            aria-label={`Inspect ${candidate.name ?? candidate.type}`}
+            aria-pressed={candidate.id === source.id}
+            data-haku-ui-source-id={candidate.id}
+            onClick={() => setSourceId(candidate.id)}
+          >
+            {candidate.name ?? candidate.type}
+            {instance.overrides[candidate.id] && <span aria-label="Overridden source">●</span>}
+          </button>
+        ))}
+      </div>
+      <div
+        data-testid="ui-instance-inspection-locator"
+        data-haku-ui-instance-path={instance.id}
+        data-haku-ui-source-id={source.id}
+      >
+        Inspecting {source.name ?? source.type} in {instance.name ?? component.name}
+      </div>
+      <div className="haku-ui-editor__override-badges" aria-label="Overridden fields">
+        {overriddenFields.length === 0 ? (
+          <small>Inherits all allowed values.</small>
+        ) : (
+          overriddenFields.map((field) => (
+            <span className="haku-ui-editor__override-badge" key={field}>
+              {OVERRIDE_FIELD_LABELS[field]}
+              <button
+                type="button"
+                aria-label={`Reset ${OVERRIDE_FIELD_LABELS[field]}`}
+                onClick={() => resetField(field)}
+              >
+                ×
+              </button>
+            </span>
+          ))
+        )}
+      </div>
+      <UIRequiredTextField
+        label="Override name"
+        value={effective.name ?? effective.type}
+        onCommit={(name) => setOverride({ name })}
+      />
+      <label className="haku-ui-editor__checkbox">
+        <input
+          aria-label="Override visible"
+          type="checkbox"
+          checked={effective.visible}
+          onChange={(event) => setOverride({ visible: event.target.checked })}
+        />
+        Visible
+      </label>
+      <label className="haku-ui-editor__checkbox">
+        <input
+          aria-label="Override enabled"
+          type="checkbox"
+          checked={effective.enabled}
+          onChange={(event) => setOverride({ enabled: event.target.checked })}
+        />
+        Enabled
+      </label>
+      {(effective.type === 'text' || effective.type === 'button') && (
+        <UIRequiredTextField
+          label="Override text"
+          value={effective.text}
+          onCommit={(text) => setOverride({ text })}
+        />
+      )}
+      {(effective.type === 'text-input' || effective.type === 'text-area') && (
+        <UIRequiredTextField
+          label="Override value"
+          value={effective.value}
+          multiline={effective.type === 'text-area'}
+          onCommit={(value) => setOverride({ value })}
+        />
+      )}
+      {(effective.type === 'checkbox' || effective.type === 'switch') && (
+        <label className="haku-ui-editor__checkbox">
+          <input
+            aria-label="Override value"
+            type="checkbox"
+            checked={effective.value}
+            onChange={(event) => setOverride({ value: event.target.checked })}
+          />
+          Widget value
+        </label>
+      )}
+      {(effective.type === 'slider' || effective.type === 'progress') && (
+        <NumberField
+          label="Override value"
+          inputAriaLabel="Override value"
+          value={effective.value ?? effective.min}
+          min={effective.min}
+          max={effective.max}
+          step={effective.type === 'slider' ? effective.step : 1}
+          clampOnBlur={false}
+          onChange={(value) => setOverride({ value })}
+        />
+      )}
+      {(effective.type === 'radio' || effective.type === 'select') && (
+        <label className="mesh-field">
+          <span className="mesh-field__label">Override value</span>
+          <select
+            className="mesh-field__input"
+            aria-label="Override value"
+            value={effective.value ?? ''}
+            onChange={(event) => setOverride({ value: event.target.value || null })}
+          >
+            <option value="">None</option>
+            {effective.type === 'select' &&
+              effective.options.map((option) => (
+                <option key={option.value} value={option.value} disabled={option.disabled}>
+                  {option.label}
+                </option>
+              ))}
+            {effective.type === 'radio' && (
+              <option value={effective.optionValue}>{effective.optionValue}</option>
+            )}
+          </select>
+        </label>
+      )}
+      <UIOptionalTextField
+        label="Override text color"
+        value={effective.style.color}
+        placeholder="Inherit"
+        onCommit={(color) => setOverride({ style: { color } })}
+      />
+      <UIOptionalTextField
+        label="Override fill"
+        value={effective.style.backgroundColor}
+        placeholder="Inherit"
+        onCommit={(backgroundColor) => setOverride({ style: { backgroundColor } })}
+      />
+      <UIOptionalNumberStyleField
+        label="Override opacity"
+        value={effective.style.opacity}
+        defaultValue={1}
+        min={0}
+        max={1}
+        step={0.01}
+        onChange={(opacity) => setOverride({ style: { opacity } })}
+        onScrubStart={() => undefined}
+        onScrubEnd={() => undefined}
+      />
+      <UIOptionalTextField
+        label="Override accessible label"
+        value={effective.accessibility.label}
+        placeholder="Inherit"
+        onCommit={(label) => setOverride({ accessibility: { label } })}
+      />
+      <UIOptionalTextField
+        label="Override accessible description"
+        value={effective.accessibility.description}
+        placeholder="Inherit"
+        onCommit={(description) => setOverride({ accessibility: { description } })}
+      />
+      {eventSlots.map((candidate) => (
+        <label className="mesh-field" key={candidate.slot}>
+          <span className="mesh-field__label">Override {candidate.slot} event</span>
+          <select
+            className="mesh-field__input"
+            aria-label={`Override ${candidate.slot} event`}
+            value={(override?.events as Record<string, string | undefined>)?.[candidate.slot] ?? ''}
+            onChange={(event) => {
+              if (event.target.value) {
+                setOverride({ events: { [candidate.slot]: event.target.value } })
+              } else if (override?.events) {
+                resetField('events')
+              }
+            }}
+          >
+            <option value="">Inherit</option>
+            {candidate.compatibleEvents.map((definition) => (
+              <option value={definition.id} key={definition.id}>
+                {definition.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      ))}
+      {error && <small role="alert">{error}</small>}
+    </section>
+  )
+}
+
 function UIInspector({
   asset,
   element,
@@ -4028,7 +4299,9 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
                 Inspecting {activeComponent?.name} source in {inspectionInstance.name ?? 'instance'}
               </div>
             )}
-            {selected && asset ? (
+            {selected && asset && editScope.type === 'document' && selected.type === 'instance' ? (
+              <UIInstanceOverridesInspector asset={asset} instance={selected} />
+            ) : selected && asset ? (
               <UIInspector asset={asset} element={selected} bounds={elementBounds} />
             ) : (
               <p>Select a UI element</p>

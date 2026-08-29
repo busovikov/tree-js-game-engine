@@ -616,6 +616,84 @@
   gap: 8px;
 }
 
+.haku-ui-editor__instance-overrides {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.haku-ui-editor__override-heading,
+.haku-ui-editor__override-actions,
+.haku-ui-editor__override-badges {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.haku-ui-editor__override-heading {
+  justify-content: space-between;
+}
+
+.haku-ui-editor__override-heading h4,
+.haku-ui-editor__instance-overrides p {
+  margin: 0;
+}
+
+.haku-ui-editor__instance-badge,
+.haku-ui-editor__override-badge {
+  border: 1px solid #6d63d8;
+  border-radius: 999px;
+  padding: 2px 6px;
+  background: #6d63d833;
+  color: #ddd8ff;
+  font-size: 10px;
+}
+
+.haku-ui-editor__override-actions button {
+  min-width: 0;
+  flex: 1;
+}
+
+.haku-ui-editor__override-sources {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2px;
+  max-height: 120px;
+  overflow: auto;
+}
+
+.haku-ui-editor__override-sources button {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 5px;
+  text-align: left;
+}
+
+.haku-ui-editor__override-sources button[aria-pressed='true'] {
+  border-color: #45a3ff;
+  background: #45a3ff22;
+}
+
+.haku-ui-editor__override-badges {
+  flex-wrap: wrap;
+}
+
+.haku-ui-editor__override-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.haku-ui-editor__override-badge button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  line-height: 1;
+}
+
 .haku-ui-editor__constraint-field {
   min-width: 0;
   margin: 0 0 6px;
