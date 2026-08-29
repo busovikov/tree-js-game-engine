@@ -110,6 +110,110 @@
   margin-bottom: 8px;
 }
 
+.haku-ui-editor__components {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #333;
+}
+
+.haku-ui-editor__components-header,
+.haku-ui-editor__component-list li,
+.haku-ui-editor__component-select,
+.haku-ui-editor__component-actions {
+  display: flex;
+  align-items: center;
+}
+
+.haku-ui-editor__components-header {
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.haku-ui-editor__components-header h4 {
+  margin: 0;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.haku-ui-editor__components-header button,
+.haku-ui-editor__component-palette button {
+  min-height: 24px;
+  font-size: 11px;
+}
+
+.haku-ui-editor__components-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  border: 1px dashed #444;
+  border-radius: 3px;
+  color: #999;
+}
+
+.haku-ui-editor__component-list {
+  max-height: 120px;
+  overflow: auto;
+}
+
+.haku-ui-editor__component-list li {
+  gap: 2px;
+  min-width: 0;
+}
+
+.haku-ui-editor__component-select {
+  min-width: 0;
+  flex: 1;
+  gap: 5px;
+  overflow: hidden;
+  border: 0;
+  padding: 4px;
+  background: transparent;
+  color: #ddd;
+  text-align: left;
+}
+
+.haku-ui-editor__component-select[aria-selected='true'] {
+  background: #3d5afe44;
+  color: #fff;
+}
+
+.haku-ui-editor__component-select span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.haku-ui-editor__component-actions {
+  gap: 1px;
+}
+
+.haku-ui-editor__component-actions button {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #aaa;
+}
+
+.haku-ui-editor__component-actions button:hover {
+  background: #ffffff18;
+  color: #fff;
+}
+
+.haku-ui-editor__component-palette button {
+  width: 100%;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .haku-ui-editor__palette > input {
   min-width: 0;
   width: 100%;

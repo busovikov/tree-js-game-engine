@@ -430,13 +430,14 @@ export class UIAuthoringSession {
   }
 
   deleteComponent(componentId: UIComponentId | string): void {
+    const candidate = deleteUIComponent(this.requireAsset(), componentId)
     if (
       this.currentEditScope.type === 'component' &&
       this.currentEditScope.componentId === componentId
     ) {
       throw new Error('Cannot delete the active UI component master; return to the document first')
     }
-    this.replaceAsset(deleteUIComponent(this.requireAsset(), componentId))
+    this.replaceAsset(candidate)
   }
 
   enterComponentMaster(

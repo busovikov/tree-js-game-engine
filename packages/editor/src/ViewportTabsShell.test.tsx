@@ -274,6 +274,95 @@ describe('ViewportTabsShell Code workspace', () => {
 })
 
 describe('ViewportTabsShell UI workspace baseline', () => {
+  it('shows an explicit empty Components collection with creation disabled for the document root', () => {
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+
+    const collection = screen.getByRole('region', { name: 'Components' })
+    expect(within(collection).getByText('No components yet.')).toBeTruthy()
+    expect(within(collection).getByText(/Select a layer to create a reusable master/)).toBeTruthy()
+    expect(
+      (within(collection).getByRole('button', {
+        name: 'Create component',
+      }) as HTMLButtonElement).disabled,
+    ).toBe(true)
+    expect(container.querySelector('[data-haku-ui-component-id]')).toBeNull()
+  })
+
+  it('selects and opens masters, places instances contextually, and exposes strict lifecycle controls', () => {
+    uiAuthoringSession.openAsset('assets/ui/component-panel.ui.json', componentPanelAsset())
+    const prompt = vi.spyOn(window, 'prompt')
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    const collection = screen.getByRole('region', { name: 'Components' })
+
+    fireEvent.click(within(collection).getByRole('button', { name: 'Select Profile card' }))
+    expect(
+      container
+        .querySelector(`[data-haku-ui-component-id="${COMPONENT_PANEL_MASTER}"]`)
+        ?.getAttribute('aria-selected'),
+    ).toBe('true')
+    fireEvent.click(within(collection).getByRole('button', { name: 'Place Profile card instance' }))
+    expect(
+      uiAuthoringSession.asset?.elements.filter(
+        (element) => element.type === 'instance' && element.component === COMPONENT_PANEL_MASTER,
+      ),
+    ).toHaveLength(2)
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(
+      uiAuthoringSession.asset?.elements.filter(
+        (element) => element.type === 'instance' && element.component === COMPONENT_PANEL_MASTER,
+      ),
+    ).toHaveLength(1)
+
+    fireEvent.click(within(collection).getByRole('button', { name: 'Open Profile card master' }))
+    expect(uiAuthoringSession.editScope).toEqual({
+      type: 'component',
+      componentId: COMPONENT_PANEL_MASTER,
+    })
+    fireEvent.click(within(collection).getByRole('button', { name: 'Duplicate Profile card' }))
+    expect(uiAuthoringSession.asset?.components.map((component) => component.name)).toEqual([
+      'Profile card',
+      'Profile card 2',
+    ])
+    expect(uiAuthoringSession.editScope).toEqual({
+      type: 'component',
+      componentId: COMPONENT_PANEL_MASTER,
+    })
+
+    prompt.mockReturnValueOnce('Reusable card')
+    fireEvent.click(within(collection).getByRole('button', { name: 'Rename Profile card 2' }))
+    expect(uiAuthoringSession.asset?.components[1]?.name).toBe('Reusable card')
+    fireEvent.click(within(collection).getByRole('button', { name: 'Delete Reusable card' }))
+    expect(uiAuthoringSession.asset?.components).toHaveLength(1)
+
+    fireEvent.click(within(collection).getByRole('button', { name: 'Delete Profile card' }))
+    expect(screen.getByRole('status').textContent).toMatch(/document instance .* references it/)
+    expect(uiAuthoringSession.asset?.components).toHaveLength(1)
+    prompt.mockRestore()
+  })
+
+  it('creates a component from the selected document subtree through the collection', () => {
+    const prompt = vi.spyOn(window, 'prompt').mockReturnValueOnce('Score component')
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    fireEvent.click(
+      container.querySelector(
+        '[data-haku-ui-tree-item="13000000-0000-4000-8000-000000000102"]',
+      ) as HTMLButtonElement,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create component' }))
+
+    expect(uiAuthoringSession.asset?.components[0]?.name).toBe('Score component')
+    expect(
+      uiAuthoringSession.asset?.elements.find((element) => element.name === 'Score component'),
+    ).toMatchObject({ type: 'instance' })
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(uiAuthoringSession.asset?.components).toHaveLength(0)
+    prompt.mockRestore()
+  })
+
   it('replaces the scene body with dedicated resizable UI panels and restores it on exit', () => {
     render(<EditorLayout />)
 

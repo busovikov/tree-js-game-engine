@@ -2175,6 +2175,7 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
   const [dropIndicator, setDropIndicator] = useState<UIDropIndicator | null>(null)
   const [canvasInsertionTarget, setCanvasInsertionTarget] = useState<UIInsertionTarget | null>(null)
   const [paletteQuery, setPaletteQuery] = useState('')
+  const [selectedComponentId, setSelectedComponentId] = useState<UIComponentId | null>(null)
   const [texturePickerOpen, setTexturePickerOpen] = useState(false)
   const [pendingImageCreation, setPendingImageCreation] = useState<{
     readonly pointerFrameId?: UIElementId
@@ -2234,6 +2235,11 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
     () => new Map(asset?.components.map((component) => [component.id, component.name]) ?? []),
     [asset],
   )
+  const selectedComponent =
+    asset?.components.find((component) => component.id === selectedComponentId) ??
+    activeComponent ??
+    asset?.components[0] ??
+    null
   const selectedIds = uiAuthoringSession.selectedElementIds
   const viewport = uiAuthoringSession.viewport
   const previewMode = uiAuthoringSession.previewMode
@@ -3168,6 +3174,46 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
     )
   }
 
+  const createSelectedComponent = () => {
+    if (
+      editScope.type !== 'document' ||
+      selectedIds.length !== 1 ||
+      !selected ||
+      selected.id === asset.root
+    ) {
+      setStatus('Select one document subtree to create a component')
+      return
+    }
+    const name = window.prompt('Component name', selected.name ?? `${selected.type} component`)
+    if (name === null) return
+    try {
+      const result = uiAuthoringSession.createComponent(selected.id, name)
+      setSelectedComponentId(result.componentId)
+      setStatus(`Created component ${name.trim()}`)
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  const openComponentMaster = (componentId: UIComponentId) => {
+    const component = asset.components.find((candidate) => candidate.id === componentId)
+    if (!component) return
+    setExpandedLayers(
+      (current) =>
+        new Set([
+          ...current,
+          ...component.elements
+            .filter((element) => 'children' in element)
+            .map((element) => element.id),
+        ]),
+    )
+    setSelectedComponentId(component.id)
+    runHierarchyAction(
+      () => uiAuthoringSession.enterComponentMaster(component.id),
+      `Editing ${component.name} master`,
+    )
+  }
+
   const canvasCreationContext = (clientX: number, clientY: number) => {
     const canvasRect = canvasHost.current?.getBoundingClientRect()
     const point = canvasPointToDocument(
@@ -3516,6 +3562,130 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
             }}
           >
             <h3>Layers</h3>
+            <section className="haku-ui-editor__components" role="region" aria-label="Components">
+              <div className="haku-ui-editor__components-header">
+                <h4>Components</h4>
+                <button
+                  type="button"
+                  disabled={
+                    editScope.type !== 'document' ||
+                    selectedIds.length !== 1 ||
+                    !selected ||
+                    selected.id === asset.root
+                  }
+                  onClick={createSelectedComponent}
+                >
+                  Create component
+                </button>
+              </div>
+              {asset.components.length === 0 ? (
+                <div className="haku-ui-editor__components-empty">
+                  <strong>No components yet.</strong>
+                  <span>Select a layer to create a reusable master.</span>
+                </div>
+              ) : (
+                <ul className="haku-ui-editor__component-list" aria-label="Component masters">
+                  {asset.components.map((component) => {
+                    const isSelected = component.id === selectedComponent?.id
+                    return (
+                      <li key={component.id}>
+                        <button
+                          type="button"
+                          className="haku-ui-editor__component-select"
+                          aria-label={`Select ${component.name}`}
+                          aria-selected={isSelected}
+                          data-haku-ui-component-id={component.id}
+                          onClick={() => setSelectedComponentId(component.id)}
+                        >
+                          <span aria-hidden="true">◆</span>
+                          <span>{component.name}</span>
+                        </button>
+                        <div className="haku-ui-editor__component-actions">
+                          <button
+                            type="button"
+                            aria-label={`Open ${component.name} master`}
+                            onClick={() => openComponentMaster(component.id)}
+                          >
+                            ↗
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={`Duplicate ${component.name}`}
+                            onClick={() => {
+                              try {
+                                const id = uiAuthoringSession.duplicateComponent(component.id)
+                                setSelectedComponentId(id)
+                                setStatus(`Duplicated ${component.name}`)
+                              } catch (error) {
+                                setStatus(error instanceof Error ? error.message : String(error))
+                              }
+                            }}
+                          >
+                            ⧉
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={`Rename ${component.name}`}
+                            onClick={() => {
+                              const name = window.prompt('Component name', component.name)
+                              if (name === null) return
+                              runHierarchyAction(
+                                () => uiAuthoringSession.renameComponent(component.id, name),
+                                `Renamed component to ${name.trim()}`,
+                              )
+                            }}
+                          >
+                            ✎
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={`Delete ${component.name}`}
+                            onClick={() => {
+                              try {
+                                uiAuthoringSession.deleteComponent(component.id)
+                                const next = asset.components.find(
+                                  (candidate) => candidate.id !== component.id,
+                                )
+                                setSelectedComponentId(next?.id ?? null)
+                                setStatus(`Deleted ${component.name}`)
+                              } catch (error) {
+                                setStatus(error instanceof Error ? error.message : String(error))
+                              }
+                            }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+              <div
+                className="haku-ui-editor__component-palette"
+                role="region"
+                aria-label="Component instance palette"
+              >
+                <button
+                  type="button"
+                  disabled={!selectedComponent}
+                  aria-label={
+                    selectedComponent
+                      ? `Place ${selectedComponent.name} instance`
+                      : 'Place component instance'
+                  }
+                  onClick={() => {
+                    if (!selectedComponent) return
+                    runHierarchyAction(
+                      () => uiAuthoringSession.placeComponent(selectedComponent.id),
+                      `Placed ${selectedComponent.name} instance`,
+                    )
+                  }}
+                >
+                  {selectedComponent ? `＋ ${selectedComponent.name}` : 'No master selected'}
+                </button>
+              </div>
+            </section>
             <div className="haku-ui-editor__palette" role="region" aria-label="Element palette">
               <input
                 type="search"
@@ -3622,28 +3792,7 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
                   onDragOver={handleLayerDragOver}
                   onDrop={handleLayerDrop}
                   componentNames={componentNames}
-                  onEditComponent={(componentId) =>
-                    runHierarchyAction(
-                      () => {
-                        const component = asset.components.find(
-                          (candidate) => candidate.id === componentId,
-                        )
-                        if (component) {
-                          setExpandedLayers(
-                            (current) =>
-                              new Set([
-                                ...current,
-                                ...component.elements
-                                  .filter((element) => 'children' in element)
-                                  .map((element) => element.id),
-                              ]),
-                          )
-                        }
-                        uiAuthoringSession.enterComponentMaster(componentId)
-                      },
-                      `Editing ${componentNames.get(componentId) ?? 'component'} master`,
-                    )
-                  }
+                  onEditComponent={openComponentMaster}
                 />
               ))}
             </ul>
