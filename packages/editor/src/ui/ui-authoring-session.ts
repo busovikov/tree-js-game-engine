@@ -88,6 +88,7 @@ interface UIEditTree {
 interface UIEditScopeReturnContext {
   readonly scope: UIEditScope
   readonly selection: readonly UIElementId[]
+  readonly inspectionInstancePath: readonly UIElementId[] | null
 }
 
 type UIListener = () => void
@@ -177,6 +178,7 @@ export class UIAuthoringSession {
   private selection: UIElementId[] = []
   private currentEditScope: UIEditScope = { type: 'document' }
   private editScopeReturnContexts: UIEditScopeReturnContext[] = []
+  private currentInspectionInstancePath: readonly UIElementId[] | null = null
   private editorLockedIds = new Set<UIElementId>()
   private listeners = new Set<UIListener>()
   private viewportId: UIDesktopViewportId | 'custom' = 'desktop-1280x720'
@@ -216,6 +218,10 @@ export class UIAuthoringSession {
 
   get editScope(): UIEditScope {
     return this.currentEditScope
+  }
+
+  get inspectionInstancePath(): readonly UIElementId[] | null {
+    return this.currentInspectionInstancePath
   }
 
   get editorLockedElementIds(): ReadonlySet<UIElementId> {
@@ -265,6 +271,7 @@ export class UIAuthoringSession {
     this.savedAssetJson = serialized(asset)
     this.currentEditScope = { type: 'document' }
     this.editScopeReturnContexts = []
+    this.currentInspectionInstancePath = null
     this.selection = [asset.root]
     this.notify()
     return asset
@@ -297,6 +304,20 @@ export class UIAuthoringSession {
         options.historyGroup,
       ),
     )
+  }
+
+  replaceEditTreeElements(
+    elements: readonly UIElement[],
+    options: { readonly historyGroup?: string } = {},
+  ): void {
+    const asset = this.requireAsset()
+    const input = replaceEditTree(asset, this.currentEditScope, elements)
+    const sourceId = this.selectedElementId ?? requireEditTree(asset, this.currentEditScope).root
+    const candidate =
+      this.currentEditScope.type === 'component'
+        ? validateComponentMasterCandidate(input, sourceId)
+        : UIDocumentSchema.parse(input)
+    this.replaceAsset(candidate, undefined, options)
   }
 
   addElement(
@@ -458,19 +479,31 @@ export class UIAuthoringSession {
     const tree = requireEditTree(asset, this.currentEditScope)
     const selected = tree.elements.find((element) => element.id === this.selectedElementId)
     let returnSelection: readonly UIElementId[] = this.selection
+    let inspectionInstancePath: UIElementId[] | null = null
     if (selected?.type === 'instance' && selected.component === component.id) {
       returnSelection = [selected.id]
+      inspectionInstancePath =
+        this.currentEditScope.type === 'document'
+          ? [selected.id]
+          : this.currentInspectionInstancePath
+            ? [...this.currentInspectionInstancePath, selected.id]
+            : null
     } else if (this.currentEditScope.type === 'document') {
       const topLevelInstance = asset.elements.find(
         (element) => element.type === 'instance' && element.component === component.id,
       )
-      if (topLevelInstance) returnSelection = [topLevelInstance.id]
+      if (topLevelInstance) {
+        returnSelection = [topLevelInstance.id]
+        inspectionInstancePath = [topLevelInstance.id]
+      }
     }
     this.editScopeReturnContexts.push({
       scope: this.currentEditScope,
       selection: [...returnSelection],
+      inspectionInstancePath: this.currentInspectionInstancePath,
     })
     this.currentEditScope = { type: 'component', componentId: component.id }
+    this.currentInspectionInstancePath = inspectionInstancePath
     this.selection = [sourceId]
     this.notify()
   }
@@ -483,10 +516,12 @@ export class UIAuthoringSession {
     const context = this.editScopeReturnContexts.pop() ?? {
       scope: { type: 'document' } as const,
       selection: [asset.root],
+      inspectionInstancePath: null,
     }
     const tree = requireEditTree(asset, context.scope)
     const validIds = new Set(tree.elements.map((element) => element.id))
     this.currentEditScope = context.scope
+    this.currentInspectionInstancePath = context.inspectionInstancePath
     this.selection = reduceUISelection(
       context.selection,
       { type: 'reconcile', validIds, fallback: tree.root },
@@ -807,6 +842,7 @@ export class UIAuthoringSession {
     this.selection = []
     this.currentEditScope = { type: 'document' }
     this.editScopeReturnContexts = []
+    this.currentInspectionInstancePath = null
     this.editorLockedIds.clear()
     this.notify()
   }
@@ -824,12 +860,14 @@ export class UIAuthoringSession {
       while (!tree && this.editScopeReturnContexts.length > 0) {
         const context = this.editScopeReturnContexts.pop()!
         this.currentEditScope = context.scope
+        this.currentInspectionInstancePath = context.inspectionInstancePath
         this.selection = [...context.selection]
         tree = findEditTree(asset, this.currentEditScope)
       }
       if (!tree) {
         this.currentEditScope = { type: 'document' }
         this.editScopeReturnContexts = []
+        this.currentInspectionInstancePath = null
         this.selection = [asset.root]
         tree = requireEditTree(asset, this.currentEditScope)
       }
@@ -848,6 +886,7 @@ export class UIAuthoringSession {
       this.selection = []
       this.currentEditScope = { type: 'document' }
       this.editScopeReturnContexts = []
+      this.currentInspectionInstancePath = null
       this.editorLockedIds.clear()
     }
     this.notify()

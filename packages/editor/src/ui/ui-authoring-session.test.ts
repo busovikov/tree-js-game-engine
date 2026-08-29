@@ -432,6 +432,77 @@ describe('UIAuthoringSession', () => {
     expect(commands.getStateId()).toBe(state)
   })
 
+  it('tracks explicit nested instance ownership and rejects invalid edit-tree candidates without history', () => {
+    const commands = new CommandBus()
+    const session = new UIAuthoringSession(commands, {
+      readText: async () => '',
+      writeText: async () => undefined,
+    })
+    const outerInstance = TEXT
+    const outerComponent = '13000000-0000-4000-8000-000000000010'
+    const outerRoot = '13000000-0000-4000-8000-000000000011'
+    const nestedInstance = '13000000-0000-4000-8000-000000000012'
+    const innerComponent = '13000000-0000-4000-8000-000000000013'
+    const innerRoot = '13000000-0000-4000-8000-000000000014'
+    const base = createEmptyUIDocument('HUD', DOCUMENT, ROOT)
+    session.openAsset('assets/ui/hud.ui.json', {
+      ...base,
+      elements: [
+        { ...base.elements[0], children: [outerInstance] },
+        { id: outerInstance, type: 'instance', component: outerComponent },
+      ],
+      components: [
+        {
+          id: outerComponent,
+          name: 'Outer',
+          root: outerRoot,
+          elements: [
+            {
+              id: outerRoot,
+              type: 'frame',
+              children: [nestedInstance],
+              layout: { mode: 'vertical' },
+            },
+            {
+              id: nestedInstance,
+              type: 'instance',
+              component: innerComponent,
+              overrides: { [innerRoot]: { text: 'Nested override' } },
+            },
+          ],
+        },
+        {
+          id: innerComponent,
+          name: 'Inner',
+          root: innerRoot,
+          elements: [{ id: innerRoot, type: 'button', text: 'Master' }],
+        },
+      ],
+    })
+
+    session.select(outerInstance)
+    session.enterComponentMaster(outerComponent)
+    expect(session.inspectionInstancePath).toEqual([outerInstance])
+    session.select(nestedInstance)
+    session.enterComponentMaster(innerComponent)
+    expect(session.inspectionInstancePath).toEqual([outerInstance, nestedInstance])
+
+    const before = structuredClone(session.asset)
+    const state = commands.getStateId()
+    expect(() =>
+      session.replaceEditTreeElements([{ id: innerRoot, type: 'rectangle' } as never]),
+    ).toThrow(/Invalid UI component master edit.*Text override is invalid for rectangle/)
+    expect(session.asset).toEqual(before)
+    expect(commands.getStateId()).toBe(state)
+
+    session.exitComponentMaster()
+    expect(session.inspectionInstancePath).toEqual([outerInstance])
+    expect(session.selectedElementIds).toEqual([nestedInstance])
+    session.exitComponentMaster()
+    expect(session.inspectionInstancePath).toBeNull()
+    expect(session.selectedElementIds).toEqual([outerInstance])
+  })
+
   it('rejects master type and event changes that invalidate an instance override atomically', () => {
     const commands = new CommandBus()
     const generated = [
