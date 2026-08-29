@@ -36,6 +36,19 @@ export interface UIComponentDuplicateResult {
   readonly componentId: UIComponentId
 }
 
+export type UIInstanceOverrideField = keyof UIInstanceOverride
+
+function mergeSparseRecord<T extends object>(current: T | undefined, patch: T): T {
+  const merged = { ...structuredClone(current), ...structuredClone(patch) } as Record<
+    string,
+    unknown
+  >
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === undefined) delete merged[key]
+  }
+  return merged as T
+}
+
 function childrenOf(element: UIElement): readonly UIElementId[] {
   return 'children' in element ? element.children : []
 }
@@ -414,10 +427,88 @@ export function setUIInstanceOverride(
       if (element.type !== 'instance')
         throw new Error(`UI element is not an instance: ${instanceId}`)
       found = true
+      const current = element.overrides[sourceElementId]
+      const next: UIInstanceOverride = {
+        ...structuredClone(current),
+        ...structuredClone(override),
+      }
+      for (const field of ['style', 'accessibility', 'events'] as const) {
+        if (!current?.[field] && !override[field]) continue
+        const merged = mergeSparseRecord(current?.[field], override[field] ?? {})
+        if (Object.keys(merged).length === 0) delete next[field]
+        else Object.assign(next, { [field]: merged })
+      }
       return {
         ...element,
-        overrides: { ...element.overrides, [sourceElementId]: structuredClone(override) },
+        overrides: {
+          ...element.overrides,
+          [sourceElementId]: next,
+        },
       }
+    })
+  const candidate = {
+    ...asset,
+    elements: update(asset.elements),
+    components: asset.components.map((component) => ({
+      ...component,
+      elements: update(component.elements),
+    })),
+  }
+  if (!found) throw new Error(`Unknown UI component instance: ${instanceId}`)
+  return UIDocumentSchema.parse(candidate)
+}
+
+export function resetUIInstanceOverrideField(
+  asset: UIDocument,
+  instanceId: UIElementId,
+  sourceElementId: UIElementId,
+  field: UIInstanceOverrideField,
+): UIDocument {
+  let found = false
+  const update = (elements: readonly UIElement[]): UIElement[] =>
+    elements.map((element) => {
+      if (element.id !== instanceId) return element
+      if (element.type !== 'instance')
+        throw new Error(`UI element is not an instance: ${instanceId}`)
+      found = true
+      const current = element.overrides[sourceElementId]
+      if (!current || !(field in current)) {
+        throw new Error(`No UI instance ${field} override for source element: ${sourceElementId}`)
+      }
+      const next = { ...current }
+      delete next[field]
+      const overrides = { ...element.overrides }
+      if (Object.keys(next).length === 0) delete overrides[sourceElementId]
+      else overrides[sourceElementId] = next
+      return { ...element, overrides }
+    })
+  const candidate = {
+    ...asset,
+    elements: update(asset.elements),
+    components: asset.components.map((component) => ({
+      ...component,
+      elements: update(component.elements),
+    })),
+  }
+  if (!found) throw new Error(`Unknown UI component instance: ${instanceId}`)
+  return UIDocumentSchema.parse(candidate)
+}
+
+export function resetAllUIInstanceOverrides(
+  asset: UIDocument,
+  instanceId: UIElementId,
+): UIDocument {
+  let found = false
+  const update = (elements: readonly UIElement[]): UIElement[] =>
+    elements.map((element) => {
+      if (element.id !== instanceId) return element
+      if (element.type !== 'instance')
+        throw new Error(`UI element is not an instance: ${instanceId}`)
+      found = true
+      if (Object.keys(element.overrides).length === 0) {
+        throw new Error(`UI component instance has no overrides: ${instanceId}`)
+      }
+      return { ...element, overrides: {} }
     })
   const candidate = {
     ...asset,

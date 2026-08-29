@@ -7,6 +7,8 @@ import {
   extractUIComponent,
   placeUIComponentInstance,
   renameUIComponent,
+  resetAllUIInstanceOverrides,
+  resetUIInstanceOverrideField,
   resetUIInstanceOverride,
   setUIInstanceOverride,
 } from './ui-component-authoring.js'
@@ -341,6 +343,66 @@ describe('UI component authoring transforms', () => {
     expect(() =>
       resetUIInstanceOverride(reset, INSTANCE as UIElementId, BUTTON as UIElementId),
     ).toThrow('No UI instance override')
+  })
+
+  it('merges sparse override fields and resets one field or every field independently', () => {
+    const extracted = extractUIComponent(
+      documentAsset(),
+      CARD as UIElementId,
+      'Card',
+      ids(COMPONENT, INSTANCE),
+    ).asset
+    const withText = setUIInstanceOverride(
+      extracted,
+      INSTANCE as UIElementId,
+      BUTTON as UIElementId,
+      { text: 'Retry', accessibility: { label: 'Retry action' } },
+    )
+    const merged = setUIInstanceOverride(withText, INSTANCE as UIElementId, BUTTON as UIElementId, {
+      style: { color: '#f00' },
+      accessibility: { description: 'Try again' },
+    })
+
+    expect(merged.elements.find((element) => element.id === INSTANCE)).toMatchObject({
+      overrides: {
+        [BUTTON]: {
+          text: 'Retry',
+          style: { color: '#f00' },
+          accessibility: { label: 'Retry action', description: 'Try again' },
+        },
+      },
+    })
+
+    const resetStyle = resetUIInstanceOverrideField(
+      merged,
+      INSTANCE as UIElementId,
+      BUTTON as UIElementId,
+      'style',
+    )
+    expect(resetStyle.elements.find((element) => element.id === INSTANCE)).toMatchObject({
+      overrides: {
+        [BUTTON]: {
+          text: 'Retry',
+          accessibility: { label: 'Retry action', description: 'Try again' },
+        },
+      },
+    })
+
+    const resetAll = resetAllUIInstanceOverrides(resetStyle, INSTANCE as UIElementId)
+    expect(resetAll.elements.find((element) => element.id === INSTANCE)).toMatchObject({
+      overrides: {},
+    })
+    expect(() =>
+      resetUIInstanceOverrideField(
+        resetStyle,
+        INSTANCE as UIElementId,
+        BUTTON as UIElementId,
+        'style',
+      ),
+    ).toThrow('No UI instance style override')
+    expect(() => resetAllUIInstanceOverrides(resetAll, INSTANCE as UIElementId)).toThrow(
+      'UI component instance has no overrides',
+    )
   })
 
   it('places an instance at an exact auto-layout index and rejects generated ID collisions', () => {

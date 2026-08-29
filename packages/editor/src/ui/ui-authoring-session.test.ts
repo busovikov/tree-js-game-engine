@@ -114,6 +114,13 @@ describe('UIAuthoringSession', () => {
     expect(session.asset?.elements.find((element) => element.id === placed)).toMatchObject({
       type: 'instance',
     })
+    expect(session.selectedElementId).toBe(placed)
+    commands.redo()
+    expect(session.asset?.elements.find((element) => element.id === detached)).toMatchObject({
+      type: 'text',
+      text: 'Ready',
+    })
+    expect(session.selectedElementId).toBe(detached)
   })
 
   it('rejects an invalid instance override before it enters history', () => {
@@ -176,6 +183,71 @@ describe('UIAuthoringSession', () => {
     expect(
       session.asset?.elements.find((element) => element.id === created.instanceId),
     ).toMatchObject({ overrides: { [TEXT]: { text: 'Retry' } } })
+  })
+
+  it('merges and resets instance override fields and all overrides as atomic commands', () => {
+    const commands = new CommandBus()
+    const generated = [
+      '13000000-0000-4000-8000-000000000010',
+      '13000000-0000-4000-8000-000000000011',
+    ]
+    const session = new UIAuthoringSession(
+      commands,
+      { readText: async () => '', writeText: async () => undefined },
+      () => generated.shift() ?? crypto.randomUUID(),
+    )
+    const base = createEmptyUIDocument('HUD', DOCUMENT, ROOT)
+    session.openAsset('assets/ui/hud.ui.json', {
+      ...base,
+      elements: [
+        { ...base.elements[0], layout: { mode: 'vertical' }, children: [TEXT] },
+        { id: TEXT, type: 'text', text: 'Ready' },
+      ],
+    })
+    const created = session.createComponent(TEXT, 'Status label')
+    session.setInstanceOverride(created.instanceId, TEXT, { text: 'Retry' })
+    session.setInstanceOverride(created.instanceId, TEXT, { style: { color: '#f00' } })
+    expect(
+      session.asset?.elements.find((element) => element.id === created.instanceId),
+    ).toMatchObject({
+      overrides: { [TEXT]: { text: 'Retry', style: { color: '#f00' } } },
+    })
+
+    session.resetInstanceOverrideField(created.instanceId, TEXT, 'style')
+    expect(
+      session.asset?.elements.find((element) => element.id === created.instanceId),
+    ).toMatchObject({
+      overrides: { [TEXT]: { text: 'Retry' } },
+    })
+    commands.undo()
+    expect(
+      session.asset?.elements.find((element) => element.id === created.instanceId),
+    ).toMatchObject({
+      overrides: { [TEXT]: { text: 'Retry', style: { color: '#f00' } } },
+    })
+    commands.redo()
+
+    session.resetAllInstanceOverrides(created.instanceId)
+    expect(
+      session.asset?.elements.find((element) => element.id === created.instanceId),
+    ).toMatchObject({
+      overrides: {},
+    })
+    commands.undo()
+    expect(
+      session.asset?.elements.find((element) => element.id === created.instanceId),
+    ).toMatchObject({
+      overrides: { [TEXT]: { text: 'Retry' } },
+    })
+    commands.redo()
+
+    const state = commands.getStateId()
+    const before = structuredClone(session.asset)
+    expect(() => session.resetAllInstanceOverrides(created.instanceId)).toThrow(
+      'UI component instance has no overrides',
+    )
+    expect(commands.getStateId()).toBe(state)
+    expect(session.asset).toEqual(before)
   })
 
   it('keeps document and component-master selection distinct through exit and undo/redo', () => {

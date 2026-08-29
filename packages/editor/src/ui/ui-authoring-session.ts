@@ -16,8 +16,11 @@ import {
   extractUIComponent,
   placeUIComponentInstance,
   renameUIComponent,
+  resetAllUIInstanceOverrides,
+  resetUIInstanceOverrideField,
   resetUIInstanceOverride,
   setUIInstanceOverride,
+  type UIInstanceOverrideField,
 } from './ui-component-authoring.js'
 import {
   duplicateUISubtrees,
@@ -551,6 +554,25 @@ export class UIAuthoringSession {
       instanceId as UIElementId,
       sourceElementId as UIElementId,
     )
+    this.replaceAsset(candidate, [instanceId])
+  }
+
+  resetInstanceOverrideField(
+    instanceId: UIElementId | string,
+    sourceElementId: UIElementId | string,
+    field: UIInstanceOverrideField,
+  ): void {
+    const candidate = resetUIInstanceOverrideField(
+      this.requireAsset(),
+      instanceId as UIElementId,
+      sourceElementId as UIElementId,
+      field,
+    )
+    this.replaceAsset(candidate, [instanceId])
+  }
+
+  resetAllInstanceOverrides(instanceId: UIElementId | string): void {
+    const candidate = resetAllUIInstanceOverrides(this.requireAsset(), instanceId as UIElementId)
     this.replaceAsset(candidate, [instanceId])
   }
 
