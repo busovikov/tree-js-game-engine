@@ -303,7 +303,8 @@ export class UIAuthoringSession {
     } = {},
   ): UIElementId {
     const asset = this.requireAsset()
-    const parent = asset.elements.find((element) => element.id === parentId)
+    const tree = requireEditTree(asset, this.currentEditScope)
+    const parent = tree.elements.find((element) => element.id === parentId)
     if (!parent || !('children' in parent)) {
       throw new Error(`UI parent must be a frame, scroll container, or list: ${parentId}`)
     }
@@ -367,27 +368,22 @@ export class UIAuthoringSession {
       0,
       Math.min(Math.trunc(options.index ?? parent.children.length), parent.children.length),
     )
-    this.replaceAsset(
-      {
-        ...asset,
-        elements: [
-          ...asset.elements.map((candidate) =>
-            candidate.id === parent.id && 'children' in candidate
-              ? {
-                  ...candidate,
-                  children: [
-                    ...candidate.children.slice(0, insertionIndex),
-                    id,
-                    ...candidate.children.slice(insertionIndex),
-                  ],
-                }
-              : candidate,
-          ),
-          element,
-        ],
-      },
-      [id],
-    )
+    const elements = [
+      ...tree.elements.map((candidate) =>
+        candidate.id === parent.id && 'children' in candidate
+          ? {
+              ...candidate,
+              children: [
+                ...candidate.children.slice(0, insertionIndex),
+                id,
+                ...candidate.children.slice(insertionIndex),
+              ],
+            }
+          : candidate,
+      ),
+      element,
+    ] as UIElement[]
+    this.replaceAsset(replaceEditTree(asset, this.currentEditScope, elements), [id])
     return id
   }
 
@@ -399,7 +395,7 @@ export class UIAuthoringSession {
     } = {},
   ): UIElementId {
     const asset = this.requireAsset()
-    const target = resolveUICreationTarget(asset, {
+    const target = this.resolveCreationTarget(asset, {
       ...options,
       selectedId: options.selectedId ?? this.selectedElementId,
       lockedIds: this.editorLockedIds,
@@ -479,7 +475,7 @@ export class UIAuthoringSession {
     } = {},
   ): UIElementId {
     const asset = this.requireAsset()
-    const target = resolveUICreationTarget(asset, {
+    const target = this.resolveCreationTarget(asset, {
       ...options,
       selectedId: options.selectedId ?? this.selectedElementId,
       lockedIds: this.editorLockedIds,
@@ -576,7 +572,43 @@ export class UIAuthoringSession {
     options: { readonly historyGroup?: string } = {},
   ): void {
     const asset = this.requireAsset()
-    this.replaceAsset(updateUIElementStrict(asset, id, patch), undefined, options)
+    if (this.currentEditScope.type === 'document') {
+      this.replaceAsset(updateUIElementStrict(asset, id, patch), undefined, options)
+      return
+    }
+    const tree = requireEditTree(asset, this.currentEditScope)
+    const source = tree.elements.find((element) => element.id === id)
+    if (!source) throw new Error(`Unknown UI component source: ${id}`)
+    const elements = tree.elements.map((element) =>
+      element.id === source.id
+        ? ({ ...element, ...patch, id: element.id, type: element.type } as UIElement)
+        : element,
+    )
+    const candidate = validateComponentMasterCandidate(
+      replaceEditTree(asset, this.currentEditScope, elements),
+      source.id,
+    )
+    this.replaceAsset(candidate, undefined, options)
+  }
+
+  replaceComponentMasterElement(id: UIElementId | string, input: unknown): void {
+    const asset = this.requireAsset()
+    if (this.currentEditScope.type !== 'component') {
+      throw new Error('Component master replacement requires component edit scope')
+    }
+    const tree = requireEditTree(asset, this.currentEditScope)
+    if (!tree.elements.some((element) => element.id === id)) {
+      throw new Error(`Unknown UI component source: ${id}`)
+    }
+    const replacement = { ...(input as Record<string, unknown>), id }
+    const elements = tree.elements.map((element) =>
+      element.id === id ? (replacement as UIElement) : element,
+    )
+    const candidate = validateComponentMasterCandidate(
+      replaceEditTree(asset, this.currentEditScope, elements),
+      id,
+    )
+    this.replaceAsset(candidate)
   }
 
   removeElement(id: UIElementId | string): void {
@@ -585,38 +617,49 @@ export class UIAuthoringSession {
 
   removeElements(ids: readonly (UIElementId | string)[]): void {
     const asset = this.requireAsset()
-    if (ids.some((id) => id === asset.root)) throw new Error('Cannot remove the UI root')
+    const tree = requireEditTree(asset, this.currentEditScope)
+    if (ids.some((id) => id === tree.root)) {
+      throw new Error(
+        this.currentEditScope.type === 'document'
+          ? 'Cannot remove the UI root'
+          : 'Cannot remove the UI component master root',
+      )
+    }
     const remove = new Set<string>()
     const visit = (elementId: string): void => {
       if (remove.has(elementId)) return
       remove.add(elementId)
-      const element = asset.elements.find((candidate) => candidate.id === elementId)
+      const element = tree.elements.find((candidate) => candidate.id === elementId)
       if (element && 'children' in element) {
         for (const child of element.children) visit(child)
       }
     }
     for (const id of ids) {
-      if (!asset.elements.some((element) => element.id === id)) {
-        throw new Error(`Unknown UI element: ${id}`)
+      if (!tree.elements.some((element) => element.id === id)) {
+        throw new Error(
+          this.currentEditScope.type === 'document'
+            ? `Unknown UI element: ${id}`
+            : `Unknown UI component source: ${id}`,
+        )
       }
       if (this.editorLockedIds.has(id as UIElementId)) {
         throw new Error(`Cannot remove locked UI layer: ${id}`)
       }
       visit(id)
     }
-    this.replaceAsset(
-      {
-        ...asset,
-        elements: asset.elements
-          .filter((element) => !remove.has(element.id))
-          .map((element) =>
-            'children' in element
-              ? { ...element, children: element.children.filter((child) => !remove.has(child)) }
-              : element,
-          ),
-      },
-      [asset.root],
-    )
+    const elements = tree.elements
+      .filter((element) => !remove.has(element.id))
+      .map((element) =>
+        'children' in element
+          ? { ...element, children: element.children.filter((child) => !remove.has(child)) }
+          : element,
+      )
+    const input = replaceEditTree(asset, this.currentEditScope, elements)
+    const candidate =
+      this.currentEditScope.type === 'component'
+        ? validateComponentMasterCandidate(input, ids[0] ?? tree.root)
+        : input
+    this.replaceAsset(candidate, [tree.root])
   }
 
   select(id: UIElementId | string | null): void {
@@ -774,6 +817,47 @@ export class UIAuthoringSession {
     return this.currentPath
   }
 
+  private resolveCreationTarget(
+    asset: UIDocument,
+    options: UICreationTargetOptions,
+  ): { readonly parentId: UIElementId; readonly index: number } {
+    if (this.currentEditScope.type === 'document') {
+      return resolveUICreationTarget(asset, options)
+    }
+    const tree = requireEditTree(asset, this.currentEditScope)
+    const byId = new Map(tree.elements.map((element) => [element.id, element]))
+    const parents = parentMap(tree)
+    const unlockedFrame = (id: UIElementId | null | undefined) => {
+      const element = id ? byId.get(id) : undefined
+      return element?.type === 'frame' && !options.lockedIds?.has(element.id) ? element : undefined
+    }
+    let parent = unlockedFrame(options.pointerFrameId)
+    if (!parent) parent = unlockedFrame(options.selectedId)
+    if (!parent && options.selectedId) {
+      let ancestor = parents.get(options.selectedId) as UIElementId | undefined
+      while (ancestor && !parent) {
+        parent = unlockedFrame(ancestor)
+        ancestor = parents.get(ancestor) as UIElementId | undefined
+      }
+    }
+    parent ??= unlockedFrame(tree.root)
+    if (!parent) throw new Error('No unlocked Frame is available for UI element creation')
+
+    let index = parent.children.length
+    if (options.pointerFrameId === parent.id && options.insertionIndex !== undefined) {
+      index = Math.max(0, Math.min(Math.trunc(options.insertionIndex), parent.children.length))
+    } else if (options.selectedId && options.selectedId !== parent.id) {
+      let directChild = options.selectedId
+      let ancestor = parents.get(directChild)
+      while (ancestor && ancestor !== parent.id) {
+        directChild = ancestor as UIElementId
+        ancestor = parents.get(directChild)
+      }
+      if (ancestor === parent.id) index = parent.children.indexOf(directChild) + 1
+    }
+    return { parentId: parent.id, index }
+  }
+
   private notify(): void {
     for (const listener of this.listeners) listener()
   }
@@ -799,6 +883,30 @@ function requireEditTree(asset: UIDocument, scope: UIEditScope): UIEditTree {
     throw new Error(`Unknown UI component: ${scope.componentId}`)
   }
   return tree!
+}
+
+function replaceEditTree(
+  asset: UIDocument,
+  scope: UIEditScope,
+  elements: readonly UIElement[],
+): unknown {
+  if (scope.type === 'document') return { ...asset, elements }
+  return {
+    ...asset,
+    components: asset.components.map((component) =>
+      component.id === scope.componentId ? { ...component, elements } : component,
+    ),
+  }
+}
+
+function validateComponentMasterCandidate(
+  input: unknown,
+  sourceId: UIElementId | string,
+): UIDocument {
+  const result = UIDocumentSchema.safeParse(input)
+  if (result.success) return result.data
+  const diagnostic = result.error.issues.map((issue) => issue.message).join('; ')
+  throw new Error(`Invalid UI component master edit for ${sourceId}: ${diagnostic}`)
 }
 
 function parentMap(tree: UIEditTree): ReadonlyMap<string, string | null> {

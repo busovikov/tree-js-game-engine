@@ -10,6 +10,7 @@ const DOCUMENT = '13000000-0000-4000-8000-000000000001'
 const ROOT = '13000000-0000-4000-8000-000000000002'
 const TEXT = '13000000-0000-4000-8000-000000000003'
 const DESCENDANT = '13000000-0000-4000-8000-000000000004'
+const EVENT = '13000000-0000-4000-8000-000000000005'
 
 function ids() {
   const values = [DOCUMENT, ROOT, TEXT]
@@ -287,6 +288,181 @@ describe('UIAuthoringSession', () => {
 
     expect(JSON.parse(saved)).not.toHaveProperty('editScope')
     expect(JSON.parse(saved)).not.toHaveProperty('selection')
+  })
+
+  it('edits component-master elements and structure as strict undoable replacements', () => {
+    const commands = new CommandBus()
+    const generated = [
+      '13000000-0000-4000-8000-000000000010',
+      '13000000-0000-4000-8000-000000000011',
+      '13000000-0000-4000-8000-000000000012',
+    ]
+    const session = new UIAuthoringSession(
+      commands,
+      { readText: async () => '', writeText: async () => undefined },
+      () => generated.shift() ?? crypto.randomUUID(),
+    )
+    const base = createEmptyUIDocument('HUD', DOCUMENT, ROOT)
+    session.openAsset('assets/ui/hud.ui.json', {
+      ...base,
+      elements: [
+        { ...base.elements[0], children: [TEXT] },
+        {
+          id: TEXT,
+          type: 'frame',
+          children: [DESCENDANT],
+          layout: { mode: 'vertical' },
+        },
+        { id: DESCENDANT, type: 'text', text: 'Ready' },
+      ],
+    })
+    const created = session.createComponent(TEXT, 'Card')
+    session.enterComponentMaster(created.componentId, DESCENDANT)
+
+    session.updateElement(DESCENDANT, { text: 'Go' })
+    const added = session.addElement(TEXT, 'text')
+
+    expect(session.selectedElementIds).toEqual([added])
+    expect(session.asset?.elements).toHaveLength(2)
+    expect(
+      session.asset?.components[0]?.elements.find((element) => element.id === DESCENDANT),
+    ).toMatchObject({ text: 'Go' })
+    expect(
+      session.asset?.components[0]?.elements.find((element) => element.id === created.instanceId),
+    ).toBeUndefined()
+    expect(
+      session.asset?.elements.find((element) => element.id === created.instanceId),
+    ).toMatchObject({ type: 'instance', overrides: {} })
+
+    commands.undo()
+    expect(session.editScope).toEqual({ type: 'component', componentId: created.componentId })
+    expect(session.selectedElementIds).toEqual([DESCENDANT])
+    expect(session.asset?.components[0]?.elements).toHaveLength(2)
+    commands.undo()
+    expect(
+      session.asset?.components[0]?.elements.find((element) => element.id === DESCENDANT),
+    ).toMatchObject({ text: 'Ready' })
+    expect(session.selectedElementIds).toEqual([DESCENDANT])
+    commands.redo()
+    commands.redo()
+    expect(session.selectedElementIds).toEqual([added])
+
+    session.exitComponentMaster()
+    expect(session.selectedElementIds).toEqual([created.instanceId])
+    commands.undo()
+    expect(session.selectedElementIds).toEqual([created.instanceId])
+    expect(session.asset?.components[0]?.elements).toHaveLength(2)
+    commands.redo()
+    expect(session.selectedElementIds).toEqual([created.instanceId])
+    expect(session.asset?.components[0]?.elements).toHaveLength(3)
+    const state = commands.getStateId()
+    expect(() => session.removeElement(added)).toThrow(`Unknown UI element: ${added}`)
+    expect(commands.getStateId()).toBe(state)
+  })
+
+  it('rejects master type and event changes that invalidate an instance override atomically', () => {
+    const commands = new CommandBus()
+    const generated = [
+      '13000000-0000-4000-8000-000000000010',
+      '13000000-0000-4000-8000-000000000011',
+    ]
+    const session = new UIAuthoringSession(
+      commands,
+      { readText: async () => '', writeText: async () => undefined },
+      () => generated.shift() ?? crypto.randomUUID(),
+    )
+    const base = createEmptyUIDocument('HUD', DOCUMENT, ROOT)
+    session.openAsset('assets/ui/hud.ui.json', {
+      ...base,
+      events: [{ id: EVENT, name: 'Activate', payload: 'none' }],
+      elements: [
+        { ...base.elements[0], children: [TEXT] },
+        { id: TEXT, type: 'button', text: 'Ready' },
+      ],
+    })
+    const created = session.createComponent(TEXT, 'Status label')
+    session.setInstanceOverride(created.instanceId, TEXT, {
+      text: 'Retry',
+      events: { activate: EVENT as never },
+    })
+    session.enterComponentMaster(created.componentId)
+    const before = structuredClone(session.asset)
+    const state = commands.getStateId()
+
+    expect(() =>
+      session.replaceComponentMasterElement(TEXT, { id: TEXT, type: 'rectangle' }),
+    ).toThrow(
+      /Invalid UI component master edit.*Text override is invalid for rectangle.*UI event slot rectangle.activate is invalid/,
+    )
+    expect(commands.getStateId()).toBe(state)
+    expect(session.asset).toEqual(before)
+    expect(session.editScope).toEqual({ type: 'component', componentId: created.componentId })
+    expect(session.selectedElementIds).toEqual([TEXT])
+  })
+
+  it('rejects option and range edits that invalidate overrides on any instance', () => {
+    const commands = new CommandBus()
+    const selectId = TEXT
+    const sliderId = DESCENDANT
+    const generated = [
+      '13000000-0000-4000-8000-000000000010',
+      '13000000-0000-4000-8000-000000000011',
+      '13000000-0000-4000-8000-000000000012',
+      '13000000-0000-4000-8000-000000000013',
+      '13000000-0000-4000-8000-000000000014',
+    ]
+    const session = new UIAuthoringSession(
+      commands,
+      { readText: async () => '', writeText: async () => undefined },
+      () => generated.shift() ?? crypto.randomUUID(),
+    )
+    const base = createEmptyUIDocument('HUD', DOCUMENT, ROOT)
+    session.openAsset('assets/ui/hud.ui.json', {
+      ...base,
+      elements: [
+        { ...base.elements[0], children: [selectId, sliderId] },
+        {
+          id: selectId,
+          type: 'select',
+          value: 'a',
+          options: [
+            { value: 'a', label: 'A' },
+            { value: 'b', label: 'B' },
+          ],
+          accessibility: { label: 'Choice' },
+        },
+        {
+          id: sliderId,
+          type: 'slider',
+          min: 0,
+          max: 10,
+          step: 1,
+          value: 0,
+          accessibility: { label: 'Amount' },
+        },
+      ],
+    })
+    const select = session.createComponent(selectId, 'Choice')
+    const slider = session.createComponent(sliderId, 'Amount')
+    const secondSelect = session.placeComponent(select.componentId, { selectedId: ROOT })
+    session.setInstanceOverride(secondSelect, selectId, { value: 'b' })
+    session.setInstanceOverride(slider.instanceId, sliderId, { value: 8 })
+
+    session.enterComponentMaster(select.componentId)
+    const selectState = commands.getStateId()
+    expect(() =>
+      session.updateElement(selectId, { options: [{ value: 'a', label: 'A' }] }),
+    ).toThrow(/Invalid UI component master edit.*Value override is invalid for select/)
+    expect(commands.getStateId()).toBe(selectState)
+    session.exitComponentMaster()
+
+    session.enterComponentMaster(slider.componentId)
+    const sliderState = commands.getStateId()
+    expect(() => session.updateElement(sliderId, { max: 5 })).toThrow(
+      /Invalid UI component master edit.*Value override is invalid for slider/,
+    )
+    expect(commands.getStateId()).toBe(sliderState)
+    expect(session.selectedElementIds).toEqual([sliderId])
   })
 
   it('supports explicit desktop preview sizes', () => {
