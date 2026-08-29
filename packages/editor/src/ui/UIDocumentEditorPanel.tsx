@@ -10,6 +10,7 @@ import {
   type UIDocument,
   type UIAccessibility,
   type UIBound,
+  type UIComponentId,
   type UIElement,
   type UIElementId,
   type UILayout,
@@ -107,9 +108,9 @@ type UIGesture =
       readonly handle?: UIResizeHandle
     }
 
-function elementParents(asset: UIDocument): ReadonlyMap<string, string> {
+function elementParents(elements: readonly UIElement[]): ReadonlyMap<string, string> {
   const parents = new Map<string, string>()
-  for (const element of asset.elements) {
+  for (const element of elements) {
     if ('children' in element) for (const child of element.children) parents.set(child, element.id)
   }
   return parents
@@ -261,6 +262,8 @@ function HierarchyNode({
   onDragStart,
   onDragOver,
   onDrop,
+  componentNames,
+  onEditComponent,
 }: {
   item: UIHierarchyItem
   rootId: UIElementId
@@ -282,6 +285,8 @@ function HierarchyNode({
   onDragStart: (event: ReactDragEvent<HTMLButtonElement>, id: UIElementId) => void
   onDragOver: (event: ReactDragEvent<HTMLDivElement>, id: UIElementId) => void
   onDrop: (event: ReactDragEvent<HTMLDivElement>, id: UIElementId) => void
+  componentNames: ReadonlyMap<string, string>
+  onEditComponent: (componentId: UIComponentId) => void
 }) {
   const isSelected = selected.includes(item.id)
   const isExpanded = expanded.has(item.id)
@@ -343,6 +348,22 @@ function HierarchyNode({
           >
             <span>{item.name}</span>
           </button>
+        )}
+        {element.type === 'instance' && (
+          <div className="haku-ui-editor__instance-entry">
+            <strong>Instance</strong>
+            <span role="note">
+              Structure is defined by {componentNames.get(element.component) ?? 'its master'};
+              enter the master to edit descendants.
+            </span>
+            <button
+              type="button"
+              aria-label={`Edit ${componentNames.get(element.component) ?? 'component'} master`}
+              onClick={() => onEditComponent(element.component)}
+            >
+              Edit master
+            </button>
+          </div>
         )}
         <div className="haku-ui-editor__tree-actions">
           <button
@@ -409,6 +430,8 @@ function HierarchyNode({
               onDragStart={onDragStart}
               onDragOver={onDragOver}
               onDrop={onDrop}
+              componentNames={componentNames}
+              onEditComponent={onEditComponent}
             />
           ))}
         </ul>
@@ -1407,11 +1430,19 @@ const UIWidgetSection = memo(function UIWidgetSection({
   const historyGroup = useRef<string | null>(null)
   const run = (patch: Record<string, unknown>, group?: string) => {
     try {
-      uiAuthoringSession.replaceAsset(
-        updateUIElementWidget(asset, element.id, patch),
-        undefined,
-        group ? { historyGroup: group } : {},
-      )
+      if (uiAuthoringSession.editScope.type === 'document') {
+        uiAuthoringSession.replaceAsset(
+          updateUIElementWidget(asset, element.id, patch),
+          undefined,
+          group ? { historyGroup: group } : {},
+        )
+      } else {
+        uiAuthoringSession.updateElement(
+          element.id,
+          patch,
+          group ? { historyGroup: group } : {},
+        )
+      }
       setError(null)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason))
@@ -2180,15 +2211,27 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
   )
 
   const asset = uiAuthoringSession.asset
+  const assetPath = uiAuthoringSession.path
+  const editScope = uiAuthoringSession.editScope
+  const activeComponent =
+    asset && editScope.type === 'component'
+      ? asset.components.find((component) => component.id === editScope.componentId) ?? null
+      : null
+  const activeElements = activeComponent?.elements ?? asset?.elements ?? []
+  const activeRoot = activeComponent?.root ?? asset?.root ?? null
   const selected = useMemo(
     () =>
-      asset?.elements.find((element) => element.id === uiAuthoringSession.selectedElementId) ??
+      activeElements.find((element) => element.id === uiAuthoringSession.selectedElementId) ??
       null,
-    [asset, uiAuthoringSession.selectedElementId],
+    [activeElements, uiAuthoringSession.selectedElementId],
   )
   const hierarchy = asset ? uiAuthoringSession.hierarchy() : []
   const elements = useMemo(
-    () => new Map(asset?.elements.map((element) => [element.id, element]) ?? []),
+    () => new Map(activeElements.map((element) => [element.id, element])),
+    [activeElements],
+  )
+  const componentNames = useMemo(
+    () => new Map(asset?.components.map((component) => [component.id, component.name]) ?? []),
     [asset],
   )
   const selectedIds = uiAuthoringSession.selectedElementIds
@@ -2212,7 +2255,7 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
     }
   }, [])
 
-  const hierarchyParents = useMemo(() => (asset ? elementParents(asset) : new Map()), [asset])
+  const hierarchyParents = useMemo(() => elementParents(activeElements), [activeElements])
   const selectionOverlay = useMemo(
     () => (asset ? deriveUISelectionOverlay(asset, selectedIds, elementBounds) : null),
     [asset, elementBounds, selectedIds],
@@ -2221,6 +2264,13 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
     () => (asset ? deriveUIInsertionOverlay(asset, canvasInsertionTarget, elementBounds) : null),
     [asset, canvasInsertionTarget, elementBounds],
   )
+  const inspectionInstance =
+    asset && editScope.type === 'component'
+      ? asset.elements.find(
+          (element) =>
+            element.type === 'instance' && element.component === editScope.componentId,
+        ) ?? null
+      : null
 
   const focusLayer = useCallback((id: UIElementId) => {
     document.querySelector<HTMLElement>(`[data-haku-ui-tree-item="${id}"]`)?.focus()
@@ -2488,9 +2538,9 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
   useEffect(() => fitRoot(), [fitRoot])
   useEffect(() => {
     const host = previewHost.current
-    if (!host || !asset) return
-    const instance = new UIDocumentInstance(asset, {
-      ...(previewTheme ? { theme: previewTheme as UIThemeId } : {}),
+    const initialAsset = uiAuthoringSession.asset
+    if (!host || !initialAsset) return
+    const instance = new UIDocumentInstance(initialAsset, {
       assets: {
         resolve(reference) {
           const relativePath = projectService.getAssetPath(reference)
@@ -2501,13 +2551,27 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
     const unsubscribe = instance.subscribe((event) => {
       setStatus(`Event: ${event.elementId}`)
     })
-    let frame = 0
-    let disposed = false
     try {
       instance.mount(host)
       instanceRef.current = instance
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Preview failed')
+    }
+    return () => {
+      if (instanceRef.current === instance) instanceRef.current = null
+      unsubscribe()
+      instance.destroy()
+    }
+  }, [assetPath])
+
+  useEffect(() => {
+    const instance = instanceRef.current
+    const host = previewHost.current
+    if (!instance || !host || !asset) return
+    let frame = 0
+    try {
+      instance.updateDocument(asset)
       const measure = () => {
-        if (disposed) return
         const scale = canvasViewRef.current.scale
         const hostRect = host.getBoundingClientRect()
         const next = fallbackElementBounds(asset, viewport)
@@ -2531,14 +2595,16 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Preview failed')
     }
-    return () => {
-      disposed = true
-      cancelAnimationFrame(frame)
-      if (instanceRef.current === instance) instanceRef.current = null
-      unsubscribe()
-      instance.destroy()
+    return () => cancelAnimationFrame(frame)
+  }, [asset, viewport.height, viewport.width])
+
+  useEffect(() => {
+    try {
+      instanceRef.current?.setTheme(previewTheme ? (previewTheme as UIThemeId) : undefined)
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Preview theme failed')
     }
-  }, [asset, previewTheme, viewport.height, viewport.width])
+  }, [previewTheme, asset])
 
   useEffect(() => {
     const instance = instanceRef.current
@@ -2615,7 +2681,7 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
         },
         canvasViewRef.current,
       )
-      const parents = elementParents(asset)
+      const parents = elementParents(asset.elements)
       const depth = (id: string) => {
         let value = 0
         let current = parents.get(id)
@@ -2654,7 +2720,7 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
   const snapCandidates = useCallback(
     (id: UIElementId, rect: UIRect): readonly UISnapCandidate[] => {
       if (!asset) return []
-      const parents = elementParents(asset)
+      const parents = elementParents(asset.elements)
       const parentId = parents.get(id)
       const parentRect = parentId ? elementBounds.get(parentId as UIElementId) : undefined
       if (!parentId || !parentRect) return []
@@ -2866,7 +2932,7 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
       gesture.kind === 'resize' && gesture.handle
         ? resizeRect(primaryBefore, gesture.handle, dx, dy)
         : { ...primaryBefore, x: primaryBefore.x + dx, y: primaryBefore.y + dy }
-    const parentId = elementParents(asset).get(primaryId)
+    const parentId = elementParents(asset.elements).get(primaryId)
     const parentRect = parentId ? elementBounds.get(parentId as UIElementId) : undefined
     const primaryElement = asset.elements.find((element) => element.id === primaryId)
     if (parentRect && primaryElement) {
@@ -3192,6 +3258,9 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
       data-haku-ui-document-path={uiAuthoringSession.path ?? undefined}
       data-haku-ui-selected-id={uiAuthoringSession.selectedElementId ?? undefined}
       data-haku-ui-selected-ids={selectedIds.join(',')}
+      data-haku-ui-edit-scope={
+        editScope.type === 'component' ? editScope.componentId : 'document'
+      }
     >
       <div className="haku-ui-editor__toolbar">
         <button type="button" onClick={() => void createDocument()}>
@@ -3353,6 +3422,18 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
           {uiAuthoringSession.isDirty ? ' *' : ''}
         </span>
       </div>
+      <nav className="haku-ui-editor__scope" aria-label="UI edit scope">
+        <span>{asset.name}</span>
+        {activeComponent && (
+          <>
+            <span aria-hidden="true"> / </span>
+            <strong>{activeComponent.name}</strong>
+            <button type="button" onClick={() => uiAuthoringSession.exitComponentMaster()}>
+              Back to document
+            </button>
+          </>
+        )}
+      </nav>
       {assetPickerOpen && (
         <div className="haku-ui-editor__asset-picker" role="dialog" aria-label="UI asset picker">
           <div className="haku-ui-editor__asset-picker-header">
@@ -3474,7 +3555,7 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
                 <HierarchyNode
                   key={item.id}
                   item={item}
-                  rootId={asset.root}
+                  rootId={activeRoot!}
                   elements={elements}
                   selected={selectedIds}
                   expanded={expandedLayers}
@@ -3540,13 +3621,36 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
                   }}
                   onDragOver={handleLayerDragOver}
                   onDrop={handleLayerDrop}
+                  componentNames={componentNames}
+                  onEditComponent={(componentId) =>
+                    runHierarchyAction(
+                      () => {
+                        const component = asset.components.find(
+                          (candidate) => candidate.id === componentId,
+                        )
+                        if (component) {
+                          setExpandedLayers(
+                            (current) =>
+                              new Set([
+                                ...current,
+                                ...component.elements
+                                  .filter((element) => 'children' in element)
+                                  .map((element) => element.id),
+                              ]),
+                          )
+                        }
+                        uiAuthoringSession.enterComponentMaster(componentId)
+                      },
+                      `Editing ${componentNames.get(componentId) ?? 'component'} master`,
+                    )
+                  }
                 />
               ))}
             </ul>
             <div className="haku-ui-editor__hierarchy-footer">
               <button
                 type="button"
-                disabled={selectedIds.length === 0 || selectedIds.includes(asset.root)}
+                disabled={selectedIds.length === 0 || selectedIds.includes(activeRoot!)}
                 onClick={() =>
                   runHierarchyAction(
                     () => uiAuthoringSession.duplicateElements(selectedIds),
@@ -3558,7 +3662,7 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
               </button>
               <button
                 type="button"
-                disabled={selectedIds.length === 0 || selectedIds.includes(asset.root)}
+                disabled={selectedIds.length === 0 || selectedIds.includes(activeRoot!)}
                 onClick={() =>
                   runHierarchyAction(
                     () => uiAuthoringSession.removeElements(selectedIds),
@@ -3766,6 +3870,15 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
         <Panel defaultSize={24} minSize={16} maxSize={40}>
           <aside className="haku-ui-editor__inspector" aria-label="UI Inspector">
             <h3>UI Inspector</h3>
+            {inspectionInstance && selected && (
+              <div
+                data-testid="ui-instance-inspection-locator"
+                data-haku-ui-instance-path={inspectionInstance.id}
+                data-haku-ui-source-id={selected.id}
+              >
+                Inspecting {activeComponent?.name} source in {inspectionInstance.name ?? 'instance'}
+              </div>
+            )}
             {selected && asset ? (
               <UIInspector asset={asset} element={selected} bounds={elementBounds} />
             ) : (

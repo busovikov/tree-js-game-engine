@@ -44,6 +44,67 @@ const STRING_EVENT = '13000000-0000-4000-8000-000000000132'
 const NUMBER_EVENT = '13000000-0000-4000-8000-000000000133'
 const BOOLEAN_EVENT = '13000000-0000-4000-8000-000000000134'
 const UNKNOWN_EVENT = '13000000-0000-4000-8000-000000000199'
+const COMPONENT_PANEL_DOCUMENT = '26000000-0000-4000-8000-000000000001'
+const COMPONENT_PANEL_ROOT = '26000000-0000-4000-8000-000000000002'
+const COMPONENT_PANEL_INSTANCE = '26000000-0000-4000-8000-000000000003'
+const COMPONENT_PANEL_MASTER = '26000000-0000-4000-8000-000000000004'
+const COMPONENT_PANEL_MASTER_ROOT = '26000000-0000-4000-8000-000000000005'
+const COMPONENT_PANEL_INPUT = '26000000-0000-4000-8000-000000000006'
+
+function componentPanelAsset() {
+  return UIDocumentSchema.parse({
+    schemaVersion: 2,
+    id: COMPONENT_PANEL_DOCUMENT,
+    name: 'Component panel fixture',
+    root: COMPONENT_PANEL_ROOT,
+    elements: [
+      {
+        id: COMPONENT_PANEL_ROOT,
+        type: 'frame',
+        name: 'Document root',
+        children: [COMPONENT_PANEL_INSTANCE],
+        layout: { mode: 'vertical' },
+        sizing: {
+          width: { mode: 'fixed', value: 1280, unit: 'px' },
+          height: { mode: 'fixed', value: 720, unit: 'px' },
+        },
+      },
+      {
+        id: COMPONENT_PANEL_INSTANCE,
+        type: 'instance',
+        name: 'Profile card instance',
+        component: COMPONENT_PANEL_MASTER,
+        overrides: {
+          [COMPONENT_PANEL_INPUT]: { value: 'Instance profile name' },
+        },
+      },
+    ],
+    components: [
+      {
+        id: COMPONENT_PANEL_MASTER,
+        name: 'Profile card',
+        root: COMPONENT_PANEL_MASTER_ROOT,
+        elements: [
+          {
+            id: COMPONENT_PANEL_MASTER_ROOT,
+            type: 'frame',
+            name: 'Profile card root',
+            children: [COMPONENT_PANEL_INPUT],
+            layout: { mode: 'vertical' },
+          },
+          {
+            id: COMPONENT_PANEL_INPUT,
+            type: 'text-input',
+            name: 'Profile name',
+            value: 'Master name',
+            maxLength: 24,
+            accessibility: { label: 'Profile name' },
+          },
+        ],
+      },
+    ],
+  })
+}
 
 function inspectorAsset(
   type:
@@ -263,6 +324,100 @@ describe('ViewportTabsShell UI workspace baseline', () => {
     expect(workspace?.getAttribute('data-haku-ui-selected-id')).toBe(
       '13000000-0000-4000-8000-000000000103',
     )
+  })
+
+  it('enters an instance master with scoped Layers and Inspector, then exits without saving edit scope', async () => {
+    const asset = componentPanelAsset()
+    uiAuthoringSession.openAsset('assets/ui/component-panel.ui.json', asset)
+    const save = vi.spyOn(projectService, 'saveUIDocumentAsset').mockResolvedValue(undefined)
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+
+    expect(screen.getByText('Instance')).toBeTruthy()
+    expect(screen.getByRole('note').textContent).toMatch(/structure is defined by Profile card/i)
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Profile card master' }))
+
+    const workspace = container.querySelector('[data-haku-ui-workspace]')
+    expect(workspace?.getAttribute('data-haku-ui-edit-scope')).toBe(COMPONENT_PANEL_MASTER)
+    expect(screen.getByRole('navigation', { name: 'UI edit scope' }).textContent).toMatch(
+      /Component panel fixture.*Profile card/,
+    )
+    expect(
+      container.querySelector(`[data-haku-ui-tree-item="${COMPONENT_PANEL_MASTER_ROOT}"]`),
+    ).toBeTruthy()
+    expect(
+      container.querySelector(`[data-haku-ui-tree-item="${COMPONENT_PANEL_INPUT}"]`),
+    ).toBeTruthy()
+    expect(
+      container.querySelector(`[data-haku-ui-tree-item="${COMPONENT_PANEL_ROOT}"]`),
+    ).toBeNull()
+
+    fireEvent.click(
+      container.querySelector(
+        `[data-haku-ui-tree-item="${COMPONENT_PANEL_INPUT}"]`,
+      ) as HTMLButtonElement,
+    )
+    const locator = screen.getByTestId('ui-instance-inspection-locator')
+    expect(locator.getAttribute('data-haku-ui-instance-path')).toBe(COMPONENT_PANEL_INSTANCE)
+    expect(locator.getAttribute('data-haku-ui-source-id')).toBe(COMPONENT_PANEL_INPUT)
+
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Player name' } })
+    expect(
+      uiAuthoringSession.asset?.components[0]?.elements.find(
+        (element) => element.id === COMPONENT_PANEL_INPUT,
+      ),
+    ).toMatchObject({ name: 'Player name' })
+    expect(uiAuthoringSession.asset?.elements[1]).toMatchObject({
+      id: COMPONENT_PANEL_INSTANCE,
+      type: 'instance',
+    })
+
+    const beforeInvalid = structuredClone(uiAuthoringSession.asset)
+    const maximum = within(screen.getByRole('region', { name: 'Widget' })).getByLabelText(
+      'Max length',
+    )
+    fireEvent.change(maximum, { target: { value: '4' } })
+    fireEvent.blur(maximum)
+    expect(screen.getByRole('alert').textContent).toMatch(/Value override is invalid for text-input/)
+    expect(uiAuthoringSession.asset).toEqual(beforeInvalid)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1))
+    const saved = save.mock.calls[0]?.[1]
+    expect(saved).not.toHaveProperty('editScope')
+    expect(saved).not.toHaveProperty('selection')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back to document' }))
+    expect(uiAuthoringSession.editScope).toEqual({ type: 'document' })
+    expect(uiAuthoringSession.selectedElementIds).toEqual([COMPONENT_PANEL_INSTANCE])
+    expect(workspace?.getAttribute('data-haku-ui-edit-scope')).toBe('document')
+    expect(screen.getByRole('note').textContent).toMatch(/enter the master to edit descendants/i)
+    save.mockRestore()
+  })
+
+  it('preserves a focused instance widget value when a type-valid master edit refreshes preview', async () => {
+    uiAuthoringSession.openAsset('assets/ui/component-preview.ui.json', componentPanelAsset())
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    const selector = `[data-haku-ui-instance-path="${COMPONENT_PANEL_INSTANCE}"][data-haku-ui-source-id="${COMPONENT_PANEL_INPUT}"]`
+    const input = container.querySelector(selector) as HTMLInputElement
+    expect(input).toBeTruthy()
+    fireEvent.input(input, { target: { value: 'Runtime draft' } })
+    input.focus()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Profile card master' }))
+    fireEvent.click(
+      container.querySelector(
+        `[data-haku-ui-tree-item="${COMPONENT_PANEL_INPUT}"]`,
+      ) as HTMLButtonElement,
+    )
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Renamed profile name' } })
+
+    await waitFor(() => {
+      const refreshed = container.querySelector(selector) as HTMLInputElement
+      expect(refreshed.value).toBe('Runtime draft')
+      expect(document.activeElement).toBe(refreshed)
+    })
   })
 
   it.each([
