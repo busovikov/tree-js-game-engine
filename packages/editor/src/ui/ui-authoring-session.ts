@@ -10,9 +10,12 @@ import { assetId, type AssetRef } from '@haku/schema'
 import type { Command, CommandBus } from '../commands/command-bus.js'
 import { reduceUISelection } from './ui-canvas-selection.js'
 import {
+  deleteUIComponent,
   detachUIComponentInstance,
+  duplicateUIComponent,
   extractUIComponent,
   placeUIComponentInstance,
+  renameUIComponent,
   resetUIInstanceOverride,
   setUIInstanceOverride,
 } from './ui-component-authoring.js'
@@ -414,6 +417,26 @@ export class UIAuthoringSession {
     const result = extractUIComponent(this.requireAsset(), rootId as UIElementId, name, this.uuid)
     this.replaceAsset(result.asset, [result.instanceId])
     return { componentId: result.componentId, instanceId: result.instanceId }
+  }
+
+  duplicateComponent(componentId: UIComponentId | string): UIComponentId {
+    const result = duplicateUIComponent(this.requireAsset(), componentId, this.uuid)
+    this.replaceAsset(result.asset)
+    return result.componentId
+  }
+
+  renameComponent(componentId: UIComponentId | string, name: string): void {
+    this.replaceAsset(renameUIComponent(this.requireAsset(), componentId, name))
+  }
+
+  deleteComponent(componentId: UIComponentId | string): void {
+    if (
+      this.currentEditScope.type === 'component' &&
+      this.currentEditScope.componentId === componentId
+    ) {
+      throw new Error('Cannot delete the active UI component master; return to the document first')
+    }
+    this.replaceAsset(deleteUIComponent(this.requireAsset(), componentId))
   }
 
   enterComponentMaster(

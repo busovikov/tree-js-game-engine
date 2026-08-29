@@ -465,6 +465,100 @@ describe('UIAuthoringSession', () => {
     expect(session.selectedElementIds).toEqual([sliderId])
   })
 
+  it('renames, duplicates, and deletes component masters as atomic commands without disturbing another active scope', () => {
+    const commands = new CommandBus()
+    const generated = [
+      '13000000-0000-4000-8000-000000000020',
+      '13000000-0000-4000-8000-000000000021',
+    ]
+    const session = new UIAuthoringSession(
+      commands,
+      { readText: async () => '', writeText: async () => undefined },
+      () => generated.shift() ?? crypto.randomUUID(),
+    )
+    const base = createEmptyUIDocument('HUD', DOCUMENT, ROOT)
+    session.openAsset('assets/ui/hud.ui.json', {
+      ...base,
+      components: [
+        {
+          id: '13000000-0000-4000-8000-000000000010',
+          name: 'Card',
+          root: TEXT,
+          elements: [{ id: TEXT, type: 'text', text: 'Card' }],
+        },
+        {
+          id: '13000000-0000-4000-8000-000000000011',
+          name: 'Badge',
+          root: DESCENDANT,
+          elements: [{ id: DESCENDANT, type: 'text', text: 'Badge' }],
+        },
+      ],
+    })
+    session.enterComponentMaster('13000000-0000-4000-8000-000000000010')
+    const scope = session.editScope
+    const selection = session.selectedElementIds
+
+    session.renameComponent('13000000-0000-4000-8000-000000000011', 'Status badge')
+    expect(session.asset?.components[1]?.name).toBe('Status badge')
+    expect(session.editScope).toEqual(scope)
+    expect(session.selectedElementIds).toEqual(selection)
+    commands.undo()
+    expect(session.asset?.components[1]?.name).toBe('Badge')
+    commands.redo()
+
+    const duplicated = session.duplicateComponent('13000000-0000-4000-8000-000000000011')
+    expect(duplicated).toBe('13000000-0000-4000-8000-000000000020')
+    expect(session.asset?.components.at(-1)).toMatchObject({ name: 'Status badge 2' })
+    expect(session.editScope).toEqual(scope)
+    expect(session.selectedElementIds).toEqual(selection)
+    commands.undo()
+    expect(session.asset?.components).toHaveLength(2)
+    commands.redo()
+
+    session.deleteComponent(duplicated)
+    expect(session.asset?.components).toHaveLength(2)
+    expect(session.editScope).toEqual(scope)
+    expect(session.selectedElementIds).toEqual(selection)
+    commands.undo()
+    expect(session.asset?.components).toHaveLength(3)
+    commands.redo()
+    expect(session.asset?.components).toHaveLength(2)
+  })
+
+  it('rejects deleting referenced masters without changing asset, history, scope, or selection', () => {
+    const commands = new CommandBus()
+    const generated = [
+      '13000000-0000-4000-8000-000000000010',
+      '13000000-0000-4000-8000-000000000011',
+    ]
+    const session = new UIAuthoringSession(
+      commands,
+      { readText: async () => '', writeText: async () => undefined },
+      () => generated.shift() ?? crypto.randomUUID(),
+    )
+    const base = createEmptyUIDocument('HUD', DOCUMENT, ROOT)
+    session.openAsset('assets/ui/hud.ui.json', {
+      ...base,
+      elements: [
+        { ...base.elements[0], children: [TEXT] },
+        { id: TEXT, type: 'text', name: 'Status', text: 'Ready' },
+      ],
+    })
+    const created = session.createComponent(TEXT, 'Status')
+    const before = structuredClone(session.asset)
+    const state = commands.getStateId()
+    const scope = session.editScope
+    const selection = session.selectedElementIds
+
+    expect(() => session.deleteComponent(created.componentId)).toThrow(
+      /document instance .* references it/,
+    )
+    expect(session.asset).toEqual(before)
+    expect(commands.getStateId()).toBe(state)
+    expect(session.editScope).toEqual(scope)
+    expect(session.selectedElementIds).toEqual(selection)
+  })
+
   it('supports explicit desktop preview sizes', () => {
     const session = new UIAuthoringSession(
       new CommandBus(),

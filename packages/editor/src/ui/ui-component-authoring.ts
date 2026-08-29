@@ -31,6 +31,11 @@ export interface UIComponentDetachResult {
   readonly rootId: UIElementId
 }
 
+export interface UIComponentDuplicateResult {
+  readonly asset: UIDocument
+  readonly componentId: UIComponentId
+}
+
 function childrenOf(element: UIElement): readonly UIElementId[] {
   return 'children' in element ? element.children : []
 }
@@ -61,6 +66,32 @@ function requireComponent(asset: UIDocument, componentId: UIComponentId | string
   const component = asset.components.find((candidate) => candidate.id === componentId)
   if (!component) throw new Error(`Unknown UI component: ${componentId}`)
   return component
+}
+
+function validatedComponentName(
+  asset: UIDocument,
+  name: string,
+  excludedId?: UIComponentId | string,
+): string {
+  const componentName = name.trim()
+  if (!componentName) throw new Error('UI component name cannot be empty')
+  if (
+    asset.components.some(
+      (component) => component.id !== excludedId && component.name === componentName,
+    )
+  ) {
+    throw new Error(`UI component name must be unique: ${componentName}`)
+  }
+  return componentName
+}
+
+function duplicateComponentName(asset: UIDocument, sourceName: string): string {
+  const names = new Set(asset.components.map((component) => component.name))
+  const suffix = sourceName.match(/^(.*) (\d+)$/)
+  const base = suffix?.[1] ?? sourceName
+  let index = suffix ? Number(suffix[2]) + 1 : 2
+  while (names.has(`${base} ${index}`)) index += 1
+  return `${base} ${index}`
 }
 
 function componentDependencyPath(
@@ -123,8 +154,7 @@ export function extractUIComponent(
   uuid: () => string,
 ): UIComponentExtractionResult {
   if (rootId === asset.root) throw new Error('Cannot extract the UI document root as a component')
-  const componentName = name.trim()
-  if (!componentName) throw new Error('UI component name cannot be empty')
+  const componentName = validatedComponentName(asset, name)
   const byId = new Map(asset.elements.map((element) => [element.id, element]))
   const sourceRoot = byId.get(rootId)
   if (!sourceRoot) throw new Error(`Unknown document UI element: ${rootId}`)
@@ -173,6 +203,102 @@ export function extractUIComponent(
     componentId,
     instanceId,
   }
+}
+
+export function duplicateUIComponent(
+  asset: UIDocument,
+  componentId: UIComponentId | string,
+  uuid: () => string,
+): UIComponentDuplicateResult {
+  const source = requireComponent(asset, componentId)
+  const nextComponentId = generatedComponentId(asset, uuid)
+  const existing = globalElementIds(asset)
+  const sourceIds = new Map<UIElementId, UIElementId>()
+  for (const element of source.elements) {
+    sourceIds.set(element.id, generatedElementId(existing, uuid))
+  }
+  const remap = (id: UIElementId): UIElementId => {
+    const mapped = sourceIds.get(id)
+    if (!mapped) throw new Error(`Unknown duplicated UI component source: ${id}`)
+    return mapped
+  }
+  const duplicate: UIComponentDefinition = {
+    id: nextComponentId,
+    name: duplicateComponentName(asset, source.name),
+    root: remap(source.root),
+    elements: source.elements.map((element) => ({
+      ...structuredClone(element),
+      id: remap(element.id),
+      ...('children' in element ? { children: element.children.map(remap) } : {}),
+    })) as UIElement[],
+  }
+  const candidate = {
+    ...asset,
+    components: [...asset.components, duplicate],
+    themes: asset.themes.map((theme) => ({
+      ...theme,
+      styles: Object.fromEntries([
+        ...Object.entries(theme.styles),
+        ...source.elements.flatMap((element) => {
+          const style = theme.styles[element.id]
+          return style === undefined ? [] : [[remap(element.id), structuredClone(style)] as const]
+        }),
+      ]),
+    })),
+  }
+  return { asset: UIDocumentSchema.parse(candidate), componentId: nextComponentId }
+}
+
+export function renameUIComponent(
+  asset: UIDocument,
+  componentId: UIComponentId | string,
+  name: string,
+): UIDocument {
+  const component = requireComponent(asset, componentId)
+  const componentName = validatedComponentName(asset, name, component.id)
+  return UIDocumentSchema.parse({
+    ...asset,
+    components: asset.components.map((candidate) =>
+      candidate.id === component.id ? { ...candidate, name: componentName } : candidate,
+    ),
+  })
+}
+
+export function deleteUIComponent(
+  asset: UIDocument,
+  componentId: UIComponentId | string,
+): UIDocument {
+  const component = requireComponent(asset, componentId)
+  const documentReference = asset.elements.find(
+    (element) => element.type === 'instance' && element.component === component.id,
+  )
+  if (documentReference) {
+    throw new Error(
+      `Cannot delete UI component "${component.name}": document instance ${documentReference.id} references it`,
+    )
+  }
+  for (const owner of asset.components) {
+    if (owner.id === component.id) continue
+    const nestedReference = owner.elements.find(
+      (element) => element.type === 'instance' && element.component === component.id,
+    )
+    if (nestedReference) {
+      throw new Error(
+        `Cannot delete UI component "${component.name}": component "${owner.name}" instance ${nestedReference.id} references it`,
+      )
+    }
+  }
+  const sourceIds = new Set(component.elements.map((element) => element.id))
+  return UIDocumentSchema.parse({
+    ...asset,
+    components: asset.components.filter((candidate) => candidate.id !== component.id),
+    themes: asset.themes.map((theme) => ({
+      ...theme,
+      styles: Object.fromEntries(
+        Object.entries(theme.styles).filter(([sourceId]) => !sourceIds.has(sourceId as UIElementId)),
+      ),
+    })),
+  })
 }
 
 export function placeUIComponentInstance(

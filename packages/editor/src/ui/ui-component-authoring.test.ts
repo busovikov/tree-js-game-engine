@@ -1,9 +1,12 @@
 import { UIDocumentSchema, type UIDocument, type UIElementId } from '@haku/ui'
 import { describe, expect, it } from 'vitest'
 import {
+  deleteUIComponent,
   detachUIComponentInstance,
+  duplicateUIComponent,
   extractUIComponent,
   placeUIComponentInstance,
+  renameUIComponent,
   resetUIInstanceOverride,
   setUIInstanceOverride,
 } from './ui-component-authoring.js'
@@ -431,5 +434,110 @@ describe('UI component authoring transforms', () => {
       placeUIComponentInstance(asset, COMPONENT, ROOT as UIElementId, {}, ids(INSTANCE)),
     ).toThrow('Unknown UI component')
     expect(asset).toEqual(before)
+  })
+
+  it('duplicates a master with deterministic naming, globally fresh source IDs, and remapped theme styles', () => {
+    const asset = nestedThemeDocument()
+    const duplicate = duplicateUIComponent(
+      asset,
+      COMPONENT,
+      ids(
+        '25000000-0000-4000-8000-000000000040',
+        '25000000-0000-4000-8000-000000000041',
+        '25000000-0000-4000-8000-000000000042',
+        '25000000-0000-4000-8000-000000000043',
+      ),
+    )
+    const copied = duplicate.asset.components.find(
+      (component) => component.id === duplicate.componentId,
+    )!
+
+    expect(copied).toMatchObject({
+      id: '25000000-0000-4000-8000-000000000040',
+      name: 'Card 2',
+      root: '25000000-0000-4000-8000-000000000041',
+    })
+    expect(copied.elements.map((element) => element.id)).toEqual([
+      '25000000-0000-4000-8000-000000000041',
+      '25000000-0000-4000-8000-000000000042',
+      '25000000-0000-4000-8000-000000000043',
+    ])
+    expect(copied.elements[0]).toMatchObject({
+      children: [
+        '25000000-0000-4000-8000-000000000042',
+        '25000000-0000-4000-8000-000000000043',
+      ],
+    })
+    expect(copied.elements[1]).toMatchObject({
+      type: 'instance',
+      component: LEAF_COMPONENT,
+      overrides: { [LEAF_ROOT]: { text: 'Retry' } },
+    })
+    expect(
+      duplicate.asset.themes[0]?.styles['25000000-0000-4000-8000-000000000041'],
+    ).toEqual(asset.themes[0]?.styles[CARD])
+    expect(
+      duplicate.asset.themes[0]?.styles['25000000-0000-4000-8000-000000000042'],
+    ).toEqual(asset.themes[0]?.styles[NESTED_A])
+
+    const allSourceIds = duplicate.asset.components.flatMap((component) =>
+      component.elements.map((element) => element.id),
+    )
+    expect(
+      new Set([...duplicate.asset.elements.map((element) => element.id), ...allSourceIds]).size,
+    ).toBe(duplicate.asset.elements.length + allSourceIds.length)
+    expect(asset.components).toHaveLength(2)
+  })
+
+  it('validates unique component names and deletes only masters with no document or nested references', () => {
+    const asset = nestedThemeDocument()
+    const before = structuredClone(asset)
+
+    expect(() => renameUIComponent(asset, COMPONENT, '   ')).toThrow(
+      'UI component name cannot be empty',
+    )
+    expect(() => renameUIComponent(asset, COMPONENT, 'Label')).toThrow(
+      'UI component name must be unique: Label',
+    )
+    expect(() => deleteUIComponent(asset, COMPONENT)).toThrow(
+      `Cannot delete UI component "Card": document instance ${INSTANCE} references it`,
+    )
+    expect(() => deleteUIComponent(asset, LEAF_COMPONENT)).toThrow(
+      `Cannot delete UI component "Label": component "Card" instance ${NESTED_A} references it`,
+    )
+    expect(asset).toEqual(before)
+
+    const duplicate = duplicateUIComponent(
+      asset,
+      COMPONENT,
+      ids(
+        '25000000-0000-4000-8000-000000000050',
+        '25000000-0000-4000-8000-000000000051',
+        '25000000-0000-4000-8000-000000000052',
+        '25000000-0000-4000-8000-000000000053',
+      ),
+    )
+    const renamed = renameUIComponent(duplicate.asset, duplicate.componentId, '  Promo card  ')
+    expect(
+      renamed.components.find((component) => component.id === duplicate.componentId)?.name,
+    ).toBe('Promo card')
+    const deleted = deleteUIComponent(renamed, duplicate.componentId)
+    expect(deleted.components.map((component) => component.id)).toEqual([COMPONENT, LEAF_COMPONENT])
+    expect(deleted.themes[0]?.styles).not.toHaveProperty(
+      '25000000-0000-4000-8000-000000000051',
+    )
+  })
+
+  it('rejects duplicate names when extracting a component before generating IDs', () => {
+    const asset = nestedThemeDocument()
+    let generated = false
+
+    expect(() =>
+      extractUIComponent(asset, INSTANCE as UIElementId, ' Card ', () => {
+        generated = true
+        return crypto.randomUUID()
+      }),
+    ).toThrow('UI component name must be unique: Card')
+    expect(generated).toBe(false)
   })
 })
