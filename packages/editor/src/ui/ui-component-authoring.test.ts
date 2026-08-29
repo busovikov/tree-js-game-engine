@@ -14,6 +14,11 @@ const CARD = '25000000-0000-4000-8000-000000000003'
 const BUTTON = '25000000-0000-4000-8000-000000000004'
 const COMPONENT = '25000000-0000-4000-8000-000000000005'
 const INSTANCE = '25000000-0000-4000-8000-000000000006'
+const NESTED_A = '25000000-0000-4000-8000-000000000007'
+const NESTED_B = '25000000-0000-4000-8000-000000000008'
+const LEAF_COMPONENT = '25000000-0000-4000-8000-000000000009'
+const LEAF_ROOT = '25000000-0000-4000-8000-000000000010'
+const THEME = '25000000-0000-4000-8000-000000000011'
 
 function documentAsset(): UIDocument {
   return UIDocumentSchema.parse({
@@ -57,6 +62,97 @@ function documentAsset(): UIDocument {
 
 function ids(...values: string[]): () => string {
   return () => values.shift() ?? crypto.randomUUID()
+}
+
+function nestedThemeDocument(): UIDocument {
+  return UIDocumentSchema.parse({
+    schemaVersion: 2,
+    id: DOCUMENT,
+    name: 'Nested themed components',
+    root: ROOT,
+    elements: [
+      {
+        id: ROOT,
+        type: 'frame',
+        children: [INSTANCE],
+        layout: { mode: 'free' },
+        sizing: {
+          width: { mode: 'fixed', value: 800, unit: 'px' },
+          height: { mode: 'fixed', value: 600, unit: 'px' },
+        },
+      },
+      {
+        id: INSTANCE,
+        type: 'instance',
+        component: COMPONENT,
+        placement: {
+          positioning: 'free',
+          x: 37,
+          y: 42,
+          horizontalConstraint: 'left',
+          verticalConstraint: 'top',
+          referenceWidth: 800,
+          referenceHeight: 600,
+        },
+        sizing: {
+          width: { mode: 'fixed', value: 260, unit: 'px' },
+          height: { mode: 'hug' },
+        },
+        style: { backgroundColor: '#222222' },
+        accessibility: { description: 'Placed card' },
+        overrides: {
+          [CARD]: {
+            style: { borderRadius: 9 },
+            accessibility: { label: 'Overridden card' },
+          },
+          [NESTED_A]: { style: { color: '#0000ff' } },
+        },
+      },
+    ],
+    components: [
+      {
+        id: COMPONENT,
+        name: 'Card',
+        root: CARD,
+        elements: [
+          {
+            id: CARD,
+            type: 'frame',
+            children: [NESTED_A, NESTED_B],
+            layout: { mode: 'horizontal', columnGap: 4 },
+            style: { backgroundColor: '#111111' },
+            accessibility: { role: 'region', label: 'Card' },
+          },
+          {
+            id: NESTED_A,
+            type: 'instance',
+            component: LEAF_COMPONENT,
+            overrides: { [LEAF_ROOT]: { text: 'Retry' } },
+          },
+          { id: NESTED_B, type: 'instance', component: LEAF_COMPONENT },
+        ],
+      },
+      {
+        id: LEAF_COMPONENT,
+        name: 'Label',
+        root: LEAF_ROOT,
+        elements: [{ id: LEAF_ROOT, type: 'text', text: 'Continue', style: { color: '#000000' } }],
+      },
+    ],
+    themes: [
+      {
+        id: THEME,
+        name: 'Game',
+        styles: {
+          [CARD]: { backgroundColor: '#333333', color: '#dddddd' },
+          [LEAF_ROOT]: { color: '#ff0000', fontSize: 14 },
+          [NESTED_A]: { color: '#00ff00' },
+          [INSTANCE]: { backgroundColor: '#444444', opacity: 0.75 },
+        },
+      },
+    ],
+    defaultTheme: THEME,
+  })
 }
 
 describe('UI component authoring transforms', () => {
@@ -136,6 +232,83 @@ describe('UI component authoring transforms', () => {
     expect(new Set(detached.asset.elements.map((element) => element.id)).size).toBe(
       detached.asset.elements.length,
     )
+    expect(detached.asset.elements.find((element) => element.id === detached.rootId)).toMatchObject(
+      {
+        placement: { positioning: 'flow' },
+      },
+    )
+  })
+
+  it('detaches repeated nested instances with root overrides, free placement, and remapped themes', () => {
+    const asset = nestedThemeDocument()
+    const before = structuredClone(asset)
+    const detached = detachUIComponentInstance(
+      asset,
+      INSTANCE as UIElementId,
+      ids(
+        '25000000-0000-4000-8000-000000000020',
+        '25000000-0000-4000-8000-000000000021',
+        '25000000-0000-4000-8000-000000000022',
+      ),
+    )
+
+    expect(asset).toEqual(before)
+    expect(detached.rootId).toBe('25000000-0000-4000-8000-000000000020')
+    expect(detached.asset.elements).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: detached.rootId,
+          type: 'frame',
+          children: [
+            '25000000-0000-4000-8000-000000000021',
+            '25000000-0000-4000-8000-000000000022',
+          ],
+          placement: expect.objectContaining({ positioning: 'free', x: 37, y: 42 }),
+          sizing: expect.objectContaining({
+            width: { mode: 'fixed', value: 260, unit: 'px' },
+          }),
+          style: expect.objectContaining({ backgroundColor: '#222222', borderRadius: 9 }),
+          accessibility: expect.objectContaining({
+            role: 'region',
+            label: 'Overridden card',
+            description: 'Placed card',
+          }),
+        }),
+        expect.objectContaining({
+          id: '25000000-0000-4000-8000-000000000021',
+          type: 'text',
+          text: 'Retry',
+          style: expect.objectContaining({ color: '#0000ff' }),
+        }),
+        expect.objectContaining({
+          id: '25000000-0000-4000-8000-000000000022',
+          type: 'text',
+          text: 'Continue',
+          style: expect.objectContaining({ color: '#000000' }),
+        }),
+      ]),
+    )
+    expect(detached.asset.themes[0]?.styles).not.toHaveProperty(INSTANCE)
+    expect(detached.asset.themes[0]?.styles[detached.rootId]).toMatchObject({
+      backgroundColor: '#444444',
+      color: '#dddddd',
+      opacity: 0.75,
+    })
+    expect(detached.asset.themes[0]?.styles['25000000-0000-4000-8000-000000000021']).toMatchObject({
+      color: '#00ff00',
+      fontSize: 14,
+    })
+    expect(detached.asset.themes[0]?.styles['25000000-0000-4000-8000-000000000022']).toMatchObject({
+      color: '#ff0000',
+      fontSize: 14,
+    })
+    expect(new Set(detached.asset.elements.map((element) => element.id)).size).toBe(
+      detached.asset.elements.length,
+    )
+
+    expect(() => detachUIComponentInstance(asset, INSTANCE as UIElementId, ids(LEAF_ROOT))).toThrow(
+      'Duplicate generated UI element ID',
+    )
   })
 
   it('resets one sparse override without changing neighboring instance values', () => {
@@ -195,6 +368,56 @@ describe('UI component authoring transforms', () => {
     expect(() =>
       placeUIComponentInstance(extracted, COMPONENT, ROOT as UIElementId, {}, ids(ROOT)),
     ).toThrow('Duplicate generated UI element ID')
+  })
+
+  it('rejects direct and indirect nested component insertion cycles before generating an ID', () => {
+    const extracted = extractUIComponent(
+      documentAsset(),
+      CARD as UIElementId,
+      'Card',
+      ids(COMPONENT, INSTANCE),
+    ).asset
+    const dependentComponent = '25000000-0000-4000-8000-000000000030'
+    const dependentRoot = '25000000-0000-4000-8000-000000000031'
+    const dependentInstance = '25000000-0000-4000-8000-000000000032'
+    const withDependency = UIDocumentSchema.parse({
+      ...extracted,
+      components: [
+        ...extracted.components,
+        {
+          id: dependentComponent,
+          name: 'Dependent',
+          root: dependentRoot,
+          elements: [
+            {
+              id: dependentRoot,
+              type: 'frame',
+              children: [dependentInstance],
+              layout: { mode: 'vertical' },
+            },
+            {
+              id: dependentInstance,
+              type: 'instance',
+              component: COMPONENT,
+            },
+          ],
+        },
+      ],
+    })
+    let generated = false
+    const uuid = () => {
+      generated = true
+      return '25000000-0000-4000-8000-000000000033'
+    }
+
+    expect(() =>
+      placeUIComponentInstance(extracted, COMPONENT, CARD as UIElementId, {}, uuid),
+    ).toThrow(`UI component insertion cycle: ${COMPONENT} -> ${COMPONENT}`)
+    expect(generated).toBe(false)
+    expect(() =>
+      placeUIComponentInstance(withDependency, dependentComponent, CARD as UIElementId, {}, uuid),
+    ).toThrow(`UI component insertion cycle: ${COMPONENT} -> ${dependentComponent} -> ${COMPONENT}`)
+    expect(generated).toBe(false)
   })
 
   it('rejects the document root and unknown component without mutating the input', () => {

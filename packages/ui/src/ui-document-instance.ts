@@ -49,6 +49,16 @@ interface RuntimeEntry {
   readonly sourceElementId?: UIElementId
   readonly defaultValue?: UIValue
   readonly radioGroupKey?: string
+  appearanceRoot?: RuntimeEntry
+  instanceAliases?: RuntimeEntry[]
+}
+
+interface PendingInstanceAlias {
+  readonly element: Extract<UIElement, { type: 'instance' }>
+  readonly key: string
+  readonly topLevelId: UIElementId
+  readonly instancePath?: readonly UIElementId[]
+  readonly sourceElementId?: UIElementId
 }
 
 interface UIElementState {
@@ -146,14 +156,13 @@ export class UIDocumentInstance {
     const entry = this.requireEntry(target)
     this.patchState(entry, { visible })
     if (!visible && entry.node.ownerDocument.activeElement === entry.node) entry.node.blur()
-    entry.node.hidden = !visible
-    entry.mountNode.hidden = !visible
+    this.syncAppearanceVisibility(entry)
   }
 
   setEnabled(target: UIRuntimeTarget, enabled: boolean): void {
     const entry = this.requireEntry(target)
     this.patchState(entry, { enabled })
-    applyEnabled(entry.node, enabled)
+    this.syncAppearanceEnabled(entry)
   }
 
   getValue(target: UIRuntimeTarget): UIValue {
@@ -178,7 +187,14 @@ export class UIDocumentInstance {
       throw new Error(`Unknown UI theme: ${theme}`)
     }
     this.activeTheme = theme as UIThemeId | undefined
-    for (const entry of this.entries.values()) this.applyVisualStyle(entry)
+    const styled = new Set<RuntimeEntry>()
+    for (const entry of this.entries.values()) {
+      const root = entry.appearanceRoot ?? entry
+      if (!styled.has(root)) {
+        styled.add(root)
+        this.applyVisualStyle(root)
+      }
+    }
   }
 
   private renderDocument(
@@ -208,33 +224,44 @@ export class UIDocumentInstance {
     topLevelId: UIElementId,
     instanceNodes: Map<string, HTMLElement>,
     entries: Map<string, RuntimeEntry>,
+    outerAliases: readonly PendingInstanceAlias[] = [],
   ): HTMLElement {
-    const wrapper = this.renderElement(
-      ownerDocument,
-      instance,
-      instance.id,
-      topLevelId,
-      path.length > 1 ? path.slice(0, -1) : undefined,
-      path.length > 1 ? instance.id : undefined,
-      undefined,
-      instanceNodes,
-      entries,
-    )
     const component = this.document.components.find((candidate) => candidate.id === instance.component)
     if (!component) throw new Error(`Unknown UI component: ${instance.component}`)
     const byId = new Map(component.elements.map((element) => [element.id, element]))
-    const renderSource = (sourceId: UIElementId): HTMLElement => {
+    const aliasKey = path.length > 1
+      ? uiInstanceLocatorKey({ instancePath: path.slice(0, -1), sourceElementId: instance.id })
+      : instance.id
+    const alias: PendingInstanceAlias = {
+      element: instance,
+      key: aliasKey,
+      topLevelId,
+      ...(path.length > 1
+        ? { instancePath: path.slice(0, -1), sourceElementId: instance.id }
+        : {}),
+    }
+    const aliases = [alias, ...outerAliases]
+    const renderSource = (sourceId: UIElementId, componentRoot = false): HTMLElement => {
       const source = byId.get(sourceId)
       if (!source) throw new Error(`Unknown UI component element: ${sourceId}`)
       const override = instance.overrides[source.id]
       const effective = applyUIInstanceOverride(source, override)
       if (effective.type === 'instance') {
-        return this.renderInstance(ownerDocument, effective, [...path, effective.id], topLevelId, instanceNodes, entries)
+        return this.renderInstance(
+          ownerDocument,
+          effective,
+          [...path, effective.id],
+          topLevelId,
+          instanceNodes,
+          entries,
+          componentRoot ? aliases : [],
+        )
       }
+      const key = uiInstanceLocatorKey({ instancePath: path, sourceElementId: source.id })
       const node = this.renderElement(
         ownerDocument,
         effective,
-        uiInstanceLocatorKey({ instancePath: path, sourceElementId: source.id }),
+        key,
         topLevelId,
         path,
         source.id,
@@ -242,11 +269,34 @@ export class UIDocumentInstance {
         instanceNodes,
         entries,
       )
+      if (componentRoot) {
+        const rootEntry = entries.get(key)
+        if (!rootEntry) throw new Error(`Missing UI component root runtime entry: ${source.id}`)
+        const runtimeAliases: RuntimeEntry[] = aliases.map((instanceAlias) => ({
+          ...instanceAlias,
+          node: rootEntry.node,
+          mountNode: rootEntry.mountNode,
+          appearanceRoot: rootEntry,
+        }))
+        rootEntry.instanceAliases = runtimeAliases
+        for (const instanceAlias of runtimeAliases) {
+          entries.set(instanceAlias.key, instanceAlias)
+          if (instanceAlias.instancePath && instanceAlias.sourceElementId) {
+            instanceNodes.set(
+              uiInstanceLocatorKey({
+                instancePath: instanceAlias.instancePath,
+                sourceElementId: instanceAlias.sourceElementId,
+              }),
+              rootEntry.node,
+            )
+          }
+        }
+        this.applyEntryBase(rootEntry)
+      }
       if (isContainer(effective)) for (const child of effective.children) node.append(renderSource(child))
       return node
     }
-    wrapper.append(renderSource(component.root))
-    return wrapper
+    return renderSource(component.root, true)
   }
 
   private renderElement(
@@ -289,32 +339,62 @@ export class UIDocumentInstance {
       node.dataset.hakuUiSourceId = sourceElementId
       node.dataset.hakuUiInstancePath = instancePath.join('/')
     }
-    this.applyEntryBase(entry)
+    if (element.type !== 'instance') this.applyEntryBase(entry)
     this.bindEvents(entry)
     return mountNode
   }
 
   private applyEntryBase(entry: RuntimeEntry): void {
-    const { element, node } = entry
+    const root = entry.appearanceRoot ?? entry
+    const { element, node } = root
+    const outer = root.instanceAliases?.at(-1)?.element
     applyLayout(node.style, element)
-    applySizing(node.style, element.sizing)
-    applyPlacement(node.style, element.placement, element.sizing)
-    this.applyVisualStyle(entry)
-    applyAccessibility(node, element)
-    node.hidden = !(this.state.get(entry.key)?.visible ?? element.visible)
-    entry.mountNode.hidden = node.hidden
-    applyEnabled(node, this.state.get(entry.key)?.enabled ?? element.enabled)
+    applySizing(node.style, outer?.sizing ?? element.sizing)
+    applyPlacement(node.style, outer?.placement ?? element.placement, outer?.sizing ?? element.sizing)
+    this.applyVisualStyle(root)
+    applyAccessibility(
+      node,
+      Object.assign(
+        {},
+        element.accessibility,
+        ...(root.instanceAliases ?? []).map((alias) => alias.element.accessibility),
+      ),
+    )
+    this.syncAppearanceVisibility(root)
+    this.syncAppearanceEnabled(root)
     if (element.id === this.document.root) node.style.position = 'relative'
-    this.syncNodeValue(entry)
+    this.syncNodeValue(root)
   }
 
   private applyVisualStyle(entry: RuntimeEntry): void {
-    clearVisualStyle(entry.node.style)
-    applyLayout(entry.node.style, entry.element)
+    const root = entry.appearanceRoot ?? entry
+    clearVisualStyle(root.node.style)
+    applyLayout(root.node.style, root.element)
     const themed = this.document.themes.find((theme) => theme.id === this.activeTheme)?.styles[
-      entry.sourceElementId ?? entry.element.id
+      root.sourceElementId ?? root.element.id
     ]
-    applyStyle(entry.node.style, { ...entry.element.style, ...themed })
+    applyStyle(root.node.style, { ...root.element.style, ...themed })
+    const theme = this.document.themes.find((candidate) => candidate.id === this.activeTheme)
+    for (const alias of root.instanceAliases ?? []) {
+      applyStyle(root.node.style, { ...alias.element.style, ...theme?.styles[alias.element.id] })
+    }
+  }
+
+  private syncAppearanceVisibility(entry: RuntimeEntry): void {
+    const root = entry.appearanceRoot ?? entry
+    const visible = [root, ...(root.instanceAliases ?? [])].every(
+      (candidate) => this.state.get(candidate.key)?.visible ?? candidate.element.visible,
+    )
+    root.node.hidden = !visible
+    root.mountNode.hidden = !visible
+  }
+
+  private syncAppearanceEnabled(entry: RuntimeEntry): void {
+    const root = entry.appearanceRoot ?? entry
+    const enabled = [root, ...(root.instanceAliases ?? [])].every(
+      (candidate) => this.state.get(candidate.key)?.enabled ?? candidate.element.enabled,
+    )
+    applyEnabled(root.node, enabled)
   }
 
   private bindEvents(entry: RuntimeEntry): void {
@@ -755,8 +835,7 @@ function applyStyle(style: CSSStyleDeclaration, value: UIStyle): void {
   if (value.objectFit !== undefined) style.objectFit = value.objectFit
 }
 
-function applyAccessibility(node: HTMLElement, element: UIElement): void {
-  const accessibility = element.accessibility
+function applyAccessibility(node: HTMLElement, accessibility: UIElement['accessibility']): void {
   if (accessibility.label) node.setAttribute('aria-label', accessibility.label)
   if (accessibility.description) node.setAttribute('aria-description', accessibility.description)
   if (accessibility.role) node.setAttribute('role', accessibility.role)

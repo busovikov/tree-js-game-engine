@@ -7,6 +7,7 @@ import {
   type UIElement,
   type UIElementId,
   type UIInstanceOverride,
+  type UIStyle,
 } from '@haku/ui'
 
 interface UIComponentPlacementOptions {
@@ -60,6 +61,25 @@ function requireComponent(asset: UIDocument, componentId: UIComponentId | string
   const component = asset.components.find((candidate) => candidate.id === componentId)
   if (!component) throw new Error(`Unknown UI component: ${componentId}`)
   return component
+}
+
+function componentDependencyPath(
+  asset: UIDocument,
+  from: UIComponentId,
+  target: UIComponentId,
+  visiting = new Set<UIComponentId>(),
+): UIComponentId[] | undefined {
+  if (from === target) return [from]
+  if (visiting.has(from)) return undefined
+  visiting.add(from)
+  const component = requireComponent(asset, from)
+  for (const element of component.elements) {
+    if (element.type !== 'instance') continue
+    const path = componentDependencyPath(asset, element.component, target, visiting)
+    if (path) return [from, ...path]
+  }
+  visiting.delete(from)
+  return undefined
 }
 
 function requireDocumentParent(
@@ -163,9 +183,21 @@ export function placeUIComponentInstance(
   uuid: () => string,
 ): UIComponentPlacementResult {
   const component = requireComponent(asset, componentId)
-  const parent = asset.elements.find((element) => element.id === parentId)
+  const documentParent = asset.elements.find((element) => element.id === parentId)
+  const owner = documentParent
+    ? undefined
+    : asset.components.find((candidate) =>
+        candidate.elements.some((element) => element.id === parentId),
+      )
+  const parent = documentParent ?? owner?.elements.find((element) => element.id === parentId)
   if (!parent || !('children' in parent)) {
     throw new Error(`UI component parent must be a container: ${parentId}`)
+  }
+  if (owner) {
+    const dependencyPath = componentDependencyPath(asset, component.id, owner.id)
+    if (dependencyPath) {
+      throw new Error(`UI component insertion cycle: ${[owner.id, ...dependencyPath].join(' -> ')}`)
+    }
   }
   const root = component.elements.find((element) => element.id === component.root)
   if (!root) throw new Error(`Unknown UI component root: ${component.root}`)
@@ -198,21 +230,47 @@ export function placeUIComponentInstance(
   )
   const candidate = {
     ...asset,
-    elements: [
-      ...asset.elements.map((element) =>
-        element.id === parent.id && 'children' in element
-          ? {
-              ...element,
-              children: [
-                ...element.children.slice(0, index),
-                instanceId,
-                ...element.children.slice(index),
-              ],
-            }
-          : element,
-      ),
-      instance,
-    ],
+    elements: owner
+      ? asset.elements
+      : [
+          ...asset.elements.map((element) =>
+            element.id === parent.id && 'children' in element
+              ? {
+                  ...element,
+                  children: [
+                    ...element.children.slice(0, index),
+                    instanceId,
+                    ...element.children.slice(index),
+                  ],
+                }
+              : element,
+          ),
+          instance,
+        ],
+    components: owner
+      ? asset.components.map((candidate) =>
+          candidate.id === owner.id
+            ? {
+                ...candidate,
+                elements: [
+                  ...candidate.elements.map((element) =>
+                    element.id === parent.id && 'children' in element
+                      ? {
+                          ...element,
+                          children: [
+                            ...element.children.slice(0, index),
+                            instanceId,
+                            ...element.children.slice(index),
+                          ],
+                        }
+                      : element,
+                  ),
+                  instance,
+                ],
+              }
+            : candidate,
+        )
+      : asset.components,
   }
   return { asset: UIDocumentSchema.parse(candidate), instanceId }
 }
@@ -289,6 +347,9 @@ export function detachUIComponentInstance(
   const parent = requireDocumentParent(asset, instanceId)
   const existing = globalElementIds(asset)
   const materialized: UIElement[] = []
+  const materializedThemeStyles = new Map<string, Record<string, UIStyle>>(
+    asset.themes.map((theme) => [theme.id, {}]),
+  )
 
   const materializeInstance = (
     authoredInstance: Extract<UIElement, { type: 'instance' }>,
@@ -301,6 +362,12 @@ export function detachUIComponentInstance(
       const effective = applyUIInstanceOverride(source, authoredInstance.overrides[sourceId])
       if (effective.type === 'instance') return materializeInstance(effective)
       const id = generatedElementId(existing, uuid)
+      for (const theme of asset.themes) {
+        const themed = theme.styles[source.id]
+        if (themed !== undefined) {
+          materializedThemeStyles.get(theme.id)![id] = structuredClone(themed)
+        }
+      }
       const children = childrenOf(effective).map(materializeSource)
       materialized.push({
         ...structuredClone(effective),
@@ -323,6 +390,18 @@ export function detachUIComponentInstance(
       style: { ...root.style, ...authoredInstance.style },
       accessibility: { ...root.accessibility, ...authoredInstance.accessibility },
     } as UIElement
+    for (const theme of asset.themes) {
+      const styles = materializedThemeStyles.get(theme.id)!
+      const inherited = styles[rootId]
+      const themedInstance = theme.styles[authoredInstance.id]
+      if (inherited !== undefined || themedInstance !== undefined) {
+        styles[rootId] = {
+          ...inherited,
+          ...authoredInstance.style,
+          ...themedInstance,
+        }
+      }
+    }
     return rootId
   }
 
@@ -342,6 +421,14 @@ export function detachUIComponentInstance(
         ),
       ...materialized,
     ],
+    themes: asset.themes.map((theme) => {
+      const styles = { ...theme.styles }
+      delete styles[instanceId]
+      return {
+        ...theme,
+        styles: { ...styles, ...materializedThemeStyles.get(theme.id) },
+      }
+    }),
   }
   return { asset: UIDocumentSchema.parse(candidate), rootId }
 }

@@ -40,6 +40,68 @@ const STRING_EVENT = id(61)
 const BOOLEAN_EVENT = id(62)
 const NUMBER_EVENT = id(63)
 
+function cardDocument(componentized: boolean) {
+  const card = {
+    id: COMPONENT_ROOT,
+    type: 'frame' as const,
+    name: 'Card',
+    children: [COMPONENT_INPUT],
+    layout: { mode: 'vertical' as const, rowGap: 6 },
+    sizing: {
+      width: { mode: 'fixed' as const, value: 240, unit: 'px' as const },
+      height: { mode: 'hug' as const },
+    },
+    style: {
+      backgroundColor: '#123456',
+      padding: { top: 8, right: 9, bottom: 10, left: 11 },
+      borderRadius: 4,
+    },
+    accessibility: { role: 'region', label: 'Card', tabIndex: 0 },
+    events: { focus: ACTIVATE, blur: ACTIVATE },
+  }
+  const button = {
+    id: COMPONENT_INPUT,
+    type: 'button' as const,
+    text: 'Continue',
+    accessibility: { label: 'Continue' },
+    events: { activate: ACTIVATE },
+  }
+  return UIDocumentSchema.parse({
+    schemaVersion: 2,
+    id: id(componentized ? 92 : 93),
+    name: componentized ? 'Componentized card' : 'Concrete card',
+    root: ROOT,
+    elements: [
+      {
+        id: ROOT,
+        type: 'frame',
+        children: [componentized ? INSTANCE : COMPONENT_ROOT],
+        layout: { mode: 'vertical' },
+        sizing: {
+          width: { mode: 'fixed', value: 800, unit: 'px' },
+          height: { mode: 'fixed', value: 600, unit: 'px' },
+        },
+      },
+      ...(componentized
+        ? [
+            {
+              id: INSTANCE,
+              type: 'instance' as const,
+              component: COMPONENT,
+              name: card.name,
+              placement: { positioning: 'flow' as const },
+              sizing: card.sizing,
+            },
+          ]
+        : [card, button]),
+    ],
+    components: componentized
+      ? [{ id: COMPONENT, name: 'Card', root: COMPONENT_ROOT, elements: [card, button] }]
+      : [],
+    events: [{ id: ACTIVATE, name: 'activate', payload: 'none' }],
+  })
+}
+
 function documentAsset() {
   return UIDocumentSchema.parse({
     schemaVersion: 2,
@@ -282,6 +344,14 @@ describe('UIDocumentInstance v2', () => {
     const instance = new UIDocumentInstance(documentAsset(), { assets: { resolve: () => '/star.png' }, theme: THEME })
     instance.mount(document.createElement('div'))
     const componentInput = instance.getInstanceElement({ instancePath: [INSTANCE], sourceElementId: COMPONENT_INPUT }) as HTMLInputElement
+    const nestedInstance = instance.getInstanceElement({
+      instancePath: [INSTANCE],
+      sourceElementId: NESTED_INSTANCE,
+    })
+    const nestedRoot = instance.getInstanceElement({
+      instancePath: [INSTANCE, NESTED_INSTANCE],
+      sourceElementId: NESTED_ROOT,
+    })
     const nestedText = instance.getInstanceElement({ instancePath: [INSTANCE, NESTED_INSTANCE], sourceElementId: NESTED_TEXT })
 
     expect(componentInput.value).toBe('overridden')
@@ -290,7 +360,103 @@ describe('UIDocumentInstance v2', () => {
     expect(componentInput.dataset.hakuUiId).toBe(INSTANCE)
     expect(componentInput.dataset.hakuUiSourceId).toBe(COMPONENT_INPUT)
     expect(componentInput.dataset.hakuUiInstancePath).toBe(INSTANCE)
+    expect(nestedInstance).toBe(nestedRoot)
     expect(nestedText?.textContent).toBe('Nested')
+  })
+
+  it('renders an extracted card instance as the concrete root without an appearance wrapper', () => {
+    const concrete = new UIDocumentInstance(cardDocument(false))
+    const componentized = new UIDocumentInstance(cardDocument(true))
+    const concreteHost = document.createElement('div')
+    const componentHost = document.createElement('div')
+    const events: unknown[] = []
+    componentized.subscribe((event) => events.push(event))
+    concrete.mount(concreteHost)
+    componentized.mount(componentHost)
+
+    const concreteRoot = concrete.getElement(COMPONENT_ROOT)!
+    const instanceRoot = componentized.getElement(INSTANCE)!
+    const sourceRoot = componentized.getInstanceElement({
+      instancePath: [INSTANCE],
+      sourceElementId: COMPONENT_ROOT,
+    })
+    const sourceButton = componentized.getInstanceElement({
+      instancePath: [INSTANCE],
+      sourceElementId: COMPONENT_INPUT,
+    })!
+
+    expect(componentized.getElement(ROOT)?.childElementCount).toBe(1)
+    expect(instanceRoot).toBe(sourceRoot)
+    expect(instanceRoot.tagName).toBe(concreteRoot.tagName)
+    expect(instanceRoot.childElementCount).toBe(concreteRoot.childElementCount)
+    expect(instanceRoot.style.cssText).toBe(concreteRoot.style.cssText)
+    expect(instanceRoot.getAttribute('role')).toBe(concreteRoot.getAttribute('role'))
+    expect(instanceRoot.getAttribute('aria-label')).toBe(concreteRoot.getAttribute('aria-label'))
+    expect(instanceRoot.tabIndex).toBe(concreteRoot.tabIndex)
+    expect(instanceRoot.dataset.hakuUiId).toBe(INSTANCE)
+    expect(instanceRoot.dataset.hakuUiSourceId).toBe(COMPONENT_ROOT)
+    expect(instanceRoot.dataset.hakuUiInstancePath).toBe(INSTANCE)
+
+    instanceRoot.dispatchEvent(new FocusEvent('focus'))
+    sourceButton.click()
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'focus',
+          elementId: INSTANCE,
+          instancePath: [INSTANCE],
+          sourceElementId: COMPONENT_ROOT,
+        }),
+        expect.objectContaining({
+          type: 'activate',
+          elementId: INSTANCE,
+          instancePath: [INSTANCE],
+          sourceElementId: COMPONENT_INPUT,
+        }),
+      ]),
+    )
+  })
+
+  it('composes instance appearance and runtime visibility onto its physical source root', () => {
+    const asset = cardDocument(true)
+    const composed = UIDocumentSchema.parse({
+      ...asset,
+      elements: asset.elements.map((element) =>
+        element.type === 'instance'
+          ? {
+              ...element,
+              visible: false,
+              enabled: false,
+              style: { backgroundColor: '#abcdef', opacity: 0.5 },
+              accessibility: { label: 'Placed card', description: 'Instance description' },
+            }
+          : element,
+      ),
+    })
+    const instance = new UIDocumentInstance(composed)
+    instance.mount(document.createElement('div'))
+    const rootLocator = {
+      instancePath: [INSTANCE],
+      sourceElementId: COMPONENT_ROOT,
+    } as const
+    const root = instance.getElement(INSTANCE)!
+
+    expect(root).toBe(instance.getInstanceElement(rootLocator))
+    expect(root.style.backgroundColor).toBe('#abcdef')
+    expect(root.style.opacity).toBe('0.5')
+    expect(root.getAttribute('aria-label')).toBe('Placed card')
+    expect(root.getAttribute('aria-description')).toBe('Instance description')
+    expect(root.hidden).toBe(true)
+    expect(root.inert).toBe(true)
+
+    instance.setVisible(INSTANCE, true)
+    instance.setEnabled(INSTANCE, true)
+    expect(root.hidden).toBe(false)
+    expect(root.inert).toBe(false)
+
+    instance.setVisible(rootLocator, false)
+    instance.setVisible(INSTANCE, true)
+    expect(root.hidden).toBe(true)
   })
 
   it('mounts atomically, requires assets, and clears values/DOM on destroy', () => {
