@@ -50,6 +50,9 @@ export const UI_DESKTOP_VIEWPORTS = {
 export type UIDesktopViewportId = keyof typeof UI_DESKTOP_VIEWPORTS
 export type UIDesktopViewport = (typeof UI_DESKTOP_VIEWPORTS)[UIDesktopViewportId]
 export type UIPreviewMode = 'edit' | 'preview'
+export type UIEditScope =
+  | { readonly type: 'document' }
+  | { readonly type: 'component'; readonly componentId: UIComponentId }
 export type UIPreviewViewport =
   | UIDesktopViewport
   | {
@@ -69,6 +72,16 @@ export interface UIHierarchyItem {
   readonly type: UIElement['type']
   readonly name: string
   readonly children: readonly UIHierarchyItem[]
+}
+
+interface UIEditTree {
+  readonly root: UIElementId
+  readonly elements: readonly UIElement[]
+}
+
+interface UIEditScopeReturnContext {
+  readonly scope: UIEditScope
+  readonly selection: readonly UIElementId[]
 }
 
 type UIListener = () => void
@@ -114,16 +127,17 @@ class ReplaceUIDocumentCommand implements Command {
     private readonly beforeSelection: readonly UIElementId[],
     private readonly after: UIDocument,
     private readonly afterSelection: readonly UIElementId[],
+    private readonly editScope: UIEditScope,
     private readonly path: string,
     private readonly historyGroup?: string,
   ) {}
 
   execute(): void {
-    this.session.apply(this.after, this.path, this.afterSelection)
+    this.session.apply(this.after, this.path, this.afterSelection, this.editScope)
   }
 
   undo(): void {
-    this.session.apply(this.before, this.path, this.beforeSelection)
+    this.session.apply(this.before, this.path, this.beforeSelection, this.editScope)
   }
 
   merge(other: Command): Command | null {
@@ -132,6 +146,7 @@ class ReplaceUIDocumentCommand implements Command {
       !(other instanceof ReplaceUIDocumentCommand) ||
       other.session !== this.session ||
       other.path !== this.path ||
+      !sameEditScope(other.editScope, this.editScope) ||
       other.historyGroup !== this.historyGroup
     ) {
       return null
@@ -142,6 +157,7 @@ class ReplaceUIDocumentCommand implements Command {
       this.beforeSelection,
       other.after,
       other.afterSelection,
+      this.editScope,
       this.path,
       this.historyGroup,
     )
@@ -153,6 +169,8 @@ export class UIAuthoringSession {
   private currentPath: string | null = null
   private savedAssetJson: string | null = null
   private selection: UIElementId[] = []
+  private currentEditScope: UIEditScope = { type: 'document' }
+  private editScopeReturnContexts: UIEditScopeReturnContext[] = []
   private editorLockedIds = new Set<UIElementId>()
   private listeners = new Set<UIListener>()
   private viewportId: UIDesktopViewportId | 'custom' = 'desktop-1280x720'
@@ -190,6 +208,10 @@ export class UIAuthoringSession {
     return this.selection
   }
 
+  get editScope(): UIEditScope {
+    return this.currentEditScope
+  }
+
   get editorLockedElementIds(): ReadonlySet<UIElementId> {
     return new Set(this.editorLockedIds)
   }
@@ -218,6 +240,7 @@ export class UIAuthoringSession {
         this.selection,
         asset,
         [asset.root],
+        this.currentEditScope,
         path,
       ),
     )
@@ -234,6 +257,8 @@ export class UIAuthoringSession {
     this.currentAsset = cloneAsset(asset)
     this.currentPath = path
     this.savedAssetJson = serialized(asset)
+    this.currentEditScope = { type: 'document' }
+    this.editScopeReturnContexts = []
     this.selection = [asset.root]
     this.notify()
     return asset
@@ -247,11 +272,12 @@ export class UIAuthoringSession {
     const asset = this.requireAsset()
     const path = this.requirePath()
     const next = UIDocumentSchema.parse(input)
-    const validIds = new Set(next.elements.map((element) => element.id))
+    const tree = requireEditTree(next, this.currentEditScope)
+    const validIds = new Set(tree.elements.map((element) => element.id))
     const nextSelection = reduceUISelection(
       selectionOverride ?? this.selection,
-      { type: 'reconcile', validIds, fallback: next.root },
-      parentMap(next),
+      { type: 'reconcile', validIds, fallback: tree.root },
+      parentMap(tree),
     ) as UIElementId[]
     this.commands.execute(
       new ReplaceUIDocumentCommand(
@@ -260,6 +286,7 @@ export class UIAuthoringSession {
         this.selection,
         next,
         nextSelection,
+        this.currentEditScope,
         path,
         options.historyGroup,
       ),
@@ -391,6 +418,58 @@ export class UIAuthoringSession {
     const result = extractUIComponent(this.requireAsset(), rootId as UIElementId, name, this.uuid)
     this.replaceAsset(result.asset, [result.instanceId])
     return { componentId: result.componentId, instanceId: result.instanceId }
+  }
+
+  enterComponentMaster(
+    componentId: UIComponentId | string,
+    sourceElementId?: UIElementId | string,
+  ): void {
+    const asset = this.requireAsset()
+    const component = asset.components.find((candidate) => candidate.id === componentId)
+    if (!component) throw new Error(`Unknown UI component: ${componentId}`)
+    const sourceId = (sourceElementId ?? component.root) as UIElementId
+    if (!component.elements.some((element) => element.id === sourceId)) {
+      throw new Error(`Unknown UI component source: ${sourceElementId}`)
+    }
+
+    const tree = requireEditTree(asset, this.currentEditScope)
+    const selected = tree.elements.find((element) => element.id === this.selectedElementId)
+    let returnSelection: readonly UIElementId[] = this.selection
+    if (selected?.type === 'instance' && selected.component === component.id) {
+      returnSelection = [selected.id]
+    } else if (this.currentEditScope.type === 'document') {
+      const topLevelInstance = asset.elements.find(
+        (element) => element.type === 'instance' && element.component === component.id,
+      )
+      if (topLevelInstance) returnSelection = [topLevelInstance.id]
+    }
+    this.editScopeReturnContexts.push({
+      scope: this.currentEditScope,
+      selection: [...returnSelection],
+    })
+    this.currentEditScope = { type: 'component', componentId: component.id }
+    this.selection = [sourceId]
+    this.notify()
+  }
+
+  exitComponentMaster(): void {
+    if (this.currentEditScope.type !== 'component') {
+      throw new Error('Not editing a UI component master')
+    }
+    const asset = this.requireAsset()
+    const context = this.editScopeReturnContexts.pop() ?? {
+      scope: { type: 'document' } as const,
+      selection: [asset.root],
+    }
+    const tree = requireEditTree(asset, context.scope)
+    const validIds = new Set(tree.elements.map((element) => element.id))
+    this.currentEditScope = context.scope
+    this.selection = reduceUISelection(
+      context.selection,
+      { type: 'reconcile', validIds, fallback: tree.root },
+      parentMap(tree),
+    ) as UIElementId[]
+    this.notify()
   }
 
   placeComponent(
@@ -543,7 +622,12 @@ export class UIAuthoringSession {
   select(id: UIElementId | string | null): void {
     if (id === null) this.selection = []
     else {
-      const element = this.currentAsset?.elements.find((candidate) => candidate.id === id)
+      const asset = this.currentAsset
+      const element = asset
+        ? requireEditTree(asset, this.currentEditScope).elements.find(
+            (candidate) => candidate.id === id,
+          )
+        : undefined
       this.selection = element ? [element.id] : []
     }
     this.notify()
@@ -551,17 +635,24 @@ export class UIAuthoringSession {
 
   toggleSelection(id: UIElementId | string): void {
     const asset = this.currentAsset
-    if (!asset?.elements.some((element) => element.id === id)) return
+    if (!asset) return
+    const tree = requireEditTree(asset, this.currentEditScope)
+    if (!tree.elements.some((element) => element.id === id)) return
     this.selection = reduceUISelection(
       this.selection,
       { type: 'toggle', id },
-      parentMap(asset),
+      parentMap(tree),
     ) as UIElementId[]
     this.notify()
   }
 
   setEditorLocked(id: UIElementId | string, locked: boolean): void {
-    const element = this.currentAsset?.elements.find((candidate) => candidate.id === id)
+    const asset = this.currentAsset
+    const element = asset
+      ? requireEditTree(asset, this.currentEditScope).elements.find(
+          (candidate) => candidate.id === id,
+        )
+      : undefined
     if (!element) return
     if (locked) this.editorLockedIds.add(element.id)
     else this.editorLockedIds.delete(element.id)
@@ -598,7 +689,8 @@ export class UIAuthoringSession {
 
   hierarchy(): readonly UIHierarchyItem[] {
     const asset = this.requireAsset()
-    const byId = new Map(asset.elements.map((element) => [element.id, element]))
+    const tree = requireEditTree(asset, this.currentEditScope)
+    const byId = new Map(tree.elements.map((element) => [element.id, element]))
     const visit = (id: UIElementId): UIHierarchyItem => {
       const element = byId.get(id)
       if (!element) throw new Error(`Unknown UI element: ${id}`)
@@ -609,7 +701,7 @@ export class UIAuthoringSession {
         children: 'children' in element ? element.children.map(visit) : [],
       }
     }
-    return [visit(asset.root)]
+    return [visit(tree.root)]
   }
 
   async save(): Promise<void> {
@@ -624,6 +716,8 @@ export class UIAuthoringSession {
     this.currentPath = null
     this.savedAssetJson = null
     this.selection = []
+    this.currentEditScope = { type: 'document' }
+    this.editScopeReturnContexts = []
     this.editorLockedIds.clear()
     this.notify()
   }
@@ -632,19 +726,39 @@ export class UIAuthoringSession {
     asset: UIDocument | null,
     path: string,
     selection: readonly UIElementId[] = this.selection,
+    editScope: UIEditScope = this.currentEditScope,
   ): void {
     this.currentAsset = asset ? cloneAsset(asset) : null
     this.currentPath = asset ? path : null
     if (asset) {
-      const validIds = new Set(asset.elements.map((element) => element.id))
+      let tree = findEditTree(asset, this.currentEditScope)
+      while (!tree && this.editScopeReturnContexts.length > 0) {
+        const context = this.editScopeReturnContexts.pop()!
+        this.currentEditScope = context.scope
+        this.selection = [...context.selection]
+        tree = findEditTree(asset, this.currentEditScope)
+      }
+      if (!tree) {
+        this.currentEditScope = { type: 'document' }
+        this.editScopeReturnContexts = []
+        this.selection = [asset.root]
+        tree = requireEditTree(asset, this.currentEditScope)
+      }
+      const validIds = new Set(tree.elements.map((element) => element.id))
       this.selection = reduceUISelection(
-        selection,
-        { type: 'reconcile', validIds, fallback: asset.root },
-        parentMap(asset),
+        sameEditScope(editScope, this.currentEditScope) ? selection : this.selection,
+        { type: 'reconcile', validIds, fallback: tree.root },
+        parentMap(tree),
       ) as UIElementId[]
-      this.editorLockedIds = new Set([...this.editorLockedIds].filter((id) => validIds.has(id)))
+      const globalIds = new Set([
+        ...asset.elements.map((element) => element.id),
+        ...asset.components.flatMap((component) => component.elements.map((element) => element.id)),
+      ])
+      this.editorLockedIds = new Set([...this.editorLockedIds].filter((id) => globalIds.has(id)))
     } else {
       this.selection = []
+      this.currentEditScope = { type: 'document' }
+      this.editScopeReturnContexts = []
       this.editorLockedIds.clear()
     }
     this.notify()
@@ -665,9 +779,31 @@ export class UIAuthoringSession {
   }
 }
 
-function parentMap(asset: UIDocument): ReadonlyMap<string, string | null> {
-  const parents = new Map<string, string | null>([[asset.root, null]])
-  for (const element of asset.elements) {
+function sameEditScope(left: UIEditScope, right: UIEditScope): boolean {
+  return (
+    left.type === right.type &&
+    (left.type === 'document' ||
+      (right.type === 'component' && left.componentId === right.componentId))
+  )
+}
+
+function findEditTree(asset: UIDocument, scope: UIEditScope): UIEditTree | undefined {
+  if (scope.type === 'document') return { root: asset.root, elements: asset.elements }
+  const component = asset.components.find((candidate) => candidate.id === scope.componentId)
+  return component ? { root: component.root, elements: component.elements } : undefined
+}
+
+function requireEditTree(asset: UIDocument, scope: UIEditScope): UIEditTree {
+  const tree = findEditTree(asset, scope)
+  if (!tree && scope.type === 'component') {
+    throw new Error(`Unknown UI component: ${scope.componentId}`)
+  }
+  return tree!
+}
+
+function parentMap(tree: UIEditTree): ReadonlyMap<string, string | null> {
+  const parents = new Map<string, string | null>([[tree.root, null]])
+  for (const element of tree.elements) {
     if (!('children' in element)) continue
     for (const child of element.children) parents.set(child, element.id)
   }

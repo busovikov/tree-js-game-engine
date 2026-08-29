@@ -9,6 +9,7 @@ import {
 const DOCUMENT = '13000000-0000-4000-8000-000000000001'
 const ROOT = '13000000-0000-4000-8000-000000000002'
 const TEXT = '13000000-0000-4000-8000-000000000003'
+const DESCENDANT = '13000000-0000-4000-8000-000000000004'
 
 function ids() {
   const values = [DOCUMENT, ROOT, TEXT]
@@ -174,6 +175,118 @@ describe('UIAuthoringSession', () => {
     expect(
       session.asset?.elements.find((element) => element.id === created.instanceId),
     ).toMatchObject({ overrides: { [TEXT]: { text: 'Retry' } } })
+  })
+
+  it('keeps document and component-master selection distinct through exit and undo/redo', () => {
+    const commands = new CommandBus()
+    const generated = [
+      '13000000-0000-4000-8000-000000000010',
+      '13000000-0000-4000-8000-000000000011',
+    ]
+    const session = new UIAuthoringSession(
+      commands,
+      { readText: async () => '', writeText: async () => undefined },
+      () => generated.shift() ?? crypto.randomUUID(),
+    )
+    const base = createEmptyUIDocument('HUD', DOCUMENT, ROOT)
+    session.openAsset('assets/ui/hud.ui.json', {
+      ...base,
+      elements: [
+        { ...base.elements[0], children: [TEXT] },
+        {
+          id: TEXT,
+          type: 'frame',
+          name: 'Card',
+          children: [DESCENDANT],
+          layout: { mode: 'vertical' },
+        },
+        { id: DESCENDANT, type: 'text', name: 'Label', text: 'Ready' },
+      ],
+    })
+    session.select(TEXT)
+    const created = session.createComponent(TEXT, 'Card')
+
+    session.enterComponentMaster(created.componentId)
+
+    expect(session.editScope).toEqual({ type: 'component', componentId: created.componentId })
+    expect(session.selectedElementIds).toEqual([TEXT])
+    session.select(DESCENDANT)
+    expect(session.selectedElementIds).toEqual([DESCENDANT])
+
+    session.exitComponentMaster()
+    expect(session.editScope).toEqual({ type: 'document' })
+    expect(session.selectedElementIds).toEqual([created.instanceId])
+
+    commands.undo()
+    expect(session.editScope).toEqual({ type: 'document' })
+    expect(session.selectedElementIds).toEqual([TEXT])
+    commands.redo()
+    expect(session.editScope).toEqual({ type: 'document' })
+    expect(session.selectedElementIds).toEqual([created.instanceId])
+  })
+
+  it('rejects unknown component masters and source elements without changing document selection', () => {
+    const generated = [
+      '13000000-0000-4000-8000-000000000010',
+      '13000000-0000-4000-8000-000000000011',
+    ]
+    const session = new UIAuthoringSession(
+      new CommandBus(),
+      { readText: async () => '', writeText: async () => undefined },
+      () => generated.shift() ?? crypto.randomUUID(),
+    )
+    const base = createEmptyUIDocument('HUD', DOCUMENT, ROOT)
+    session.openAsset('assets/ui/hud.ui.json', {
+      ...base,
+      elements: [
+        { ...base.elements[0], children: [TEXT] },
+        { id: TEXT, type: 'text', text: 'Ready' },
+      ],
+    })
+    session.select(TEXT)
+    const created = session.createComponent(TEXT, 'Status label')
+
+    expect(() => session.enterComponentMaster('13000000-0000-4000-8000-000000000099')).toThrow(
+      'Unknown UI component',
+    )
+    expect(() =>
+      session.enterComponentMaster(created.componentId, '13000000-0000-4000-8000-000000000098'),
+    ).toThrow('Unknown UI component source')
+    expect(session.editScope).toEqual({ type: 'document' })
+    expect(session.selectedElementIds).toEqual([created.instanceId])
+  })
+
+  it('keeps component edit scope and selection out of serialized UI JSON', async () => {
+    let saved = ''
+    const generated = [
+      '13000000-0000-4000-8000-000000000010',
+      '13000000-0000-4000-8000-000000000011',
+    ]
+    const session = new UIAuthoringSession(
+      new CommandBus(),
+      {
+        readText: async () => saved,
+        writeText: async (_path, value) => {
+          saved = value
+        },
+      },
+      () => generated.shift() ?? crypto.randomUUID(),
+    )
+    const base = createEmptyUIDocument('HUD', DOCUMENT, ROOT)
+    session.openAsset('assets/ui/hud.ui.json', {
+      ...base,
+      elements: [
+        { ...base.elements[0], children: [TEXT] },
+        { id: TEXT, type: 'text', text: 'Ready' },
+      ],
+    })
+    const created = session.createComponent(TEXT, 'Status label')
+    session.enterComponentMaster(created.componentId)
+
+    await session.save()
+
+    expect(JSON.parse(saved)).not.toHaveProperty('editScope')
+    expect(JSON.parse(saved)).not.toHaveProperty('selection')
   })
 
   it('supports explicit desktop preview sizes', () => {
