@@ -6,6 +6,7 @@ import type {
   ReactNode,
 } from 'react'
 import {
+  UIDocumentSchema,
   UIDocumentInstance,
   applyUIInstanceOverride,
   type UIDocument,
@@ -607,6 +608,14 @@ function UIDimensionField({
 
 type UILayoutOwner = Extract<UIElement, { layout: UILayout }>
 
+function formatUIInspectorEditError(reason: unknown, elementId: UIElementId): string {
+  const message = reason instanceof Error ? reason.message : String(reason)
+  return uiAuthoringSession.editScope.type === 'component' &&
+    !message.startsWith('Invalid UI component master edit')
+    ? `Invalid UI component master edit for ${elementId}: ${message}`
+    : message
+}
+
 const UIFrameLayoutSection = memo(function UIFrameLayoutSection({
   asset,
   element,
@@ -633,15 +642,17 @@ const UIFrameLayoutSection = memo(function UIFrameLayoutSection({
       )
       setError(null)
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason))
+      setError(formatUIInspectorEditError(reason, element.id))
     }
   }
   const setLayoutMode = (mode: UILayout['mode']) => {
     try {
-      uiAuthoringSession.replaceAsset(convertFrameLayout(asset, element.id, mode, bounds))
+      uiAuthoringSession.replaceEditTreeElements(
+        convertFrameLayout(asset, element.id, mode, bounds).elements,
+      )
       setError(null)
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason))
+      setError(formatUIInspectorEditError(reason, element.id))
     }
   }
   const overflowOptions =
@@ -828,14 +839,17 @@ const UIPlacementSection = memo(function UIPlacementSection({
   if (!parent || !('layout' in parent)) return null
 
   const commit = (candidate: UIDocument, group?: string) => {
-    uiAuthoringSession.replaceAsset(candidate, undefined, group ? { historyGroup: group } : {})
+    uiAuthoringSession.replaceEditTreeElements(
+      candidate.elements,
+      group ? { historyGroup: group } : {},
+    )
     setError(null)
   }
   const run = (action: () => UIDocument, group?: string) => {
     try {
       commit(action(), group)
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason))
+      setError(formatUIInspectorEditError(reason, element.id))
     }
   }
   const beginNumericGesture = () => {
@@ -1060,14 +1074,13 @@ const UIStyleSection = memo(function UIStyleSection({
   const imageFit = explainUIStyleSection(element, 'image-fit') === null
   const updateStyle = (patch: Partial<UIStyle>, group?: string) => {
     try {
-      uiAuthoringSession.replaceAsset(
-        updateUIElementStyle(asset, element.id, patch),
-        undefined,
+      uiAuthoringSession.replaceEditTreeElements(
+        updateUIElementStyle(asset, element.id, patch).elements,
         group ? { historyGroup: group } : {},
       )
       setError(null)
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason))
+      setError(formatUIInspectorEditError(reason, element.id))
     }
   }
   const beginNumericGesture = () => {
@@ -1279,14 +1292,13 @@ const UIStyleSection = memo(function UIStyleSection({
               onScrubEnd={endNumericGesture}
               onChange={(value) => {
                 try {
-                  uiAuthoringSession.replaceAsset(
-                    updateUICornerRadius(asset, element.id, corner, value),
-                    undefined,
+                  uiAuthoringSession.replaceEditTreeElements(
+                    updateUICornerRadius(asset, element.id, corner, value).elements,
                     historyGroup.current ? { historyGroup: historyGroup.current } : {},
                   )
                   setError(null)
                 } catch (reason) {
-                  setError(reason instanceof Error ? reason.message : String(reason))
+                  setError(formatUIInspectorEditError(reason, element.id))
                 }
               }}
             />
@@ -1447,7 +1459,7 @@ const UIWidgetSection = memo(function UIWidgetSection({
       }
       setError(null)
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason))
+      setError(formatUIInspectorEditError(reason, element.id))
     }
   }
   const beginNumericGesture = () => {
@@ -1858,10 +1870,10 @@ const UIAccessibilitySection = memo(function UIAccessibilitySection({
   const imageControls = explainUIAccessibilityField(element, 'alt') === null
   const run = (candidate: () => UIDocument) => {
     try {
-      uiAuthoringSession.replaceAsset(candidate())
+      uiAuthoringSession.replaceEditTreeElements(candidate().elements)
       setError(null)
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason))
+      setError(formatUIInspectorEditError(reason, element.id))
     }
   }
   const updateAccessibility = (patch: Partial<UIAccessibility>) => {
@@ -2006,12 +2018,12 @@ const UIEventsSection = memo(function UIEventsSection({
   const slots = getUIEventBindingSlots(asset, element)
   const updateBinding = (slot: (typeof slots)[number]['slot'], bindingId: string | undefined) => {
     try {
-      uiAuthoringSession.replaceAsset(
-        updateUIElementEventBinding(asset, element.id, slot, bindingId),
+      uiAuthoringSession.replaceEditTreeElements(
+        updateUIElementEventBinding(asset, element.id, slot, bindingId).elements,
       )
       setError(null)
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason))
+      setError(formatUIInspectorEditError(reason, element.id))
     }
   }
 
@@ -2491,6 +2503,21 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
       : null
   const activeElements = activeComponent?.elements ?? asset?.elements ?? []
   const activeRoot = activeComponent?.root ?? asset?.root ?? null
+  const inspectorAsset = useMemo(
+    () =>
+      asset && activeRoot
+        ? UIDocumentSchema.parse({
+            ...asset,
+            root: activeRoot,
+            elements: activeElements,
+            components: activeComponent
+              ? asset.components.filter((component) => component.id !== activeComponent.id)
+              : asset.components,
+          })
+        : null,
+    [activeComponent, activeElements, activeRoot, asset],
+  )
+  const inspectionInstancePath = uiAuthoringSession.inspectionInstancePath
   const selected = useMemo(
     () =>
       activeElements.find((element) => element.id === uiAuthoringSession.selectedElementId) ??
@@ -2513,6 +2540,13 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
     null
   const selectedIds = uiAuthoringSession.selectedElementIds
   const viewport = uiAuthoringSession.viewport
+  const inspectorBounds = useMemo(() => {
+    if (!inspectorAsset) return new Map<UIElementId, UIRect>()
+    const next = fallbackElementBounds(inspectorAsset, viewport)
+    const activeIds = new Set(inspectorAsset.elements.map((element) => element.id))
+    for (const [id, rect] of elementBounds) if (activeIds.has(id)) next.set(id, rect)
+    return next
+  }, [elementBounds, inspectorAsset, viewport])
   const previewMode = uiAuthoringSession.previewMode
   const textures = projectService.listTextureAssets()
   const palette = UI_PALETTE.filter((entry) =>
@@ -2534,20 +2568,19 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
 
   const hierarchyParents = useMemo(() => elementParents(activeElements), [activeElements])
   const selectionOverlay = useMemo(
-    () => (asset ? deriveUISelectionOverlay(asset, selectedIds, elementBounds) : null),
-    [asset, elementBounds, selectedIds],
+    () =>
+      inspectorAsset
+        ? deriveUISelectionOverlay(inspectorAsset, selectedIds, inspectorBounds)
+        : null,
+    [inspectorAsset, inspectorBounds, selectedIds],
   )
   const insertionOverlay = useMemo(
-    () => (asset ? deriveUIInsertionOverlay(asset, canvasInsertionTarget, elementBounds) : null),
-    [asset, canvasInsertionTarget, elementBounds],
+    () =>
+      inspectorAsset
+        ? deriveUIInsertionOverlay(inspectorAsset, canvasInsertionTarget, inspectorBounds)
+        : null,
+    [canvasInsertionTarget, inspectorAsset, inspectorBounds],
   )
-  const inspectionInstance =
-    asset && editScope.type === 'component'
-      ? asset.elements.find(
-          (element) =>
-            element.type === 'instance' && element.component === editScope.componentId,
-        ) ?? null
-      : null
 
   const focusLayer = useCallback((id: UIElementId) => {
     document.querySelector<HTMLElement>(`[data-haku-ui-tree-item="${id}"]`)?.focus()
@@ -2844,16 +2877,21 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
   useEffect(() => {
     const instance = instanceRef.current
     const host = previewHost.current
-    if (!instance || !host || !asset) return
+    if (!instance || !host || !asset || !inspectorAsset) return
     let frame = 0
     try {
       instance.updateDocument(asset)
       const measure = () => {
         const scale = canvasViewRef.current.scale
         const hostRect = host.getBoundingClientRect()
-        const next = fallbackElementBounds(asset, viewport)
-        for (const element of asset.elements) {
-          const node = instance.getElement(element.id)
+        const next = fallbackElementBounds(inspectorAsset, viewport)
+        for (const element of inspectorAsset.elements) {
+          const node = inspectionInstancePath
+            ? instance.getInstanceElement({
+                instancePath: inspectionInstancePath,
+                sourceElementId: element.id,
+              })
+            : instance.getElement(element.id)
           if (!node) continue
           const rect = node.getBoundingClientRect()
           if (rect.width > 0 && rect.height > 0) {
@@ -2873,7 +2911,7 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
       setStatus(error instanceof Error ? error.message : 'Preview failed')
     }
     return () => cancelAnimationFrame(frame)
-  }, [asset, viewport.height, viewport.width])
+  }, [asset, inspectionInstancePath, inspectorAsset, viewport.height, viewport.width])
 
   useEffect(() => {
     try {
@@ -4290,19 +4328,20 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
         <Panel defaultSize={24} minSize={16} maxSize={40}>
           <aside className="haku-ui-editor__inspector" aria-label="UI Inspector">
             <h3>UI Inspector</h3>
-            {inspectionInstance && selected && (
+            {inspectionInstancePath && selected && (
               <div
                 data-testid="ui-instance-inspection-locator"
-                data-haku-ui-instance-path={inspectionInstance.id}
+                data-haku-ui-instance-path={inspectionInstancePath.join('/')}
                 data-haku-ui-source-id={selected.id}
               >
-                Inspecting {activeComponent?.name} source in {inspectionInstance.name ?? 'instance'}
+                Inspecting {activeComponent?.name} source through instance path{' '}
+                {inspectionInstancePath.join(' / ')}
               </div>
             )}
             {selected && asset && editScope.type === 'document' && selected.type === 'instance' ? (
               <UIInstanceOverridesInspector asset={asset} instance={selected} />
-            ) : selected && asset ? (
-              <UIInspector asset={asset} element={selected} bounds={elementBounds} />
+            ) : selected && inspectorAsset ? (
+              <UIInspector asset={inspectorAsset} element={selected} bounds={inspectorBounds} />
             ) : (
               <p>Select a UI element</p>
             )}

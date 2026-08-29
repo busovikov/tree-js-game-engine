@@ -50,6 +50,12 @@ const COMPONENT_PANEL_INSTANCE = '26000000-0000-4000-8000-000000000003'
 const COMPONENT_PANEL_MASTER = '26000000-0000-4000-8000-000000000004'
 const COMPONENT_PANEL_MASTER_ROOT = '26000000-0000-4000-8000-000000000005'
 const COMPONENT_PANEL_INPUT = '26000000-0000-4000-8000-000000000006'
+const COMPONENT_INSPECTOR_SECOND_INSTANCE = '26000000-0000-4000-8000-000000000007'
+const COMPONENT_INSPECTOR_FRAME = '26000000-0000-4000-8000-000000000008'
+const COMPONENT_INSPECTOR_CHILD = '26000000-0000-4000-8000-000000000009'
+const COMPONENT_INSPECTOR_TEXT = '26000000-0000-4000-8000-00000000000a'
+const COMPONENT_INSPECTOR_IMAGE = '26000000-0000-4000-8000-00000000000b'
+const COMPONENT_INSPECTOR_BUTTON = '26000000-0000-4000-8000-00000000000c'
 
 function componentPanelAsset() {
   return UIDocumentSchema.parse({
@@ -99,6 +105,100 @@ function componentPanelAsset() {
             value: 'Master name',
             maxLength: 24,
             accessibility: { label: 'Profile name' },
+          },
+        ],
+      },
+    ],
+  })
+}
+
+function componentInspectorAsset() {
+  const asset = componentPanelAsset()
+  return UIDocumentSchema.parse({
+    ...asset,
+    events: [
+      { id: NONE_EVENT, name: 'Activate', payload: 'none' },
+      { id: SECOND_NONE_EVENT, name: 'Cancel', payload: 'none' },
+      { id: STRING_EVENT, name: 'Text value', payload: 'string' },
+    ],
+    elements: [
+      {
+        ...asset.elements[0],
+        children: [COMPONENT_PANEL_INSTANCE, COMPONENT_INSPECTOR_SECOND_INSTANCE],
+      },
+      {
+        ...asset.elements[1],
+        overrides: {
+          [COMPONENT_INSPECTOR_BUTTON]: { events: { activate: NONE_EVENT } },
+        },
+      },
+      {
+        id: COMPONENT_INSPECTOR_SECOND_INSTANCE,
+        type: 'instance',
+        name: 'Second profile card instance',
+        component: COMPONENT_PANEL_MASTER,
+      },
+    ],
+    components: [
+      {
+        ...asset.components[0],
+        elements: [
+          {
+            ...asset.components[0]!.elements[0],
+            children: [
+              COMPONENT_INSPECTOR_FRAME,
+              COMPONENT_INSPECTOR_TEXT,
+              COMPONENT_INSPECTOR_IMAGE,
+              COMPONENT_INSPECTOR_BUTTON,
+            ],
+            layout: { mode: 'horizontal' },
+          },
+          {
+            id: COMPONENT_INSPECTOR_FRAME,
+            type: 'frame',
+            name: 'Nested frame',
+            children: [COMPONENT_INSPECTOR_CHILD],
+            layout: { mode: 'free' },
+            placement: { positioning: 'flow' },
+          },
+          {
+            id: COMPONENT_INSPECTOR_CHILD,
+            type: 'rectangle',
+            name: 'Nested child',
+            placement: {
+              positioning: 'free',
+              x: 12,
+              y: 16,
+              horizontalConstraint: 'left',
+              verticalConstraint: 'top',
+              referenceWidth: 240,
+              referenceHeight: 160,
+            },
+          },
+          {
+            id: COMPONENT_INSPECTOR_TEXT,
+            type: 'text',
+            name: 'Profile heading',
+            text: 'Profile',
+            placement: { positioning: 'flow' },
+          },
+          {
+            id: COMPONENT_INSPECTOR_IMAGE,
+            type: 'image',
+            name: 'Profile image',
+            source: {
+              $ref: '13000000-0000-4000-8000-000000000120',
+              type: '13000000-0000-4000-8000-000000000121',
+            },
+            alt: 'Profile portrait',
+            placement: { positioning: 'flow' },
+          },
+          {
+            id: COMPONENT_INSPECTOR_BUTTON,
+            type: 'button',
+            name: 'Save profile',
+            text: 'Save',
+            placement: { positioning: 'flow' },
           },
         ],
       },
@@ -482,6 +582,266 @@ describe('ViewportTabsShell UI workspace baseline', () => {
     expect(workspace?.getAttribute('data-haku-ui-edit-scope')).toBe('document')
     expect(screen.getByRole('note').textContent).toMatch(/enter the master to edit descendants/i)
     save.mockRestore()
+  })
+
+  it('uses the selected owning instance bounds for master layout, placement, and constraints', async () => {
+    uiAuthoringSession.openAsset(
+      'assets/ui/component-inspector.ui.json',
+      componentInspectorAsset(),
+    )
+    const originalRect = HTMLElement.prototype.getBoundingClientRect
+    const sourceRects = new Map([
+      [COMPONENT_PANEL_MASTER_ROOT, measuredRect(100, 50, 640, 240)],
+      [COMPONENT_INSPECTOR_FRAME, measuredRect(120, 70, 240, 160)],
+      [COMPONENT_INSPECTOR_CHILD, measuredRect(140, 90, 60, 40)],
+      [COMPONENT_INSPECTOR_TEXT, measuredRect(380, 80, 120, 40)],
+      [COMPONENT_INSPECTOR_IMAGE, measuredRect(520, 80, 80, 80)],
+      [COMPONENT_INSPECTOR_BUTTON, measuredRect(620, 80, 100, 40)],
+    ])
+    const rectSpy = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function () {
+        if (this.dataset.hakuUiPreview) return measuredRect(0, 0, 1280, 720)
+        if (
+          this.dataset.hakuUiInstancePath === COMPONENT_INSPECTOR_SECOND_INSTANCE &&
+          this.dataset.hakuUiSourceId
+        ) {
+          return sourceRects.get(this.dataset.hakuUiSourceId) ?? originalRect.call(this)
+        }
+        return originalRect.call(this)
+      })
+
+    try {
+      const { container } = render(<ViewportTabsShell />)
+      fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+      fireEvent.click(
+        container.querySelector(
+          `[data-haku-ui-tree-item="${COMPONENT_INSPECTOR_SECOND_INSTANCE}"]`,
+        ) as HTMLButtonElement,
+      )
+      fireEvent.click(
+        screen.getAllByRole('button', { name: 'Edit Profile card master' }).at(-1)!,
+      )
+
+      expect(screen.getByTestId('ui-instance-inspection-locator').dataset.hakuUiInstancePath).toBe(
+        COMPONENT_INSPECTOR_SECOND_INSTANCE,
+      )
+      expect(
+        Array.from(
+          container.querySelectorAll(
+            `[data-haku-ui-source-id="${COMPONENT_PANEL_MASTER_ROOT}"]`,
+          ),
+        ).map((node) => (node as HTMLElement).dataset.hakuUiInstancePath),
+      ).toContain(COMPONENT_INSPECTOR_SECOND_INSTANCE)
+      await waitFor(() =>
+        expect((screen.getByLabelText('Layout mode') as HTMLSelectElement).value).toBe(
+          'horizontal',
+        ),
+      )
+      uiCommandBus.clear()
+      const before = structuredClone(uiAuthoringSession.asset)
+      fireEvent.change(screen.getByLabelText('Layout mode'), { target: { value: 'free' } })
+      expect(uiAuthoringSession.asset?.components[0]?.elements[0]).toMatchObject({
+        layout: { mode: 'free' },
+      })
+      expect(
+        uiAuthoringSession.asset?.components[0]?.elements.find(
+          (element) => element.id === COMPONENT_INSPECTOR_TEXT,
+        )?.placement,
+      ).toMatchObject({
+        positioning: 'free',
+        x: expect.any(Number),
+        y: expect.any(Number),
+        referenceWidth: expect.any(Number),
+        referenceHeight: expect.any(Number),
+      })
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+      expect(uiAuthoringSession.asset).toEqual(before)
+
+      fireEvent.click(
+        container.querySelector(
+          `[data-haku-ui-tree-item="${COMPONENT_INSPECTOR_TEXT}"]`,
+        ) as HTMLButtonElement,
+      )
+      fireEvent.click(
+        within(screen.getByRole('region', { name: 'Placement' })).getByRole('button', {
+          name: 'Absolute',
+        }),
+      )
+      expect(
+        uiAuthoringSession.asset?.components[0]?.elements.find(
+          (element) => element.id === COMPONENT_INSPECTOR_TEXT,
+        )?.placement,
+      ).toEqual({
+        positioning: 'absolute',
+        left: expect.any(Number),
+        top: expect.any(Number),
+      })
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+
+      fireEvent.click(
+        container.querySelector(
+          `[data-haku-ui-tree-item="${COMPONENT_INSPECTOR_CHILD}"]`,
+        ) as HTMLButtonElement,
+      )
+      fireEvent.click(
+        within(screen.getByRole('region', { name: 'Placement' })).getByRole('button', {
+          name: 'Right',
+        }),
+      )
+      expect(
+        uiAuthoringSession.asset?.components[0]?.elements.find(
+          (element) => element.id === COMPONENT_INSPECTOR_CHILD,
+        )?.placement,
+      ).toMatchObject({
+        positioning: 'free',
+        x: expect.any(Number),
+        y: expect.any(Number),
+        horizontalConstraint: 'right',
+        referenceWidth: expect.any(Number),
+      })
+      const nestedPlacement = uiAuthoringSession.asset?.components[0]?.elements.find(
+        (element) => element.id === COMPONENT_INSPECTOR_CHILD,
+      )?.placement
+      expect(
+        nestedPlacement?.positioning === 'free' ? nestedPlacement.referenceWidth : undefined,
+      ).not.toBe(1280)
+    } finally {
+      rectSpy.mockRestore()
+    }
+  })
+
+  it('routes the complete Style and Accessibility surfaces through the component edit tree', () => {
+    uiAuthoringSession.openAsset(
+      'assets/ui/component-inspector.ui.json',
+      componentInspectorAsset(),
+    )
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    fireEvent.click(
+      container.querySelector(
+        `[data-haku-ui-tree-item="${COMPONENT_INSPECTOR_SECOND_INSTANCE}"]`,
+      ) as HTMLButtonElement,
+    )
+    fireEvent.click(screen.getAllByRole('button', { name: 'Edit Profile card master' }).at(-1)!)
+    fireEvent.click(
+      container.querySelector(
+        `[data-haku-ui-tree-item="${COMPONENT_INSPECTOR_TEXT}"]`,
+      ) as HTMLButtonElement,
+    )
+    uiCommandBus.clear()
+
+    let style = screen.getByRole('region', { name: 'Style' })
+    fireEvent.change(within(style).getByLabelText('Font family'), { target: { value: 'Inter' } })
+    fireEvent.blur(within(style).getByLabelText('Font family'))
+    fireEvent.change(within(style).getByLabelText('Font size source'), {
+      target: { value: 'custom' },
+    })
+    fireEvent.change(within(style).getByLabelText('Font size'), { target: { value: '18' } })
+    fireEvent.blur(within(style).getByLabelText('Font size'))
+    fireEvent.change(within(style).getByLabelText('Corner radius source'), {
+      target: { value: 'per-corner' },
+    })
+    fireEvent.change(within(style).getByLabelText('Radius top left'), {
+      target: { value: '9' },
+    })
+    fireEvent.blur(within(style).getByLabelText('Radius top left'))
+    const accessibility = screen.getByRole('region', { name: 'Accessibility' })
+    fireEvent.change(within(accessibility).getByLabelText('ARIA role'), {
+      target: { value: 'status' },
+    })
+    fireEvent.change(within(accessibility).getByLabelText('Live region'), {
+      target: { value: 'polite' },
+    })
+    fireEvent.change(within(accessibility).getByLabelText('Tab order'), {
+      target: { value: '0' },
+    })
+    expect(
+      uiAuthoringSession.asset?.components[0]?.elements.find(
+        (element) => element.id === COMPONENT_INSPECTOR_TEXT,
+      ),
+    ).toMatchObject({
+      style: {
+        fontFamily: 'Inter',
+        fontSize: 18,
+        borderRadius: { topLeft: 9, topRight: 0, bottomRight: 0, bottomLeft: 0 },
+      },
+      accessibility: { role: 'status', live: 'polite', tabIndex: 0 },
+    })
+
+    fireEvent.click(
+      container.querySelector(
+        `[data-haku-ui-tree-item="${COMPONENT_INSPECTOR_IMAGE}"]`,
+      ) as HTMLButtonElement,
+    )
+    style = screen.getByRole('region', { name: 'Style' })
+    expect(within(style).queryByLabelText('Font family')).toBeNull()
+    fireEvent.change(within(style).getByLabelText('Image fit'), { target: { value: 'cover' } })
+    const imageAccessibility = screen.getByRole('region', { name: 'Accessibility' })
+    fireEvent.change(within(imageAccessibility).getByLabelText('Image purpose'), {
+      target: { value: 'decorative' },
+    })
+    const alt = within(imageAccessibility).getByLabelText('Alternative text')
+    fireEvent.change(alt, { target: { value: 'Player portrait' } })
+    fireEvent.blur(alt)
+    expect(
+      uiAuthoringSession.asset?.components[0]?.elements.find(
+        (element) => element.id === COMPONENT_INSPECTOR_IMAGE,
+      ),
+    ).toMatchObject({
+      style: { objectFit: 'cover' },
+      decorative: false,
+      alt: 'Player portrait',
+    })
+    expect(() => UIDocumentSchema.parse(uiAuthoringSession.asset)).not.toThrow()
+  })
+
+  it('filters master Events by document declarations and rejects hidden invalid bindings without history', () => {
+    uiAuthoringSession.openAsset(
+      'assets/ui/component-inspector.ui.json',
+      componentInspectorAsset(),
+    )
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    fireEvent.click(
+      container.querySelector(
+        `[data-haku-ui-tree-item="${COMPONENT_INSPECTOR_SECOND_INSTANCE}"]`,
+      ) as HTMLButtonElement,
+    )
+    fireEvent.click(screen.getAllByRole('button', { name: 'Edit Profile card master' }).at(-1)!)
+    fireEvent.click(
+      container.querySelector(
+        `[data-haku-ui-tree-item="${COMPONENT_INSPECTOR_BUTTON}"]`,
+      ) as HTMLButtonElement,
+    )
+    const events = screen.getByRole('region', { name: 'Events' })
+    const binding = within(events).getByLabelText('Activate event') as HTMLSelectElement
+    expect(Array.from(binding.options).map((option) => option.value)).toEqual([
+      '',
+      NONE_EVENT,
+      SECOND_NONE_EVENT,
+    ])
+
+    fireEvent.change(binding, { target: { value: SECOND_NONE_EVENT } })
+    expect(
+      uiAuthoringSession.asset?.components[0]?.elements.find(
+        (element) => element.id === COMPONENT_INSPECTOR_BUTTON,
+      )?.events,
+    ).toEqual({
+      activate: SECOND_NONE_EVENT,
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    uiCommandBus.clear()
+    const beforeInvalid = structuredClone(uiAuthoringSession.asset)
+    const incompatible = document.createElement('option')
+    incompatible.value = STRING_EVENT
+    binding.append(incompatible)
+    fireEvent.change(binding, { target: { value: STRING_EVENT } })
+    expect(screen.getByRole('alert').textContent).toMatch(
+      /Invalid UI component master edit[\s\S]*incompatible payload/i,
+    )
+    expect(uiAuthoringSession.asset).toEqual(beforeInvalid)
+    expect(uiCommandBus.canUndo()).toBe(false)
   })
 
   it('inspects and resets sparse source overrides and detaches the selected document instance atomically', () => {
