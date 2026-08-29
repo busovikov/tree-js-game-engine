@@ -76,6 +76,40 @@
   border-bottom: 1px solid #333;
 }
 
+.haku-ui-editor__component-dialog {
+  position: absolute;
+  z-index: 30;
+  top: 72px;
+  left: 50%;
+  width: min(320px, calc(100% - 24px));
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #1e1e28;
+  box-shadow: 0 12px 36px #000a;
+  transform: translateX(-50%);
+}
+
+.haku-ui-editor__component-dialog form,
+.haku-ui-editor__component-dialog label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.haku-ui-editor__component-dialog form {
+  padding: 12px;
+}
+
+.haku-ui-editor__component-dialog [role='alert'] {
+  color: #ff9b9b;
+}
+
+.haku-ui-editor__component-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
 .haku-ui-editor__workspace {
   min-height: 0;
   flex: 1;

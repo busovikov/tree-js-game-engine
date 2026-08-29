@@ -443,7 +443,7 @@ describe('ViewportTabsShell UI workspace baseline', () => {
   })
 
   it('creates a component from the selected document subtree through the collection', () => {
-    const prompt = vi.spyOn(window, 'prompt').mockReturnValueOnce('Score component')
+    const prompt = vi.spyOn(window, 'prompt')
     const { container } = render(<ViewportTabsShell />)
     fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
     fireEvent.click(
@@ -453,6 +453,11 @@ describe('ViewportTabsShell UI workspace baseline', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Create component' }))
+    const dialog = screen.getByRole('dialog', { name: 'Create component' })
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Component name' }), {
+      target: { value: 'Score component' },
+    })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Create component' }))
 
     expect(uiAuthoringSession.asset?.components[0]?.name).toBe('Score component')
     expect(
@@ -460,6 +465,58 @@ describe('ViewportTabsShell UI workspace baseline', () => {
     ).toMatchObject({ type: 'instance' })
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
     expect(uiAuthoringSession.asset?.components).toHaveLength(0)
+    expect(prompt).not.toHaveBeenCalled()
+    prompt.mockRestore()
+  })
+
+  it('creates components through an accessible validated dialog without native prompts', () => {
+    const prompt = vi.spyOn(window, 'prompt')
+    const { container } = render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    fireEvent.click(
+      container.querySelector(
+        '[data-haku-ui-tree-item="13000000-0000-4000-8000-000000000102"]',
+      ) as HTMLButtonElement,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create component' }))
+    const dialog = screen.getByRole('dialog', { name: 'Create component' })
+    const name = within(dialog).getByRole('textbox', { name: 'Component name' })
+    expect((name as HTMLInputElement).value).toBe('Score')
+    expect(prompt).not.toHaveBeenCalled()
+
+    fireEvent.change(name, { target: { value: '   ' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Create component' }))
+    expect(within(dialog).getByRole('alert').textContent).toMatch(/cannot be empty/i)
+    expect(uiAuthoringSession.asset?.components).toHaveLength(0)
+    expect(uiCommandBus.canUndo()).toBe(false)
+
+    fireEvent.change(name, { target: { value: 'Score component' } })
+    fireEvent.submit(within(dialog).getByRole('form', { name: 'Create component' }))
+    expect(screen.queryByRole('dialog', { name: 'Create component' })).toBeNull()
+    expect(uiAuthoringSession.asset?.components[0]?.name).toBe('Score component')
+    expect(uiCommandBus.canUndo()).toBe(true)
+
+    fireEvent.click(
+      container.querySelector(
+        '[data-haku-ui-tree-item="13000000-0000-4000-8000-000000000103"]',
+      ) as HTMLButtonElement,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Create component' }))
+    const duplicateDialog = screen.getByRole('dialog', { name: 'Create component' })
+    fireEvent.change(within(duplicateDialog).getByRole('textbox', { name: 'Component name' }), {
+      target: { value: 'Score component' },
+    })
+    fireEvent.click(within(duplicateDialog).getByRole('button', { name: 'Create component' }))
+    expect(within(duplicateDialog).getByRole('alert').textContent).toMatch(/must be unique/i)
+    expect(uiAuthoringSession.asset?.components).toHaveLength(1)
+
+    fireEvent.click(within(duplicateDialog).getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByRole('dialog', { name: 'Create component' })).toBeNull()
+    expect(uiAuthoringSession.asset?.components).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(uiAuthoringSession.asset?.components).toHaveLength(0)
+    expect(uiCommandBus.canUndo()).toBe(false)
     prompt.mockRestore()
   })
 

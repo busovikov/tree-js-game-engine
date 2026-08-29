@@ -2459,6 +2459,11 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
   const [canvasInsertionTarget, setCanvasInsertionTarget] = useState<UIInsertionTarget | null>(null)
   const [paletteQuery, setPaletteQuery] = useState('')
   const [selectedComponentId, setSelectedComponentId] = useState<UIComponentId | null>(null)
+  const [componentCreation, setComponentCreation] = useState<{
+    readonly rootId: UIElementId
+    readonly name: string
+  } | null>(null)
+  const [componentCreationError, setComponentCreationError] = useState<string | null>(null)
   const [texturePickerOpen, setTexturePickerOpen] = useState(false)
   const [pendingImageCreation, setPendingImageCreation] = useState<{
     readonly pointerFrameId?: UIElementId
@@ -3493,14 +3498,28 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
       setStatus('Select one document subtree to create a component')
       return
     }
-    const name = window.prompt('Component name', selected.name ?? `${selected.type} component`)
-    if (name === null) return
+    setComponentCreation({
+      rootId: selected.id,
+      name: selected.name ?? `${selected.type} component`,
+    })
+    setComponentCreationError(null)
+  }
+
+  const submitComponentCreation = () => {
+    if (!componentCreation) return
     try {
-      const result = uiAuthoringSession.createComponent(selected.id, name)
+      const result = uiAuthoringSession.createComponent(
+        componentCreation.rootId,
+        componentCreation.name,
+      )
       setSelectedComponentId(result.componentId)
-      setStatus(`Created component ${name.trim()}`)
+      setStatus(`Created component ${componentCreation.name.trim()}`)
+      setComponentCreation(null)
+      setComponentCreationError(null)
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : String(error))
+      const message = error instanceof Error ? error.message : String(error)
+      setComponentCreationError(message)
+      setStatus(message)
     }
   }
 
@@ -3789,6 +3808,62 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
           </>
         )}
       </nav>
+      {componentCreation && (
+        <div
+          className="haku-ui-editor__component-dialog"
+          role="dialog"
+          aria-label="Create component"
+          aria-modal="true"
+          onKeyDown={(event) => {
+            if (event.key !== 'Escape') return
+            setComponentCreation(null)
+            setComponentCreationError(null)
+          }}
+        >
+          <form
+            aria-label="Create component"
+            onSubmit={(event) => {
+              event.preventDefault()
+              submitComponentCreation()
+            }}
+          >
+            <strong>Create component</strong>
+            <label>
+              Component name
+              <input
+                autoFocus
+                aria-label="Component name"
+                value={componentCreation.name}
+                aria-invalid={componentCreationError ? 'true' : undefined}
+                aria-describedby={
+                  componentCreationError ? 'haku-ui-component-create-error' : undefined
+                }
+                onChange={(event) => {
+                  setComponentCreation({ ...componentCreation, name: event.target.value })
+                  setComponentCreationError(null)
+                }}
+              />
+            </label>
+            {componentCreationError && (
+              <span id="haku-ui-component-create-error" role="alert">
+                {componentCreationError}
+              </span>
+            )}
+            <div className="haku-ui-editor__component-dialog-actions">
+              <button
+                type="button"
+                onClick={() => {
+                  setComponentCreation(null)
+                  setComponentCreationError(null)
+                }}
+              >
+                Cancel
+              </button>
+              <button type="submit">Create component</button>
+            </div>
+          </form>
+        </div>
+      )}
       {assetPickerOpen && (
         <div className="haku-ui-editor__asset-picker" role="dialog" aria-label="UI asset picker">
           <div className="haku-ui-editor__asset-picker-header">
