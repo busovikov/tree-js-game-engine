@@ -2464,6 +2464,11 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
     readonly name: string
   } | null>(null)
   const [componentCreationError, setComponentCreationError] = useState<string | null>(null)
+  const [componentRename, setComponentRename] = useState<{
+    readonly componentId: UIComponentId
+    readonly name: string
+  } | null>(null)
+  const [componentRenameError, setComponentRenameError] = useState<string | null>(null)
   const [texturePickerOpen, setTexturePickerOpen] = useState(false)
   const [pendingImageCreation, setPendingImageCreation] = useState<{
     readonly pointerFrameId?: UIElementId
@@ -3523,6 +3528,20 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
     }
   }
 
+  const submitComponentRename = () => {
+    if (!componentRename) return
+    try {
+      uiAuthoringSession.renameComponent(componentRename.componentId, componentRename.name)
+      setStatus(`Renamed component to ${componentRename.name.trim()}`)
+      setComponentRename(null)
+      setComponentRenameError(null)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      setComponentRenameError(message)
+      setStatus(message)
+    }
+  }
+
   const openComponentMaster = (componentId: UIComponentId) => {
     const component = asset.components.find((candidate) => candidate.id === componentId)
     if (!component) return
@@ -3864,6 +3883,62 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
           </form>
         </div>
       )}
+      {componentRename && (
+        <div
+          className="haku-ui-editor__component-dialog"
+          role="dialog"
+          aria-label="Rename component"
+          aria-modal="true"
+          onKeyDown={(event) => {
+            if (event.key !== 'Escape') return
+            setComponentRename(null)
+            setComponentRenameError(null)
+          }}
+        >
+          <form
+            aria-label="Rename component"
+            onSubmit={(event) => {
+              event.preventDefault()
+              submitComponentRename()
+            }}
+          >
+            <strong>Rename component</strong>
+            <label>
+              Component name
+              <input
+                autoFocus
+                aria-label="Component name"
+                value={componentRename.name}
+                aria-invalid={componentRenameError ? 'true' : undefined}
+                aria-describedby={
+                  componentRenameError ? 'haku-ui-component-rename-error' : undefined
+                }
+                onChange={(event) => {
+                  setComponentRename({ ...componentRename, name: event.target.value })
+                  setComponentRenameError(null)
+                }}
+              />
+            </label>
+            {componentRenameError && (
+              <span id="haku-ui-component-rename-error" role="alert">
+                {componentRenameError}
+              </span>
+            )}
+            <div className="haku-ui-editor__component-dialog-actions">
+              <button
+                type="button"
+                onClick={() => {
+                  setComponentRename(null)
+                  setComponentRenameError(null)
+                }}
+              >
+                Cancel
+              </button>
+              <button type="submit">Rename component</button>
+            </div>
+          </form>
+        </div>
+      )}
       {assetPickerOpen && (
         <div className="haku-ui-editor__asset-picker" role="dialog" aria-label="UI asset picker">
           <div className="haku-ui-editor__asset-picker-header">
@@ -4011,12 +4086,11 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
                             type="button"
                             aria-label={`Rename ${component.name}`}
                             onClick={() => {
-                              const name = window.prompt('Component name', component.name)
-                              if (name === null) return
-                              runHierarchyAction(
-                                () => uiAuthoringSession.renameComponent(component.id, name),
-                                `Renamed component to ${name.trim()}`,
-                              )
+                              setComponentRename({
+                                componentId: component.id,
+                                name: component.name,
+                              })
+                              setComponentRenameError(null)
                             }}
                           >
                             ✎

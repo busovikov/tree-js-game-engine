@@ -430,8 +430,12 @@ describe('ViewportTabsShell UI workspace baseline', () => {
       componentId: COMPONENT_PANEL_MASTER,
     })
 
-    prompt.mockReturnValueOnce('Reusable card')
     fireEvent.click(within(collection).getByRole('button', { name: 'Rename Profile card 2' }))
+    const renameDialog = screen.getByRole('dialog', { name: 'Rename component' })
+    fireEvent.change(within(renameDialog).getByRole('textbox', { name: 'Component name' }), {
+      target: { value: 'Reusable card' },
+    })
+    fireEvent.submit(within(renameDialog).getByRole('form', { name: 'Rename component' }))
     expect(uiAuthoringSession.asset?.components[1]?.name).toBe('Reusable card')
     fireEvent.click(within(collection).getByRole('button', { name: 'Delete Reusable card' }))
     expect(uiAuthoringSession.asset?.components).toHaveLength(1)
@@ -439,6 +443,65 @@ describe('ViewportTabsShell UI workspace baseline', () => {
     fireEvent.click(within(collection).getByRole('button', { name: 'Delete Profile card' }))
     expect(screen.getByRole('status').textContent).toMatch(/document instance .* references it/)
     expect(uiAuthoringSession.asset?.components).toHaveLength(1)
+    expect(prompt).not.toHaveBeenCalled()
+    prompt.mockRestore()
+  })
+
+  it('renames components through an accessible validated dialog without native prompts', () => {
+    uiAuthoringSession.openAsset('assets/ui/component-panel.ui.json', componentPanelAsset())
+    const prompt = vi.spyOn(window, 'prompt')
+    render(<ViewportTabsShell />)
+    fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+    const collection = screen.getByRole('region', { name: 'Components' })
+
+    fireEvent.click(within(collection).getByRole('button', { name: 'Duplicate Profile card' }))
+    uiCommandBus.clear()
+    fireEvent.click(within(collection).getByRole('button', { name: 'Rename Profile card 2' }))
+    const dialog = screen.getByRole('dialog', { name: 'Rename component' })
+    const name = within(dialog).getByRole('textbox', { name: 'Component name' })
+    expect((name as HTMLInputElement).value).toBe('Profile card 2')
+    expect(prompt).not.toHaveBeenCalled()
+
+    fireEvent.change(name, { target: { value: '   ' } })
+    fireEvent.submit(within(dialog).getByRole('form', { name: 'Rename component' }))
+    expect(within(dialog).getByRole('alert').textContent).toMatch(/cannot be empty/i)
+    expect(uiAuthoringSession.asset?.components[1]?.name).toBe('Profile card 2')
+    expect(uiCommandBus.canUndo()).toBe(false)
+
+    fireEvent.change(name, { target: { value: 'Profile card' } })
+    fireEvent.submit(within(dialog).getByRole('form', { name: 'Rename component' }))
+    expect(within(dialog).getByRole('alert').textContent).toMatch(/must be unique/i)
+    expect(uiAuthoringSession.asset?.components[1]?.name).toBe('Profile card 2')
+    expect(uiCommandBus.canUndo()).toBe(false)
+
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+    expect(screen.queryByRole('dialog', { name: 'Rename component' })).toBeNull()
+    expect(uiCommandBus.canUndo()).toBe(false)
+
+    fireEvent.click(within(collection).getByRole('button', { name: 'Rename Profile card 2' }))
+    fireEvent.click(
+      within(screen.getByRole('dialog', { name: 'Rename component' })).getByRole('button', {
+        name: 'Cancel',
+      }),
+    )
+    expect(screen.queryByRole('dialog', { name: 'Rename component' })).toBeNull()
+    expect(uiCommandBus.canUndo()).toBe(false)
+
+    fireEvent.click(within(collection).getByRole('button', { name: 'Rename Profile card 2' }))
+    const submitDialog = screen.getByRole('dialog', { name: 'Rename component' })
+    fireEvent.change(within(submitDialog).getByRole('textbox', { name: 'Component name' }), {
+      target: { value: 'Nested card' },
+    })
+    fireEvent.submit(within(submitDialog).getByRole('form', { name: 'Rename component' }))
+    expect(screen.queryByRole('dialog', { name: 'Rename component' })).toBeNull()
+    expect(uiAuthoringSession.asset?.components[1]?.name).toBe('Nested card')
+    expect(uiCommandBus.canUndo()).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(uiAuthoringSession.asset?.components[1]?.name).toBe('Profile card 2')
+    expect(uiCommandBus.canUndo()).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: 'Redo' }))
+    expect(uiAuthoringSession.asset?.components[1]?.name).toBe('Nested card')
+    expect(prompt).not.toHaveBeenCalled()
     prompt.mockRestore()
   })
 
