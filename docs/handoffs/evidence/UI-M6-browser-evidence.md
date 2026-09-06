@@ -1,8 +1,9 @@
-# UI-M6 ROLL-09 Chrome acceptance evidence
+# UI-M6 Chrome acceptance evidence
 
-Date: 2026-09-04
+Dates: 2026-09-04 and 2026-09-06
 
-Browser: user's Chrome extension session at `http://localhost:5176/`.
+Browser: user's Chrome extension session at `http://localhost:5176/` and
+`http://127.0.0.1:5176/`.
 
 Scratch invariant: the built-in `builtin:m10b-runtime-hud.ui.json` remained in memory, displayed a
 dirty marker, and kept Save disabled. No project or UI JSON was saved.
@@ -17,7 +18,7 @@ dirty marker, and kept Save disabled. No project or UI JSON was saved.
 - Second instance ID/path: `218d4703-4e36-450c-b630-47cb5923367f`.
 - `Card Action` source ID: `e603522d-14e0-4799-b299-7ac86e6cf8d3`.
 - Entering the master from the second owner displayed `Inspecting Card Source source through
-  instance path 218d4703-4e36-450c-b630-47cb5923367f`.
+instance path 218d4703-4e36-450c-b630-47cb5923367f`.
 
 ## Overrides and history
 
@@ -53,7 +54,7 @@ browser run did not fabricate an event or edit JSON to bypass that precondition.
 - Editing master `Card Action` from `Button` to `Run` refreshed the first instance while the second
   retained its `Launch` override.
 - Deleting the overridden `Card Input` was rejected with `Invalid UI component master edit ...
-  Unknown overridden UI element`. The element remained. Undo immediately reverted the preceding
+Unknown overridden UI element`. The element remained. Undo immediately reverted the preceding
   valid `Run` edit and Redo restored it, proving the rejected edit added no history entry.
 
 ## Nested instance locator
@@ -88,7 +89,7 @@ Undo restored exact selection `218d4703-4e36-450c-b630-47cb5923367f` and its ins
 Redo restored exact detached-root selection `0765d3eb-aa2a-4f7d-a2cd-d39b675b2629` and the same fresh
 Launch child ID `82d0f803-8755-4927-90fe-773027148d9e`.
 
-## Browser blocker and fix
+## Accessible component dialogs
 
 Duplicate produced the uniquely named `Card Source 2`. Invoking Rename opened the remaining legacy
 native prompt. Chrome detected it as a prompt, but accepting it stalled browser control and reset the
@@ -100,6 +101,77 @@ accessible validated in-editor Rename component dialog. Empty and duplicate name
 an associated alert and no history; Escape and Cancel close without history; Enter/form submission
 renames atomically; Undo/Redo is exact; `window.prompt` is never called.
 
-No current wide/narrow screenshots or final console log were captured after the native prompt made
-the tab modal. Existing partial pre-prompt evidence remains at
-`docs/handoffs/evidence/UI-M6-card-source-before-native-prompt.jpg`.
+The fresh 2026-09-06 Chrome recheck recreated `Continue Source`, duplicated it as
+`Continue Source 2`, and verified the dialog against the shipped UI:
+
+- Empty submission stayed open with `UI component name cannot be empty`.
+- Renaming to `Continue Source` stayed open with
+  `UI component name must be unique: Continue Source`.
+- Escape and Cancel each closed the dialog. In both cases, the next Undo removed the preceding
+  component duplication and Redo restored it, proving cancellation added no history.
+- Renaming to `Action Alternate` succeeded; Undo restored `Continue Source 2` and Redo restored
+  `Action Alternate` exactly.
+
+## Non-Frame master fix and cycle safeguards
+
+Opening the Button-root `Continue Source` initially exposed a real browser defect: the Inspector
+projection reparsed the component tree as a serialized document and failed the document-only Frame
+root invariant. Focused Button/Text-root RED coverage reproduced the crash. Commit `9bb8a1b`
+keeps component edit scope as an in-memory Inspector projection while preserving strict validation
+for the real serialized document. A fresh Chrome tab then opened the Button-root master with scoped
+Layers and Inspector without an error.
+
+Two Frame-root masters provided browser-reachable cycle preconditions:
+
+- Direct placement failed before mutation with
+  `UI component insertion cycle: 8ef3b90d-f623-4e58-90ba-a1a8911ec4dc ->
+8ef3b90d-f623-4e58-90ba-a1a8911ec4dc`.
+- Placing `Frame Source 2` inside `Frame Source` succeeded as one command.
+- The inverse placement failed before mutation with
+  `UI component insertion cycle: db38519a-1adc-45b9-a64e-7cbc85f9582b ->
+8ef3b90d-f623-4e58-90ba-a1a8911ec4dc ->
+db38519a-1adc-45b9-a64e-7cbc85f9582b`.
+- After each rejected placement, Undo/Redo targeted the preceding successful action. For the
+  indirect case, Undo removed the legal nested instance and Redo restored it, proving rejection
+  added no history.
+
+## Final locator, layout, and console evidence
+
+The final nested runtime DOM exposed:
+
+- Outer Frame instance path `62e51749-fddc-41a3-b82a-50aace3bed96`, source
+  `63ac1a22-94f5-42e9-bf5d-232d4a499c3a`.
+- Nested Frame instance path
+  `62e51749-fddc-41a3-b82a-50aace3bed96/3548fbd2-91d2-4763-9ce5-bc070e653d4d`, source
+  `ee67f4f7-a696-4ba3-9166-6e1b73b7f72f`.
+- Original Button instance path `2e84fccf-b8a3-4cb2-bc07-744058b1e7c7`, source
+  `13000000-0000-4000-8000-000000000103`.
+
+At a 1440 × 900 Chrome viewport, the editor workspace measured `1440 × 819.5`. At 480 × 720 it
+measured `480 × 576`, with `clientWidth = scrollWidth = 480`. The temporary viewport override was
+reset after capture. The fresh-tab warning/error console result was `[]`.
+
+Screenshots:
+
+- [`wide 1440 × 900`](./UI-M6-components-wide.jpg)
+- [`narrow 480 × 720`](./UI-M6-components-narrow.jpg)
+
+## Component deletion and history
+
+The final fresh Chrome tab rebuilt a minimal Save-disabled scratch from the Runtime HUD button:
+`Continue Source` remained referenced by the original document instance, while its duplicate was
+renamed to the unreferenced `Action Alternate`. The latter's root source ID was
+`c4305e34-9f50-4c88-a3b4-765bb5c30b5a`.
+
+- Clicking only `Delete Action Alternate` while that master was the active edit scope rejected
+  before mutation with `Cannot delete the active UI component master; return to the document first`.
+- After returning to the document, clicking only `Delete Action Alternate` removed that master and
+  left `Continue Source` present.
+- Undo restored the same `Action Alternate` master/edit scope and exact root source ID
+  `c4305e34-9f50-4c88-a3b4-765bb5c30b5a`; Redo removed it again.
+- After Redo, local Undo was enabled, local Redo was disabled, Save remained disabled, and the fresh
+  warning/error console result was `[]`.
+
+The referenced `Continue Source` Delete control was not clicked. Its reference safeguard, exact
+master/source identity restoration, and history behavior remain covered by the focused pure,
+session, and panel tests. No scratch discard control was invoked, and no UI JSON was saved.

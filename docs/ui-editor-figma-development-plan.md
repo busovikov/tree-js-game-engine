@@ -721,6 +721,19 @@ Evidence:
 - Browser: create a button/card master, place multiple instances, override one, edit master, reset,
   detach, and verify runtime event source paths.
 
+**Status (2026-09-06): complete.**
+
+- Strict component extraction, instances, sparse overrides and resets, master edit scope, nested
+  acyclic composition, detach, runtime refresh/locators, and lifecycle safeguards are implemented
+  with atomic history coverage.
+- User Chrome verified the complete master/instance workflow, exact nested runtime paths, accessible
+  create/rename validation, non-Frame masters, cycle rejection, and an atomic unreferenced delete
+  through Undo/Redo while Save remained disabled and the warning/error console remained empty.
+- Evidence is recorded in [`handoffs/UI-M6-01.md`](./handoffs/UI-M6-01.md) with
+  [`UI-M6-browser-evidence.md`](./handoffs/evidence/UI-M6-browser-evidence.md),
+  [`UI-M6-components-wide.jpg`](./handoffs/evidence/UI-M6-components-wide.jpg), and
+  [`UI-M6-components-narrow.jpg`](./handoffs/evidence/UI-M6-components-narrow.jpg).
+
 ### Milestone 7 — Bounce Run HUD dogfood
 
 **Prerequisite:** Milestone 6 accepted.
