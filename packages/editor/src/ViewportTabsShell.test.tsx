@@ -112,6 +112,30 @@ function componentPanelAsset() {
   })
 }
 
+function nonFrameComponentPanelAsset(type: 'button' | 'text') {
+  const asset = componentPanelAsset()
+  const root =
+    type === 'button'
+      ? {
+          id: COMPONENT_PANEL_MASTER_ROOT,
+          type,
+          name: 'Action root',
+          text: 'Action',
+          accessibility: { label: 'Action' },
+        }
+      : {
+          id: COMPONENT_PANEL_MASTER_ROOT,
+          type,
+          name: 'Label root',
+          text: 'Label',
+        }
+  return UIDocumentSchema.parse({
+    ...asset,
+    elements: [asset.elements[0], { ...asset.elements[1], overrides: {} }],
+    components: [{ ...asset.components[0], root: root.id, elements: [root] }],
+  })
+}
+
 function componentInspectorAsset() {
   const asset = componentPanelAsset()
   return UIDocumentSchema.parse({
@@ -703,6 +727,42 @@ describe('ViewportTabsShell UI workspace baseline', () => {
     expect(screen.getByRole('note').textContent).toMatch(/enter the master to edit descendants/i)
     save.mockRestore()
   })
+
+  it.each(['button', 'text'] as const)(
+    'opens a %s-root component master without treating its edit tree as a serialized document',
+    async (type) => {
+      uiAuthoringSession.openAsset(
+        `assets/ui/${type}-root-component.ui.json`,
+        nonFrameComponentPanelAsset(type),
+      )
+      const save = vi.spyOn(projectService, 'saveUIDocumentAsset').mockResolvedValue(undefined)
+      const { container } = render(<ViewportTabsShell />)
+      fireEvent.click(screen.getByRole('tab', { name: 'UI' }))
+
+      fireEvent.click(screen.getByRole('button', { name: 'Edit Profile card master' }))
+
+      const workspace = container.querySelector('[data-haku-ui-workspace]')
+      expect(workspace?.getAttribute('data-haku-ui-edit-scope')).toBe(COMPONENT_PANEL_MASTER)
+      expect(
+        container.querySelector(`[data-haku-ui-tree-item="${COMPONENT_PANEL_MASTER_ROOT}"]`),
+      ).toBeTruthy()
+      expect(screen.getByRole('heading', { name: 'UI Inspector' })).toBeTruthy()
+      expect((screen.getByLabelText('Name') as HTMLInputElement).value).toMatch(/root/i)
+      fireEvent.change(screen.getByLabelText('Name'), { target: { value: `${type} master root` } })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+      await waitFor(() => expect(save).toHaveBeenCalledTimes(1))
+      const saved = save.mock.calls[0]?.[1]
+      expect(saved).not.toHaveProperty('editScope')
+      expect(saved).not.toHaveProperty('selection')
+      expect(saved?.components[0]?.root).toBe(COMPONENT_PANEL_MASTER_ROOT)
+      expect(saved?.components[0]?.elements).toHaveLength(1)
+
+      fireEvent.click(screen.getByRole('button', { name: 'Back to document' }))
+      expect(uiAuthoringSession.editScope).toEqual({ type: 'document' })
+      save.mockRestore()
+    },
+  )
 
   it('uses the selected owning instance bounds for master layout, placement, and constraints', async () => {
     uiAuthoringSession.openAsset(

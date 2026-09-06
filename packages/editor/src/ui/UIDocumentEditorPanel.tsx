@@ -6,7 +6,6 @@ import type {
   ReactNode,
 } from 'react'
 import {
-  UIDocumentSchema,
   UIDocumentInstance,
   applyUIInstanceOverride,
   type UIDocument,
@@ -2514,17 +2513,18 @@ export const UIDocumentEditorPanel = memo(function UIDocumentEditorPanel() {
   const activeElements = activeComponent?.elements ?? asset?.elements ?? []
   const activeRoot = activeComponent?.root ?? asset?.root ?? null
   const inspectorAsset = useMemo(
-    () =>
-      asset && activeRoot
-        ? UIDocumentSchema.parse({
-            ...asset,
-            root: activeRoot,
-            elements: activeElements,
-            components: activeComponent
-              ? asset.components.filter((component) => component.id !== activeComponent.id)
-              : asset.components,
-          })
-        : null,
+    () => {
+      if (!asset || !activeRoot) return null
+      if (!activeComponent) return asset
+      return {
+        ...asset,
+        root: activeRoot,
+        elements: activeElements,
+        components: asset.components.filter(
+          (component) => component.id !== activeComponent.id,
+        ),
+      } as UIDocument
+    },
     [activeComponent, activeElements, activeRoot, asset],
   )
   const inspectionInstancePath = uiAuthoringSession.inspectionInstancePath
