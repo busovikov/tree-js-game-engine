@@ -18,6 +18,7 @@ import {
 } from '@haku/audio'
 import type { AudioBus } from '@haku/audio'
 import { BOUNCE_RUN_SESSION_IDS, createBounceRunSessionGraph } from './session-graph.js'
+import type { BounceRunUIGameplayAdapter } from './ui-gameplay-adapter.js'
 
 export type BounceRunSessionState = 'start' | 'active' | 'paused' | 'game-over'
 
@@ -51,7 +52,13 @@ export function createBounceRunSessionRuntime(options: {
   readonly ui: UIService
   readonly storage: ISaveStorage
   readonly audio: AudioService
+  readonly gameplayUI?: Pick<BounceRunUIGameplayAdapter, 'updateHud'>
+  readonly routeProgressGoal?: number
 }): BounceRunSessionRuntime {
+  const routeProgressGoal = options.routeProgressGoal ?? 1
+  if (!Number.isSafeInteger(routeProgressGoal) || routeProgressGoal <= 0) {
+    throw new Error('Bounce Run route progress goal must be a positive safe integer')
+  }
   const nodeRegistry = createFoundationNodeRegistry([
     registerUINodeContracts,
     registerAudioNodeContracts,
@@ -121,17 +128,34 @@ export function createBounceRunSessionRuntime(options: {
   let initializePromise: Promise<void> | undefined
   let highScore = 0
   let highScoreRevision = 0
+  let routeProgress = 0
   let writeBarrier = Promise.resolve()
 
   const requireInitialized = (): void => {
     if (!initialized) throw new Error('Bounce Run session runtime is not initialized')
     if (destroyed) throw new Error('Bounce Run session runtime is destroyed')
   }
+  const syncHud = (): void => {
+    options.gameplayUI?.updateHud({
+      status: variables.get(
+        BOUNCE_RUN_SESSION_IDS.variables.state,
+      ) as BounceRunSessionState,
+      score: variables.get(BOUNCE_RUN_SESSION_IDS.variables.score) as number,
+      bestScore: highScore,
+      progress: routeProgress,
+    })
+  }
   const renderHighScore = (): void => {
     variables.set(BOUNCE_RUN_SESSION_IDS.variables.highScore, highScore)
-    if (!destroyed) run(BOUNCE_RUN_SESSION_IDS.entries.renderHighScore)
+    if (!destroyed) {
+      run(BOUNCE_RUN_SESSION_IDS.entries.renderHighScore)
+      syncHud()
+    }
   }
-  const renderScore = (): void => run(BOUNCE_RUN_SESSION_IDS.entries.renderScore)
+  const renderScore = (): void => {
+    run(BOUNCE_RUN_SESSION_IDS.entries.renderScore)
+    syncHud()
+  }
   const persistHighScore = async (candidate: number): Promise<void> => {
     if (candidate <= highScore) return
     for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -171,6 +195,7 @@ export function createBounceRunSessionRuntime(options: {
         run(BOUNCE_RUN_SESSION_IDS.entries.audioBusVolume[bus])
         run(BOUNCE_RUN_SESSION_IDS.entries.audioBusMuted[bus])
       }
+      syncHud()
     })()
     return initializePromise
   }
@@ -185,14 +210,17 @@ export function createBounceRunSessionRuntime(options: {
     pause: () => {
       requireInitialized()
       run(BOUNCE_RUN_SESSION_IDS.entries.pauseSession)
+      syncHud()
     },
     resume: () => {
       requireInitialized()
       run(BOUNCE_RUN_SESSION_IDS.entries.resumeSession)
+      syncHud()
     },
     fail: () => {
       requireInitialized()
       run(BOUNCE_RUN_SESSION_IDS.entries.failSession)
+      syncHud()
       const candidate = variables.get(BOUNCE_RUN_SESSION_IDS.variables.score) as number
       const operation = writeBarrier.then(() => persistHighScore(candidate))
       writeBarrier = operation.then(
@@ -204,6 +232,7 @@ export function createBounceRunSessionRuntime(options: {
     restart: () => {
       requireInitialized()
       run(BOUNCE_RUN_SESSION_IDS.entries.restartSession)
+      routeProgress = 0
       renderScore()
     },
     collectBonus: () => {
@@ -221,7 +250,10 @@ export function createBounceRunSessionRuntime(options: {
       instance.invalidateResource('graph.variable')
       run(BOUNCE_RUN_SESSION_IDS.entries.awardRouteProgress)
       const awarded = variables.get(BOUNCE_RUN_SESSION_IDS.variables.score) !== previous
-      if (awarded) renderScore()
+      if (awarded) {
+        routeProgress = Math.min(1, platformIndex / routeProgressGoal)
+        renderScore()
+      }
       return awarded
     },
     setAudioBusVolume: (bus, volume) => {

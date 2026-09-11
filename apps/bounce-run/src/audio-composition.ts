@@ -17,6 +17,10 @@ import type { ISaveStorage } from '@haku/storage'
 import type { UIService } from '@haku/ui'
 import { createBounceRunSessionRuntime, type BounceRunSessionRuntime } from './session-runtime.js'
 import { BOUNCE_RUN_UI_IDS } from './ui-document.js'
+import type {
+  BounceRunUIGameplayAdapter,
+  BounceRunUIRuntimeEvent,
+} from './ui-gameplay-adapter.js'
 
 export const BOUNCE_RUN_AUDIO_CLIPS = {
   music: assetId('b1400000-0000-4000-8000-000000000001'),
@@ -92,6 +96,8 @@ export function createBounceRunAudioComposition(options: {
   readonly ui: UIService
   readonly storage: ISaveStorage
   readonly backend: AudioBackend
+  readonly gameplayUI: BounceRunUIGameplayAdapter
+  readonly routeProgressGoal?: number
   readonly pooledOwners?: readonly EntityPool[]
   readonly hooks?: BounceRunAudioHooks
 }): BounceRunAudioComposition {
@@ -103,6 +109,8 @@ export function createBounceRunAudioComposition(options: {
     ui: options.ui,
     storage: options.storage,
     audio,
+    gameplayUI: options.gameplayUI,
+    routeProgressGoal: options.routeProgressGoal,
   })
   const participant = createAudioPoolParticipant(runtime)
   const unregisterParticipants = (options.pooledOwners ?? []).map((pool) =>
@@ -179,18 +187,51 @@ export function createBounceRunAudioComposition(options: {
       `${label} ${muted ? 'off' : 'on'}`,
     )
   }
-  const unsubscribeUI = options.ui.subscribe((event) => {
-    if (event.bindingId === BOUNCE_RUN_UI_IDS.events.start) track(start())
-    else if (event.bindingId === BOUNCE_RUN_UI_IDS.events.resume) track(resume())
-    else if (event.bindingId === BOUNCE_RUN_UI_IDS.events.restart) track(restart())
-    else if (event.bindingId === BOUNCE_RUN_UI_IDS.events.toggleMasterAudio) {
-      toggleBus('master', BOUNCE_RUN_UI_IDS.masterAudioButton, 'Master')
-    } else if (event.bindingId === BOUNCE_RUN_UI_IDS.events.toggleMusicAudio) {
-      toggleBus('music', BOUNCE_RUN_UI_IDS.musicAudioButton, 'Music')
-    } else if (event.bindingId === BOUNCE_RUN_UI_IDS.events.toggleSfxAudio) {
-      toggleBus('sfx', BOUNCE_RUN_UI_IDS.sfxAudioButton, 'SFX')
-    } else if (event.bindingId === BOUNCE_RUN_UI_IDS.events.toggleUIAudio) {
-      toggleBus('ui', BOUNCE_RUN_UI_IDS.uiAudioButton, 'UI')
+  const setNamedBusVolume = (event: BounceRunUIRuntimeEvent, bus: AudioBus): void => {
+    if (typeof event.value !== 'number') {
+      throw new Error(`${event.bindingName} requires a number value`)
+    }
+    setBusVolume(bus, event.value)
+  }
+  const setNamedBusMuted = (event: BounceRunUIRuntimeEvent, bus: AudioBus): void => {
+    if (typeof event.value !== 'boolean') {
+      throw new Error(`${event.bindingName} requires a boolean value`)
+    }
+    setBusMuted(bus, event.value)
+  }
+  const unsubscribeUI = options.gameplayUI.subscribe((event) => {
+    try {
+      if (event.bindingName === 'start-session') track(start())
+      else if (event.bindingName === 'pause-session') track(pause())
+      else if (event.bindingName === 'resume-session') track(resume())
+      else if (event.bindingName === 'restart-session') track(restart())
+      else if (event.bindingName === 'toggle-master-audio') {
+        toggleBus('master', BOUNCE_RUN_UI_IDS.masterAudioButton, 'Master')
+      } else if (event.bindingName === 'toggle-music-audio') {
+        toggleBus('music', BOUNCE_RUN_UI_IDS.musicAudioButton, 'Music')
+      } else if (event.bindingName === 'toggle-sfx-audio') {
+        toggleBus('sfx', BOUNCE_RUN_UI_IDS.sfxAudioButton, 'SFX')
+      } else if (event.bindingName === 'toggle-ui-audio') {
+        toggleBus('ui', BOUNCE_RUN_UI_IDS.uiAudioButton, 'UI')
+      } else if (event.bindingName === 'set-master-volume') {
+        setNamedBusVolume(event, 'master')
+      } else if (event.bindingName === 'set-music-volume') {
+        setNamedBusVolume(event, 'music')
+      } else if (event.bindingName === 'set-sfx-volume') {
+        setNamedBusVolume(event, 'sfx')
+      } else if (event.bindingName === 'set-ui-volume') {
+        setNamedBusVolume(event, 'ui')
+      } else if (event.bindingName === 'set-master-muted') {
+        setNamedBusMuted(event, 'master')
+      } else if (event.bindingName === 'set-music-muted') {
+        setNamedBusMuted(event, 'music')
+      } else if (event.bindingName === 'set-sfx-muted') {
+        setNamedBusMuted(event, 'sfx')
+      } else if (event.bindingName === 'set-ui-muted') {
+        setNamedBusMuted(event, 'ui')
+      }
+    } catch (error) {
+      options.hooks?.error?.(error)
     }
   })
 
@@ -216,6 +257,7 @@ export function createBounceRunAudioComposition(options: {
       if (disposed) return
       disposed = true
       unsubscribeUI()
+      options.gameplayUI.dispose()
       for (const unregister of unregisterParticipants) unregister()
       session.destroy()
       runtime.dispose()

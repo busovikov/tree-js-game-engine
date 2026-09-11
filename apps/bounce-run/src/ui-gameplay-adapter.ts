@@ -34,7 +34,7 @@ export function createBounceRunUIGameplayAdapter(options: {
   readonly document: UIDocument
   readonly targets?: BounceRunUITargets
 }): BounceRunUIGameplayAdapter {
-  const targets = { ...resolveBounceRunUITargets(options.document), ...options.targets }
+  const targets = { ...options.targets, ...resolveBounceRunUITargets(options.document) }
   const eventNames = new Map(options.document.events.map((event) => [event.id, event.name]))
   const listeners = new Set<BounceRunUIEventListener>()
   let disposed = false

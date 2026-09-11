@@ -47,6 +47,7 @@ import { instantiatePrefabDefinition } from './prefab-instance.js'
 import { BOUNCE_RUN_AUDIO_CLIP_DATA, createBounceRunAudioComposition } from './audio-composition.js'
 import { BOUNCE_RUN_UI_IDS, loadBounceRunUIDocument } from './ui-document.js'
 import { createBounceRunEffectsComposition } from './effects-composition.js'
+import { createBounceRunUIGameplayAdapter } from './ui-gameplay-adapter.js'
 
 const BALL_ID = entityId('b1700000-0000-4000-8000-000000000002')
 const CAMERA_ID = entityId('b1700000-0000-4000-8000-000000000001')
@@ -217,6 +218,15 @@ async function main(): Promise<void> {
   const uiDocument = await loadBounceRunUIDocument()
   ui.register(uiDocument)
   ui.mount(uiDocument.id, hudHost)
+  const gameplayUI = createBounceRunUIGameplayAdapter({
+    ui,
+    document: uiDocument,
+    targets: {
+      statusText: BOUNCE_RUN_UI_IDS.stateText,
+      scoreText: BOUNCE_RUN_UI_IDS.scoreText,
+      bestScoreText: BOUNCE_RUN_UI_IDS.highScoreText,
+    },
+  })
   const saveStorage = await createBounceRunSaveStorage()
   const audioBackend = createWebAudioBackend()
   for (const clip of BOUNCE_RUN_AUDIO_CLIP_DATA) await audioBackend.loadClip(clip)
@@ -225,6 +235,8 @@ async function main(): Promise<void> {
     ui,
     storage: saveStorage.storage,
     backend: audioBackend,
+    gameplayUI,
+    routeProgressGoal: ROUTE_DIFFICULTY.at(-1)!.startIndex,
     pooledOwners: [platformPool, bonusPool],
     hooks: {
       start: () => {

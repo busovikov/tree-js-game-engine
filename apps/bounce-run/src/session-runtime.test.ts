@@ -10,7 +10,7 @@ import {
   type ISaveStorage,
 } from '@haku/storage'
 import { UIService } from '@haku/ui'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createBounceRunSessionRuntime } from './session-runtime.js'
 import documentAsset from '../public/assets/ui/hud.ui.json'
 import { BOUNCE_RUN_UI_IDS, loadBounceRunUIDocument } from './ui-document.js'
@@ -50,14 +50,17 @@ async function mountSession(storage: ISaveStorage) {
   }))
   ui.register(uiDocument)
   const documentInstance = ui.mount(uiDocument.id, host)
+  const updateHud = vi.fn()
   const session = createBounceRunSessionRuntime({
     scheduler: new EngineScheduler(),
     ui,
     storage,
     audio: createTestAudio(),
+    gameplayUI: { updateHud },
+    routeProgressGoal: 10,
   })
   await session.initialize()
-  return { documentInstance, session, ui }
+  return { documentInstance, session, ui, updateHud }
 }
 
 describe('Bounce Run session runtime', () => {
@@ -75,6 +78,7 @@ describe('Bounce Run session runtime', () => {
       ui,
       storage: new InMemorySaveStorage(),
       audio: createTestAudio(),
+      gameplayUI: { updateHud: vi.fn() },
     })
 
     await session.initialize()
@@ -103,6 +107,53 @@ describe('Bounce Run session runtime', () => {
     expect(session.state()).toBe('active')
     expect(session.score()).toBe(0)
     expect(documentInstance.getElement(BOUNCE_RUN_UI_IDS.gameOverPanel)?.hidden).toBe(true)
+  })
+
+  it('publishes typed HUD snapshots after every session value transition', async () => {
+    const mounted = await mountSession(new InMemorySaveStorage())
+
+    expect(mounted.updateHud).toHaveBeenLastCalledWith({
+      status: 'start',
+      score: 0,
+      bestScore: 0,
+      progress: 0,
+    })
+
+    mounted.session.start()
+    expect(mounted.updateHud).toHaveBeenLastCalledWith({
+      status: 'active',
+      score: 0,
+      bestScore: 0,
+      progress: 0,
+    })
+    expect(mounted.session.awardRouteProgress(5)).toBe(true)
+    expect(mounted.updateHud).toHaveBeenLastCalledWith({
+      status: 'active',
+      score: 1,
+      bestScore: 0,
+      progress: 0.5,
+    })
+    expect(mounted.session.collectBonus()).toBe(true)
+    expect(mounted.updateHud).toHaveBeenLastCalledWith({
+      status: 'active',
+      score: 2,
+      bestScore: 0,
+      progress: 0.5,
+    })
+    await mounted.session.fail()
+    expect(mounted.updateHud).toHaveBeenLastCalledWith({
+      status: 'game-over',
+      score: 2,
+      bestScore: 2,
+      progress: 0.5,
+    })
+    mounted.session.restart()
+    expect(mounted.updateHud).toHaveBeenLastCalledWith({
+      status: 'active',
+      score: 0,
+      bestScore: 2,
+      progress: 0,
+    })
   })
 
   it('renders graph score and preserves a versioned local high score across loads and typed write failures', async () => {

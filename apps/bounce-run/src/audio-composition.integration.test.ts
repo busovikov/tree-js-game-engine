@@ -15,10 +15,15 @@ import { EngineScheduler, World } from '@haku/core'
 import { EntityPool, poolHandleRoot } from '@haku/pool'
 import { InMemorySaveStorage } from '@haku/storage'
 import { UIService } from '@haku/ui'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import documentAsset from '../public/assets/ui/hud.ui.json'
 import { BOUNCE_RUN_AUDIO_CLIPS, createBounceRunAudioComposition } from './audio-composition.js'
 import { BOUNCE_RUN_UI_IDS, loadBounceRunUIDocument } from './ui-document.js'
+import {
+  createBounceRunUIGameplayAdapter,
+  type BounceRunUIEventListener,
+  type BounceRunUIRuntimeEvent,
+} from './ui-gameplay-adapter.js'
 
 class ControllableAudioBackend implements AudioBackend {
   readonly sequence: string[] = []
@@ -96,6 +101,15 @@ async function mountComposition(backend = new ControllableAudioBackend()) {
   }))
   ui.register(uiDocument)
   const documentInstance = ui.mount(uiDocument.id, host)
+  const gameplayUI = createBounceRunUIGameplayAdapter({
+    ui,
+    document: uiDocument,
+    targets: {
+      statusText: BOUNCE_RUN_UI_IDS.stateText,
+      scoreText: BOUNCE_RUN_UI_IDS.scoreText,
+      bestScoreText: BOUNCE_RUN_UI_IDS.highScoreText,
+    },
+  })
   const world = new World()
   const pool = new EntityPool({
     id: 'bounce-run-audio-owner-pool',
@@ -111,10 +125,31 @@ async function mountComposition(backend = new ControllableAudioBackend()) {
     ui,
     storage: new InMemorySaveStorage(),
     backend,
+    gameplayUI,
     pooledOwners: [pool],
   })
   await composition.initialize()
-  return { backend, composition, documentInstance, pool, ui }
+  return { backend, composition, documentInstance, gameplayUI, pool, ui }
+}
+
+function createControllableGameplayUI() {
+  const listeners = new Set<BounceRunUIEventListener>()
+  let disposed = false
+  return {
+    updateHud: vi.fn(),
+    subscribe(listener: BounceRunUIEventListener) {
+      listeners.add(listener)
+      return () => listeners.delete(listener)
+    },
+    emit(event: BounceRunUIRuntimeEvent) {
+      for (const listener of listeners) listener(event)
+    },
+    dispose() {
+      disposed = true
+      listeners.clear()
+    },
+    isDisposed: () => disposed,
+  }
 }
 
 function click(
@@ -125,6 +160,55 @@ function click(
 }
 
 describe('Bounce Run production audio composition', () => {
+  it('routes each named UI action once into the existing session and audio boundary', async () => {
+    const host = document.createElement('div')
+    const ui = new UIService()
+    const uiDocument = await loadBounceRunUIDocument(async () => ({
+      ok: true,
+      json: async () => documentAsset,
+    }))
+    ui.register(uiDocument)
+    ui.mount(uiDocument.id, host)
+    const backend = new ControllableAudioBackend()
+    const gameplayUI = createControllableGameplayUI()
+    const composition = createBounceRunAudioComposition({
+      scheduler: new EngineScheduler(),
+      ui,
+      storage: new InMemorySaveStorage(),
+      backend,
+      gameplayUI,
+    })
+    await composition.initialize()
+    const emit = (
+      bindingName: string,
+      type: BounceRunUIRuntimeEvent['type'],
+      value?: BounceRunUIRuntimeEvent['value'],
+    ) =>
+      gameplayUI.emit({
+        documentId: uiDocument.id,
+        elementId: BOUNCE_RUN_UI_IDS.startButton as BounceRunUIRuntimeEvent['elementId'],
+        bindingId: BOUNCE_RUN_UI_IDS.events.start as BounceRunUIRuntimeEvent['bindingId'],
+        bindingName,
+        type,
+        ...(value !== undefined ? { value } : {}),
+      })
+
+    emit('start-session', 'activate')
+    await composition.settled()
+    expect(backend.unlockCalls).toBe(1)
+    expect(composition.session.state()).toBe('active')
+
+    emit('set-master-volume', 'input', 0.35)
+    emit('set-master-muted', 'change', true)
+    expect(backend.busStates.get('master')).toEqual({ volume: 0.35, muted: true })
+
+    composition.dispose()
+    expect(gameplayUI.isDisposed()).toBe(true)
+    emit('restart-session', 'activate')
+    expect(composition.session.state()).toBe('active')
+    ui.destroyAll()
+  })
+
   it('unlocks in the Start activation before graph music/SFX and preserves authored settings', async () => {
     const mounted = await mountComposition()
 
