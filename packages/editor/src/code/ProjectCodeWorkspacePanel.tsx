@@ -12,7 +12,9 @@ import { useEditorStore } from '../store/editor-store.js'
 import type { BrowserProjectWorkspace } from '../services/browser-project-workspace.js'
 import { CodeWorkspacePanel } from './CodeWorkspacePanel.js'
 
-const ENGINE_DECLARATIONS = `declare module '@haku/engine' {
+const ENGINE_DECLARATIONS = `export {}
+
+declare module '@haku/engine' {
   export interface HakuGameplayRuntime {
     readonly projectId: string
   }

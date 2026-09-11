@@ -39,5 +39,8 @@ describe('createProjectBrowserTooling', () => {
     expect(tooling.files['.haku/generated/node-sdk.d.ts']).toContain(
       'readonly random: SeededRandomCapability',
     )
+    expect(tooling.files['.haku/generated/engine.d.ts']).toMatch(
+      /^export \{\}\n\ndeclare module '@haku\/engine'/,
+    )
   })
 })
