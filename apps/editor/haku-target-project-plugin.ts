@@ -18,10 +18,15 @@ const MIME: Record<string, string> = {
   '.png': 'image/png',
 }
 
-function resolveTargetPath(): string | null {
-  const raw = process.env.HAKU_TARGET_PATH?.trim()
-  if (!raw) return null
-  return resolve(raw.replace(/^~(?=$|\/)/, process.env.HOME ?? ''))
+export function resolveTargetProjectRoot(
+  raw = process.env.HAKU_TARGET_PATH,
+  cwd = process.env.INIT_CWD ?? process.cwd(),
+  home = process.env.HOME ?? '',
+): string | null {
+  const target = raw?.trim()
+  if (!target) return null
+  const resolved = resolve(cwd, target.replace(/^~(?=$|\/)/, home))
+  return basename(resolved) === 'haku.project.json' ? dirname(resolved) : resolved
 }
 
 function resolveTargetFile(targetRoot: string, relativePath: string): string | null {
@@ -268,7 +273,7 @@ async function handleDevRequest(
 
 /** Dev-only: serve TARGET_PATH project files when HAKU_TARGET_PATH is set. */
 export function hakuTargetProjectPlugin(): Plugin {
-  const targetRoot = resolveTargetPath()
+  const targetRoot = resolveTargetProjectRoot()
 
   return {
     name: 'haku-target-project',

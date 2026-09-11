@@ -1,8 +1,9 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  resolveTargetProjectRoot,
   scanTargetWorkspaceFiles,
   writeTargetTextFile,
 } from '../haku-target-project-plugin.js'
@@ -10,12 +11,34 @@ import {
 const temporaryRoots: string[] = []
 
 afterEach(async () => {
+  vi.unstubAllEnvs()
   await Promise.all(
     temporaryRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })),
   )
 })
 
 describe('target project writes', () => {
+  it('resolves a manifest target path to its project directory', () => {
+    expect(
+      resolveTargetProjectRoot(
+        'apps/bounce-run/haku.project.json',
+        '/workspace',
+        '/users/creator',
+      ),
+    ).toBe('/workspace/apps/bounce-run')
+    expect(
+      resolveTargetProjectRoot('apps/bounce-run', '/workspace', '/users/creator'),
+    ).toBe('/workspace/apps/bounce-run')
+  })
+
+  it('resolves relative targets from the package-manager invocation directory', () => {
+    vi.stubEnv('INIT_CWD', '/workspace')
+
+    expect(resolveTargetProjectRoot('apps/bounce-run/haku.project.json')).toBe(
+      '/workspace/apps/bounce-run',
+    )
+  })
+
   it('writes nested files inside the configured target root', async () => {
     const root = await mkdtemp(join(tmpdir(), 'haku-target-'))
     temporaryRoots.push(root)
