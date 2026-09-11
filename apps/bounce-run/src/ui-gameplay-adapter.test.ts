@@ -3,7 +3,10 @@
 import { assetId } from '@haku/schema'
 import { UIDocumentSchema, UIService, type UIRuntimeEvent } from '@haku/ui'
 import { describe, expect, it, vi } from 'vitest'
-import { createBounceRunUIGameplayAdapter } from './ui-gameplay-adapter.js'
+import {
+  createBounceRunUIGameplayAdapter,
+  resolveBounceRunUITargets,
+} from './ui-gameplay-adapter.js'
 
 const id = (value: number): string =>
   `b1700000-0000-4000-8000-${value.toString().padStart(12, '0')}`
@@ -35,12 +38,13 @@ function mountFixture() {
         children: [STATUS, SCORE, BEST, PROGRESS, START, MASTER_MUTED, MASTER_VOLUME],
         layout: { mode: 'vertical' },
       },
-      { id: STATUS, type: 'text', text: 'start' },
-      { id: SCORE, type: 'text', text: 'Score 0' },
-      { id: BEST, type: 'text', text: 'Best 0' },
+      { id: STATUS, type: 'text', name: 'Session status', text: 'start' },
+      { id: SCORE, type: 'text', name: 'Score', text: 'Score 0' },
+      { id: BEST, type: 'text', name: 'Best score', text: 'Best 0' },
       {
         id: PROGRESS,
         type: 'progress',
+        name: 'Route progress',
         min: 0,
         max: 1,
         value: 0,
@@ -75,13 +79,7 @@ function mountFixture() {
   const instance = service.mount(DOCUMENT, document.createElement('div'))
   const adapter = createBounceRunUIGameplayAdapter({
     ui: service,
-    document: DOCUMENT,
-    targets: {
-      statusText: STATUS,
-      scoreText: SCORE,
-      bestScoreText: BEST,
-      progress: PROGRESS,
-    },
+    document: documentAsset,
   })
   return { adapter, instance, service }
 }
@@ -116,7 +114,7 @@ describe('Bounce Run UI gameplay adapter', () => {
 
   it('forwards typed user events from its document exactly once and stops after disposal', () => {
     const { adapter, instance } = mountFixture()
-    const events: UIRuntimeEvent[] = []
+    const events: Array<UIRuntimeEvent & { readonly bindingName: string }> = []
     adapter.subscribe((event) => events.push(event))
 
     instance.getElement(START)?.click()
@@ -124,13 +122,57 @@ describe('Bounce Run UI gameplay adapter', () => {
     volume.value = '0.4'
     volume.dispatchEvent(new Event('input', { bubbles: true }))
 
-    expect(events.map(({ bindingId, type, value }) => ({ bindingId, type, value }))).toEqual([
-      { bindingId: START_EVENT, type: 'activate', value: undefined },
-      { bindingId: VOLUME_EVENT, type: 'input', value: 0.4 },
+    expect(
+      events.map(({ bindingId, bindingName, type, value }) => ({
+        bindingId,
+        bindingName,
+        type,
+        value,
+      })),
+    ).toEqual([
+      {
+        bindingId: START_EVENT,
+        bindingName: 'start-session',
+        type: 'activate',
+        value: undefined,
+      },
+      {
+        bindingId: VOLUME_EVENT,
+        bindingName: 'set-master-volume',
+        type: 'input',
+        value: 0.4,
+      },
     ])
 
     adapter.dispose()
     ;(instance.getElement(MASTER_MUTED) as HTMLInputElement).click()
     expect(events).toHaveLength(2)
+  })
+
+  it('keeps progress optional until the authored HUD adds its stable name', () => {
+    const documentAsset = UIDocumentSchema.parse({
+      schemaVersion: 2,
+      id: DOCUMENT,
+      name: 'Partial Bounce Run HUD',
+      root: ROOT,
+      elements: [
+        {
+          id: ROOT,
+          type: 'frame',
+          children: [STATUS, SCORE, BEST],
+          layout: { mode: 'vertical' },
+        },
+        { id: STATUS, type: 'text', name: 'Session status', text: 'start' },
+        { id: SCORE, type: 'text', name: 'Score', text: 'Score 0' },
+        { id: BEST, type: 'text', name: 'Best score', text: 'Best 0' },
+      ],
+    })
+
+    expect(resolveBounceRunUITargets(documentAsset)).toEqual({
+      statusText: STATUS,
+      scoreText: SCORE,
+      bestScoreText: BEST,
+      progress: undefined,
+    })
   })
 })
