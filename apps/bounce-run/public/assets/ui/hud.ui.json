@@ -6,6 +6,29 @@
   "elements": [
     {
       "id": "b1200000-0000-4000-8000-000000000002",
+      "name": "HUD Root",
+      "visible": true,
+      "enabled": true,
+      "sizing": {
+        "width": {
+          "mode": "fixed",
+          "value": 1280,
+          "unit": "px"
+        },
+        "height": {
+          "mode": "fixed",
+          "value": 720,
+          "unit": "px"
+        }
+      },
+      "placement": {
+        "positioning": "flow"
+      },
+      "style": {},
+      "accessibility": {
+        "label": "Bounce Run",
+        "role": "application"
+      },
       "type": "frame",
       "children": [
         "b1200000-0000-4000-8000-000000000003",
@@ -14,71 +37,192 @@
         "b1200000-0000-4000-8000-000000000013",
         "b1200000-0000-4000-8000-000000000018"
       ],
-      "layout": { "mode": "free" },
-      "sizing": {
-        "width": { "mode": "fixed", "value": 1280, "unit": "px" },
-        "height": { "mode": "fixed", "value": 720, "unit": "px" }
+      "layout": {
+        "mode": "free",
+        "padding": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
       },
-      "accessibility": { "role": "application", "label": "Bounce Run" }
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "events": {}
     },
     {
       "id": "b1200000-0000-4000-8000-000000000003",
+      "name": "Start screen",
+      "visible": true,
+      "enabled": true,
+      "sizing": {
+        "width": {
+          "mode": "fixed",
+          "value": 1280,
+          "unit": "px"
+        },
+        "height": {
+          "mode": "fixed",
+          "value": 720,
+          "unit": "px"
+        }
+      },
+      "placement": {
+        "positioning": "free",
+        "x": 0,
+        "y": 0,
+        "horizontalConstraint": "left-right",
+        "verticalConstraint": "top-bottom",
+        "referenceWidth": 1280,
+        "referenceHeight": 720
+      },
+      "style": {
+        "color": "#f9fff1",
+        "backgroundColor": "#13233b",
+        "fontFamily": "system-ui, sans-serif"
+      },
+      "accessibility": {},
       "type": "frame",
       "children": [
         "b1200000-0000-4000-8000-000000000004",
         "b1200000-0000-4000-8000-000000000005",
         "b1200000-0000-4000-8000-000000000006"
       ],
-      "layout": { "mode": "vertical", "alignment": "center", "distribution": "center", "rowGap": 14, "padding": { "top": 32, "right": 32, "bottom": 32, "left": 32 } },
-      "sizing": { "width": { "mode": "fixed", "value": 1280, "unit": "px" }, "height": { "mode": "fixed", "value": 720, "unit": "px" } },
-      "placement": { "positioning": "free", "x": 0, "y": 0, "horizontalConstraint": "left-right", "verticalConstraint": "top-bottom", "referenceWidth": 1280, "referenceHeight": 720 },
-      "style": {
-        "color": "#f9fff1",
-        "backgroundColor": "#13233b",
-        "fontFamily": "system-ui, sans-serif"
-      }
+      "layout": {
+        "mode": "vertical",
+        "padding": {
+          "top": 32,
+          "right": 32,
+          "bottom": 32,
+          "left": 32
+        },
+        "rowGap": 18,
+        "columnGap": 18,
+        "distribution": "center",
+        "alignment": "center",
+        "wrap": false
+      },
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "events": {}
     },
     {
       "id": "b1200000-0000-4000-8000-000000000004",
+      "name": "Brand title",
+      "visible": true,
+      "enabled": true,
+      "sizing": {
+        "width": {
+          "mode": "hug"
+        },
+        "height": {
+          "mode": "hug"
+        }
+      },
+      "placement": {
+        "positioning": "flow"
+      },
+      "style": {
+        "color": "#f9e86c",
+        "fontSize": 42,
+        "fontWeight": "bold"
+      },
+      "accessibility": {},
       "type": "text",
       "text": "BOUNCE RUN",
-      "style": { "color": "#f9e86c", "fontSize": 42, "fontWeight": "bold" }
+      "wrap": true,
+      "events": {}
     },
     {
       "id": "b1200000-0000-4000-8000-000000000005",
+      "name": "Start instructions",
+      "visible": true,
+      "enabled": true,
+      "sizing": {
+        "width": {
+          "mode": "hug"
+        },
+        "height": {
+          "mode": "hug"
+        }
+      },
+      "placement": {
+        "positioning": "flow"
+      },
+      "style": {
+        "color": "#d9f0ff",
+        "fontSize": 16,
+        "textAlign": "center"
+      },
+      "accessibility": {},
       "type": "text",
       "text": "A / D or arrows to steer · Escape to pause · R to restart",
-      "style": { "color": "#d9f0ff", "fontSize": 16, "textAlign": "center" }
+      "wrap": true,
+      "events": {}
     },
     {
       "id": "b1200000-0000-4000-8000-000000000006",
-      "type": "button",
-      "text": "Start run",
-      "events": { "activate": "b1200000-0000-4000-8000-000000000030" },
-      "accessibility": { "label": "Start Bounce Run" },
+      "name": "Start run",
+      "visible": true,
+      "enabled": true,
+      "sizing": {
+        "width": {
+          "mode": "hug"
+        },
+        "height": {
+          "mode": "hug"
+        }
+      },
+      "placement": {
+        "positioning": "flow"
+      },
       "style": {
         "color": "#102038",
         "backgroundColor": "#f9e86c",
         "fontSize": 20,
         "fontWeight": "bold",
-        "padding": { "top": 14, "right": 14, "bottom": 14, "left": 14 },
+        "padding": {
+          "top": 14,
+          "right": 14,
+          "bottom": 14,
+          "left": 14
+        },
         "borderColor": "#ffffff",
         "borderWidth": 2,
         "borderRadius": 12,
         "cursor": "pointer"
+      },
+      "accessibility": {
+        "label": "Start Bounce Run"
+      },
+      "type": "button",
+      "text": "Start run",
+      "events": {
+        "activate": "b1200000-0000-4000-8000-000000000030"
       }
     },
     {
       "id": "b1200000-0000-4000-8000-000000000007",
-      "type": "frame",
-      "children": [
-        "b1200000-0000-4000-8000-000000000016",
-        "b1200000-0000-4000-8000-000000000017",
-        "b1200000-0000-4000-8000-000000000009",
-        "b1200000-0000-4000-8000-000000000008"
-      ],
-      "layout": { "mode": "vertical", "rowGap": 4, "padding": { "top": 12, "right": 12, "bottom": 12, "left": 12 } },
-      "placement": { "positioning": "free", "x": 18, "y": 18, "horizontalConstraint": "left", "verticalConstraint": "top", "referenceWidth": 1280, "referenceHeight": 720 },
+      "name": "Session HUD",
+      "visible": true,
+      "enabled": true,
+      "sizing": {
+        "width": {
+          "mode": "hug"
+        },
+        "height": {
+          "mode": "hug"
+        }
+      },
+      "placement": {
+        "positioning": "free",
+        "x": 18,
+        "y": 18,
+        "horizontalConstraint": "left",
+        "verticalConstraint": "top",
+        "referenceWidth": 1280,
+        "referenceHeight": 720
+      },
       "style": {
         "color": "#ffffff",
         "backgroundColor": "#13233b",
@@ -86,37 +230,175 @@
         "borderColor": "#77d9ff",
         "borderWidth": 2,
         "borderRadius": 10
-      }
+      },
+      "accessibility": {},
+      "type": "frame",
+      "children": [
+        "9ebf4794-7599-41c6-af2d-7b38204d4263",
+        "b1200000-0000-4000-8000-000000000009",
+        "b1200000-0000-4000-8000-000000000008",
+        "a080bdce-fc0d-4f2b-a257-06c946eed973"
+      ],
+      "layout": {
+        "mode": "vertical",
+        "padding": {
+          "top": 24,
+          "right": 24,
+          "bottom": 24,
+          "left": 24
+        },
+        "rowGap": 10,
+        "columnGap": 10,
+        "distribution": "start",
+        "alignment": "start",
+        "wrap": false
+      },
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "events": {}
     },
     {
       "id": "b1200000-0000-4000-8000-000000000008",
+      "name": "Session status",
+      "visible": true,
+      "enabled": true,
+      "sizing": {
+        "width": {
+          "mode": "hug"
+        },
+        "height": {
+          "mode": "hug"
+        }
+      },
+      "placement": {
+        "positioning": "flow"
+      },
+      "style": {
+        "color": "#f9e86c",
+        "fontSize": 16,
+        "fontWeight": "bold"
+      },
+      "accessibility": {
+        "live": "polite"
+      },
       "type": "text",
       "text": "start",
-      "accessibility": { "live": "polite" },
-      "style": { "color": "#f9e86c", "fontSize": 16, "fontWeight": "bold" }
+      "wrap": true,
+      "events": {}
     },
     {
       "id": "b1200000-0000-4000-8000-000000000009",
+      "name": "Performance",
+      "visible": true,
+      "enabled": true,
+      "sizing": {
+        "width": {
+          "mode": "hug"
+        },
+        "height": {
+          "mode": "hug"
+        }
+      },
+      "placement": {
+        "positioning": "flow"
+      },
+      "style": {
+        "color": "#d9f0ff",
+        "fontSize": 12
+      },
+      "accessibility": {},
       "type": "text",
       "text": "Measuring baseline…",
-      "style": { "color": "#d9f0ff", "fontSize": 12 }
+      "wrap": true,
+      "events": {}
     },
     {
       "id": "b1200000-0000-4000-8000-000000000016",
+      "name": "Score",
+      "visible": true,
+      "enabled": true,
+      "sizing": {
+        "width": {
+          "mode": "hug"
+        },
+        "height": {
+          "mode": "hug"
+        }
+      },
+      "placement": {
+        "positioning": "flow"
+      },
+      "style": {
+        "color": "#f9e86c",
+        "fontSize": 26,
+        "fontWeight": "bold"
+      },
+      "accessibility": {
+        "live": "polite"
+      },
       "type": "text",
       "text": "Score 0",
-      "accessibility": { "live": "polite" },
-      "style": { "color": "#f9e86c", "fontSize": 26, "fontWeight": "bold" }
+      "wrap": true,
+      "events": {}
     },
     {
       "id": "b1200000-0000-4000-8000-000000000017",
+      "name": "Best score",
+      "visible": true,
+      "enabled": true,
+      "sizing": {
+        "width": {
+          "mode": "hug"
+        },
+        "height": {
+          "mode": "hug"
+        }
+      },
+      "placement": {
+        "positioning": "flow"
+      },
+      "style": {
+        "color": "#ffffff",
+        "fontSize": 16,
+        "fontWeight": "bold"
+      },
+      "accessibility": {
+        "live": "polite"
+      },
       "type": "text",
       "text": "Best 0",
-      "accessibility": { "live": "polite" },
-      "style": { "color": "#ffffff", "fontSize": 16, "fontWeight": "bold" }
+      "wrap": true,
+      "events": {}
     },
     {
       "id": "b1200000-0000-4000-8000-000000000018",
+      "name": "Audio settings",
+      "visible": true,
+      "enabled": true,
+      "sizing": {
+        "width": {
+          "mode": "fixed",
+          "value": 332,
+          "unit": "px"
+        },
+        "height": {
+          "mode": "hug"
+        }
+      },
+      "placement": {
+        "positioning": "free",
+        "x": 930,
+        "y": 18,
+        "horizontalConstraint": "right",
+        "verticalConstraint": "top",
+        "referenceWidth": 1280,
+        "referenceHeight": 720
+      },
+      "style": {
+        "backgroundColor": "#13233b",
+        "borderRadius": 8
+      },
+      "accessibility": {},
       "type": "frame",
       "children": [
         "b1200000-0000-4000-8000-000000000019",
@@ -124,142 +406,499 @@
         "b1200000-0000-4000-8000-000000000021",
         "b1200000-0000-4000-8000-000000000022"
       ],
-      "layout": { "mode": "horizontal", "wrap": true, "columnGap": 4, "rowGap": 4, "padding": { "top": 6, "right": 6, "bottom": 6, "left": 6 } },
-      "sizing": { "width": { "mode": "fixed", "value": 332, "unit": "px" } },
-      "placement": { "positioning": "free", "x": 930, "y": 18, "horizontalConstraint": "right", "verticalConstraint": "top", "referenceWidth": 1280, "referenceHeight": 720 },
-      "style": { "backgroundColor": "#13233b", "borderRadius": 8 }
+      "layout": {
+        "mode": "horizontal",
+        "padding": {
+          "top": 12,
+          "right": 12,
+          "bottom": 12,
+          "left": 12
+        },
+        "rowGap": 8,
+        "columnGap": 8,
+        "distribution": "end",
+        "alignment": "center",
+        "wrap": true
+      },
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "events": {}
     },
     {
       "id": "b1200000-0000-4000-8000-000000000019",
-      "type": "button",
-      "text": "Master on",
-      "events": { "activate": "b1200000-0000-4000-8000-000000000033" },
-      "accessibility": { "label": "Toggle master audio" },
+      "name": "Master audio",
+      "visible": true,
+      "enabled": true,
+      "sizing": {
+        "width": {
+          "mode": "hug"
+        },
+        "height": {
+          "mode": "hug"
+        }
+      },
+      "placement": {
+        "positioning": "flow"
+      },
       "style": {
         "color": "#102038",
         "backgroundColor": "#d9f0ff",
         "fontSize": 11,
-        "padding": { "top": 5, "right": 5, "bottom": 5, "left": 5 },
+        "padding": {
+          "top": 5,
+          "right": 5,
+          "bottom": 5,
+          "left": 5
+        },
         "borderRadius": 5,
         "cursor": "pointer"
+      },
+      "accessibility": {
+        "label": "Toggle master audio"
+      },
+      "type": "button",
+      "text": "Master on",
+      "events": {
+        "activate": "b1200000-0000-4000-8000-000000000033"
       }
     },
     {
       "id": "b1200000-0000-4000-8000-000000000020",
-      "type": "button",
-      "text": "Music on",
-      "events": { "activate": "b1200000-0000-4000-8000-000000000034" },
-      "accessibility": { "label": "Toggle music audio" },
+      "name": "Music audio",
+      "visible": true,
+      "enabled": true,
+      "sizing": {
+        "width": {
+          "mode": "hug"
+        },
+        "height": {
+          "mode": "hug"
+        }
+      },
+      "placement": {
+        "positioning": "flow"
+      },
       "style": {
         "color": "#102038",
         "backgroundColor": "#d9f0ff",
         "fontSize": 11,
-        "padding": { "top": 5, "right": 5, "bottom": 5, "left": 5 },
+        "padding": {
+          "top": 5,
+          "right": 5,
+          "bottom": 5,
+          "left": 5
+        },
         "borderRadius": 5,
         "cursor": "pointer"
+      },
+      "accessibility": {
+        "label": "Toggle music audio"
+      },
+      "type": "button",
+      "text": "Music on",
+      "events": {
+        "activate": "b1200000-0000-4000-8000-000000000034"
       }
     },
     {
       "id": "b1200000-0000-4000-8000-000000000021",
-      "type": "button",
-      "text": "SFX on",
-      "events": { "activate": "b1200000-0000-4000-8000-000000000035" },
-      "accessibility": { "label": "Toggle sound effects" },
+      "name": "SFX audio",
+      "visible": true,
+      "enabled": true,
+      "sizing": {
+        "width": {
+          "mode": "hug"
+        },
+        "height": {
+          "mode": "hug"
+        }
+      },
+      "placement": {
+        "positioning": "flow"
+      },
       "style": {
         "color": "#102038",
         "backgroundColor": "#d9f0ff",
         "fontSize": 11,
-        "padding": { "top": 5, "right": 5, "bottom": 5, "left": 5 },
+        "padding": {
+          "top": 5,
+          "right": 5,
+          "bottom": 5,
+          "left": 5
+        },
         "borderRadius": 5,
         "cursor": "pointer"
+      },
+      "accessibility": {
+        "label": "Toggle sound effects"
+      },
+      "type": "button",
+      "text": "SFX on",
+      "events": {
+        "activate": "b1200000-0000-4000-8000-000000000035"
       }
     },
     {
       "id": "b1200000-0000-4000-8000-000000000022",
-      "type": "button",
-      "text": "UI on",
-      "events": { "activate": "b1200000-0000-4000-8000-000000000036" },
-      "accessibility": { "label": "Toggle interface audio" },
+      "name": "UI audio",
+      "visible": true,
+      "enabled": true,
+      "sizing": {
+        "width": {
+          "mode": "hug"
+        },
+        "height": {
+          "mode": "hug"
+        }
+      },
+      "placement": {
+        "positioning": "flow"
+      },
       "style": {
         "color": "#102038",
         "backgroundColor": "#d9f0ff",
         "fontSize": 11,
-        "padding": { "top": 5, "right": 5, "bottom": 5, "left": 5 },
+        "padding": {
+          "top": 5,
+          "right": 5,
+          "bottom": 5,
+          "left": 5
+        },
         "borderRadius": 5,
         "cursor": "pointer"
+      },
+      "accessibility": {
+        "label": "Toggle interface audio"
+      },
+      "type": "button",
+      "text": "UI on",
+      "events": {
+        "activate": "b1200000-0000-4000-8000-000000000036"
       }
     },
     {
       "id": "b1200000-0000-4000-8000-000000000010",
-      "type": "frame",
-      "children": ["b1200000-0000-4000-8000-000000000011", "b1200000-0000-4000-8000-000000000012"],
-      "layout": { "mode": "vertical", "alignment": "center", "distribution": "center", "rowGap": 14, "padding": { "top": 32, "right": 32, "bottom": 32, "left": 32 } },
-      "sizing": { "width": { "mode": "fixed", "value": 1280, "unit": "px" }, "height": { "mode": "fixed", "value": 720, "unit": "px" } },
-      "placement": { "positioning": "free", "x": 0, "y": 0, "horizontalConstraint": "left-right", "verticalConstraint": "top-bottom", "referenceWidth": 1280, "referenceHeight": 720 },
+      "name": "Pause overlay",
+      "visible": true,
+      "enabled": true,
+      "sizing": {
+        "width": {
+          "mode": "fixed",
+          "value": 1280,
+          "unit": "px"
+        },
+        "height": {
+          "mode": "fixed",
+          "value": 720,
+          "unit": "px"
+        }
+      },
+      "placement": {
+        "positioning": "free",
+        "x": 0,
+        "y": 0,
+        "horizontalConstraint": "left-right",
+        "verticalConstraint": "top-bottom",
+        "referenceWidth": 1280,
+        "referenceHeight": 720
+      },
       "style": {
         "color": "#ffffff",
         "backgroundColor": "#26344f",
         "fontFamily": "system-ui, sans-serif"
-      }
+      },
+      "accessibility": {},
+      "type": "frame",
+      "children": [
+        "b1200000-0000-4000-8000-000000000011",
+        "b1200000-0000-4000-8000-000000000012"
+      ],
+      "layout": {
+        "mode": "vertical",
+        "padding": {
+          "top": 32,
+          "right": 32,
+          "bottom": 32,
+          "left": 32
+        },
+        "rowGap": 18,
+        "columnGap": 18,
+        "distribution": "center",
+        "alignment": "center",
+        "wrap": false
+      },
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "events": {}
     },
     {
       "id": "b1200000-0000-4000-8000-000000000011",
+      "name": "Pause title",
+      "visible": true,
+      "enabled": true,
+      "sizing": {
+        "width": {
+          "mode": "hug"
+        },
+        "height": {
+          "mode": "hug"
+        }
+      },
+      "placement": {
+        "positioning": "flow"
+      },
+      "style": {
+        "color": "#77d9ff",
+        "fontSize": 36,
+        "fontWeight": "bold"
+      },
+      "accessibility": {},
       "type": "text",
       "text": "Paused",
-      "style": { "color": "#77d9ff", "fontSize": 36, "fontWeight": "bold" }
+      "wrap": true,
+      "events": {}
     },
     {
       "id": "b1200000-0000-4000-8000-000000000012",
-      "type": "button",
-      "text": "Resume",
-      "events": { "activate": "b1200000-0000-4000-8000-000000000031" },
+      "name": "Resume",
+      "visible": true,
+      "enabled": true,
+      "sizing": {
+        "width": {
+          "mode": "hug"
+        },
+        "height": {
+          "mode": "hug"
+        }
+      },
+      "placement": {
+        "positioning": "flow"
+      },
       "style": {
         "color": "#102038",
         "backgroundColor": "#77d9ff",
         "fontSize": 18,
-        "padding": { "top": 12, "right": 12, "bottom": 12, "left": 12 },
+        "padding": {
+          "top": 12,
+          "right": 12,
+          "bottom": 12,
+          "left": 12
+        },
         "borderRadius": 10,
         "cursor": "pointer"
+      },
+      "accessibility": {},
+      "type": "button",
+      "text": "Resume",
+      "events": {
+        "activate": "b1200000-0000-4000-8000-000000000031"
       }
     },
     {
       "id": "b1200000-0000-4000-8000-000000000013",
-      "type": "frame",
-      "children": ["b1200000-0000-4000-8000-000000000014", "b1200000-0000-4000-8000-000000000015"],
-      "layout": { "mode": "vertical", "alignment": "center", "distribution": "center", "rowGap": 14, "padding": { "top": 32, "right": 32, "bottom": 32, "left": 32 } },
-      "sizing": { "width": { "mode": "fixed", "value": 1280, "unit": "px" }, "height": { "mode": "fixed", "value": 720, "unit": "px" } },
-      "placement": { "positioning": "free", "x": 0, "y": 0, "horizontalConstraint": "left-right", "verticalConstraint": "top-bottom", "referenceWidth": 1280, "referenceHeight": 720 },
+      "name": "Game over overlay",
+      "visible": true,
+      "enabled": true,
+      "sizing": {
+        "width": {
+          "mode": "fixed",
+          "value": 1280,
+          "unit": "px"
+        },
+        "height": {
+          "mode": "fixed",
+          "value": 720,
+          "unit": "px"
+        }
+      },
+      "placement": {
+        "positioning": "free",
+        "x": 0,
+        "y": 0,
+        "horizontalConstraint": "left-right",
+        "verticalConstraint": "top-bottom",
+        "referenceWidth": 1280,
+        "referenceHeight": 720
+      },
       "style": {
         "color": "#ffffff",
         "backgroundColor": "#3b1835",
         "fontFamily": "system-ui, sans-serif"
-      }
+      },
+      "accessibility": {},
+      "type": "frame",
+      "children": [
+        "b1200000-0000-4000-8000-000000000014",
+        "b1200000-0000-4000-8000-000000000015"
+      ],
+      "layout": {
+        "mode": "vertical",
+        "padding": {
+          "top": 32,
+          "right": 32,
+          "bottom": 32,
+          "left": 32
+        },
+        "rowGap": 18,
+        "columnGap": 18,
+        "distribution": "center",
+        "alignment": "center",
+        "wrap": false
+      },
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "events": {}
     },
     {
       "id": "b1200000-0000-4000-8000-000000000014",
+      "name": "Game over title",
+      "visible": true,
+      "enabled": true,
+      "sizing": {
+        "width": {
+          "mode": "hug"
+        },
+        "height": {
+          "mode": "hug"
+        }
+      },
+      "placement": {
+        "positioning": "flow"
+      },
+      "style": {
+        "color": "#ff7a99",
+        "fontSize": 36,
+        "fontWeight": "bold"
+      },
+      "accessibility": {},
       "type": "text",
       "text": "Run over",
-      "style": { "color": "#ff7a99", "fontSize": 36, "fontWeight": "bold" }
+      "wrap": true,
+      "events": {}
     },
     {
       "id": "b1200000-0000-4000-8000-000000000015",
-      "type": "button",
-      "text": "Run again",
-      "events": { "activate": "b1200000-0000-4000-8000-000000000032" },
+      "name": "Restart",
+      "visible": true,
+      "enabled": true,
+      "sizing": {
+        "width": {
+          "mode": "hug"
+        },
+        "height": {
+          "mode": "hug"
+        }
+      },
+      "placement": {
+        "positioning": "flow"
+      },
       "style": {
         "color": "#321122",
         "backgroundColor": "#ffb5c7",
         "fontSize": 18,
-        "padding": { "top": 12, "right": 12, "bottom": 12, "left": 12 },
+        "padding": {
+          "top": 12,
+          "right": 12,
+          "bottom": 12,
+          "left": 12
+        },
         "borderRadius": 10,
         "cursor": "pointer"
+      },
+      "accessibility": {},
+      "type": "button",
+      "text": "Run again",
+      "events": {
+        "activate": "b1200000-0000-4000-8000-000000000032"
       }
+    },
+    {
+      "id": "9ebf4794-7599-41c6-af2d-7b38204d4263",
+      "name": "Score card row",
+      "visible": true,
+      "enabled": true,
+      "sizing": {
+        "width": {
+          "mode": "fill"
+        },
+        "height": {
+          "mode": "hug"
+        }
+      },
+      "placement": {
+        "positioning": "flow"
+      },
+      "style": {},
+      "accessibility": {},
+      "type": "frame",
+      "children": [
+        "b1200000-0000-4000-8000-000000000016",
+        "b1200000-0000-4000-8000-000000000017"
+      ],
+      "layout": {
+        "mode": "horizontal",
+        "padding": {
+          "top": 14,
+          "right": 14,
+          "bottom": 14,
+          "left": 14
+        },
+        "rowGap": 12,
+        "columnGap": 12,
+        "distribution": "space-between",
+        "alignment": "center",
+        "wrap": false
+      },
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "events": {}
+    },
+    {
+      "id": "a080bdce-fc0d-4f2b-a257-06c946eed973",
+      "name": "Route progress",
+      "visible": true,
+      "enabled": true,
+      "sizing": {
+        "width": {
+          "mode": "fill"
+        },
+        "height": {
+          "mode": "fixed",
+          "value": 10,
+          "unit": "px"
+        }
+      },
+      "placement": {
+        "positioning": "flow"
+      },
+      "style": {},
+      "accessibility": {
+        "label": "Route progress"
+      },
+      "type": "progress",
+      "min": 0,
+      "max": 1,
+      "value": 0,
+      "events": {}
     }
   ],
+  "components": [],
   "events": [
-    { "id": "b1200000-0000-4000-8000-000000000030", "name": "start-session", "payload": "none" },
-    { "id": "b1200000-0000-4000-8000-000000000031", "name": "resume-session", "payload": "none" },
-    { "id": "b1200000-0000-4000-8000-000000000032", "name": "restart-session", "payload": "none" },
+    {
+      "id": "b1200000-0000-4000-8000-000000000030",
+      "name": "start-session",
+      "payload": "none"
+    },
+    {
+      "id": "b1200000-0000-4000-8000-000000000031",
+      "name": "resume-session",
+      "payload": "none"
+    },
+    {
+      "id": "b1200000-0000-4000-8000-000000000032",
+      "name": "restart-session",
+      "payload": "none"
+    },
     {
       "id": "b1200000-0000-4000-8000-000000000033",
       "name": "toggle-master-audio",
@@ -270,7 +909,16 @@
       "name": "toggle-music-audio",
       "payload": "none"
     },
-    { "id": "b1200000-0000-4000-8000-000000000035", "name": "toggle-sfx-audio", "payload": "none" },
-    { "id": "b1200000-0000-4000-8000-000000000036", "name": "toggle-ui-audio", "payload": "none" }
-  ]
+    {
+      "id": "b1200000-0000-4000-8000-000000000035",
+      "name": "toggle-sfx-audio",
+      "payload": "none"
+    },
+    {
+      "id": "b1200000-0000-4000-8000-000000000036",
+      "name": "toggle-ui-audio",
+      "payload": "none"
+    }
+  ],
+  "themes": []
 }

@@ -49,7 +49,24 @@ describe('Bounce Run authored assets', () => {
       ok: true,
       json: async () => uiAsset,
     }))
-    expect(uiDocument.elements).toHaveLength(21)
+    expect(uiDocument.elements).toHaveLength(23)
+    expect(
+      uiDocument.elements
+        .filter((element) =>
+          ['Session status', 'Score', 'Best score', 'Route progress'].includes(
+            element.name ?? '',
+          ),
+        )
+        .map(({ name, type }) => ({ name, type })),
+    ).toEqual([
+      { name: 'Session status', type: 'text' },
+      { name: 'Score', type: 'text' },
+      { name: 'Best score', type: 'text' },
+      { name: 'Route progress', type: 'progress' },
+    ])
+    expect(uiDocument.elements.find((element) => element.name === 'Route progress')).toMatchObject(
+      { min: 0, max: 1, value: 0 },
+    )
     expect(uiDocument.events).toHaveLength(7)
   })
 })

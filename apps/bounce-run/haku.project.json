@@ -21,19 +21,24 @@
           "$ref": "b1200000-0000-4000-8000-000000000001",
           "type": "20000000-0000-4000-8000-000000000009"
         }
-      ]
+      ],
+      "metadata": {}
     },
     {
       "id": "b1500000-0000-4000-8000-000000000002",
       "type": "20000000-0000-4000-8000-000000000002",
       "path": "prefabs/platform.prefab.json",
-      "dependencies": []
+      "dependencies": [],
+      "metadata": {}
     },
     {
       "id": "b1200000-0000-4000-8000-000000000001",
       "type": "20000000-0000-4000-8000-000000000009",
       "path": "ui/hud.ui.json",
-      "dependencies": []
+      "dependencies": [],
+      "metadata": {
+        "name": "Bounce Run HUD"
+      }
     }
   ]
 }
